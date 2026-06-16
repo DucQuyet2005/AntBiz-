@@ -5,6 +5,17 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 ---
 
+## [1.2.0] - 2026-06-17
+
+### Added
+- **Xác thực Client-side và Server-side**: Tích hợp kiểm tra dữ liệu đăng nhập và đăng ký sử dụng `zod` và `react-hook-form`.
+- **Giới hạn số lần đăng nhập (Rate Limiting)**: Triển khai tính năng tự động khóa 3 phút sau 5 lần nhập sai liên tiếp thông qua cơ chế khóa kép: Client dùng `localStorage` để đếm ngược UI và Server dùng cookie HTTP-Only `login_lockout` để chặn các yêu cầu submit tiếp theo.
+- **Thư viện mới**: Cài đặt các package `zod`, `react-hook-form`, và `@hookform/resolvers`.
+
+### Changed
+- **Cập nhật UI Form**: Cấu trúc lại giao diện đăng nhập (`app/(auth)/login/page.tsx`) và đăng ký (`app/(auth)/register/page.tsx`) để hiển thị thông báo lỗi trực quan ngay dưới từng trường nhập liệu thay vì banner lỗi chung.
+- **Cập nhật Server Actions**: Bổ sung xác thực phía server bằng Zod schema và xử lý tăng/xóa cookie số lần sai (`login_attempts`, `login_lockout`) trong `app/(auth)/actions.ts`.
+
 ## [1.1.0] - 2026-06-16
 
 ### Added

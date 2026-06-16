@@ -3,11 +3,26 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
+import { loginSchema, registerSchema } from '@/lib/validations/auth'
 
 export async function login(formData: FormData) {
+  const cookieStore = await cookies()
+  const lockoutCookie = cookieStore.get('login_lockout')
+
+  if (lockoutCookie) {
+    return { error: 'Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 3 phút.', isLockedOut: true }
+  }
+
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+
+  // Server-side validation
+  const validatedFields = loginSchema.safeParse({ email, password })
+  if (!validatedFields.success) {
+    return { error: 'Dữ liệu gửi lên không hợp lệ.' }
+  }
+
   const supabase = createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -16,8 +31,31 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    let attempts = parseInt(cookieStore.get('login_attempts')?.value || '0', 10)
+    attempts += 1
+    
+    if (attempts >= 5) {
+      // Set lockout cookie for 3 minutes
+      cookieStore.set('login_lockout', '1', { 
+        maxAge: 180, 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production' 
+      })
+      cookieStore.delete('login_attempts')
+      return { error: 'Bạn đã đăng nhập sai 5 lần. Tài khoản tạm thời bị khóa 3 phút.', isLockedOut: true }
+    } else {
+      cookieStore.set('login_attempts', attempts.toString(), { 
+        maxAge: 60 * 60 * 24, // 24 hours
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production' 
+      })
+      return { error: error.message }
+    }
   }
+
+  // Success: Clear lockout states
+  cookieStore.delete('login_attempts')
+  cookieStore.delete('login_lockout')
 
   // Supabase sẽ tự động set JWT Token vào Cookie. Middleware sẽ đọc JWT này để xác thực.
   redirect('/')
@@ -27,6 +65,13 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
+  
+  // Server-side validation
+  const validatedFields = registerSchema.safeParse({ email, password, fullName })
+  if (!validatedFields.success) {
+    return { error: 'Dữ liệu đăng ký không hợp lệ.' }
+  }
+
   const supabase = createClient()
 
   const { data, error } = await supabase.auth.signUp({
