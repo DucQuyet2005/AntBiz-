@@ -42,6 +42,7 @@ export default function LoginPage() {
             src="/images/login.png"
             alt="Bento Studio AI Dashboard"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover opacity-80"
             priority
           />

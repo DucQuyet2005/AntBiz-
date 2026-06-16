@@ -38,6 +38,7 @@ export default function RegisterPage() {
             src="/images/register.png"
             alt="Bento Studio 3D Element"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover opacity-90 mix-blend-screen"
             priority
           />
