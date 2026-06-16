@@ -3,6 +3,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
+import { headers } from 'next/headers'
+
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -27,7 +29,7 @@ export async function signup(formData: FormData) {
   const fullName = formData.get('fullName') as string
   const supabase = createClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -41,17 +43,26 @@ export async function signup(formData: FormData) {
     return { error: error.message }
   }
 
-  // Đối với cấu hình mặc định của Supabase, người dùng cần click link xác nhận email.
-  // Bạn có thể tắt tính năng "Confirm Email" trong Supabase Auth Settings để đăng nhập ngay lập tức.
+  // Nếu cấu hình Supabase đã tắt "Confirm Email", nó sẽ trả về session đăng nhập ngay lập tức.
+  // Chúng ta sẽ tự động chuyển hướng người dùng vào thẳng Dashboard.
+  if (data?.session) {
+    redirect('/dashboard')
+  }
+
   return { success: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' }
 }
 
 export async function signInWithGoogle() {
   const supabase = createClient()
+  const headersList = await headers()
+  const host = headersList.get('host')
+  const protocol = headersList.get('x-forwarded-proto') || 'http'
+  const origin = `${protocol}://${host}`
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
+      redirectTo: `${origin}/api/auth/callback`,
     },
   })
 
