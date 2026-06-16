@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -44,14 +44,16 @@ export async function middleware(request: NextRequest) {
 
   const url = request.nextUrl.clone()
 
+  const isPublicRoute = url.pathname === '/login' || url.pathname === '/register' || url.pathname.startsWith('/api/auth');
+
   // 1. Nếu người dùng ĐÃ ĐĂNG NHẬP (Có JWT Session hợp lệ) mà cố tình truy cập trang login/register
   if (session && (url.pathname === '/login' || url.pathname === '/register')) {
-    url.pathname = '/dashboard'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  // 2. Nếu người dùng CHƯA ĐĂNG NHẬP (Không có JWT Session) mà cố tình truy cập các trang được bảo vệ
-  if (!session && url.pathname.startsWith('/dashboard')) {
+  // 2. Nếu người dùng CHƯA ĐĂNG NHẬP (Không có JWT Session) mà cố tình truy cập các trang được bảo vệ (tất cả trừ public)
+  if (!session && !isPublicRoute) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signout } from '@/app/(dashboard)/actions';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -64,10 +65,12 @@ const Sidebar = () => {
           <HeadphonesIcon size={20} />
           Support
         </button>
-        <button className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full">
-          <LogOut size={20} />
-          Log Out
-        </button>
+        <form action={signout} className="w-full">
+          <button type="submit" className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full">
+            <LogOut size={20} />
+            Log Out
+          </button>
+        </form>
       </div>
     </aside>
   );

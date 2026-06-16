@@ -18,7 +18,7 @@ export async function login(formData: FormData) {
   }
 
   // Supabase sẽ tự động set JWT Token vào Cookie. Middleware sẽ đọc JWT này để xác thực.
-  redirect('/dashboard')
+  redirect('/')
 }
 
 export async function signup(formData: FormData) {
