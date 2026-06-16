@@ -1,188 +1,318 @@
-import React from 'react';
-import { Link2, Share2, Facebook, Instagram, MessageCircle, Heart, MessageSquare, Send, Bookmark, ThumbsUp, Sparkles } from 'lucide-react';
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  Link2, 
+  Globe, 
+  Check, 
+  Facebook, 
+  Instagram, 
+  MessageCircle, 
+  Sparkles, 
+  MoreHorizontal, 
+  ThumbsUp, 
+  MessageSquare, 
+  Share2,
+  CheckCircle2
+} from 'lucide-react';
 
 export default function AiCreatorView() {
+  const [activeVariant, setActiveVariant] = useState<'A' | 'B'>('A');
+  const [activePlatform, setActivePlatform] = useState<'instagram' | 'facebook'>('facebook');
+  const [url, setUrl] = useState('https://gocnhinmoi.com.vn/ai-trend-2026');
+  
+  // Channels selection state
+  const [channels, setChannels] = useState({
+    instagram: true,
+    facebook: true,
+    threads: true
+  });
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="mt-2">
-        <h1 className="text-4xl font-bold text-text mb-2 tracking-tight">New Campaign</h1>
-        <p className="text-text-muted">Configure AI data sources and target distribution channels.</p>
-      </div>
-
-      {/* Config Cards */}
-      <div className="grid grid-cols-5 gap-6">
-        {/* Data Source */}
-        <div className="col-span-2 bg-[#C4F0E1] rounded-[32px] p-8 flex flex-col relative overflow-hidden">
-          <div className="flex items-center gap-3 mb-4 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <Link2 size={20} className="text-text" />
-            </div>
-            <h2 className="text-xl font-bold text-text">Data Source</h2>
-          </div>
-          <p className="text-sm text-text-muted mb-8 relative z-10">
-            Paste an article URL to extract content, tone, and key insights automatically.
-          </p>
-          <div className="mt-auto relative z-10 flex gap-2 bg-white rounded-full p-2 shadow-sm">
-            <input 
-              type="text" 
-              defaultValue="https://gocnhin"
-              className="flex-1 bg-transparent px-4 py-2 text-sm focus:outline-none"
-            />
-            <button className="bg-[#4A6B5D] hover:bg-[#3A5B4D] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors">
-              Fetch
-            </button>
-          </div>
+    <div className="flex flex-col gap-6 w-full">
+      {/* Top Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
+        <div>
+          <h1 className="text-3xl font-bold text-text tracking-tight">AI Publishing Creator</h1>
+          <p className="text-sm text-text-muted mt-1">Orchestrate hyper-optimized copy variants from single URL inputs.</p>
         </div>
-
-        {/* Distribution Channels */}
-        <div className="col-span-3 bg-[#F4F5F9] border border-primary/10 shadow-sm rounded-[32px] p-8 flex flex-col relative overflow-hidden">
-          <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-0"></div>
-          <div className="flex items-center gap-3 mb-4 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <Share2 size={20} className="text-primary" />
-            </div>
-            <h2 className="text-xl font-bold text-text">Distribution Channels</h2>
-          </div>
-          <p className="text-sm text-text-muted mb-8 relative z-10">
-            Select platforms to generate tailored content variations.
-          </p>
-          <div className="mt-auto relative z-10 flex gap-4">
-            <button className="flex items-center gap-2 bg-[#5A5CDE] text-white px-6 py-3 rounded-full font-medium shadow-md shadow-primary/20">
-              <Facebook size={18} />
-              Facebook
-            </button>
-            <button className="flex items-center gap-2 bg-[#5A5CDE] text-white px-6 py-3 rounded-full font-medium shadow-md shadow-primary/20">
-              <Instagram size={18} />
-              Instagram
-            </button>
-            <button className="flex items-center gap-2 bg-white border border-gray-200 text-text hover:bg-gray-50 px-6 py-3 rounded-full font-medium transition-colors">
-              <MessageCircle size={18} />
-              Threads
-            </button>
-          </div>
+        <div className="flex items-center self-start md:self-center">
+          <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-sidebar text-primary border border-primary/10">
+            Gemini-3.5-Flash Active Engine
+          </span>
         </div>
       </div>
 
-      {/* A/B Testing Previews */}
-      <div className="bg-[#DFE1FA]/40 rounded-[32px] p-8 border border-primary/10">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white flex flex-col items-center justify-center gap-[2px] shadow-sm">
-              <div className="w-4 h-[3px] bg-text rounded-full"></div>
-              <div className="w-4 h-[3px] bg-text rounded-full"></div>
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* Left Column - Inputs & Options (5 cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          
+          {/* Source Context Importer Card */}
+          <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[24px] p-6 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669]">
+                <Globe size={18} />
+              </div>
+              <h2 className="text-lg font-bold text-text">Source Context Importer</h2>
             </div>
-            <h2 className="text-xl font-bold text-text">A/B Testing Previews</h2>
+            
+            <p className="text-xs text-text-muted leading-relaxed">
+              Input any blog, product URL, or topic node. Our server extracts metadata tags to define your brand intent.
+            </p>
+            
+            <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+              <span className="text-gray-400 pl-2">
+                <Link2 size={16} />
+              </span>
+              <input 
+                type="text" 
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
+              />
+              <button className="bg-[#4A6B5D] hover:bg-[#3A5B4D] text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                Fetch
+              </button>
+            </div>
           </div>
-          <div className="flex bg-white rounded-full p-1 shadow-sm">
-            <button className="bg-primary text-white text-xs font-medium px-4 py-1.5 rounded-full">Variant A</button>
-            <button className="text-text-muted text-xs font-medium px-4 py-1.5 rounded-full hover:text-text">Variant B</button>
+
+          {/* Target Channels Card */}
+          <div className="bg-white border border-gray-200 rounded-[24px] p-6 flex flex-col gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <CheckCircle2 size={18} />
+              </div>
+              <h2 className="text-lg font-bold text-text">Target Channels</h2>
+            </div>
+            
+            <p className="text-xs text-text-muted leading-relaxed">
+              Select key target social networks to tailor tone layouts, hashtags structures, and image dimension guides.
+            </p>
+            
+            <div className="flex flex-col gap-2.5">
+              {/* Instagram */}
+              <button 
+                onClick={() => setChannels({ ...channels, instagram: !channels.instagram })}
+                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                  channels.instagram 
+                    ? 'border-primary/30 bg-primary/5 text-text' 
+                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Instagram size={16} className={channels.instagram ? 'text-primary' : 'text-gray-400'} />
+                  <span className="text-xs font-semibold">Instagram Direct</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                  channels.instagram ? 'bg-primary text-white' : 'border border-gray-300'
+                }`}>
+                  {channels.instagram && <Check size={12} />}
+                </div>
+              </button>
+
+              {/* Facebook */}
+              <button 
+                onClick={() => setChannels({ ...channels, facebook: !channels.facebook })}
+                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                  channels.facebook 
+                    ? 'border-primary/30 bg-primary/5 text-text' 
+                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Facebook size={16} className={channels.facebook ? 'text-primary' : 'text-gray-400'} />
+                  <span className="text-xs font-semibold">Facebook Pages</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                  channels.facebook ? 'bg-primary text-white' : 'border border-gray-300'
+                }`}>
+                  {channels.facebook && <Check size={12} />}
+                </div>
+              </button>
+
+              {/* Threads */}
+              <button 
+                onClick={() => setChannels({ ...channels, threads: !channels.threads })}
+                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                  channels.threads 
+                    ? 'border-primary/30 bg-primary/5 text-text' 
+                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MessageCircle size={16} className={channels.threads ? 'text-primary' : 'text-gray-400'} />
+                  <span className="text-xs font-semibold">Threads Feed</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                  channels.threads ? 'bg-primary text-white' : 'border border-gray-300'
+                }`}>
+                  {channels.threads && <Check size={12} />}
+                </div>
+              </button>
+            </div>
           </div>
+
+          {/* Action CTA Button */}
+          <button className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-4 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 text-sm">
+            <Sparkles size={18} />
+            Generate Optimized Content Variants
+          </button>
+
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
-          {/* Instagram Preview */}
-          <div className="bg-white rounded-[24px] shadow-sm overflow-hidden flex flex-col">
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full border border-orange-400 p-[2px]">
-                  <div className="w-full h-full rounded-full border border-gray-200"></div>
-                </div>
-                <span className="text-sm font-medium">brand_account</span>
-              </div>
-              <div className="flex gap-1">
-                <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              </div>
+        {/* Right Column - Sandbox Previews (7 cols) */}
+        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-[24px] p-6 shadow-sm flex flex-col gap-6">
+          
+          {/* Header of Sandbox */}
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+              <h2 className="text-lg font-bold text-text">Variant Sandbox Previews</h2>
             </div>
             
-            <div className="aspect-square bg-[#F3D5E7] relative">
-               <img src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=400&auto=format&fit=crop" alt="Abstract" className="w-full h-full object-cover opacity-80" />
-               <div className="absolute inset-0 bg-[#EAC9E5] mix-blend-color"></div>
-            </div>
-            
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-3 text-text">
-                <div className="flex gap-4">
-                  <Heart size={24} />
-                  <MessageSquare size={24} />
-                  <Send size={24} />
-                </div>
-                <Bookmark size={24} />
-              </div>
-              
-              <div className="text-sm mb-4">
-                 <p>Discover the future of AI content generation...</p>
-              </div>
-              
-              <div className="mt-auto">
-                <div className="border border-primary rounded-2xl p-2 flex items-center bg-primary/5 mb-4">
-                  <input type="text" defaultValue="Discover the future of AI content generation..." className="flex-1 bg-transparent text-sm focus:outline-none px-2" />
-                  <button className="bg-primary hover:bg-primary-hover text-white text-xs font-medium px-4 py-2 rounded-xl flex items-center gap-1">
-                    <Sparkles size={12} />
-                    Refine
-                  </button>
-                </div>
-                <div className="flex gap-3">
-                  <button className="flex-1 bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl text-sm font-medium transition-colors">Save Changes</button>
-                  <button className="flex-1 bg-gray-200 hover:bg-gray-300 text-text py-2.5 rounded-xl text-sm font-medium transition-colors">Discard</button>
-                </div>
-              </div>
+            {/* Variant Switcher Capsule */}
+            <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+              <button 
+                onClick={() => setActiveVariant('A')}
+                className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
+                  activeVariant === 'A' 
+                    ? 'bg-primary text-white shadow-sm' 
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                Variant A
+              </button>
+              <button 
+                onClick={() => setActiveVariant('B')}
+                className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
+                  activeVariant === 'B' 
+                    ? 'bg-primary text-white shadow-sm' 
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                Variant B
+              </button>
             </div>
           </div>
 
-          {/* LinkedIn/Facebook Preview */}
-          <div className="bg-white rounded-[24px] shadow-sm overflow-hidden flex flex-col">
-            <div className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#5A5CDE]"></div>
-              <div>
-                <div className="text-sm font-bold">Brand Page Name</div>
-                <div className="text-xs text-text-muted">2h • 🌎</div>
-              </div>
-            </div>
+          {/* Platform Toggle Tabs */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setActivePlatform('instagram')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                activePlatform === 'instagram' 
+                  ? 'bg-primary/5 border-primary/30 text-primary' 
+                  : 'bg-white border-gray-200 text-text-muted hover:text-text'
+              }`}
+            >
+              <Instagram size={14} />
+              Instagram Feed
+            </button>
             
-            <div className="px-4 text-sm mb-4">
-              <div className="border border-primary rounded-2xl p-3 bg-primary/5 flex items-start gap-2">
-                <p className="flex-1 text-xs">We're revolutionizing how creators build content. Check out our latest insights on scaling your workflow with AI-driven tools. 🚀👇</p>
-                <button className="bg-primary hover:bg-primary-hover text-white text-[10px] font-medium px-3 py-1.5 rounded-full flex items-center gap-1 shrink-0 mt-auto">
-                  <Sparkles size={10} />
-                  Refine
+            <button 
+              onClick={() => setActivePlatform('facebook')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                activePlatform === 'facebook' 
+                  ? 'bg-primary/5 border-primary/30 text-primary' 
+                  : 'bg-white border-gray-200 text-text-muted hover:text-text'
+              }`}
+            >
+              <Facebook size={14} />
+              Facebook Desk
+            </button>
+          </div>
+
+          {/* Social Post Feed Wrapper */}
+          <div className="bg-[#F4F5F9]/60 border border-gray-200/50 rounded-2xl p-6 flex justify-center">
+            
+            {/* The Actual Post Card */}
+            <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+              
+              {/* Post Header */}
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Brand Profile Logo Icon */}
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-lg shadow-sm">
+                    A
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text">AntBiz Official</h4>
+                    <p className="text-[10px] text-text-muted mt-0.5 font-medium">Sponsored · Paid Audience Reach</p>
+                  </div>
+                </div>
+                <button className="text-gray-400 hover:text-gray-600">
+                  <MoreHorizontal size={18} />
                 </button>
               </div>
-            </div>
-            
-            <div className="aspect-[16/9] bg-gray-100 relative">
-              <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=600&auto=format&fit=crop" alt="Chart on Laptop" className="w-full h-full object-cover" />
-            </div>
-            
-            <div className="p-4 bg-gray-50 border-b border-gray-100">
-              <div className="text-xs text-text-muted mb-1">GOCNHINMOI.COM.VN</div>
-              <div className="text-sm font-bold">10 Ways AI is Changing Content Creation in 2024</div>
-            </div>
 
-            <div className="px-4 py-3 flex justify-between border-b border-gray-100 text-text-muted text-sm font-medium">
-              <button className="flex items-center gap-2 hover:text-primary"><ThumbsUp size={18} /> Like</button>
-              <button className="flex items-center gap-2 hover:text-primary"><MessageSquare size={18} /> Comment</button>
-              <button className="flex items-center gap-2 hover:text-primary"><Share2 size={18} /> Share</button>
-            </div>
+              {/* Post Caption */}
+              <div className="px-4 pb-3 text-xs text-text leading-relaxed">
+                {activeVariant === 'A' ? (
+                  <>
+                    We are thrilled to launch AntBiz Systems: a complete AI Content Orchestration suite. 
+                    Achieve 4x faster production speeds and connect Your Shopify, WordPress, or custom portals directly! 
+                    Check our profile to book a private demonstration. ↗️
+                  </>
+                ) : (
+                  <>
+                    Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel 
+                    scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today! 🚀
+                  </>
+                )}
+              </div>
 
-            <div className="p-4 mt-auto">
-               <div className="flex gap-3">
-                  <button className="flex-1 bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl text-sm font-medium transition-colors">Save Changes</button>
-                  <button className="flex-1 bg-gray-200 hover:bg-gray-300 text-text py-2.5 rounded-xl text-sm font-medium transition-colors">Discard</button>
+              {/* Post Image (Beautiful Colorful Wave Gradient matching screenshot) */}
+              <div className="aspect-[1.91/1] w-full bg-gradient-to-tr from-cyan-400 via-purple-500 to-amber-300 relative overflow-hidden flex items-center justify-center">
+                {/* Decorative glowing abstract shape inside image container */}
+                <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-indigo-950 to-black"></div>
+                <div className="absolute w-72 h-72 rounded-full bg-pink-400/30 blur-2xl -top-10 -left-10"></div>
+                <div className="absolute w-72 h-72 rounded-full bg-teal-400/30 blur-2xl -bottom-10 -right-10"></div>
+                <span className="z-10 text-white font-extrabold text-xl tracking-wider drop-shadow-md">ANTBIZ SYSTEMS</span>
+              </div>
+
+              {/* Post URL Link Preview card */}
+              <div className="p-3.5 bg-gray-50 border-t border-b border-gray-100 flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold text-primary tracking-wider uppercase">ANTBIZ.IO</span>
+                <h5 className="text-xs font-bold text-text leading-tight">AntBiz - Smart Publishing Orchestration Platform</h5>
+                <p className="text-[10px] text-text-muted leading-snug mt-0.5">Instantly deploy, schedule, and refine automated bento workflows using cloud...</p>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 text-[10px] text-text-muted font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[8px] font-bold">👍</span>
+                  <span>2.4k Likes</span>
                 </div>
+                <div>
+                  <span>186 Shares</span>
+                </div>
+              </div>
+
+              {/* Interactive Actions Row */}
+              <div className="px-2 py-1 flex items-center justify-between text-xs text-text-muted font-bold">
+                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                  <ThumbsUp size={14} />
+                  <span>Like</span>
+                </button>
+                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                  <MessageSquare size={14} />
+                  <span>Reply</span>
+                </button>
+                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                  <Share2 size={14} />
+                  <span>Share</span>
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Generate Button */}
-      <div className="flex justify-center mt-6">
-        <button className="bg-[#4143D1] hover:bg-primary-hover text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg shadow-primary/30 flex items-center gap-3 transition-transform hover:scale-105">
-          <Sparkles size={24} />
-          Generate Content
-        </button>
+        </div>
+
       </div>
     </div>
   );
 }
+

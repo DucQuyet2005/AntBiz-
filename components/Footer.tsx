@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { Twitter, Linkedin, Instagram, Facebook, Youtube } from 'lucide-react';
 
 // High-fidelity recreation of the user's geometric gradient ribbon logo
@@ -50,13 +52,47 @@ const BrandLogo = ({ size = 32 }: { size?: number }) => (
 );
 
 const Footer = () => {
-  return (
-    <footer className="mt-16 bg-[#121320] text-white w-full flex flex-col px-10 pb-8 rounded-t-[48px] border-t border-[#3F51B5]/20 shadow-2xl relative overflow-hidden shrink-0">
-      
-      {/* Decorative top ambient glow in indigo matching the app */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-[#3F51B5]/40 to-transparent blur-md"></div>
+  const [lang, setLang] = useState<'vi' | 'en'>('vi');
 
-      <div className="pt-14 pb-8 grid grid-cols-12 gap-8 border-b border-[#3F51B5]/15 relative z-10">
+  // Load language on mount and listen to changes
+  useEffect(() => {
+    const savedLang = localStorage.getItem('lang') as 'vi' | 'en';
+    if (savedLang === 'en' || savedLang === 'vi') {
+      setLang(savedLang);
+    } else {
+      // Set default to Vietnamese
+      localStorage.setItem('lang', 'vi');
+      setLang('vi');
+    }
+
+    const handleLangChange = () => {
+      const currentLang = localStorage.getItem('lang') as 'vi' | 'en';
+      if (currentLang === 'en' || currentLang === 'vi') {
+        setLang(currentLang);
+      }
+    };
+
+    window.addEventListener('languageChange', handleLangChange);
+    return () => {
+      window.removeEventListener('languageChange', handleLangChange);
+    };
+  }, []);
+
+  const changeLanguage = (newLang: 'vi' | 'en') => {
+    setLang(newLang);
+    localStorage.setItem('lang', newLang);
+    window.dispatchEvent(new Event('languageChange'));
+  };
+
+  const isVi = lang === 'vi';
+
+  return (
+    <footer className="mt-16 bg-[#E9EAF5] text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
+      
+      {/* Decorative top ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-md"></div>
+
+      <div className="pt-14 pb-8 grid grid-cols-12 gap-8 border-b border-primary/10 relative z-10">
         
         {/* Left Column - About (Flat, non-card static column to prevent scrolling issues) */}
         <div className="col-span-6 pr-8">
@@ -64,21 +100,26 @@ const Footer = () => {
             {/* Logo + Brand Name */}
             <div className="flex items-center gap-3">
               <BrandLogo size={36} />
-              <span className="font-extrabold text-2xl tracking-tight text-white">
+              <span className="font-extrabold text-2xl tracking-tight text-text">
                 Antbiz
               </span>
             </div>
             
             <div>
-              <h3 className="text-base font-bold text-white mb-2">Về chúng tôi</h3>
-              <p className="text-xs text-gray-300/90 mb-3 leading-relaxed font-medium">
-                Chúng tôi là một đội ngũ gồm những cá nhân đam mê với mục tiêu cải thiện cuộc sống
-                của mọi người thông qua các sản phẩm đột phá. Chúng tôi tạo ra những sản phẩm
-                tuyệt vời để giải quyết các vấn đề kinh doanh của bạn.
+              <h3 className="text-base font-bold text-text mb-2">
+                {isVi ? "Về chúng tôi" : "About Us"}
+              </h3>
+              <p className="text-xs text-text-muted mb-3 leading-relaxed font-medium">
+                {isVi 
+                  ? "Chúng tôi là một đội ngũ gồm những cá nhân đam mê với mục tiêu cải thiện cuộc sống của mọi người thông qua các sản phẩm đột phá. Chúng tôi tạo ra những sản phẩm tuyệt vời để giải quyết các vấn đề kinh doanh của bạn."
+                  : "We are a team of passionate individuals whose goal is to improve everyone's life through disruptive products. We build great products to solve your business problems."
+                }
               </p>
-              <p className="text-xs text-gray-300/90 leading-relaxed font-medium">
-                Sản phẩm của chúng tôi được thiết kế dành cho các công ty vừa và nhỏ muốn tối ưu
-                hóa hiệu suất hoạt động.
+              <p className="text-xs text-text-muted leading-relaxed font-medium">
+                {isVi
+                  ? "Sản phẩm của chúng tôi được thiết kế dành cho các công ty vừa và nhỏ muốn tối ưu hóa hiệu suất hoạt động."
+                  : "Our products are designed for small and medium-sized companies willing to optimize their performance."
+                }
               </p>
             </div>
           </div>
@@ -86,28 +127,32 @@ const Footer = () => {
 
         {/* Middle Column - Menu */}
         <div className="col-span-3 flex flex-col pl-4">
-          <h3 className="text-base font-extrabold text-white mb-4 tracking-tight">Mục lục</h3>
-          <div className="flex flex-col gap-2 text-xs text-gray-300 font-semibold">
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Trang chủ</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Công ty của chúng tôi</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Nghiên cứu điển hình</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Dịch vụ</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Tài nguyên</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Tuyển dụng</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Liên hệ</a>
+          <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
+            {isVi ? "Mục lục" : "Table of Contents"}
+          </h3>
+          <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trang chủ" : "Home"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Công ty của chúng tôi" : "Our Company"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Nghiên cứu điển hình" : "Case Studies"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Dịch vụ" : "Services"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Tài nguyên" : "Resources"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Tuyển dụng" : "Careers"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Liên hệ" : "Contact Us"}</a>
           </div>
         </div>
 
         {/* Right Column - Support */}
         <div className="col-span-3 flex flex-col">
-          <h3 className="text-base font-extrabold text-white mb-4 tracking-tight">Hỗ trợ</h3>
-          <div className="flex flex-col gap-2 text-xs text-gray-300 font-semibold">
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Trợ giúp</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Điều khoản Dịch vụ</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Chính sách Bảo mật</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Chính sách quyền riêng tư</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Vận chuyển</a>
-            <a href="#" className="hover:bg-white/5 hover:text-white px-3 py-1 rounded-xl transition-all w-fit">Trả hàng</a>
+          <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
+            {isVi ? "Hỗ trợ" : "Support"}
+          </h3>
+          <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trợ giúp" : "Help"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Điều khoản Dịch vụ" : "Terms of Service"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Chính sách Bảo mật" : "Privacy Policy"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Chính sách quyền riêng tư" : "Privacy Rights"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Vận chuyển" : "Shipping"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trả hàng" : "Returns"}</a>
           </div>
         </div>
 
@@ -117,38 +162,48 @@ const Footer = () => {
       <div className="pt-8 flex flex-col gap-6 relative z-10">
         
         {/* Social Icons row */}
-        <div className="flex items-center gap-3.5 text-gray-400">
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-[#1DA1F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+        <div className="flex items-center gap-3.5 text-text-muted">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#1DA1F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
             <Twitter size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-[#0077B5] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#0077B5] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
             <Linkedin size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
             <Instagram size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-[#1877F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#1877F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
             <Facebook size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/25 hover:bg-[#FF0000] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#FF0000] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
             <Youtube size={16} />
           </a>
         </div>
 
         {/* Language Badges */}
-        <div className="flex items-center gap-2 text-[10px] text-gray-300 font-bold select-none">
-          <button className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer">
+        <div className="flex items-center gap-2 text-[10px] text-text font-bold select-none">
+          <button 
+            onClick={() => changeLanguage('en')}
+            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
+              lang === 'en' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+            }`}
+          >
             <span>🇺🇸</span>
             <span>US</span>
           </button>
-          <button className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer">
+          <button 
+            onClick={() => changeLanguage('vi')}
+            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
+              lang === 'vi' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+            }`}
+          >
             <span>🇻🇳</span>
             <span>VN</span>
           </button>
         </div>
 
         {/* Copyright notice */}
-        <div className="text-[10px] text-gray-400 font-semibold tracking-wide uppercase">
+        <div className="text-[10px] text-text-muted font-semibold tracking-wide uppercase">
           Copyright © Company name
         </div>
       </div>
@@ -157,3 +212,4 @@ const Footer = () => {
 };
 
 export default Footer;
+
