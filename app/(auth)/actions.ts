@@ -25,7 +25,7 @@ export async function login(formData: FormData) {
 
   const supabase = createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
@@ -51,6 +51,24 @@ export async function login(formData: FormData) {
       })
       return { error: error.message }
     }
+  }
+
+  // Kiểm tra xem profile có tồn tại trong bảng public.users không
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('status')
+    .eq('id', signInData.user.id)
+    .maybeSingle()
+
+  if (profileError || !userProfile) {
+    // Đăng xuất ngay lập tức để hủy session/cookie vừa tạo
+    await supabase.auth.signOut()
+    return { error: 'Tài khoản chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại tài khoản mới.' }
+  }
+
+  if (userProfile.status === 'locked') {
+    await supabase.auth.signOut()
+    return { error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' }
   }
 
   // Success: Clear lockout states

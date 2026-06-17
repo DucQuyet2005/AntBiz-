@@ -37,6 +37,21 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Đọc mã lỗi từ URL search params và hiển thị thông báo lỗi
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errorParam = params.get("error");
+      if (errorParam === "no_profile") {
+        setServerError("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.");
+      } else if (errorParam === "locked") {
+        setServerError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+      } else if (errorParam) {
+        setServerError(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (lockoutTime > 0) {

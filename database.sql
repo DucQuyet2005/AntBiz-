@@ -39,8 +39,8 @@ CREATE TABLE public.users (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  INSERT INTO public.users (id, email)
-  VALUES (NEW.id, NEW.email);
+  INSERT INTO public.users (id, email, role)
+  VALUES (NEW.id, NEW.email, 'marketer_content'::user_role);
   RETURN NEW;
 END;
 $$;
