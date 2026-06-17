@@ -98,6 +98,17 @@ export default function UserProfileDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Get displayed avatar source (from local storage or raw URL)
+  const getDisplayedAvatarUrl = () => {
+    if (avatarUrl === 'local_storage_avatar') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('custom_avatar_base64') || '';
+      }
+      return '';
+    }
+    return avatarUrl;
+  };
+
   // Update profile
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -141,7 +152,13 @@ export default function UserProfileDropdown() {
     if (file && (file.type === 'image/gif' || file.type === 'image/png' || file.type === 'image/jpeg')) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
+        const base64 = reader.result as string;
+        try {
+          localStorage.setItem('custom_avatar_base64', base64);
+        } catch (e) {
+          console.error('Failed to save to localStorage:', e);
+        }
+        setAvatarUrl('local_storage_avatar');
       };
       reader.readAsDataURL(file);
     }
@@ -193,6 +210,8 @@ export default function UserProfileDropdown() {
     }
   };
 
+  const displayedAvatar = getDisplayedAvatarUrl();
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Trigger Button */}
@@ -202,9 +221,9 @@ export default function UserProfileDropdown() {
       >
         <div className={`relative w-11 h-11 rounded-full flex items-center justify-center p-[2.5px] transition-transform duration-300 group-hover:scale-105 ${getFrameClass(avatarFrame)} ${avatarFrame !== 'none' ? 'animate-pulse-glow' : ''}`}>
           <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
-            {avatarUrl ? (
+            {displayedAvatar ? (
               <img
-                src={avatarUrl}
+                src={displayedAvatar}
                 alt="Profile Avatar"
                 className="w-full h-full object-cover rounded-full"
                 onError={(e) => {
@@ -239,8 +258,8 @@ export default function UserProfileDropdown() {
             <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-200/50 dark:border-white/10">
               <div className={`relative w-12 h-12 rounded-full p-[2.5px] ${getFrameClass(avatarFrame)} ${avatarFrame !== 'none' ? 'animate-pulse-glow' : ''}`}>
                 <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                  {displayedAvatar ? (
+                    <img src={displayedAvatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <span className="text-gray-600 font-bold text-sm select-none">{getInitials()}</span>
                   )}
