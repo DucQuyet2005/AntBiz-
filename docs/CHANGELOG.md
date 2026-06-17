@@ -8,6 +8,10 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [1.2.0] - 2026-06-17
 
 ### Added
+- **Giao diện Lịch Kéo Thả 2D Đăng Bài (PostLab Calendar Board)**: Thiết lập bộ lịch đăng bài 2D tại Bước 3 của AI Creator (`AiCreatorView.tsx`), gồm 7 cột ngày (Thứ 2 - Chủ nhật) và 8 hàng giờ (16:00 - 23:00) mô phỏng chân thực theo thiết kế PostLab.
+- **Tính năng Kéo Thả Snapping 2D**: Tích hợp Framer Motion cho các thẻ đăng bài Facebook (màu xanh) và Threads (màu đen) để kéo thả tự do theo hai chiều, tự động snap vào ô giờ/ngày và đồng bộ dữ liệu ngược lại ô điền thông tin bên trái.
+- **Ràng buộc và Ngăn chặn Trùng Lịch (Collision Logic)**: Phát hiện và chặn các hành vi kéo thẻ chèn lên bài viết đã tồn tại (Grayscale existing posts) hoặc chèn chéo giữa hai kênh. Khi có va chạm, thẻ tự động giật về vị trí cũ (Snap-back via React Keys) kèm thông báo cảnh báo lỗi lịch bị cản trở.
+- **Phân trang 3 tuần (activeWeek)**: Hỗ trợ chia kế hoạch thành 3 tuần (Tuần 1, Tuần 2, Tuần 3) chuyển đổi mượt mà bằng thanh tab đầu lịch và tự động chuyển tuần khi chọn ngày từ ô điền thủ công.
 - **Hỗ trợ Đa ngôn ngữ (Vietnamese / English)**: Xây dựng hệ thống đa ngôn ngữ tùy chỉnh sử dụng React Context (`LanguageContext.tsx`) với Tiếng Việt là mặc định, hỗ trợ lưu lựa chọn vào `localStorage` và đồng bộ tức thì qua Custom Window Event.
 - **Từ điển Dịch thuật toàn cục**: Tạo tệp `translations.ts` với đầy đủ khóa dịch cho toàn bộ giao diện (Overview, AI Creator, Lịch nội dung, Lưu trữ, FAQ, Settings, Header, Footer).
 - **Bộ chuyển đổi Ngôn ngữ**: Tích hợp widget chọn ngôn ngữ đẹp mắt trong `Sidebar` và đồng bộ với menu cài đặt trong `Settings`.
@@ -21,6 +25,8 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Xây dựng thanh thời gian (sidebar timeline) hiển thị danh sách checkpoints lưu lịch sử chỉnh sửa bản ghi bài đăng kèm tính năng khôi phục (revert/rollback) dữ liệu trực tiếp về Supabase.
 
 ### Changed
+- **Tối ưu hóa Bố cục Hai Cột Bước 3**: Điều chỉnh tỷ lệ cột từ `4:8` thành `3:9` để mở rộng tối đa không gian hiển thị cho bảng lịch kéo thả 2D.
+- **Đồng bộ Liên tục Form và Lịch**: Ràng buộc hai chiều hoàn chỉnh giữa các ô nhập date/time thủ công với vị trí của thẻ kéo thả trên lịch.
 - **Bản địa hóa toàn bộ các View**:
   - `OverviewView`, `ChartPlaceholder`, `ActivityList`: Chuyển ngữ toàn bộ tiêu đề, nhãn biểu đồ và danh sách hoạt động.
   - `ArchiveView`: Bản địa hóa bộ lọc, thanh tìm kiếm và các chỉ số thống kê tiếp cận.
