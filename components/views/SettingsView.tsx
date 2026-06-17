@@ -2,12 +2,10 @@
 
 import React, { useState } from 'react';
 import { 
-  User, 
   Settings, 
   Bell, 
   MessageSquare, 
   Image as ImageIcon,
-  Check,
   Globe,
   FileText,
   GitBranch
@@ -25,18 +23,11 @@ export default function SettingsView() {
   const { language, setLanguage, t } = useLanguage();
 
   // State for interactive inputs
-  const [displayName, setDisplayName] = useState('Alex Rivera');
-  const [emailAddress, setEmailAddress] = useState('alex@luminacreator.ai');
   const [openaiConnected, setOpenaiConnected] = useState(true);
   const [midjourneyConnected, setMidjourneyConnected] = useState(false);
   const [aiGenNotify, setAiGenNotify] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
 
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,80 +36,6 @@ export default function SettingsView() {
       <div className="mt-2">
         <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('settings.title')}</h1>
         <p className="text-text-muted">{t('settings.subtitle')}</p>
-      </div>
-
-      {/* Profile Information Card (Full Width) */}
-      <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-8 flex flex-col gap-6">
-        
-        {/* Card Header */}
-        <div className="flex items-center gap-3 text-[#3F51B5] font-bold text-lg">
-          <User size={20} />
-          <h2>{t('settings.profileInfo')}</h2>
-        </div>
-
-        {/* Card Content split */}
-        <div className="flex gap-10 items-start">
-          
-          {/* Avatar side */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-md">
-              <img 
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop" 
-                alt="User Profile" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <button className="text-xs font-bold text-[#3F51B5] hover:text-indigo-800 transition-colors">
-              {t('settings.changeAvatar')}
-            </button>
-          </div>
-
-          {/* Inputs side */}
-          <div className="flex-1 flex flex-col gap-4">
-            
-            {/* Input 1 */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-muted">{t('settings.displayName')}</label>
-              <input 
-                type="text" 
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full max-w-xl bg-white text-text px-5 py-3 rounded-2xl shadow-sm border border-gray-200/50 focus:outline-none text-sm font-semibold focus:ring-2 focus:ring-[#3F51B5]/25"
-              />
-            </div>
-
-            {/* Input 2 */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-muted">{t('settings.emailAddress')}</label>
-              <input 
-                type="email" 
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-                className="w-full max-w-xl bg-white text-text px-5 py-3 rounded-2xl shadow-sm border border-gray-200/50 focus:outline-none text-sm font-semibold focus:ring-2 focus:ring-[#3F51B5]/25"
-              />
-            </div>
-
-            {/* Save Changes button positioned on the right */}
-            <div className="flex justify-end mt-2">
-              <button 
-                onClick={handleSave}
-                className="bg-[#3F51B5] hover:bg-indigo-700 text-white px-8 py-3 rounded-full font-bold text-sm transition-all shadow-md shadow-[#3F51B5]/20 flex items-center gap-2 select-none hover:scale-102"
-              >
-                {isSaved ? (
-                  <>
-                    <Check size={16} />
-                    {t('settings.saved')}
-                  </>
-                ) : (
-                  t('settings.saveChanges')
-                )}
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
       </div>
 
       {/* Two Column Grid */}

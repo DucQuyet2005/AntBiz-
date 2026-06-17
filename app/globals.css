@@ -20,3 +20,44 @@
 body {
   color: var(--color-text);
 }
+
+/* Sparkly User Profile Avatar Frames & Glows */
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+/* ── Proper Ring Frame classes (applied to the ring div behind avatar) ── */
+
+/* Rainbow: full-color conic-gradient spins continuously */
+.ring-rainbow {
+  background: conic-gradient(from 0deg, #ff007f, #ff7700, #ffff00, #00ff7f, #00f0ff, #7f00ff, #ff007f);
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Gold: shimmering golden sweep */
+.ring-gold {
+  background: linear-gradient(120deg, #f6d365 0%, #fda085 20%, #ffd700 40%, #f6d365 60%, #fda085 80%, #ffd700 100%);
+  background-size: 200% auto;
+  animation: gold-shimmer 2.5s linear infinite;
+}
+
+/* Cyber: pulsing neon ring */
+.ring-cyber {
+  background: #00f0ff;
+  animation: cyber-ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes cyber-ring-pulse {
+  0%, 100% { opacity: 0.75; box-shadow: 0 0 6px #00f0ff, 0 0 14px #00f0ff; }
+  50%       { opacity: 1;    box-shadow: 0 0 14px #00f0ff, 0 0 28px #00f0ff, 0 0 40px rgba(0,240,255,0.4); }
+}
