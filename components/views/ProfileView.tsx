@@ -115,6 +115,14 @@ const GOLD_SPARKLES = [
   { left: '45%', bottom: '16px', delay: '0.7s', size: '12px' },
   { left: '75%', bottom: '14px', delay: '0.0s', size: '8px'  },
 ];
+const GRASS_FLOWERS = [
+  { left: '12%', bottom: '6px', scale: 0.95 },
+  { left: '28%', bottom: '3px', scale: 1.1 },
+  { left: '42%', bottom: '5px', scale: 0.8 },
+  { left: '56%', bottom: '8px', scale: 1.15 },
+  { left: '72%', bottom: '4px', scale: 1.0 },
+  { left: '88%', bottom: '7px', scale: 0.9 },
+];
 
 
 /* ──────────────────────────────────────────
@@ -263,19 +271,20 @@ function BaseDecor({ base }: { base: string }) {
     case 'grass':
       return (
         <div className="av-base-grass-wrap">
+          <div className="av-base-grass-field" />
           {GRASS_POSITIONS.map((g, i) => (
             <div key={i} className="av-base-grass-blade" style={{ left: g.left, height: g.height, animationDelay: g.delay }} />
+          ))}
+          {GRASS_FLOWERS.map((f, i) => (
+            <span key={i} className="av-base-grass-daisy" style={{ left: f.left, bottom: f.bottom, transform: `scale(${f.scale})` }}>❀</span>
           ))}
         </div>
       );
     case 'beach':
       return (
         <div className="av-base-beach">
-          <div className="av-base-beach-wave-1" />
-          <div className="av-base-beach-wave-2" />
-          {GOLD_SPARKLES.map((s, i) => (
-            <div key={i} className="av-base-beach-sand-sparkle" style={{ left: s.left, bottom: s.bottom, animationDelay: s.delay }} />
-          ))}
+          <div className="av-base-beach-water" />
+          <div className="av-base-beach-sand" />
         </div>
       );
     case 'ocean':
@@ -298,11 +307,12 @@ function BaseDecor({ base }: { base: string }) {
     case 'rose':
       return (
         <div className="av-base-rose-wrap">
+          <div className="av-base-rose-foliage" />
           {ROSE_POSITIONS.map((r, i) => (
             <div key={i} className="av-base-rose-flower" style={{ left: r.left, bottom: r.bottom, transform: `scale(${r.scale})`, animationDelay: r.delay }} />
           ))}
-          {GOLD_SPARKLES.map((s, i) => (
-            <div key={i} className="av-base-rose-spark" style={{ left: s.left, bottom: s.bottom, animationDelay: s.delay }} />
+          {[{left:'12%',bottom:'10px'},{left:'38%',bottom:'14px'},{left:'68%',bottom:'12px'},{left:'88%',bottom:'8px'}].map((l, i) => (
+            <span key={i} className="av-base-rose-leaf" style={{ left: l.left, bottom: l.bottom }}>🍃</span>
           ))}
         </div>
       );
@@ -317,10 +327,15 @@ function BaseDecor({ base }: { base: string }) {
     case 'stone':
       return (
         <div className="av-base-stone-wrap">
-          <div className="av-base-stone-rock av-base-stone-rock-1" />
-          <div className="av-base-stone-rock av-base-stone-rock-2" />
-          <div className="av-base-stone-rock av-base-stone-rock-3" />
-          <div className="av-base-stone-moss-growth" />
+          <div className="av-base-stone-rock av-base-stone-rock-1">
+            <div className="av-base-stone-grass-cap" />
+          </div>
+          <div className="av-base-stone-rock av-base-stone-rock-2">
+            <div className="av-base-stone-grass-cap" />
+          </div>
+          <div className="av-base-stone-rock av-base-stone-rock-3">
+            <div className="av-base-stone-grass-cap" />
+          </div>
         </div>
       );
     case 'glacier':
