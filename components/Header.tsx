@@ -4,6 +4,7 @@ import React from 'react';
 import { Search, Plus, Bell } from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
+import UserProfileDropdown from '@/components/UserProfileDropdown';
 
 const Header = () => {
   const { t } = useLanguage();
@@ -30,12 +31,7 @@ const Header = () => {
           <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-bg"></span>
         </button>
 
-        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm cursor-pointer">
-          {/* Using a placeholder avatar since we don't have the real image */}
-          <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-            <span className="text-gray-600 font-medium text-sm">JS</span>
-          </div>
-        </div>
+        <UserProfileDropdown />
       </div>
     </header>
   );

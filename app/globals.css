@@ -20,3 +20,61 @@
 body {
   color: var(--color-text);
 }
+
+/* Sparkly User Profile Avatar Frames & Glows */
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 0.7; filter: blur(6px); }
+  50% { transform: scale(1.08); opacity: 1; filter: blur(12px); }
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.frame-rainbow-glow::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  background: conic-gradient(from 0deg, #ff007f, #7f00ff, #00f0ff, #00ff7f, #ff007f);
+  border-radius: 50%;
+  z-index: -1;
+  animation: spin-slow 3s linear infinite;
+}
+
+.frame-gold-shimmer {
+  background: linear-gradient(120deg, #f6d365 0%, #fda085 20%, #f6d365 40%, #fda085 60%, #f6d365 80%, #fda085 100%);
+  background-size: 200% auto;
+  animation: gold-shimmer 4s linear infinite;
+}
+
+.frame-cyber-pulse {
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4), inset 0 0 4px rgba(0, 240, 255, 0.2);
+  animation: cyber-pulse 2s ease-in-out infinite;
+}
+
+@keyframes cyber-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(0, 240, 255, 0.4), inset 0 0 4px rgba(0, 240, 255, 0.2);
+    border-color: rgba(0, 240, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.8), inset 0 0 8px rgba(0, 240, 255, 0.4);
+    border-color: rgba(0, 240, 255, 1);
+  }
+}
+
