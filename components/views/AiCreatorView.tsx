@@ -52,7 +52,216 @@ interface SocialVariant {
 
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [facebookDate, setFacebookDate] = useState<string>("2026-06-17");
+  const [facebookTime, setFacebookTime] = useState<string>("20:00");
+  const [threadsDate, setThreadsDate] = useState<string>("2026-06-18");
+  const [threadsTime, setThreadsTime] = useState<string>("18:00");
+  const [facebookError, setFacebookError] = useState<string>("");
+  const [threadsError, setThreadsError] = useState<string>("");
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
+  const [fbResetTrigger, setFbResetTrigger] = useState(0);
+  const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
+
+
+  const existingPosts = [
+    // Week 1
+    { date: "2026-06-17", hour: 16, title: "ĐỘNG VIÊN", category: "facebook" }, // Wed 16:00
+    { date: "2026-06-20", hour: 16, title: "ĐỘNG VIÊN", category: "facebook" }, // Sat 16:00
+    { date: "2026-06-16", hour: 18, title: "INSPIRATION", category: "threads" }, // Tue 18:00
+    { date: "2026-06-19", hour: 18, title: "INSPIRATION", category: "threads" }, // Fri 18:00
+    { date: "2026-06-15", hour: 20, title: "BLOGS", category: "facebook" }, // Mon 20:00
+    { date: "2026-06-20", hour: 20, title: "BLOGS", category: "facebook" }, // Sat 20:00
+    { date: "2026-06-21", hour: 20, title: "TÍNH NĂNG", category: "threads" }, // Sun 20:00
+    
+    // Week 2
+    { date: "2026-06-24", hour: 17, title: "PRODUCT", category: "threads" },
+    { date: "2026-06-26", hour: 19, title: "PROMO", category: "facebook" },
+    
+    // Week 3
+    { date: "2026-07-01", hour: 16, title: "ARTICLE", category: "facebook" },
+    { date: "2026-07-03", hour: 21, title: "Q&A", category: "threads" }
+  ];
+
+  const isCellOccupied = (dateStr: string, hour: number) => {
+    return existingPosts.some(p => p.date === dateStr && p.hour === hour);
+  };
+
+  const weekDays = Array.from({ length: 21 }, (_, index) => {
+    const start = new Date(2026, 5, 15); // June 15, 2026 (Mon)
+    start.setDate(start.getDate() + index);
+    const dateStr = start.toISOString().split('T')[0];
+    
+    const daysNameMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const name = daysNameMap[start.getDay()];
+    const label = start.getDate().toString();
+    const isToday = dateStr === '2026-06-17';
+    
+    return { name, date: dateStr, label, isToday };
+  });
+
+  const handleFacebookDateChange = (val: string) => {
+    const activeHour = parseInt(facebookTime.split(':')[0]) || 16;
+    if (isCellOccupied(val, activeHour)) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+    } else {
+      setFacebookError("");
+      setFacebookDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
+      }
+    }
+  };
+
+  const handleFacebookTimeChange = (val: string) => {
+    const hour = parseInt(val.split(':')[0]) || 16;
+    const clampedHour = Math.max(16, Math.min(23, hour));
+    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    
+    if (isCellOccupied(facebookDate, clampedHour)) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${facebookDate}.`);
+    } else {
+      setFacebookError("");
+      setFacebookTime(clampedTime);
+    }
+  };
+
+  const handleThreadsDateChange = (val: string) => {
+    const activeHour = parseInt(threadsTime.split(':')[0]) || 16;
+    if (isCellOccupied(val, activeHour)) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+    } else {
+      setThreadsError("");
+      setThreadsDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
+      }
+    }
+  };
+
+  const handleThreadsTimeChange = (val: string) => {
+    const hour = parseInt(val.split(':')[0]) || 16;
+    const clampedHour = Math.max(16, Math.min(23, hour));
+    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    
+    if (isCellOccupied(threadsDate, clampedHour)) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${threadsDate}.`);
+    } else {
+      setThreadsError("");
+      setThreadsTime(clampedTime);
+    }
+  };
+
+  const handleFacebookDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setFacebookError(
+      language === 'vi' 
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.` 
+        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+    );
+    setTimeout(() => setFacebookError(""), 4500);
+  };
+
+  const handleThreadsDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setThreadsError(
+      language === 'vi' 
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.` 
+        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+    );
+    setTimeout(() => setThreadsError(""), 4500);
+  };
+
+  const handleFbDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+    
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 8));
+    
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(7, row));
+    
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = 16 + clampedRow;
+    
+    // Check occupancy against existing posts AND threads active post
+    const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
+    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === threadsDate && targetHour === threadsHour);
+    
+    if (isOccupied) {
+      handleFacebookDragError(targetDate, targetHour);
+      setFbResetTrigger(prev => prev + 1);
+    } else {
+      setFacebookError("");
+      setFacebookDate(targetDate);
+      setFacebookTime(`${targetHour.toString().padStart(2, '0')}:00`);
+    }
+  };
+
+  const handleThreadsDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+    
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 8));
+    
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(7, row));
+    
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = 16 + clampedRow;
+    
+    // Check occupancy against existing posts AND facebook active post
+    const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
+    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === facebookDate && targetHour === facebookHour);
+    
+    if (isOccupied) {
+      handleThreadsDragError(targetDate, targetHour);
+      setThreadsResetTrigger(prev => prev + 1);
+    } else {
+      setThreadsError("");
+      setThreadsDate(targetDate);
+      setThreadsTime(`${targetHour.toString().padStart(2, '0')}:00`);
+    }
+  };
+
+  const getDayLabel = (dayName: string) => {
+    if (language === 'vi') {
+      switch(dayName) {
+        case 'Mon': return 'Thứ hai';
+        case 'Tue': return 'Thứ ba';
+        case 'Wed': return 'Thứ tư';
+        case 'Thu': return 'Thứ năm';
+        case 'Fri': return 'Thứ sáu';
+        case 'Sat': return 'Thứ bảy';
+        case 'Sun': return 'Chủ nhật';
+        default: return dayName;
+      }
+    } else {
+      switch(dayName) {
+        case 'Mon': return 'Monday';
+        case 'Tue': return 'Tuesday';
+        case 'Wed': return 'Wednesday';
+        case 'Thu': return 'Thursday';
+        case 'Fri': return 'Friday';
+        case 'Sat': return 'Saturday';
+        case 'Sun': return 'Sunday';
+        default: return dayName;
+      }
+    }
+  };
 
   const [url, setUrl] = useState('https://gocnhinmoi.com.vn/10-nam-mua-vang-va-hanh-trinh-thoat-canh-o-tro-80861');
   const [isFetching, setIsFetching] = useState(false);
@@ -65,6 +274,7 @@ export default function AiCreatorView() {
   const [iframeKey, setIframeKey] = useState(0);
   const [isScraping, setIsScraping] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = () => {
     setIframeSrc(`/api/proxy?url=${encodeURIComponent(explorerUrl)}`);
@@ -414,6 +624,15 @@ export default function AiCreatorView() {
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
             {t('aiCreator.step2')}
           </button>
+          <button 
+            onClick={() => setStep(3)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+              step === 3 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+            }`}
+          >
+            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
+            {t('aiCreator.step3')}
+          </button>
         </div>
       </div>
 
@@ -578,13 +797,14 @@ export default function AiCreatorView() {
         )}
 
         {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
-        <motion.div 
-          layout
-          transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-          className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${
-            step === 1 ? 'order-2' : 'order-1'
-          }`}
-        >
+        {(step === 1 || step === 2) && (
+          <motion.div 
+            layout
+            transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${
+              step === 1 ? 'order-2' : 'order-1'
+            }`}
+          >
           {/* Article Live Preview Card */}
           <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -714,8 +934,9 @@ export default function AiCreatorView() {
             </motion.div>
           )}
         </motion.div>
+      )}
 
-        {/* STEP 2: Right column A/B testing variants workspace */}
+      {/* STEP 2: Right column A/B testing variants workspace */}
         {step === 2 && (
           <motion.div 
             layout
@@ -1009,12 +1230,442 @@ export default function AiCreatorView() {
                 {t('aiCreator.backToIngestion')}
               </button>
 
-              <button className="bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-3.5 px-8 rounded-2xl font-extrabold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs">
-                <Send size={15} />
-                {t('aiCreator.publishAndSave')}
+              <button 
+                onClick={() => setStep(3)}
+                className="bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-3.5 px-8 rounded-2xl font-extrabold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer"
+              >
+                {t('aiCreator.step3')}
+                <ArrowRight size={15} />
               </button>
             </div>
 
+          </motion.div>
+        )}
+
+        {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
+        {step === 3 && (
+          <motion.div 
+            key="step3-scheduler"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.4 }}
+            className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full"
+          >
+            {/* Left Column - Decoupled Schedulers Form (col-span-3) */}
+            <div className="lg:col-span-3 flex flex-col gap-6">
+              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                  <Calendar size={18} className="text-primary" />
+                  <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
+                    {t('aiCreator.scheduleTitle')}
+                  </h3>
+                </div>
+
+                <p className="text-xs text-text-muted font-semibold leading-relaxed">
+                  {t('aiCreator.scheduleIntro')}
+                </p>
+
+                {/* 1. Facebook Scheduler Inputs */}
+                <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                    <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                      <Facebook size={10} className="fill-white" />
+                    </div>
+                    <span>Facebook Publication</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5 font-sans">
+                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                        {t('aiCreator.dateInputLabel')}
+                      </label>
+                      <input 
+                        type="date"
+                        min="2026-06-15"
+                        max="2026-07-05"
+                        value={facebookDate}
+                        onChange={(e) => handleFacebookDateChange(e.target.value)}
+                        className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 font-sans">
+                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                        {t('aiCreator.timeInputLabel')}
+                      </label>
+                      <input 
+                        type="time"
+                        value={facebookTime}
+                        onChange={(e) => handleFacebookTimeChange(e.target.value)}
+                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  {facebookError && (
+                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                      ⚠️ {facebookError}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Threads Scheduler Inputs */}
+                <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-2 font-bold text-xs text-black">
+                    <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                      <ThreadsIcon size={10} />
+                    </div>
+                    <span>Threads Publication</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5 font-sans">
+                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                        {t('aiCreator.dateInputLabel')}
+                      </label>
+                      <input 
+                        type="date"
+                        min="2026-06-15"
+                        max="2026-07-05"
+                        value={threadsDate}
+                        onChange={(e) => handleThreadsDateChange(e.target.value)}
+                        className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 font-sans">
+                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                        {t('aiCreator.timeInputLabel')}
+                      </label>
+                      <input 
+                        type="time"
+                        value={threadsTime}
+                        onChange={(e) => handleThreadsTimeChange(e.target.value)}
+                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  {threadsError && (
+                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                      ⚠️ {threadsError}
+                    </div>
+                  )}
+                </div>
+
+                {/* Drag instruction warning */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-800 leading-relaxed font-semibold">
+                  {t('aiCreator.dragInstruction')}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - 2D Calendar Grid (col-span-9) */}
+            <div className="lg:col-span-9 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col min-h-[500px]">
+              
+              {/* Header Title & Dropdown mimicking PostLab */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-text flex items-center gap-2">
+                    {language === 'vi' ? 'Kế hoạch đăng bài' : 'Publication Plan'}
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {language === 'vi' 
+                      ? 'Kéo thả thẻ bài viết màu sắc trên lịch 2D để đổi ngày/giờ đăng. Bài đăng cũ có màu xám.' 
+                      : 'Drag and drop colored cards on the 2D grid to change dates/hours. Old posts are gray.'}
+                  </p>
+                </div>
+                
+                {/* Active Week Selectors / Tabs */}
+                <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 select-none font-sans gap-1">
+                  {[
+                    { id: 0, label: language === 'vi' ? 'Tuần 1 (15/06 - 21/06)' : 'Wk 1 (15/06 - 21/06)' },
+                    { id: 1, label: language === 'vi' ? 'Tuần 2 (22/06 - 28/06)' : 'Wk 2 (22/06 - 28/06)' },
+                    { id: 2, label: language === 'vi' ? 'Tuần 3 (29/06 - 05/07)' : 'Wk 3 (29/06 - 05/07)' }
+                  ].map((wk) => (
+                    <button
+                      key={wk.id}
+                      onClick={() => setActiveWeek(wk.id as 0 | 1 | 2)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        activeWeek === wk.id
+                          ? 'bg-white text-primary shadow-sm font-extrabold border border-gray-250'
+                          : 'text-text-muted hover:text-text'
+                      }`}
+                    >
+                      {wk.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2D Calendar Board Wrapper */}
+              <div className="w-full overflow-x-auto relative border border-gray-150 rounded-2xl p-1 bg-white select-none">
+                <div className="min-w-[760px] flex flex-col">
+                  
+                  {/* Days of the Week Header Row */}
+                  <div 
+                    className="grid border-b border-gray-200 pb-2.5 mb-1 font-sans text-center text-xs font-extrabold"
+                    style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}
+                  >
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">
+                      {language === 'vi' ? 'Giờ' : 'Time'}
+                    </span>
+                    {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => {
+                      const isFbScheduled = facebookDate === day.date;
+                      const isThreadsScheduled = threadsDate === day.date;
+                      const isAnyActive = isFbScheduled || isThreadsScheduled;
+                      
+                      return (
+                        <div 
+                          key={day.date} 
+                          className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${
+                            isAnyActive 
+                              ? 'text-primary font-black bg-primary/5 border border-primary/20 shadow-sm' 
+                              : day.isToday 
+                                ? 'text-text font-black bg-gray-50 border border-gray-255' 
+                                : 'text-text-muted font-bold'
+                          }`}
+                        >
+                          <span className="text-[10px] tracking-wide">{getDayLabel(day.name)}</span>
+                          <span className="text-[11px] mt-0.5 font-bold opacity-80">{day.label} / 06</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 2D Grid with Time Labels */}
+                  <div className="flex relative w-full" style={{ height: '576px' }}>
+                    
+                    {/* Hour Column (Left) */}
+                    <div className="w-[80px] grid grid-rows-8 h-full pr-2 font-sans border-r border-gray-100/60 bg-gray-50/50 rounded-l-2xl select-none">
+                      {[16, 17, 18, 19, 20, 21, 22, 23].map((hr) => (
+                        <div key={hr} className="flex flex-col justify-start pt-2 items-center text-[11px] font-extrabold text-text-muted">
+                          <span>{hr}:00</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Draggable Area Relative Board (Right 7 Columns x 8 Rows) */}
+                    <div 
+                      ref={boardRef}
+                      className="flex-1 relative h-full bg-white select-none overflow-hidden"
+                    >
+                      {/* Background Grid Lines */}
+                      <div className="absolute inset-0 grid grid-cols-7 grid-rows-8 pointer-events-none">
+                        {Array.from({ length: 56 }).map((_, idx) => {
+                          const isLastCol = (idx + 1) % 7 === 0;
+                          const isLastRow = idx >= 49;
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`border-gray-250/55 ${!isLastCol ? 'border-r' : ''} ${!isLastRow ? 'border-b' : ''}`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* 1. Existing Posts (Grayscale) */}
+                      {existingPosts.map((post, index) => {
+                        const dayIdx = weekDays.findIndex(d => d.date === post.date);
+                        if (dayIdx < 0) return null;
+                        const weekIdx = Math.floor(dayIdx / 7);
+                        if (weekIdx !== activeWeek) return null;
+                        
+                        const colIndex = dayIdx % 7;
+                        const rowIndex = post.hour - 16;
+                        if (rowIndex < 0 || rowIndex >= 8) return null;
+
+                        return (
+                          <div
+                            key={`existing-${index}`}
+                            className="absolute p-2.5 rounded-xl bg-[#FAFBFD] border border-gray-255/70 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60"
+                            style={{
+                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
+                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
+                              width: `calc(${(100) / 7}% - 10px)`,
+                              height: `calc(${(100) / 8}% - 10px)`,
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-gray-500 uppercase tracking-wider truncate">
+                                {post.title}
+                              </span>
+                              <span className="text-[8px] text-gray-400 font-medium mt-0.5">
+                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
+                              </span>
+                              <span className="text-[9px] text-gray-400 font-semibold truncate leading-tight mt-0.5">
+                                {post.hour}:00 - {post.hour + 1}:00
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-auto pt-1 text-gray-400">
+                              {post.category === 'facebook' ? (
+                                <Facebook size={10} className="fill-gray-400 stroke-none" />
+                              ) : (
+                                <ThreadsIcon size={10} />
+                              )}
+                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400">
+                                {post.category}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* 2. Active Facebook Pill (Draggable) */}
+                      {(() => {
+                        const fbIdx = weekDays.findIndex(d => d.date === facebookDate);
+                        if (fbIdx < 0) return null;
+                        const fbWeek = Math.floor(fbIdx / 7);
+                        if (fbWeek !== activeWeek) return null;
+                        
+                        const colIndex = fbIdx % 7;
+                        const fbHour = parseInt(facebookTime.split(':')[0]) || 20;
+                        const rowIndex = fbHour - 16;
+                        if (rowIndex < 0 || rowIndex >= 8) return null;
+
+                        return (
+                          <motion.div
+                            key={`fb-active-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
+                            drag
+                            dragConstraints={boardRef}
+                            dragElastic={0.05}
+                            dragMomentum={false}
+                            onDragEnd={handleFbDragEnd}
+                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            style={{
+                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
+                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
+                              width: `calc(${(100) / 7}% - 10px)`,
+                              height: `calc(${(100) / 8}% - 10px)`,
+                            }}
+                          >
+                            <div className="flex flex-col relative w-full">
+                              {/* Blinking pulse dot */}
+                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1877F2]"></span>
+                              </span>
+                              
+                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate">
+                                FACEBOOK
+                              </span>
+                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
+                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
+                              </span>
+                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
+                                {fbHour}:00 - {fbHour + 1}:00
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto pt-1">
+                              <div className="flex items-center gap-1 text-[#1877F2]">
+                                <Facebook size={10} className="fill-[#1877F2] stroke-none" />
+                                <span className="text-[8px] font-black uppercase tracking-wider">
+                                  FB Active
+                                </span>
+                              </div>
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                                {language === 'vi' ? 'Kéo' : 'Drag'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
+
+                      {/* 3. Active Threads Pill (Draggable) */}
+                      {(() => {
+                        const threadsIdx = weekDays.findIndex(d => d.date === threadsDate);
+                        if (threadsIdx < 0) return null;
+                        const threadsWeek = Math.floor(threadsIdx / 7);
+                        if (threadsWeek !== activeWeek) return null;
+                        
+                        const colIndex = threadsIdx % 7;
+                        const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
+                        const rowIndex = threadsHour - 16;
+                        if (rowIndex < 0 || rowIndex >= 8) return null;
+
+                        return (
+                          <motion.div
+                            key={`threads-active-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
+                            drag
+                            dragConstraints={boardRef}
+                            dragElastic={0.05}
+                            dragMomentum={false}
+                            onDragEnd={handleThreadsDragEnd}
+                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            style={{
+                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
+                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
+                              width: `calc(${(100) / 7}% - 10px)`,
+                              height: `calc(${(100) / 8}% - 10px)`,
+                            }}
+                          >
+                            <div className="flex flex-col relative w-full">
+                              {/* Blinking pulse dot */}
+                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-black"></span>
+                              </span>
+                              
+                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate">
+                                THREADS
+                              </span>
+                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
+                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
+                              </span>
+                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
+                                {threadsHour}:00 - {threadsHour + 1}:00
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto pt-1">
+                              <div className="flex items-center gap-1 text-black">
+                                <ThreadsIcon size={10} />
+                                <span className="text-[8px] font-black uppercase tracking-wider">
+                                  TH Active
+                                </span>
+                              </div>
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                                {language === 'vi' ? 'Kéo' : 'Drag'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
+
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Bottom Actions inside Step 3 */}
+              <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6 font-sans">
+                <button 
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={16} />
+                  {t('aiCreator.backToAb')}
+                </button>
+
+                <button 
+                  onClick={() => {
+                    if (facebookError || threadsError) return;
+                    setIsScheduled(true);
+                  }}
+                  disabled={!!facebookError || !!threadsError}
+                  className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer font-sans ${
+                    (facebookError || threadsError) 
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/20'
+                  }`}
+                >
+                  <CheckCircle2 size={15} />
+                  {t('aiCreator.confirmSchedule')}
+                </button>
+              </div>
+
+            </div>
           </motion.div>
         )}
 
@@ -1120,6 +1771,75 @@ export default function AiCreatorView() {
         )}
       </AnimatePresence>
 
+
+      {/* SUCCESS CONFIRMATION DIALOG */}
+      <AnimatePresence>
+        {isScheduled && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[32px] border border-gray-200 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5"
+            >
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner animate-bounce">
+                <CheckCircle2 size={36} />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-extrabold text-text">
+                  {t('aiCreator.scheduleSuccess')}
+                </h3>
+                <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                  {language === 'vi' 
+                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên cả hai kênh Facebook và Threads.`
+                    : `Your posts have been successfully scheduled on both Facebook and Threads channels.`}
+                </p>
+              </div>
+
+              <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
+                <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
+                  {language === 'vi' ? 'Thông tin xuất bản' : 'Publication details'}
+                </div>
+                
+                <div className="text-xs font-bold text-text truncate border-b border-gray-100 pb-2 font-sans">
+                  {postData.title}
+                </div>
+
+                <div className="flex flex-col gap-2.5 font-sans">
+                  <div className="flex items-center justify-between text-xs font-sans">
+                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
+                    <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs font-sans">
+                    <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                    <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => {
+                  setIsScheduled(false);
+                  setStep(1);
+                }}
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-2xl font-bold shadow-md shadow-primary/20 transition-all text-xs cursor-pointer font-sans"
+              >
+                {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
+
+
