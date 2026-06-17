@@ -61,12 +61,21 @@ export async function login(formData: FormData) {
     .maybeSingle()
 
   if (profileError || !userProfile) {
-    // Đăng xuất ngay lập tức để hủy session/cookie vừa tạo
-    await supabase.auth.signOut()
-    return { error: 'Tài khoản chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại tài khoản mới.' }
-  }
+    // Nếu chưa có profile trong public.users (tài khoản tạo trước khi chạy schema), tự động tạo/đồng bộ
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert({
+        id: signInData.user.id,
+        email: signInData.user.email || '',
+        role: 'marketer_content',
+        status: 'active'
+      })
 
-  if (userProfile.status === 'locked') {
+    if (insertError) {
+      await supabase.auth.signOut()
+      return { error: 'Không thể đồng bộ thông tin tài khoản. Vui lòng thử lại.' }
+    }
+  } else if (userProfile.status === 'locked') {
     await supabase.auth.signOut()
     return { error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' }
   }
