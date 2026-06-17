@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { classifyArticle } from '@/lib/services/articleClassifier';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -39,12 +40,37 @@ export async function GET(request: NextRequest) {
     const imageUrl = imgMatch ? imgMatch[1].trim() : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
     const author = authorMatch ? authorMatch[1].trim() : 'Ban Biên Tập';
 
-    // Tailor categories and tags based on URL path
-    const category = targetUrl.includes('bat-dong-san') ? '#Bất động sản' :
-                     targetUrl.includes('tai-chinh') ? '#Tài chính' : '#Tổ ấm 4.0';
+    // T-1.19.1: Phân loại category bằng AI từ title + description
+    // Không dùng URL includes() hay regex URL nữa.
+    const { category: aiCategory, confidence } = await classifyArticle(title, description);
+    const category = `#${aiCategory}`;
     const tags = '#Tiết kiệm tài chính, #Đầu tư, #Mua nhà';
 
+    // T-1.19.1: Cache result in articles table
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
+    
+    const { data: article, error: dbError } = await supabase
+      .from('articles')
+      .upsert({
+        url: targetUrl,
+        title,
+        description,
+        author,
+        category: aiCategory,
+        category_confidence: confidence,
+        tags: tags.split(',').map(t => t.trim()),
+        crawled_at: new Date().toISOString(),
+      }, { onConflict: 'url' })
+      .select('id')
+      .single();
+
+    if (dbError) {
+      console.error('[scrape API] DB Error:', dbError);
+    }
+
     return NextResponse.json({
+      id: article?.id, // T-1.19.3: Trả về ID để dùng cho prompt suggestions
       title,
       description,
       imageUrl,

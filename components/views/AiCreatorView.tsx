@@ -32,6 +32,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PromptSuggestionSection from '@/components/PromptSuggestionSection';
+import CaptionEditor from '@/components/CaptionEditor';
+
+// T-1.13.2: platform max caption lengths
+const CAPTION_MAX: Record<string, number> = {
+  facebook: 63206,
+  threads: 5000,
+};
 
 
 // Threads Custom SVG Logo
@@ -45,6 +53,8 @@ interface SocialVariant {
   id: string; // A, B, C...
   facebook: string;
   threads: string;
+  fbCaptionId?: string;
+  threadsCaptionId?: string;
   title: string;
   author: string;
   tags: string;
@@ -63,7 +73,20 @@ export default function AiCreatorView() {
   const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
   const [fbResetTrigger, setFbResetTrigger] = useState(0);
   const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
+  const [articleId, setArticleId] = useState<string | undefined>(undefined);
+  // T-1.19.4: Thống nhất platform (sử dụng 'thread' theo DB enum)
+  const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram'>('facebook');
+  
+  // Đồng bộ selectedPlatform cho preview (chỉ facebook/threads)
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
 
+  useEffect(() => {
+    if (promptPlatform === 'thread') {
+      setSelectedPlatform('threads');
+    } else if (promptPlatform === 'facebook') {
+      setSelectedPlatform('facebook');
+    }
+  }, [promptPlatform]);
 
   const existingPosts = [
     // Week 1
@@ -265,7 +288,6 @@ export default function AiCreatorView() {
 
   const [url, setUrl] = useState('https://gocnhinmoi.com.vn/10-nam-mua-vang-va-hanh-trinh-thoat-canh-o-tro-80861');
   const [isFetching, setIsFetching] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
 
   // Gocnhinmoi Explorer Modal State
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
@@ -326,6 +348,208 @@ export default function AiCreatorView() {
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
 
+  const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
+  
+  // T-1.19.4: State cho prompt content - cho phép người dùng xem và sửa trước khi generate
+  const [activePrompt, setActivePrompt] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingSmartPrompt, setIsGeneratingSmartPrompt] = useState(false);
+
+  // T-1.19.4: Hàm tạo prompt THỰC SỰ thông minh bằng cách gọi AI để viết Prompt
+  const handleGenerateSmartPrompt = async () => {
+    if (!postData.title || !postData.description) return;
+    
+    setIsGeneratingSmartPrompt(true);
+    try {
+      const res = await fetch('/api/prompts/generate-smart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.description,
+          platform: promptPlatform
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActivePrompt(data.smartPrompt);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Lỗi khi tạo Smart Prompt');
+      }
+    } catch (err) {
+      console.error('Error in handleGenerateSmartPrompt:', err);
+    } finally {
+      setIsGeneratingSmartPrompt(false);
+    }
+  };
+
+  // T-1.19.4: Tự động cập nhật prompt theo Template chi tiết khi có bài viết hoặc đổi platform
+  useEffect(() => {
+    if (postData.title && postData.description) {
+      const detailedTemplate = `Bạn là một chuyên gia Content Marketing đỉnh cao. 
+Hãy viết một bài đăng cực kỳ thu hút cho nền tảng ${promptPlatform.toUpperCase()} dựa trên bài báo sau:
+
+Tiêu đề: ${postData.title}
+Nội dung tóm tắt: ${postData.description}
+
+Yêu cầu cụ thể:
+1. Văn phong: Phù hợp với người dùng ${promptPlatform}, sử dụng ngôn ngữ trẻ trung, bắt trend nếu cần.
+2. Cấu trúc: 
+   - Hook: Câu đầu tiên phải cực kỳ gây chú ý.
+   - Body: Trình bày các ý chính một cách súc tích, dễ đọc.
+   - CTA: Lời kêu gọi hành động rõ ràng.
+3. Hình thức: Sử dụng Emoji một cách tinh tế để tăng độ sinh động.
+4. Hashtag: Thêm 3-5 hashtag liên quan nhất (bao gồm hashtag thương hiệu và chủ đề).
+5. QUAN TRỌNG: Chỉ trả về nội dung bài viết hoàn chỉnh, không thêm lời dẫn giải của AI.`;
+      
+      setActivePrompt(detailedTemplate);
+    }
+  }, [postData.title, postData.description, promptPlatform]);
+
+  // T-1.19.4: handle prompt selection – chỉ cập nhật nội dung prompt vào ô text, chưa generate ngay
+  const handleSelectPrompt = async (promptContent: string) => {
+    setActivePrompt(promptContent);
+    // Cuộn xuống ô prompt để người dùng thấy
+    const promptEl = document.getElementById('ai-prompt-editor');
+    if (promptEl) promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  // T-1.19.4: Hàm thực hiện gọi AI dựa trên activePrompt hiện tại
+  const handleGenerateContent = async () => {
+    if (!activePrompt) return;
+    
+    setIsGenerating(true);
+    setLastGeneratedAiContent(null);
+    try {
+      const genRes = await fetch('/api/prompts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.description,
+          platform: promptPlatform, // Sử dụng platform đã chọn ở Step 1
+          customPrompt: activePrompt
+        })
+      });
+
+      if (genRes.ok) {
+        const genData = await genRes.json();
+        const aiContent = genData.prompt;
+        setLastGeneratedAiContent(aiContent);
+        
+        // Cập nhật giao diện với nội dung AI vừa sinh
+        setVariants(prev =>
+          prev.map((v, idx) =>
+            idx === 0
+              ? { ...v, [selectedPlatform]: aiContent }
+              : v
+          )
+        );
+        
+        // Tự động chuyển sang Step 2 để xem kết quả
+        setStep(2);
+      } else {
+        const errData = await genRes.json();
+        alert(errData.error || 'Lỗi khi sinh nội dung bằng AI');
+      }
+    } catch (err) {
+      console.error('Error in handleGenerateContent:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // T-1.19.4: Lưu CHÍNH NỘI DUNG PROMPT (Instruction) vào thư viện
+  const handleSaveCurrentPrompt = async () => {
+    if (!activePrompt) return;
+
+    try {
+      // Chuyển đổi 'threads' sang 'thread' nếu cần để khớp DB enum
+      const dbPlatform = promptPlatform === 'thread' ? 'thread' : promptPlatform;
+
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `Prompt Template: ${postData.title.substring(0, 30)}`,
+          content: activePrompt, // Lưu instruction/template
+          platform: dbPlatform,
+          tags: ['Custom Prompt', 'User Saved', dbPlatform] // Tags phải là Array
+        })
+      });
+
+      if (res.ok) {
+        alert(language === 'vi' ? '✅ Đã lưu mẫu Prompt này vào thư viện!' : '✅ Prompt template saved to library!');
+      } else {
+        const errData = await res.json();
+        alert(language === 'vi' ? `❌ Lỗi: ${errData.error}` : `❌ Error: ${errData.error}`);
+      }
+    } catch (err) {
+      console.error('Error saving current prompt:', err);
+    }
+  };
+
+  // T-1.19.4: Lưu KẾT QUẢ AI sinh ra vào thư viện
+  const handleSaveAiResult = async () => {
+    if (!lastGeneratedAiContent) return;
+
+    try {
+      // Chuyển đổi 'threads' sang 'thread' nếu cần để khớp DB enum
+      const dbPlatform = promptPlatform === 'thread' ? 'thread' : promptPlatform;
+
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `AI Draft: ${postData.title.substring(0, 40)}`,
+          content: lastGeneratedAiContent,
+          platform: dbPlatform,
+          tags: ['AI Generated', 'Scraped Content', dbPlatform] // Tags phải là Array
+        })
+      });
+
+      if (res.ok) {
+        alert(language === 'vi' ? '✅ Đã lưu kết quả AI vào thư viện Prompts!' : '✅ AI result saved to library!');
+      } else {
+        const errData = await res.json();
+        alert(language === 'vi' ? `❌ Lỗi: ${errData.error}` : `❌ Error: ${errData.error}`);
+      }
+    } catch (err) {
+      console.error('Error saving AI result:', err);
+    }
+  };
+
+  // T-1.19.3: Lưu template prompt (không dùng nữa nhưng giữ lại logic nếu cần)
+  const handleSavePrompt = async (templatePrompt: any) => {
+    if (!lastGeneratedAiContent) {
+      alert(language === 'vi' ? 'Vui lòng nhấn "Dùng prompt này" để AI sinh nội dung trước khi lưu!' : 'Please click "Use this prompt" to generate content before saving!');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `Draft: ${postData.title.substring(0, 40)}`,
+          content: lastGeneratedAiContent, // Lưu kết quả AI đã sinh
+          platform: selectedPlatform,
+          tags: ['AI Generated', templatePrompt.name]
+        })
+      });
+
+      if (res.ok) {
+        alert(language === 'vi' ? 'Đã lưu nội dung AI sinh ra vào thư viện!' : 'AI content saved to library!');
+      } else {
+        alert(language === 'vi' ? 'Lỗi khi lưu nội dung' : 'Error saving content');
+      }
+    } catch (err) {
+      console.error('Error saving prompt:', err);
+    }
+  };
+
   // Handle URL change postMessage from Iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -348,6 +572,51 @@ export default function AiCreatorView() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // T-1.13.3: Save generated captions to database to enable autosave & restore
+  const saveCaptionsToDb = async (articleId: string, currentVariants: SocialVariant[]) => {
+    const updatedVariants = [...currentVariants];
+    
+    for (let i = 0; i < updatedVariants.length; i++) {
+      const v = updatedVariants[i];
+      
+      // Save FB caption
+      try {
+        const fbRes = await fetch('/api/captions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article_id: articleId,
+            platform: 'facebook',
+            ai_content: v.facebook,
+          }),
+        });
+        if (fbRes.ok) {
+          const { data } = await fbRes.json();
+          updatedVariants[i] = { ...updatedVariants[i], fbCaptionId: data.id };
+        }
+      } catch (err) { console.error('Error saving FB caption:', err); }
+
+      // Save Threads caption
+      try {
+        const thRes = await fetch('/api/captions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article_id: articleId,
+            platform: 'thread',
+            ai_content: v.threads,
+          }),
+        });
+        if (thRes.ok) {
+          const { data } = await thRes.json();
+          updatedVariants[i] = { ...updatedVariants[i], threadsCaptionId: data.id };
+        }
+      } catch (err) { console.error('Error saving Threads caption:', err); }
+    }
+
+    setVariants(updatedVariants);
+  };
+
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     setIsFetching(true);
@@ -367,9 +636,9 @@ export default function AiCreatorView() {
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
           });
-          
-          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
-          setVariants([
+          setArticleId(data.id);
+          const tagsStr = typeof data.tags === 'string' ? data.tags : Array.isArray(data.tags) ? data.tags.join(', ') : '';
+          const newVariants = [
             {
               id: 'A',
               facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
@@ -386,7 +655,9 @@ export default function AiCreatorView() {
               author: data.author,
               tags: tagsStr
             }
-          ]);
+          ];
+          setVariants(newVariants);
+          if (data.id) saveCaptionsToDb(data.id, newVariants);
           setIsFetching(false);
           return;
         }
@@ -475,10 +746,10 @@ export default function AiCreatorView() {
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
           });
+          setArticleId(data.id);
           setUrl(explorerUrl);
-
-          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
-          setVariants([
+          const tagsStr = typeof data.tags === 'string' ? data.tags : Array.isArray(data.tags) ? data.tags.join(', ') : '';
+          const newVariants = [
             {
               id: 'A',
               facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
@@ -495,7 +766,9 @@ export default function AiCreatorView() {
               author: data.author,
               tags: tagsStr
             }
-          ]);
+          ];
+          setVariants(newVariants);
+          if (data.id) saveCaptionsToDb(data.id, newVariants);
           setIsExplorerOpen(false);
         }
       }
@@ -600,7 +873,7 @@ export default function AiCreatorView() {
       {/* Top Header Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
         <div>
-          <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
+          <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')} <span className="text-[10px] text-primary/40 font-normal">v1.1</span></h1>
           <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
         </div>
         
@@ -793,6 +1066,98 @@ export default function AiCreatorView() {
                 </div>
               </div>
             </div>
+
+            {/* T-1.19.4: AI Prompt Editor - Cho phép xem/sửa prompt trước khi gen */}
+            <div id="ai-prompt-editor" className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-[28px] p-8 flex flex-col gap-5 shadow-sm">
+              <div className="flex items-center justify-between border-b border-primary/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white shadow-md">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-text">AI Prompt Editor</h3>
+                    <p className="text-[11px] text-text-muted">Xem và tinh chỉnh yêu cầu gửi tới AI</p>
+                  </div>
+                </div>
+                
+                {/* Platform Selector for Prompt */}
+                <div className="flex bg-white/50 backdrop-blur-sm rounded-xl p-1 border border-primary/20 shadow-sm">
+                  {(['facebook', 'thread', 'instagram'] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPromptPlatform(p)}
+                      className={`text-[10px] font-black uppercase px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                        promptPlatform === p 
+                          ? 'bg-primary text-white shadow-md scale-105' 
+                          : 'text-text-muted hover:text-text hover:bg-white/80'
+                      }`}
+                    >
+                      {p === 'facebook' && <Facebook size={12} />}
+                      {p === 'thread' && <ThreadsIcon size={12} />}
+                      {p === 'instagram' && <div className="w-3 h-3 rounded-sm bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600"></div>}
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between pl-1">
+                  <label className="text-[10px] font-extrabold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                    <Edit2 size={12} />
+                    Prompt nội dung
+                  </label>
+                  <button 
+                    onClick={handleGenerateSmartPrompt}
+                    className="bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
+                  >
+                    <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
+                    Tạo Prompt thông minh từ bài viết
+                  </button>
+                </div>
+                <textarea 
+                  value={activePrompt}
+                  onChange={(e) => setActivePrompt(e.target.value)}
+                  rows={10}
+                  placeholder="Chọn một gợi ý prompt bên phải hoặc nhập yêu cầu của bạn tại đây..."
+                  className="w-full bg-white border-2 border-primary/10 rounded-2xl px-5 py-4 text-xs text-text focus:outline-none focus:ring-4 focus:ring-primary/5 leading-relaxed transition-all shadow-inner font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button 
+                  onClick={() => setActivePrompt('')}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-text-muted hover:text-text hover:bg-gray-100 transition-all"
+                >
+                  Xóa trống
+                </button>
+                <button 
+                  onClick={handleSaveCurrentPrompt}
+                  disabled={!activePrompt}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 border border-primary/20 transition-all flex items-center gap-2"
+                >
+                  <Plus size={14} />
+                  Lưu mẫu Prompt này
+                </button>
+                <button 
+                  onClick={handleGenerateContent}
+                  disabled={isGenerating || !activePrompt}
+                  className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-xl text-xs font-bold shadow-lg shadow-primary/20 transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-95 cursor-pointer"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      Bắt đầu tạo nội dung AI
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -805,89 +1170,101 @@ export default function AiCreatorView() {
               step === 1 ? 'order-2' : 'order-1'
             }`}
           >
-          {/* Article Live Preview Card */}
-          <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
-                <Smartphone size={16} className="text-primary" />
-                {t('aiCreator.articlePreview')}
-              </h3>
-              <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                {language === 'vi' ? 'Trực tiếp' : 'Live'}
-              </span>
-            </div>
-
-            <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
-              <div className="h-44 bg-gray-100 relative">
-                {postData.imageUrl ? (
-                  <img 
-                    src={postData.imageUrl} 
-                    alt={postData.title} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
-                )}
-                {postData.category && (
-                  <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {postData.category}
-                  </span>
-                )}
+            {/* Article Live Preview Card */}
+            <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
+                  <Smartphone size={16} className="text-primary" />
+                  {t('aiCreator.articlePreview')}
+                </h3>
+                <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {language === 'vi' ? 'Trực tiếp' : 'Live'}
+                </span>
               </div>
 
-              <div className="p-5 flex flex-col gap-3.5">
-                <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
-                  {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
-                </h4>
-
-                <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
-                  <span className="flex items-center gap-1">
-                    <User size={12} />
-                    {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
-                  </span>
+              <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
+                <div className="h-44 bg-gray-100 relative">
+                  {postData.imageUrl ? (
+                    <img 
+                      src={postData.imageUrl} 
+                      alt={postData.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
+                  )}
+                  {postData.category && (
+                    <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      {postData.category}
+                    </span>
+                  )}
                 </div>
 
-                <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
-                  {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
-                </p>
+                <div className="p-5 flex flex-col gap-3.5">
+                  <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
+                    {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                  </h4>
 
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {postData.tags.split(',').map((tag, idx) => {
-                    const trimmed = tag.trim();
-                    if (!trimmed) return null;
-                    return (
-                      <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
-                        {trimmed}
-                      </span>
-                    );
-                  })}
-                </div>
+                  <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
+                    <span className="flex items-center gap-1">
+                      <User size={12} />
+                      {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
+                    </span>
+                  </div>
 
-                <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
-                  <span className="flex items-center gap-1.5">
-                    <Eye size={14} className="text-amber-500" />
-                    {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
-                  </span>
+                  <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
+                    {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {postData.tags.split(',').map((tag, idx) => {
+                      const trimmed = tag.trim();
+                      if (!trimmed) return null;
+                      return (
+                        <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
+                          {trimmed}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                    <span className="flex items-center gap-1.5">
+                      <Eye size={14} className="text-amber-500" />
+                      {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Next step button */}
+              {step === 1 && (
+                <motion.button 
+                  layout
+                  onClick={() => setStep(2)}
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                >
+                  {t('aiCreator.proceedToAb')}
+                  <ArrowRight size={16} />
+                </motion.button>
+              )}
             </div>
 
-            {/* Next step button */}
+            {/* T-1.19.4: Prompt Suggestion – hiện trong Step 1 */}
             {step === 1 && (
-              <motion.button 
-                layout
-                onClick={() => setStep(2)}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
-              >
-                {t('aiCreator.proceedToAb')}
-                <ArrowRight size={16} />
-              </motion.button>
+              <PromptSuggestionSection
+                articleId={articleId}
+                articleTitle={postData.title}
+                articleContent={postData.description}
+                platform={promptPlatform}
+                onSelectPrompt={handleSelectPrompt}
+                onSavePrompt={handleSavePrompt}
+              />
             )}
-          </div>
 
           {/* Toggles Customizer */}
           {step === 2 && (
@@ -954,24 +1331,35 @@ export default function AiCreatorView() {
                 <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
               </div>
 
-              <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                {(['facebook', 'threads'] as const).map((platform) => {
-                  const isActive = selectedPlatform === platform;
-                  return (
-                    <button 
-                      key={platform}
-                      onClick={() => setSelectedPlatform(platform)}
-                      className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
-                        isActive 
-                          ? 'bg-primary text-white shadow-sm' 
-                          : 'text-text-muted hover:text-text'
-                      }`}
-                    >
-                      {platform === 'facebook' && t('aiCreator.fbLabel')}
-                      {platform === 'threads' && t('aiCreator.threadsLabel')}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleSaveAiResult}
+                  disabled={!lastGeneratedAiContent}
+                  className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 disabled:opacity-50 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  Lưu kết quả AI vào thư viện
+                </button>
+                
+                <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+                  {(['facebook', 'threads'] as const).map((platform) => {
+                    const isActive = selectedPlatform === platform;
+                    return (
+                      <button 
+                        key={platform}
+                        onClick={() => setSelectedPlatform(platform)}
+                        className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
+                          isActive 
+                            ? 'bg-primary text-white shadow-sm' 
+                            : 'text-text-muted hover:text-text'
+                        }`}
+                      >
+                        {platform === 'facebook' && t('aiCreator.fbLabel')}
+                        {platform === 'threads' && t('aiCreator.threadsLabel')}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -1043,13 +1431,14 @@ export default function AiCreatorView() {
 
                                 {toggles.showDescription && (
                                   <div className="whitespace-pre-wrap">
-                                    <EditableText 
-                                      variantId={v.id} 
-                                      field="threads" 
-                                      value={v.threads} 
-                                      textarea 
+                                    <CaptionEditor
+                                      captionId={v.threadsCaptionId}
+                                      initialContent={v.threads}
+                                      originalAiContent={v.threads} // Fallback to current if no DB yet
+                                      platform="thread"
+                                      onSave={(content) => handleUpdateVariantField(v.id, 'threads', content)}
                                     />
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] mt-1.5 align-middle select-none">1/2</span>
                                   </div>
                                 )}
 
@@ -1151,14 +1540,15 @@ export default function AiCreatorView() {
                             )}
 
                             {toggles.showDescription && (
-                              <div className="whitespace-pre-wrap">
-                                <EditableText 
-                                  variantId={v.id} 
-                                  field="facebook" 
-                                  value={v.facebook} 
-                                  textarea 
-                                />
-                              </div>
+                            <div className="whitespace-pre-wrap">
+                            <CaptionEditor
+                              captionId={v.fbCaptionId}
+                              initialContent={v.facebook}
+                              originalAiContent={v.facebook}
+                              platform="facebook"
+                              onSave={(content) => handleUpdateVariantField(v.id, 'facebook', content)}
+                            />
+                            </div>
                             )}
 
                             {(toggles.showAuthor || toggles.showTags) && (
@@ -1197,6 +1587,27 @@ export default function AiCreatorView() {
                           </div>
                         </div>
                       )}
+
+                      {/* T-1.13.2: Character counter per platform */}
+                      {(() => {
+                        const content = selectedPlatform === 'facebook' ? v.facebook : v.threads;
+                        const max = CAPTION_MAX[selectedPlatform] ?? 63206;
+                        const len = content.length;
+                        const pct = len / max;
+                        const colorClass = pct >= 1 ? 'text-red-500' : pct >= 0.85 ? 'text-amber-500' : 'text-gray-400';
+                        return (
+                          <div className={`flex items-center justify-end gap-1 px-1 mt-1 text-[10px] font-bold ${colorClass} transition-colors`}>
+                            <span>{len.toLocaleString()}</span>
+                            <span className="opacity-40">/</span>
+                            <span>{max.toLocaleString()}</span>
+                            {pct >= 1 && (
+                              <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[9px] ml-1">
+                                -{(len - max).toLocaleString()} ký tự
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                     </motion.div>
                   );
