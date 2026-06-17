@@ -6,6 +6,7 @@ import {
   Globe, 
   Check, 
   Facebook, 
+  Instagram,
   Sparkles, 
   MoreHorizontal, 
   ThumbsUp, 
@@ -35,8 +36,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 
 // Threads Custom SVG Logo
-const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+const ThreadsIcon = ({ size = 14, className = "" }: { size?: number; className?: string }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>
     <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
   </svg>
 );
@@ -45,6 +46,7 @@ interface SocialVariant {
   id: string; // A, B, C...
   facebook: string;
   threads: string;
+  instagram: string;
   title: string;
   author: string;
   tags: string;
@@ -53,16 +55,52 @@ interface SocialVariant {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  
+  // Prompt Selector Library States
+  const [promptsList, setPromptsList] = useState<any[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [promptSearch, setPromptSearch] = useState('');
+  const [loadingPrompts, setLoadingPrompts] = useState(false);
+
+  // Fetch prompts library on mount
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setLoadingPrompts(true);
+      try {
+        const res = await fetch('/api/prompts?pageSize=100');
+        if (res.ok) {
+          const json = await res.json();
+          setPromptsList(json.data || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch prompts for selector:", e);
+      } finally {
+        setLoadingPrompts(false);
+      }
+    };
+    fetchPrompts();
+  }, []);
+
+  const filteredPromptsForModal = promptsList.filter(p => 
+    p.name.toLowerCase().includes(promptSearch.toLowerCase()) || 
+    p.content.toLowerCase().includes(promptSearch.toLowerCase())
+  );
+
   const [facebookDate, setFacebookDate] = useState<string>("2026-06-17");
   const [facebookTime, setFacebookTime] = useState<string>("20:00");
   const [threadsDate, setThreadsDate] = useState<string>("2026-06-18");
   const [threadsTime, setThreadsTime] = useState<string>("18:00");
+  const [instagramDate, setInstagramDate] = useState<string>("2026-06-19");
+  const [instagramTime, setInstagramTime] = useState<string>("12:00");
   const [facebookError, setFacebookError] = useState<string>("");
   const [threadsError, setThreadsError] = useState<string>("");
+  const [instagramError, setInstagramError] = useState<string>("");
   const [isScheduled, setIsScheduled] = useState(false);
   const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
   const [fbResetTrigger, setFbResetTrigger] = useState(0);
   const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
+  const [instagramResetTrigger, setInstagramResetTrigger] = useState(0);
 
 
   const existingPosts = [
@@ -194,9 +232,14 @@ export default function AiCreatorView() {
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = 16 + clampedRow;
     
-    // Check occupancy against existing posts AND threads active post
+    // Check occupancy against existing posts AND threads active post AND instagram active post
     const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
-    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === threadsDate && targetHour === threadsHour);
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    
+    const isOccupied = isCellOccupied(targetDate, targetHour) || 
+                       (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour) ||
+                       (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
     
     if (isOccupied) {
       handleFacebookDragError(targetDate, targetHour);
@@ -223,9 +266,14 @@ export default function AiCreatorView() {
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = 16 + clampedRow;
     
-    // Check occupancy against existing posts AND facebook active post
+    // Check occupancy against existing posts AND facebook active post AND instagram active post
     const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
-    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === facebookDate && targetHour === facebookHour);
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    
+    const isOccupied = isCellOccupied(targetDate, targetHour) || 
+                       (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
+                       (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
     
     if (isOccupied) {
       handleThreadsDragError(targetDate, targetHour);
@@ -234,6 +282,78 @@ export default function AiCreatorView() {
       setThreadsError("");
       setThreadsDate(targetDate);
       setThreadsTime(`${targetHour.toString().padStart(2, '0')}:00`);
+    }
+  };
+
+  const handleInstagramDateChange = (val: string) => {
+    const activeHour = parseInt(instagramTime.split(':')[0]) || 12;
+    if (isCellOccupied(val, activeHour)) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+    } else {
+      setInstagramError("");
+      setInstagramDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
+      }
+    }
+  };
+
+  const handleInstagramTimeChange = (val: string) => {
+    const hour = parseInt(val.split(':')[0]) || 12;
+    const clampedHour = Math.max(16, Math.min(23, hour));
+    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    
+    if (isCellOccupied(instagramDate, clampedHour)) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${instagramDate}.`);
+    } else {
+      setInstagramError("");
+      setInstagramTime(clampedTime);
+    }
+  };
+
+  const handleInstagramDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setInstagramError(
+      language === 'vi' 
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.` 
+        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+    );
+    setTimeout(() => setInstagramError(""), 4500);
+  };
+
+  const handleInstagramDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+    
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 8));
+    
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(7, row));
+    
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = 16 + clampedRow;
+    
+    // Check occupancy against existing posts, Facebook active post and Threads active post
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
+    const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
+    const isOccupied = isCellOccupied(targetDate, targetHour) || 
+                       (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
+                       (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
+    
+    if (isOccupied) {
+      handleInstagramDragError(targetDate, targetHour);
+      setInstagramResetTrigger(prev => prev + 1);
+    } else {
+      setInstagramError("");
+      setInstagramDate(targetDate);
+      setInstagramTime(`${targetHour.toString().padStart(2, '0')}:00`);
     }
   };
 
@@ -265,7 +385,7 @@ export default function AiCreatorView() {
 
   const [url, setUrl] = useState('https://gocnhinmoi.com.vn/10-nam-mua-vang-va-hanh-trinh-thoat-canh-o-tro-80861');
   const [isFetching, setIsFetching] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
 
   // Gocnhinmoi Explorer Modal State
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
@@ -309,6 +429,7 @@ export default function AiCreatorView() {
       id: 'A',
       facebook: `Bộ Tư lệnh TPHCM phối hợp các đơn vị chuyên môn, nhóm nghiên cứu và nhân chứng lịch sử triển khai khảo sát tại Công viên Lê Thị Riêng (phường Hòa Hưng, TPHCM) nhằm xác định các khu vực nghi có hố chôn tập thể liệt sĩ, phục vụ công tác tìm kiếm, quy tập hài cốt.\n\nĐợt khảo sát diễn ra từ ngày 15 đến 18/6, là bước tiếp theo sau quá trình nhiều năm thu thập tư liệu lịch sử, đối chiếu không ảnh và khảo sát thực địa liên quan đến khu vực được cho là nơi chôn cất các liệt sĩ hy sinh trong cuộc Tổng tiến công và nổi dậy Xuân Mậu Thân 1968.`,
       threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
+      instagram: `Hành trình tích lũy 10 năm mua vàng của một gia đình trẻ mua nhà từ những chỉ số tích lũy đơn giản nhất. Hãy đọc ngay kinh nghiệm này!`,
       title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
       author: 'Linh Trang',
       tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
@@ -317,6 +438,7 @@ export default function AiCreatorView() {
       id: 'B',
       facebook: `Quyết định mua vàng tích lũy thay vì gửi tiết kiệm, liệu có đúng đắn? Câu chuyện thực tế của anh H. đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.`,
       threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
+      instagram: `Từng bước thoát khỏi cuộc sống ở trọ sau 10 năm tích góp. Một câu chuyện đáng học hỏi và suy ngẫm cho các gia đình trẻ hiện nay.`,
       title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
       author: 'Linh Trang',
       tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
@@ -325,6 +447,132 @@ export default function AiCreatorView() {
 
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
+
+  // Helper to extract targeted platforms from prompt
+  const getPromptTargetPlatforms = (prompt: any): ('facebook' | 'threads' | 'instagram')[] => {
+    if (!prompt) return ['facebook', 'threads', 'instagram'];
+    
+    const platforms: ('facebook' | 'threads' | 'instagram')[] = [];
+    
+    const pPlatform = (prompt.platform || '').toLowerCase();
+    const pTags = Array.isArray(prompt.tags) 
+      ? prompt.tags.map((t: string) => t.toLowerCase()) 
+      : typeof prompt.tags === 'string' 
+        ? [prompt.tags.toLowerCase()] 
+        : [];
+    const pName = (prompt.name || '').toLowerCase();
+    const pContent = (prompt.content || '').toLowerCase();
+
+    // Check Facebook/FB matching
+    const matchesFb = pPlatform === 'facebook' || 
+                      pTags.includes('facebook') || 
+                      pTags.includes('fb') ||
+                      pName.includes('facebook') || 
+                      pContent.includes('facebook');
+
+    // Check Thread/Threads matching
+    const matchesThread = pPlatform === 'thread' || 
+                          pPlatform === 'threads' || 
+                          pTags.includes('thread') || 
+                          pTags.includes('threads') || 
+                          pName.includes('thread') || 
+                          pName.includes('threads') || 
+                          pContent.includes('thread') || 
+                          pContent.includes('threads');
+
+    // Check Instagram/Insta matching
+    const matchesInsta = pPlatform === 'instagram' || 
+                         pTags.includes('instagram') || 
+                         pTags.includes('insta') || 
+                         pName.includes('instagram') || 
+                         pContent.includes('instagram') ||
+                         pName.includes('insta') || 
+                         pContent.includes('insta');
+
+    if (matchesFb) platforms.push('facebook');
+    if (matchesThread) platforms.push('threads');
+    if (matchesInsta) platforms.push('instagram');
+
+    if (platforms.length === 0) {
+      return ['facebook', 'threads', 'instagram'];
+    }
+    return platforms;
+  };
+
+  // Helper to generate platform-specific mock content
+  const generatePlatformContent = (platform: 'facebook' | 'threads' | 'instagram', prompt: any, data: typeof postData, isVariantB: boolean = false) => {
+    const promptStyle = prompt ? `[Prompt: ${prompt.name}] ` : "";
+    const categoryClean = (data.category || '').replace('#', '');
+    
+    if (platform === 'facebook') {
+      if (isVariantB) {
+        return `🔥 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz #SocialMedia`;
+      }
+      if (prompt) {
+        return `📱 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\n👉 Chi tiết hành trình được chia sẻ bởi tác giả ${data.author}. Đọc thêm dưới phần bình luận! ${data.tags}`;
+      }
+      return `🏠 [${categoryClean}] ${data.title}\n\n"${data.description}"\n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`;
+    }
+    
+    if (platform === 'threads') {
+      if (isVariantB) {
+        return `🧵 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz`;
+      }
+      if (prompt) {
+        return `🧵 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\nTác giả: ${data.author} ${data.tags}`;
+      }
+      return `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng.\n\nHoàn thành cấp 3, Jun về Hàn Quốc học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước. "Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`;
+    }
+
+    if (platform === 'instagram') {
+      if (isVariantB) {
+        return `📸 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz`;
+      }
+      if (prompt) {
+        return `📸 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\n📸 Photo by: ${data.author}\n\n${data.tags}`;
+      }
+      return `📸 [${categoryClean}] ${data.title}\n\n"${data.description}"\n\nChia sẻ bởi tác giả ${data.author}.\n\n${data.tags}`;
+    }
+
+    return "";
+  };
+
+  // Helper to generate new variants with prompt-platform filtering constraints
+  const generateVariants = (data: typeof postData, prompt: any) => {
+    const targetPlatforms = getPromptTargetPlatforms(prompt);
+    const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+
+    const newVariants: SocialVariant[] = [
+      {
+        id: 'A',
+        facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
+        threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
+        instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
+        title: data.title,
+        author: data.author,
+        tags: tagsStr
+      },
+      {
+        id: 'B',
+        facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
+        threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
+        instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
+        title: data.title,
+        author: data.author,
+        tags: tagsStr
+      }
+    ];
+
+    setVariants(newVariants);
+
+    // Auto-select the first available platform tab
+    if (targetPlatforms.length > 0) {
+      const currentSelected = selectedPlatform as any;
+      if (!targetPlatforms.includes(currentSelected)) {
+        setSelectedPlatform(targetPlatforms[0]);
+      }
+    }
+  };
 
   // Handle URL change postMessage from Iframe
   useEffect(() => {
@@ -356,7 +604,7 @@ export default function AiCreatorView() {
       if (res.ok) {
         const data = await res.json();
         if (!data.error) {
-          setPostData({
+          const updatedPostData = {
             title: data.title || '',
             category: data.category || '',
             description: data.description || '',
@@ -366,27 +614,9 @@ export default function AiCreatorView() {
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
-          });
-          
-          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
-          setVariants([
-            {
-              id: 'A',
-              facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
-              threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
-              title: data.title,
-              author: data.author,
-              tags: tagsStr
-            },
-            {
-              id: 'B',
-              facebook: `🔥 BÀI HỌC TỪ ${data.author.toUpperCase()}: ${data.title} \n\nLàm thế nào để thoát cảnh trọ? Trải nghiệm thực tế: "${data.description}"`,
-              threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
-              title: data.title,
-              author: data.author,
-              tags: tagsStr
-            }
-          ]);
+          };
+          setPostData(updatedPostData);
+          generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
           return;
         }
@@ -397,7 +627,7 @@ export default function AiCreatorView() {
 
     // Fallback if live scrape fails
     setTimeout(() => {
-      setPostData({
+      const updatedPostData = {
         title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
         category: '#Bất động sản',
         description: 'Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.',
@@ -407,27 +637,9 @@ export default function AiCreatorView() {
         tags: '#Đất nền, #Sốt đất, #Tài chính cá nhân, #Rủi ro',
         imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
         full_text: 'Toàn cảnh cơn sốt đất nền và bài học thức tỉnh nhà đầu tư cá nhân...'
-      });
-      
-      const newTags = '#Đất nền #Sốt đất #Tài chính #Rủi ro';
-      setVariants([
-        {
-          id: 'A',
-          facebook: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông từ đợt khảo sát thực tế.`,
-          threads: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.`,
-          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
-          author: 'Nguyễn Văn Nam',
-          tags: newTags
-        },
-        {
-          id: 'B',
-          facebook: `Đóng băng thị trường đất nền vùng ven và những bài học đắt giá cho nhà đầu tư cá nhân khi lạm dụng đòn bẩy tài chính.`,
-          threads: `Đóng băng thị trường đất nền vùng ven và bài học đắt giá cho nhà đầu tư.`,
-          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
-          author: 'Nguyễn Văn Nam',
-          tags: newTags
-        }
-      ]);
+      };
+      setPostData(updatedPostData);
+      generateVariants(updatedPostData, selectedPrompt);
       setIsFetching(false);
     }, 1200);
   };
@@ -440,10 +652,12 @@ export default function AiCreatorView() {
   const handleAddVariant = () => {
     const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
     const firstTags = variants[0]?.tags || '';
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
     const newVariant: SocialVariant = {
       id: nextLetter,
-      facebook: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
-      threads: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
+      facebook: targetPlatforms.includes('facebook') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      threads: targetPlatforms.includes('threads') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      instagram: targetPlatforms.includes('instagram') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
       title: postData.title,
       author: postData.author,
       tags: firstTags
@@ -464,7 +678,7 @@ export default function AiCreatorView() {
       if (res.ok) {
         const data = await res.json();
         if (!data.error) {
-          setPostData({
+          const updatedPostData = {
             title: data.title || '',
             category: data.category || '',
             description: data.description || '',
@@ -474,28 +688,10 @@ export default function AiCreatorView() {
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
-          });
+          };
+          setPostData(updatedPostData);
           setUrl(explorerUrl);
-
-          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
-          setVariants([
-            {
-              id: 'A',
-              facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
-              threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
-              title: data.title,
-              author: data.author,
-              tags: tagsStr
-            },
-            {
-              id: 'B',
-              facebook: `🔥 BÀI HỌC TỪ ${data.author.toUpperCase()}: ${data.title} \n\nLàm thế nào để thoát cảnh trọ? Trải nghiệm thực tế: "${data.description}"`,
-              threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
-              title: data.title,
-              author: data.author,
-              tags: tagsStr
-            }
-          ]);
+          generateVariants(updatedPostData, selectedPrompt);
           setIsExplorerOpen(false);
         }
       }
@@ -876,6 +1072,37 @@ export default function AiCreatorView() {
               </div>
             </div>
 
+            {/* Prompt Selector Section */}
+            <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 mt-1 font-sans">
+              <div className="flex items-center justify-between font-sans">
+                <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                  📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
+                </span>
+                <button 
+                  type="button"
+                  onClick={() => setIsPromptModalOpen(true)}
+                  className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
+                >
+                  {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
+                </button>
+              </div>
+              {selectedPrompt ? (
+                <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                  <div className="flex items-center justify-between font-sans">
+                    <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
+                    <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                  </div>
+                  <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                    "{selectedPrompt.content}"
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                  {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+                </div>
+              )}
+            </div>
+
             {/* Next step button */}
             {step === 1 && (
               <motion.button 
@@ -955,23 +1182,26 @@ export default function AiCreatorView() {
               </div>
 
               <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                {(['facebook', 'threads'] as const).map((platform) => {
-                  const isActive = selectedPlatform === platform;
-                  return (
-                    <button 
-                      key={platform}
-                      onClick={() => setSelectedPlatform(platform)}
-                      className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
-                        isActive 
-                          ? 'bg-primary text-white shadow-sm' 
-                          : 'text-text-muted hover:text-text'
-                      }`}
-                    >
-                      {platform === 'facebook' && t('aiCreator.fbLabel')}
-                      {platform === 'threads' && t('aiCreator.threadsLabel')}
-                    </button>
-                  );
-                })}
+                {(['facebook', 'threads', 'instagram'] as const)
+                  .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
+                  .map((platform) => {
+                    const isActive = selectedPlatform === platform;
+                    return (
+                      <button 
+                        key={platform}
+                        onClick={() => setSelectedPlatform(platform)}
+                        className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
+                          isActive 
+                            ? 'bg-primary text-white shadow-sm' 
+                            : 'text-text-muted hover:text-text'
+                        }`}
+                      >
+                        {platform === 'facebook' && t('aiCreator.fbLabel')}
+                        {platform === 'threads' && t('aiCreator.threadsLabel')}
+                        {platform === 'instagram' && 'Instagram'}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
@@ -979,8 +1209,18 @@ export default function AiCreatorView() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <AnimatePresence mode="popLayout">
                 {variants.map((v) => {
-                  const iconBg = selectedPlatform === 'facebook' ? 'bg-blue-600' : 'bg-black';
-                  const platformLabel = selectedPlatform === 'facebook' ? t('aiCreator.fbPreview') : t('aiCreator.threadsFeed');
+                  let iconBg = 'bg-black';
+                  let platformLabel = '';
+                  if (selectedPlatform === 'facebook') {
+                    iconBg = 'bg-blue-600';
+                    platformLabel = t('aiCreator.fbPreview');
+                  } else if (selectedPlatform === 'threads') {
+                    iconBg = 'bg-black';
+                    platformLabel = t('aiCreator.threadsFeed');
+                  } else if (selectedPlatform === 'instagram') {
+                    iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
+                    platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
+                  }
 
                   return (
                     <motion.div 
@@ -998,6 +1238,7 @@ export default function AiCreatorView() {
                           <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
                             {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
                             {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
+                            {selectedPlatform === 'instagram' && <Instagram size={12} />}
                           </div>
                           <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                         </div>
@@ -1123,6 +1364,74 @@ export default function AiCreatorView() {
                             </div>
                           </div>
 
+                        </div>
+                      ) : selectedPlatform === 'instagram' ? (
+                        /* Instagram Mockup */
+                        <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                          <div className="p-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {v.id}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-text flex items-center gap-1">
+                                  antbiz_official
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                </span>
+                                <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                              </div>
+                            </div>
+                            <MoreHorizontal size={14} className="text-gray-400" />
+                          </div>
+
+                          {toggles.showImage && postData.imageUrl && (
+                            <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
+                              <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
+                            <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
+                            <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
+                            <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                          </div>
+
+                          <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                            <div className="font-extrabold text-xs text-text">
+                              Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
+                            </div>
+
+                            {toggles.showTitle && (
+                              <div className="font-extrabold text-xs text-text">
+                                🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                              </div>
+                            )}
+
+                            {toggles.showDescription && (
+                              <div className="whitespace-pre-wrap">
+                                <span className="font-extrabold mr-1.5">antbiz_official</span>
+                                <EditableText 
+                                  variantId={v.id} 
+                                  field="instagram" 
+                                  value={v.instagram} 
+                                  textarea 
+                                />
+                              </div>
+                            )}
+
+                            {toggles.showAuthor && (
+                              <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
+                                <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                <EditableText variantId={v.id} field="author" value={v.author} />
+                              </div>
+                            )}
+
+                            {toggles.showTags && (
+                              <div className="text-primary font-bold mt-1">
+                                <EditableText variantId={v.id} field="tags" value={v.tags} />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         /* Facebook Mockup */
@@ -1267,92 +1576,143 @@ export default function AiCreatorView() {
                 </p>
 
                 {/* 1. Facebook Scheduler Inputs */}
-                <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                  <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
-                    <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
-                      <Facebook size={10} className="fill-white" />
+                {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                  <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                      <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                        <Facebook size={10} className="fill-white" />
+                      </div>
+                      <span>Facebook Publication</span>
                     </div>
-                    <span>Facebook Publication</span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input 
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={facebookDate}
+                          onChange={(e) => handleFacebookDateChange(e.target.value)}
+                          className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input 
+                          type="time"
+                          value={facebookTime}
+                          onChange={(e) => handleFacebookTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    {facebookError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {facebookError}
+                      </div>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.dateInputLabel')}
-                      </label>
-                      <input 
-                        type="date"
-                        min="2026-06-15"
-                        max="2026-07-05"
-                        value={facebookDate}
-                        onChange={(e) => handleFacebookDateChange(e.target.value)}
-                        className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.timeInputLabel')}
-                      </label>
-                      <input 
-                        type="time"
-                        value={facebookTime}
-                        onChange={(e) => handleFacebookTimeChange(e.target.value)}
-                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                      />
-                    </div>
-                  </div>
-
-                  {facebookError && (
-                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                      ⚠️ {facebookError}
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* 2. Threads Scheduler Inputs */}
-                <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                  <div className="flex items-center gap-2 font-bold text-xs text-black">
-                    <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
-                      <ThreadsIcon size={10} />
+                {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                  <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-black">
+                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                        <ThreadsIcon size={10} />
+                      </div>
+                      <span>Threads Publication</span>
                     </div>
-                    <span>Threads Publication</span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input 
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={threadsDate}
+                          onChange={(e) => handleThreadsDateChange(e.target.value)}
+                          className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input 
+                          type="time"
+                          value={threadsTime}
+                          onChange={(e) => handleThreadsTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    {threadsError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {threadsError}
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.dateInputLabel')}
-                      </label>
-                      <input 
-                        type="date"
-                        min="2026-06-15"
-                        max="2026-07-05"
-                        value={threadsDate}
-                        onChange={(e) => handleThreadsDateChange(e.target.value)}
-                        className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                      />
+                {/* 3. Instagram Scheduler Inputs */}
+                {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                  <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white text-[10px]">
+                        <Instagram size={10} />
+                      </div>
+                      <span>Instagram Publication</span>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.timeInputLabel')}
-                      </label>
-                      <input 
-                        type="time"
-                        value={threadsTime}
-                        onChange={(e) => handleThreadsTimeChange(e.target.value)}
-                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input 
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={instagramDate}
+                          onChange={(e) => handleInstagramDateChange(e.target.value)}
+                          className={`w-full bg-white border ${instagramError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input 
+                          type="time"
+                          value={instagramTime}
+                          onChange={(e) => handleInstagramTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
                     </div>
+
+                    {instagramError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {instagramError}
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  {threadsError && (
-                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                      ⚠️ {threadsError}
-                    </div>
-                  )}
-                </div>
 
                 {/* Drag instruction warning */}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-800 leading-relaxed font-semibold">
@@ -1479,7 +1839,7 @@ export default function AiCreatorView() {
                         return (
                           <div
                             key={`existing-${index}`}
-                            className="absolute p-2.5 rounded-xl bg-[#FAFBFD] border border-gray-255/70 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60"
+                            className="absolute p-1.5 rounded-xl bg-[#FAFBFD] border border-gray-200/60 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60 overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -1487,24 +1847,21 @@ export default function AiCreatorView() {
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col">
+                            <div className="flex flex-col overflow-hidden">
                               <span className="text-[9px] font-black text-gray-500 uppercase tracking-wider truncate">
                                 {post.title}
-                              </span>
-                              <span className="text-[8px] text-gray-400 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-gray-400 font-semibold truncate leading-tight mt-0.5">
                                 {post.hour}:00 - {post.hour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 mt-auto pt-1 text-gray-400">
+                            <div className="flex items-center gap-1 mt-auto pt-0.5 text-gray-400 truncate">
                               {post.category === 'facebook' ? (
-                                <Facebook size={10} className="fill-gray-400 stroke-none" />
+                                <Facebook size={9} className="fill-gray-400 stroke-none shrink-0" />
                               ) : (
-                                <ThreadsIcon size={10} />
+                                <ThreadsIcon size={9} className="shrink-0" />
                               )}
-                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400">
+                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400 truncate whitespace-nowrap">
                                 {post.category}
                               </span>
                             </div>
@@ -1513,7 +1870,7 @@ export default function AiCreatorView() {
                       })}
 
                       {/* 2. Active Facebook Pill (Draggable) */}
-                      {(() => {
+                      {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (() => {
                         const fbIdx = weekDays.findIndex(d => d.date === facebookDate);
                         if (fbIdx < 0) return null;
                         const fbWeek = Math.floor(fbIdx / 7);
@@ -1532,7 +1889,7 @@ export default function AiCreatorView() {
                             dragElastic={0.05}
                             dragMomentum={false}
                             onDragEnd={handleFbDragEnd}
-                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -1540,31 +1897,28 @@ export default function AiCreatorView() {
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col relative w-full">
+                            <div className="flex flex-col relative w-full overflow-hidden">
                               {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1877F2]"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#1877F2]"></span>
                               </span>
                               
-                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate">
+                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate pr-2">
                                 FACEBOOK
-                              </span>
-                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
                                 {fbHour}:00 - {fbHour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center justify-between mt-auto pt-1">
-                              <div className="flex items-center gap-1 text-[#1877F2]">
-                                <Facebook size={10} className="fill-[#1877F2] stroke-none" />
-                                <span className="text-[8px] font-black uppercase tracking-wider">
-                                  FB Active
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-[#1877F2] min-w-0">
+                                <Facebook size={9} className="fill-[#1877F2] stroke-none shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
                                 </span>
                               </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
                                 {language === 'vi' ? 'Kéo' : 'Drag'}
                               </span>
                             </div>
@@ -1573,7 +1927,7 @@ export default function AiCreatorView() {
                       })()}
 
                       {/* 3. Active Threads Pill (Draggable) */}
-                      {(() => {
+                      {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (() => {
                         const threadsIdx = weekDays.findIndex(d => d.date === threadsDate);
                         if (threadsIdx < 0) return null;
                         const threadsWeek = Math.floor(threadsIdx / 7);
@@ -1592,7 +1946,7 @@ export default function AiCreatorView() {
                             dragElastic={0.05}
                             dragMomentum={false}
                             onDragEnd={handleThreadsDragEnd}
-                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -1600,31 +1954,85 @@ export default function AiCreatorView() {
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col relative w-full">
+                            <div className="flex flex-col relative w-full overflow-hidden">
                               {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-black"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-black"></span>
                               </span>
                               
-                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate">
+                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate pr-2">
                                 THREADS
-                              </span>
-                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
                                 {threadsHour}:00 - {threadsHour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center justify-between mt-auto pt-1">
-                              <div className="flex items-center gap-1 text-black">
-                                <ThreadsIcon size={10} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">
-                                  TH Active
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-black min-w-0">
+                                <ThreadsIcon size={9} className="shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
                                 </span>
                               </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
+                                {language === 'vi' ? 'Kéo' : 'Drag'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
+
+                      {/* 4. Active Instagram Pill (Draggable) */}
+                      {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (() => {
+                        const instaIdx = weekDays.findIndex(d => d.date === instagramDate);
+                        if (instaIdx < 0) return null;
+                        const instaWeek = Math.floor(instaIdx / 7);
+                        if (instaWeek !== activeWeek) return null;
+                        
+                        const colIndex = instaIdx % 7;
+                        const instaHour = parseInt(instagramTime.split(':')[0]) || 12;
+                        const rowIndex = instaHour - 16;
+                        if (rowIndex < 0 || rowIndex >= 8) return null;
+
+                        return (
+                          <motion.div
+                            key={`instagram-active-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
+                            drag
+                            dragConstraints={boardRef}
+                            dragElastic={0.05}
+                            dragMomentum={false}
+                            onDragEnd={handleInstagramDragEnd}
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-pink-500 shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
+                            style={{
+                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
+                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
+                              width: `calc(${(100) / 7}% - 10px)`,
+                              height: `calc(${(100) / 8}% - 10px)`,
+                            }}
+                          >
+                            <div className="flex flex-col relative w-full overflow-hidden">
+                              {/* Blinking pulse dot */}
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-pink-500"></span>
+                              </span>
+                              
+                              <span className="text-[9px] font-black text-pink-600 uppercase tracking-wider truncate pr-2">
+                                INSTAGRAM
+                              </span>
+                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
+                                {instaHour}:00 - {instaHour + 1}:00
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-pink-600 min-w-0">
+                                <Instagram size={9} className="shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
+                                </span>
+                              </div>
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
                                 {language === 'vi' ? 'Kéo' : 'Drag'}
                               </span>
                             </div>
@@ -1650,12 +2058,22 @@ export default function AiCreatorView() {
 
                 <button 
                   onClick={() => {
-                    if (facebookError || threadsError) return;
+                    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+                    const hasFbError = targetPlatforms.includes('facebook') && !!facebookError;
+                    const hasThreadsError = targetPlatforms.includes('threads') && !!threadsError;
+                    const hasInstaError = targetPlatforms.includes('instagram') && !!instagramError;
+                    if (hasFbError || hasThreadsError || hasInstaError) return;
                     setIsScheduled(true);
                   }}
-                  disabled={!!facebookError || !!threadsError}
+                  disabled={
+                    (getPromptTargetPlatforms(selectedPrompt).includes('facebook') && !!facebookError) ||
+                    (getPromptTargetPlatforms(selectedPrompt).includes('threads') && !!threadsError) ||
+                    (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && !!instagramError)
+                  }
                   className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer font-sans ${
-                    (facebookError || threadsError) 
+                    ((getPromptTargetPlatforms(selectedPrompt).includes('facebook') && facebookError) ||
+                     (getPromptTargetPlatforms(selectedPrompt).includes('threads') && threadsError) ||
+                     (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && instagramError))
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                       : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/20'
                   }`}
@@ -1797,8 +2215,8 @@ export default function AiCreatorView() {
                 </h3>
                 <p className="text-xs text-text-muted mt-2 leading-relaxed">
                   {language === 'vi' 
-                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên cả hai kênh Facebook và Threads.`
-                    : `Your posts have been successfully scheduled on both Facebook and Threads channels.`}
+                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên các kênh đã chọn.`
+                    : `Your posts have been successfully scheduled on the selected channels.`}
                 </p>
               </div>
 
@@ -1812,15 +2230,26 @@ export default function AiCreatorView() {
                 </div>
 
                 <div className="flex flex-col gap-2.5 font-sans">
-                  <div className="flex items-center justify-between text-xs font-sans">
-                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
-                    <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
-                  </div>
+                  {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
+                      <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
+                    </div>
+                  )}
 
-                  <div className="flex items-center justify-between text-xs font-sans">
-                    <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
-                    <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
-                  </div>
+                  {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                      <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
+                    </div>
+                  )}
+
+                  {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                      <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1833,6 +2262,92 @@ export default function AiCreatorView() {
               >
                 {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PROMPT SELECTOR POPUP DIALOG */}
+      <AnimatePresence>
+        {isPromptModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsPromptModalOpen(false); }}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh]"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
+                  📝 {language === 'vi' ? 'Chọn Prompt từ thư viện' : 'Select Prompt from Library'}
+                </h3>
+                <button 
+                  onClick={() => setIsPromptModalOpen(false)}
+                  className="text-text-muted hover:text-text hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search Field */}
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
+                <input 
+                  type="text"
+                  value={promptSearch}
+                  onChange={(e) => setPromptSearch(e.target.value)}
+                  placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
+                  className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                />
+              </div>
+
+              {/* Prompts list */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 font-sans">
+                {loadingPrompts ? (
+                  <div className="flex items-center justify-center py-12 text-xs text-text-muted font-bold gap-2">
+                    <Loader2 className="animate-spin" size={16} />
+                    {language === 'vi' ? 'Đang tải...' : 'Loading...'}
+                  </div>
+                ) : filteredPromptsForModal.length === 0 ? (
+                  <div className="text-center py-12 text-xs text-text-muted font-semibold">
+                    {language === 'vi' ? 'Không tìm thấy prompt nào' : 'No prompts found'}
+                  </div>
+                ) : (
+                  filteredPromptsForModal.map((p) => {
+                    const isSelected = selectedPrompt?.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPrompt(p);
+                          generateVariants(postData, p);
+                          setIsPromptModalOpen(false);
+                        }}
+                        className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${
+                          isSelected 
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm' 
+                            : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full font-sans">
+                          <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
+                          <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                        </div>
+                        <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                          "{p.content}"
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
