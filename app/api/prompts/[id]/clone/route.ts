@@ -10,7 +10,7 @@ const COPY_SUFFIX = ' (Copy)';
 // Quyết định: bản clone giữ nguyên owner gốc (created_by), chỉ đổi tên + set cloned_from.
 // Bất kỳ user authenticated nào cũng clone được (giống quyền tạo Prompt mới — RLS không giới hạn theo role).
 export async function POST(_request: NextRequest, { params }: RouteParams) {
-  const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
   const { id } = await params;
@@ -29,6 +29,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
   if (!original) {
     return NextResponse.json({ error: 'Không tìm thấy prompt để nhân bản' }, { status: 404 });
+  }
+
+  if (original.created_by !== user.id && role !== 'admin') {
+    return NextResponse.json({ error: 'Bạn không có quyền nhân bản prompt này' }, { status: 403 });
   }
 
   // Spec: Copy of [tên gốc]

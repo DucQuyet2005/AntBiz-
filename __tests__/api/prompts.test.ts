@@ -146,7 +146,7 @@ describe('Prompts API Endpoints', () => {
     it('returns 200 with prompts list for valid role', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       currentRole = 'marketer_full';
-      mockPromptsDb = [{ id: 'p1', name: 'Prompt 1', platform: 'facebook', tags: [] }];
+      mockPromptsDb = [{ id: 'p1', name: 'Prompt 1', platform: 'facebook', tags: [], created_by: 'u1' }];
 
       const req = new NextRequest('http://localhost/api/prompts?page=1&pageSize=10');
       const res = await getPrompts(req);
@@ -234,7 +234,7 @@ describe('Prompts API Endpoints', () => {
     it('returns 200 with prompt data if found', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       currentRole = 'marketer_content';
-      mockPromptsDb = [{ id: 'p1', name: 'Test Prompt' }];
+      mockPromptsDb = [{ id: 'p1', name: 'Test Prompt', created_by: 'u1' }];
 
       const res = await getPrompt(new NextRequest('http://localhost/api/prompts/p1'), {
         params: Promise.resolve({ id: 'p1' }),
@@ -368,7 +368,7 @@ describe('Prompts API Endpoints', () => {
     it('clones prompt with Copy of name prefix', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       currentRole = 'marketer_full';
-      mockPromptsDb = [{ id: 'p1', name: 'Original Name', platform: 'facebook', content: 'test', tags: [] }];
+      mockPromptsDb = [{ id: 'p1', name: 'Original Name', platform: 'facebook', content: 'test', tags: [], created_by: 'u1' }];
 
       const res = await clonePrompt(new NextRequest('http://localhost/api/prompts/p1/clone'), {
         params: Promise.resolve({ id: 'p1' }),
@@ -394,7 +394,7 @@ describe('Prompts API Endpoints', () => {
     it('returns in_use status', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       currentRole = 'marketer_full';
-      mockPromptsDb = [{ id: 'p1' }];
+      mockPromptsDb = [{ id: 'p1', created_by: 'u1' }];
       mockCaptionsDb = [{ id: 'c1' }];
       mockScheduledPostsDb = [{ caption_id: 'c1' }];
 
