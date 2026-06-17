@@ -43,9 +43,46 @@ const ARCANE_POS= [
   { left: '85%', top: '65%', size: '4px', delay: '0.4s', dur: '2.9s' },
 ];
 const GRASS_POS = [
-  { h: '10px', d: '0s'   }, { h: '8px',  d: '0.2s'  }, { h: '11px', d: '0.4s'  },
-  { h: '9px',  d: '0.6s' }, { h: '12px', d: '0.1s'  }, { h: '8px',  d: '0.3s'  },
-  { h: '10px', d: '0.5s' }, { h: '9px',  d: '0.7s'  }, { h: '11px', d: '0.25s' },
+  { left: '4%',  h: '14px', d: '0.1s'  },
+  { left: '9%',  h: '10px', d: '0.3s'  },
+  { left: '14%', h: '12px', d: '0.0s'  },
+  { left: '19%', h: '15px', d: '0.5s'  },
+  { left: '24%', h: '9px',  d: '0.2s'  },
+  { left: '29%', h: '13px', d: '0.4s'  },
+  { left: '34%', h: '11px', d: '0.15s' },
+  { left: '39%', h: '16px', d: '0.6s'  },
+  { left: '44%', h: '10px', d: '0.25s' },
+  { left: '49%', h: '14px', d: '0.05s' },
+  { left: '54%', h: '12px', d: '0.35s' },
+  { left: '59%', h: '15px', d: '0.55s' },
+  { left: '64%', h: '9px',  d: '0.2s'  },
+  { left: '69%', h: '13px', d: '0.45s' },
+  { left: '74%', h: '11px', d: '0.1s'  },
+  { left: '79%', h: '16px', d: '0.7s'  },
+  { left: '84%', h: '10px', d: '0.3s'  },
+  { left: '89%', h: '14px', d: '0.05s' },
+  { left: '93%', h: '12px', d: '0.5s'  },
+  { left: '97%', h: '15px', d: '0.2s'  },
+];
+const MAGMA_BUBBLES = [
+  { left: '15%', size: '5px',  delay: '0.2s',  dur: '1.4s' },
+  { left: '35%', size: '3px',  delay: '0.7s',  dur: '1.8s' },
+  { left: '55%', size: '6px',  delay: '0.0s',  dur: '1.5s' },
+  { left: '75%', size: '4px',  delay: '0.4s',  dur: '1.6s' },
+  { left: '90%', size: '5px',  delay: '0.9s',  dur: '1.3s' },
+];
+const ROSE_POSITIONS = [
+  { left: '8%',  bottom: '1px',  scale: 0.95, delay: '0.1s' },
+  { left: '25%', bottom: '4px',  scale: 1.15, delay: '0.3s' },
+  { left: '42%', bottom: '2px',  scale: 1.0,  delay: '0.0s' },
+  { left: '58%', bottom: '5px',  scale: 1.25, delay: '0.4s' },
+  { left: '75%', bottom: '3px',  scale: 0.9,  delay: '0.2s' },
+  { left: '90%', bottom: '2px',  scale: 1.1,  delay: '0.5s' },
+];
+const GOLD_SPARKLES = [
+  { left: '15%', bottom: '12px', delay: '0.2s', size: '10px' },
+  { left: '45%', bottom: '16px', delay: '0.7s', size: '12px' },
+  { left: '75%', bottom: '14px', delay: '0.0s', size: '8px'  },
 ];
 
 // ==========================================
@@ -157,21 +194,95 @@ function EffectOverlay({ effect }: { effect: string }) {
 function BaseOverlay({ base }: { base: string }) {
   if (!base || base === 'none') return null;
 
-  if (base === 'grass') return (
-    <div className="av-base-grass-wrap">
-      {GRASS_POS.map((g, i) => <div key={i} className="av-base-grass-blade" style={{ height: g.h, animationDelay: g.d, animationDuration: '2.2s' }} />)}
-    </div>
-  );
-  if (base === 'beach') return <div className="av-base-beach"><div className="av-base-beach-wave" /></div>;
-  if (base === 'ocean')   return <div className="av-base-ocean" />;
-  if (base === 'magma')   return <div className="av-base-magma" />;
-  if (base === 'rose')    return <div className="av-base-rose-wrap">{Array.from({length:5}).map((_,i)=><div key={i} className="av-base-rose" />)}</div>;
-  if (base === 'cloud')   return <div className="av-base-cloud" />;
-  if (base === 'stone')   return <div className="av-base-stone"><div className="av-base-stone-moss" /></div>;
-  if (base === 'glacier') return <div className="av-base-glacier" />;
-  if (base === 'smoke')   return <div className="av-base-smoke" />;
-  if (base === 'gold')    return <div className="av-base-gold" />;
-  return null;
+  switch (base) {
+    case 'grass':
+      return (
+        <div className="av-base-grass-wrap">
+          {GRASS_POS.map((g, i) => (
+            <div key={i} className="av-base-grass-blade" style={{ left: g.left, height: g.h, animationDelay: g.d }} />
+          ))}
+        </div>
+      );
+    case 'beach':
+      return (
+        <div className="av-base-beach">
+          <div className="av-base-beach-wave-1" />
+          <div className="av-base-beach-wave-2" />
+        </div>
+      );
+    case 'ocean':
+      return (
+        <div className="av-base-ocean">
+          <div className="av-base-ocean-wave-1" />
+          <div className="av-base-ocean-wave-2" />
+          <div className="av-base-ocean-wave-3" />
+        </div>
+      );
+    case 'magma':
+      return (
+        <div className="av-base-magma">
+          <div className="av-base-magma-lava" />
+          {MAGMA_BUBBLES.map((b, i) => (
+            <div key={i} className="av-base-magma-bubble" style={{ left: b.left, width: b.size, height: b.size, animationDelay: b.delay, animationDuration: b.dur }} />
+          ))}
+        </div>
+      );
+    case 'rose':
+      return (
+        <div className="av-base-rose-wrap">
+          <div className="av-base-rose-leaves" />
+          {ROSE_POSITIONS.map((r, i) => (
+            <div key={i} className="av-base-rose-flower" style={{ left: r.left, bottom: r.bottom, transform: `scale(${r.scale})`, animationDelay: r.delay }} />
+          ))}
+          <div className="av-base-rose-sparks" />
+        </div>
+      );
+    case 'cloud':
+      return (
+        <div className="av-base-cloud-wrap">
+          <div className="av-base-cloud-puff av-base-cloud-puff-1" />
+          <div className="av-base-cloud-puff av-base-cloud-puff-2" />
+          <div className="av-base-cloud-puff av-base-cloud-puff-3" />
+        </div>
+      );
+    case 'stone':
+      return (
+        <div className="av-base-stone-wrap">
+          <div className="av-base-stone-rock av-base-stone-rock-1" />
+          <div className="av-base-stone-rock av-base-stone-rock-2" />
+          <div className="av-base-stone-rock av-base-stone-rock-3" />
+          <div className="av-base-stone-moss-growth" />
+        </div>
+      );
+    case 'glacier':
+      return (
+        <div className="av-base-glacier-wrap">
+          <div className="av-base-glacier-shard av-base-glacier-shard-1" />
+          <div className="av-base-glacier-shard av-base-glacier-shard-2" />
+          <div className="av-base-glacier-shard av-base-glacier-shard-3" />
+        </div>
+      );
+    case 'smoke':
+      return (
+        <div className="av-base-smoke-wrap">
+          <div className="av-base-smoke-puff av-base-smoke-puff-1" />
+          <div className="av-base-smoke-puff av-base-smoke-puff-2" />
+          <div className="av-base-smoke-puff av-base-smoke-puff-3" />
+        </div>
+      );
+    case 'gold':
+      return (
+        <div className="av-base-gold-wrap">
+          <div className="av-base-gold-crown" />
+          <div className="av-base-gold-reflection" />
+          {GOLD_SPARKLES.map((s, i) => (
+            <div key={i} className="av-base-gold-sparkle" style={{ left: s.left, bottom: s.bottom, width: s.size, height: s.size, animationDelay: s.delay }} />
+          ))}
+        </div>
+      );
+    default:
+      return null;
+  }
 }
 
 const FRAMES = [
@@ -220,10 +331,10 @@ function AvatarDisplay({
         
         {/* Render overlay hiệu ứng thời tiết bên trong avatar */}
         <EffectOverlay effect={effect} />
+
+        {/* Hiệu ứng bệ đỡ đáy avatar */}
+        <BaseOverlay base={base} />
       </div>
-      
-      {/* Hiệu ứng bệ đỡ đáy avatar */}
-      <BaseOverlay base={base} />
 
       {ringClass && (
         <span
