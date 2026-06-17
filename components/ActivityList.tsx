@@ -1,11 +1,16 @@
+"use client";
+
 import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const ActivityList = () => {
+  const { t } = useLanguage();
+
   return (
     <div className="mt-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-text">Recent Activity</h2>
-        <button className="text-primary text-sm font-medium hover:underline">View All</button>
+        <h2 className="text-xl font-bold text-text">{t('overview.recentActivity')}</h2>
+        <button className="text-primary text-sm font-medium hover:underline">{t('overview.viewAll')}</button>
       </div>
       
       <div className="grid grid-cols-4 gap-6">
@@ -35,7 +40,7 @@ const ActivityList = () => {
           <div className="w-10 h-10 rounded-full border border-current flex items-center justify-center mb-2 group-hover:bg-primary group-hover:text-white transition-all">
             <span className="text-xl leading-none">+</span>
           </div>
-          <span className="font-medium text-sm">New Post</span>
+          <span className="font-medium text-sm">{t('overview.newPost')}</span>
         </div>
       </div>
     </div>
@@ -43,3 +48,4 @@ const ActivityList = () => {
 };
 
 export default ActivityList;
+

@@ -10,6 +10,8 @@ import {
   CheckCircle,
   HelpCircle
 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 interface AccordionProps {
   question: string;
@@ -54,6 +56,7 @@ const AccordionItem: React.FC<AccordionProps> = ({
 };
 
 export default function FaqView() {
+  const { t } = useLanguage();
   // Accordion state
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({
     q1: false,
@@ -75,9 +78,9 @@ export default function FaqView() {
       
       {/* Title Header */}
       <div className="mt-2">
-        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">How can we help?</h1>
+        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('faq.heading')}</h1>
         <p className="text-text-muted">
-          Find answers to common questions about using Creator Studio&apos;s AI publishing tools to speed up your workflow.
+          {t('faq.subtitle')}
         </p>
       </div>
 
@@ -86,7 +89,7 @@ export default function FaqView() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
         <input 
           type="text" 
-          placeholder="Search for answers..." 
+          placeholder={t('faq.searchPlace')} 
           className="w-full bg-sidebar rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
         />
       </div>
@@ -101,20 +104,20 @@ export default function FaqView() {
             <div className="w-12 h-12 rounded-full bg-[#5D4E3C] text-[#F3E5CD] flex items-center justify-center shadow-md shrink-0">
               <Rocket size={22} />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#5D4E3C] tracking-tight">Getting Started</h2>
+            <h2 className="text-2xl font-extrabold text-[#5D4E3C] tracking-tight">{t('faq.gettingStarted')}</h2>
           </div>
 
           <div className="flex flex-col gap-3">
             <AccordionItem 
-              question="What is Lumina AI Creator Studio?" 
-              answer="Lumina AI Creator Studio is a comprehensive AI-powered publishing hub designed to automate, schedule, and optimize content across platforms like Instagram, Threads, and Facebook, using customized AI prompts and models."
+              question={t('faq.question1')} 
+              answer={t('faq.answer1')}
               isOpen={openItems.q1}
               onToggle={() => toggleItem('q1')}
               textColor="text-[#5D4E3C]"
             />
             <AccordionItem 
-              question="How do I connect my social media accounts?" 
-              answer="Navigate to the connected channels widget or settings tab, click connect on your desired platform, and complete the authentication process to authorize publishing rights."
+              question={t('faq.question2')} 
+              answer={t('faq.answer2')}
               isOpen={openItems.q2}
               onToggle={() => toggleItem('q2')}
               textColor="text-[#5D4E3C]"
@@ -129,26 +132,26 @@ export default function FaqView() {
             <div className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-md shrink-0">
               <Lightbulb size={22} />
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight">Pro Tips</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight">{t('faq.proTips')}</h2>
           </div>
 
           <p className="text-sm font-semibold text-white/90">
-            Want to get the most out of your AI prompts?
+            {t('faq.tipIntro')}
           </p>
 
           <div className="flex flex-col gap-4 text-xs font-semibold text-white/80">
             <div className="flex gap-3 items-start">
               <CheckCircle size={16} className="text-[#C2E1D9] shrink-0 mt-[2px]" />
-              <span>Be specific about tone (e.g., &quot;professional yet approachable&quot;).</span>
+              <span>{t('faq.tip1')}</span>
             </div>
             <div className="flex gap-3 items-start">
               <CheckCircle size={16} className="text-[#C2E1D9] shrink-0 mt-[2px]" />
-              <span>Provide context about your target audience.</span>
+              <span>{t('faq.tip2')}</span>
             </div>
           </div>
 
           <button className="w-full bg-[#C2E1D9] hover:bg-[#A3CEBE] text-[#1E3A31] transition-colors py-3.5 rounded-full font-bold text-sm shadow-sm mt-auto select-none">
-            Read Full Guide
+            {t('faq.readGuide')}
           </button>
         </div>
 
@@ -161,7 +164,7 @@ export default function FaqView() {
           <div className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-md shrink-0">
             <Cpu size={22} />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight">AI Capabilities & Usage</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight">{t('faq.aiCapabilities')}</h2>
         </div>
 
         {/* 2-Column Accordion Layout */}
@@ -170,15 +173,15 @@ export default function FaqView() {
           {/* Column 1 */}
           <div className="flex flex-col gap-3">
             <AccordionItem 
-              question="Are there limits on AI generation?" 
-              answer="Yes, depending on your plan tier, you are allotted a specific number of AI tokens per month. Your remaining balance is displayed on the main dashboard overview page."
+              question={t('faq.question3')} 
+              answer={t('faq.answer3')}
               isOpen={openItems.q3}
               onToggle={() => toggleItem('q3')}
               textColor="text-[#4D4ECF]"
             />
             <AccordionItem 
-              question="Who owns the generated content?" 
-              answer="You own 100% of the content generated by Lumina AI Creator Studio. We claim no intellectual property rights or ownership over your output."
+              question={t('faq.question4')} 
+              answer={t('faq.answer4')}
               isOpen={openItems.q4}
               onToggle={() => toggleItem('q4')}
               textColor="text-[#4D4ECF]"
@@ -188,8 +191,8 @@ export default function FaqView() {
           {/* Column 2 */}
           <div className="flex flex-col gap-3">
             <AccordionItem 
-              question="Can the AI mimic my writing style?" 
-              answer="Yes, you can upload existing writing samples in the Brand Voice settings so the content engine mirrors your exact style, tone, and vocabulary."
+              question={t('faq.question5')} 
+              answer={t('faq.answer5')}
               isOpen={openItems.q5}
               onToggle={() => toggleItem('q5')}
               textColor="text-[#4D4ECF]"
@@ -203,3 +206,4 @@ export default function FaqView() {
     </div>
   );
 }
+

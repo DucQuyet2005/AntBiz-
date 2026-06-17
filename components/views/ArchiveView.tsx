@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 import { 
   Facebook, 
   Instagram, 
@@ -21,61 +24,66 @@ const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
 );
 
 export default function ArchiveView() {
+  const { t } = useLanguage();
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [sortBy, setSortBy] = useState('Publish Date');
 
   const archiveItems = [
     {
       id: 1,
-      type: 'CAMPAIGN',
+      type: 'TỔ ẤM 4.0',
       platform: 'blog',
-      image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop',
-      title: 'Organic Tech Recruiting Hub',
-      description: 'Connecting candidate pipelines automatically with localized job previews from source nodes.',
-      reach: '280k',
-      conversions: '1.8k',
-      likes: 120,
-      comments: 14,
-      nodeType: ''
+      image: 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80',
+      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
+      description: 'Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.',
+      reach: '51.1k',
+      conversions: '3.2k',
+      likes: 1240,
+      comments: 185,
+      nodeType: 'Case Study',
+      link: '/archive/80861'
     },
     {
       id: 2,
+      type: 'TÀI CHÍNH',
+      platform: 'facebook',
+      image: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&q=80',
+      title: 'Quy tắc 50/30/20: Cách phân bổ lương 15 triệu',
+      description: 'Bí quyết giúp người trẻ ở thành phố lớn không chỉ đủ sống mà còn có khoản tiết kiệm phòng thân với mức thu nhập cơ bản.',
+      reach: '120k',
+      conversions: '4.5k',
+      likes: 3400,
+      comments: 420,
+      nodeType: 'Guide',
+      link: '#'
+    },
+    {
+      id: 3,
+      type: 'BẤT ĐỘNG SẢN',
+      platform: 'instagram',
+      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
+      title: 'Sốt ảo vùng ven: Dấu hiệu nhận biết và cách né',
+      description: 'Phân tích các dự án đất nền vùng ven đang bị đẩy giá lên cao bất thường. Đừng để dính bẫy tâm lý đám đông.',
+      reach: '85k',
+      conversions: '1.2k',
+      likes: 850,
+      comments: 95,
+      nodeType: 'Analysis',
+      link: '#'
+    },
+    {
+      id: 4,
       type: 'THREAD',
       platform: 'threads',
       gradient: 'from-[#6366F1] via-[#D946EF] to-[#EC4899]',
-      title: 'The Future of Generative UI',
-      description: 'Why modular bento grids are capturing visual curiosity in modern software design tools. Structured as an interactive 4-post threads layout.',
+      title: 'Chuyện gen Z bỏ việc lương cao để... bán trà sữa',
+      description: 'Làm văn phòng thu nhập 30 triệu/tháng nhưng stress tột độ. Đánh đổi lấy sự tự do tài chính và tinh thần, liệu có đáng?',
       reach: '450k',
       conversions: '2.1k',
       likes: 432,
       comments: 37,
-      nodeType: 'Organic Content Node'
-    },
-    {
-      id: 3,
-      type: 'ANALYTICS',
-      platform: 'facebook',
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=400&auto=format&fit=crop',
-      title: 'Q3 Engagement Surge',
-      description: 'Analyzing target audience reach peaks and content distribution clusters on primary social feeds.',
-      reach: '4.2M',
-      conversions: '12.5k',
-      likes: 8100,
-      comments: 124,
-      nodeType: ''
-    },
-    {
-      id: 4,
-      type: 'CAMPAIGN',
-      platform: 'instagram',
-      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400&auto=format&fit=crop',
-      title: 'Summer Travel Series',
-      description: 'Multi-platform travel visual guidelines and influencer outreach packages compiled for regional agencies.',
-      reach: '950k',
-      conversions: '4.7k',
-      likes: 1240,
-      comments: 89,
-      nodeType: ''
+      nodeType: 'Organic Content Node',
+      link: '#'
     }
   ];
 
@@ -84,8 +92,8 @@ export default function ArchiveView() {
       
       {/* Page Title & Subtitle */}
       <div className="mt-2">
-        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">Campaign Directory Archive</h1>
-        <p className="text-text-muted">Explore historic publications, variant details, conversion analytics, and assets library.</p>
+        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('archive.title')}</h1>
+        <p className="text-text-muted">{t('archive.subtitle')}</p>
       </div>
 
       {/* Search & Filters Controls Row */}
@@ -96,7 +104,7 @@ export default function ArchiveView() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
           <input 
             type="text" 
-            placeholder="Search archive title, tags, or description copy..." 
+            placeholder={t('archive.searchPlaceholder')} 
             className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
           />
         </div>
@@ -107,7 +115,7 @@ export default function ArchiveView() {
           {/* Platform Filter */}
           <div className="relative">
             <button className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none">
-              <span>{platformFilter}</span>
+              <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
               <ChevronDown size={16} className="text-text-muted" />
             </button>
           </div>
@@ -116,7 +124,7 @@ export default function ArchiveView() {
           <div className="relative">
             <button className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none">
               <ArrowUpDown size={14} className="text-text-muted" />
-              <span>{sortBy}</span>
+              <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
               <ChevronDown size={16} className="text-text-muted" />
             </button>
           </div>
@@ -128,7 +136,8 @@ export default function ArchiveView() {
       {/* 3-Column Grid Cards */}
       <div className="grid grid-cols-3 gap-6 mt-2">
         {archiveItems.map((item) => (
-          <div 
+          <Link 
+            href={item.link}
             key={item.id} 
             className="bg-white border border-gray-200/60 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between"
           >
@@ -191,14 +200,14 @@ export default function ArchiveView() {
                 {/* Reach & Conversions */}
                 <div className="flex gap-10">
                   <div>
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">Total Reach</span>
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
                     <span className="text-sm font-extrabold text-text flex items-center gap-1">
                       <TrendingUp size={14} className="text-emerald-500" />
                       {item.reach}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">Conversions</span>
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">{t('archive.conversions')}</span>
                     <span className="text-sm font-extrabold text-text">
                       {item.conversions}
                     </span>
@@ -221,10 +230,11 @@ export default function ArchiveView() {
 
             </div>
 
-          </div>
+          </Link>
         ))}
       </div>
 
     </div>
   );
 }
+

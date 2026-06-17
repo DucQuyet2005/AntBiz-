@@ -1,18 +1,23 @@
+"use client";
+
 import React from 'react';
 import StatCard from '@/components/StatCard';
 import ChartPlaceholder from '@/components/ChartPlaceholder';
 import ActivityList from '@/components/ActivityList';
 import { Send } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function OverviewView() {
+  const { t } = useLanguage();
+
   return (
     <div className="flex flex-col gap-6">
       {/* Top Cards Row */}
       <div className="grid grid-cols-3 gap-6 mt-2">
         <StatCard 
-          title="Posts Published" 
+          title={t('overview.postsPublished')} 
           value="1,204" 
-          trend="+12% this week" 
+          trend={t('overview.trendPublished')} 
           icon={<Send size={20} className="text-primary" />}
           variant="purple"
         >
@@ -22,9 +27,9 @@ export default function OverviewView() {
         </StatCard>
         
         <StatCard 
-          title="AI Tokens Saved" 
+          title={t('overview.tokensSaved')} 
           value="" 
-          subtitle="45k Tokens Remaining"
+          subtitle={t('overview.tokensRemaining')}
           variant="mint"
           className="items-center text-center"
         >
@@ -41,7 +46,7 @@ export default function OverviewView() {
         </StatCard>
         
         <StatCard 
-          title="Top Platform" 
+          title={t('overview.topPlatform')} 
           value="" 
           icon={<span className="font-bold text-lg">@</span>}
           variant="peach"
@@ -54,7 +59,7 @@ export default function OverviewView() {
            </div>
            <div>
              <h4 className="text-xl font-bold text-text mb-1">Threads</h4>
-             <p className="text-sm font-medium text-text-muted">Highest engagement rate</p>
+             <p className="text-sm font-medium text-text-muted">{t('overview.highestEngagement')}</p>
            </div>
         </StatCard>
       </div>
@@ -69,3 +74,4 @@ export default function OverviewView() {
     </div>
   );
 }
+

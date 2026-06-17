@@ -51,40 +51,11 @@ const BrandLogo = ({ size = 32 }: { size?: number }) => (
   </svg>
 );
 
+import { useLanguage } from '@/contexts/LanguageContext';
+
 const Footer = () => {
-  const [lang, setLang] = useState<'vi' | 'en'>('vi');
-
-  // Load language on mount and listen to changes
-  useEffect(() => {
-    const savedLang = localStorage.getItem('lang') as 'vi' | 'en';
-    if (savedLang === 'en' || savedLang === 'vi') {
-      setLang(savedLang);
-    } else {
-      // Set default to Vietnamese
-      localStorage.setItem('lang', 'vi');
-      setLang('vi');
-    }
-
-    const handleLangChange = () => {
-      const currentLang = localStorage.getItem('lang') as 'vi' | 'en';
-      if (currentLang === 'en' || currentLang === 'vi') {
-        setLang(currentLang);
-      }
-    };
-
-    window.addEventListener('languageChange', handleLangChange);
-    return () => {
-      window.removeEventListener('languageChange', handleLangChange);
-    };
-  }, []);
-
-  const changeLanguage = (newLang: 'vi' | 'en') => {
-    setLang(newLang);
-    localStorage.setItem('lang', newLang);
-    window.dispatchEvent(new Event('languageChange'));
-  };
-
-  const isVi = lang === 'vi';
+  const { language, setLanguage, t } = useLanguage();
+  const isVi = language === 'vi';
 
   return (
     <footer className="mt-16 bg-[#E9EAF5] text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
@@ -107,19 +78,13 @@ const Footer = () => {
             
             <div>
               <h3 className="text-base font-bold text-text mb-2">
-                {isVi ? "Về chúng tôi" : "About Us"}
+                {t('footer.aboutUs')}
               </h3>
               <p className="text-xs text-text-muted mb-3 leading-relaxed font-medium">
-                {isVi 
-                  ? "Chúng tôi là một đội ngũ gồm những cá nhân đam mê với mục tiêu cải thiện cuộc sống của mọi người thông qua các sản phẩm đột phá. Chúng tôi tạo ra những sản phẩm tuyệt vời để giải quyết các vấn đề kinh doanh của bạn."
-                  : "We are a team of passionate individuals whose goal is to improve everyone's life through disruptive products. We build great products to solve your business problems."
-                }
+                {t('footer.aboutDesc1')}
               </p>
               <p className="text-xs text-text-muted leading-relaxed font-medium">
-                {isVi
-                  ? "Sản phẩm của chúng tôi được thiết kế dành cho các công ty vừa và nhỏ muốn tối ưu hóa hiệu suất hoạt động."
-                  : "Our products are designed for small and medium-sized companies willing to optimize their performance."
-                }
+                {t('footer.aboutDesc2')}
               </p>
             </div>
           </div>
@@ -128,31 +93,31 @@ const Footer = () => {
         {/* Middle Column - Menu */}
         <div className="col-span-3 flex flex-col pl-4">
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
-            {isVi ? "Mục lục" : "Table of Contents"}
+            {t('footer.tableOfContents')}
           </h3>
           <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trang chủ" : "Home"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Công ty của chúng tôi" : "Our Company"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Nghiên cứu điển hình" : "Case Studies"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Dịch vụ" : "Services"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Tài nguyên" : "Resources"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Tuyển dụng" : "Careers"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Liên hệ" : "Contact Us"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.home')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.company')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.caseStudies')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.services')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.resources')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.careers')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.contactUs')}</a>
           </div>
         </div>
 
         {/* Right Column - Support */}
         <div className="col-span-3 flex flex-col">
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
-            {isVi ? "Hỗ trợ" : "Support"}
+            {t('footer.support')}
           </h3>
           <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trợ giúp" : "Help"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Điều khoản Dịch vụ" : "Terms of Service"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Chính sách Bảo mật" : "Privacy Policy"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Chính sách quyền riêng tư" : "Privacy Rights"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Vận chuyển" : "Shipping"}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{isVi ? "Trả hàng" : "Returns"}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.help')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.terms')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.privacy')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.privacyRights')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.shipping')}</a>
+            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.returns')}</a>
           </div>
         </div>
 
@@ -183,18 +148,18 @@ const Footer = () => {
         {/* Language Badges */}
         <div className="flex items-center gap-2 text-[10px] text-text font-bold select-none">
           <button 
-            onClick={() => changeLanguage('en')}
+            onClick={() => setLanguage('en')}
             className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
-              lang === 'en' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+              language === 'en' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
             }`}
           >
             <span>🇺🇸</span>
             <span>US</span>
           </button>
           <button 
-            onClick={() => changeLanguage('vi')}
+            onClick={() => setLanguage('vi')}
             className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
-              lang === 'vi' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+              language === 'vi' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
             }`}
           >
             <span>🇻🇳</span>
@@ -204,7 +169,7 @@ const Footer = () => {
 
         {/* Copyright notice */}
         <div className="text-[10px] text-text-muted font-semibold tracking-wide uppercase">
-          Copyright © Company name
+          {t('footer.copyright')}
         </div>
       </div>
     </footer>
@@ -212,4 +177,5 @@ const Footer = () => {
 };
 
 export default Footer;
+
 
