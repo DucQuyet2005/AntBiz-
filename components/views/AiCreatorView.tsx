@@ -1,318 +1,1125 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Link2, 
   Globe, 
   Check, 
   Facebook, 
-  Instagram, 
-  MessageCircle, 
   Sparkles, 
   MoreHorizontal, 
   ThumbsUp, 
   MessageSquare, 
   Share2,
-  CheckCircle2
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Eye,
+  User,
+  Calendar,
+  Layers,
+  Send,
+  Loader2,
+  Plus,
+  Edit2,
+  Smartphone,
+  Heart,
+  MessageCircle,
+  Repeat2,
+  Search,
+  RefreshCw,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+
+// Threads Custom SVG Logo
+const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+  </svg>
+);
+
+interface SocialVariant {
+  id: string; // A, B, C...
+  facebook: string;
+  threads: string;
+  title: string;
+  author: string;
+  tags: string;
+}
 
 export default function AiCreatorView() {
-  const [activeVariant, setActiveVariant] = useState<'A' | 'B'>('A');
-  const [activePlatform, setActivePlatform] = useState<'instagram' | 'facebook'>('facebook');
-  const [url, setUrl] = useState('https://gocnhinmoi.com.vn/ai-trend-2026');
-  
-  // Channels selection state
-  const [channels, setChannels] = useState({
-    instagram: true,
-    facebook: true,
-    threads: true
+  const { t, language } = useLanguage();
+  const [step, setStep] = useState<1 | 2>(1);
+
+  const [url, setUrl] = useState('https://gocnhinmoi.com.vn/10-nam-mua-vang-va-hanh-trinh-thoat-canh-o-tro-80861');
+  const [isFetching, setIsFetching] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
+
+  // Gocnhinmoi Explorer Modal State
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
+  const [explorerUrl, setExplorerUrl] = useState('https://gocnhinmoi.com.vn/');
+  const [iframeSrc, setIframeSrc] = useState('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
+  const [iframeKey, setIframeKey] = useState(0);
+  const [isScraping, setIsScraping] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const handleRefresh = () => {
+    setIframeSrc(`/api/proxy?url=${encodeURIComponent(explorerUrl)}`);
+    setIframeKey(k => k + 1);
+  };
+
+  // Manual Ingestion Form State
+  const [postData, setPostData] = useState({
+    title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
+    category: '#Tổ ấm 4.0',
+    description: 'Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.',
+    author: 'Linh Trang',
+    published_at: '26/04/2026 08:00',
+    views: '51.1K lượt xem',
+    tags: '#Tiết kiệm tài chính, #Mua nhà, #Cuộc sống đô thị, #Đầu tư',
+    imageUrl: 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80',
+    full_text: 'Hành trình tích lũy 10 năm của một gia đình trẻ mua vàng để sở hữu căn hộ mơ ước...'
   });
 
+  // Toggles for Custom Display Components in Social Previews
+  const [toggles, setToggles] = useState({
+    showTitle: true,
+    showAuthor: true,
+    showDescription: true,
+    showTags: true,
+    showImage: true
+  });
+
+  // State for Social Media Variants (A/B Test copies)
+  const [variants, setVariants] = useState<SocialVariant[]>([
+    {
+      id: 'A',
+      facebook: `Bộ Tư lệnh TPHCM phối hợp các đơn vị chuyên môn, nhóm nghiên cứu và nhân chứng lịch sử triển khai khảo sát tại Công viên Lê Thị Riêng (phường Hòa Hưng, TPHCM) nhằm xác định các khu vực nghi có hố chôn tập thể liệt sĩ, phục vụ công tác tìm kiếm, quy tập hài cốt.\n\nĐợt khảo sát diễn ra từ ngày 15 đến 18/6, là bước tiếp theo sau quá trình nhiều năm thu thập tư liệu lịch sử, đối chiếu không ảnh và khảo sát thực địa liên quan đến khu vực được cho là nơi chôn cất các liệt sĩ hy sinh trong cuộc Tổng tiến công và nổi dậy Xuân Mậu Thân 1968.`,
+      threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
+      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
+      author: 'Linh Trang',
+      tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
+    },
+    {
+      id: 'B',
+      facebook: `Quyết định mua vàng tích lũy thay vì gửi tiết kiệm, liệu có đúng đắn? Câu chuyện thực tế của anh H. đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.`,
+      threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
+      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
+      author: 'Linh Trang',
+      tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
+    }
+  ]);
+
+  // Inline Editing Active States
+  const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
+
+  // Handle URL change postMessage from Iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'URL_CHANGE') {
+        const proxiedUrl = event.data.url;
+        try {
+          const urlObj = new URL(proxiedUrl);
+          const original = urlObj.searchParams.get('url');
+          if (original) {
+            setExplorerUrl(original);
+          } else if (proxiedUrl.startsWith('http')) {
+            setExplorerUrl(proxiedUrl);
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Fetch / Scrape Handler for original URL
+  const handleFetch = async () => {
+    setIsFetching(true);
+    try {
+      const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.error) {
+          setPostData({
+            title: data.title || '',
+            category: data.category || '',
+            description: data.description || '',
+            author: data.author || '',
+            published_at: '26/04/2026 08:00',
+            views: '51.1K lượt xem',
+            tags: data.tags || '',
+            imageUrl: data.imageUrl || '',
+            full_text: data.description || ''
+          });
+          
+          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+          setVariants([
+            {
+              id: 'A',
+              facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
+              threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
+              title: data.title,
+              author: data.author,
+              tags: tagsStr
+            },
+            {
+              id: 'B',
+              facebook: `🔥 BÀI HỌC TỪ ${data.author.toUpperCase()}: ${data.title} \n\nLàm thế nào để thoát cảnh trọ? Trải nghiệm thực tế: "${data.description}"`,
+              threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
+              title: data.title,
+              author: data.author,
+              tags: tagsStr
+            }
+          ]);
+          setIsFetching(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Scraper fetch error:", e);
+    }
+
+    // Fallback if live scrape fails
+    setTimeout(() => {
+      setPostData({
+        title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
+        category: '#Bất động sản',
+        description: 'Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.',
+        author: 'Nguyễn Văn Nam',
+        published_at: '17/06/2026 09:30',
+        views: '12.4K lượt xem',
+        tags: '#Đất nền, #Sốt đất, #Tài chính cá nhân, #Rủi ro',
+        imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
+        full_text: 'Toàn cảnh cơn sốt đất nền và bài học thức tỉnh nhà đầu tư cá nhân...'
+      });
+      
+      const newTags = '#Đất nền #Sốt đất #Tài chính #Rủi ro';
+      setVariants([
+        {
+          id: 'A',
+          facebook: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông từ đợt khảo sát thực tế.`,
+          threads: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.`,
+          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
+          author: 'Nguyễn Văn Nam',
+          tags: newTags
+        },
+        {
+          id: 'B',
+          facebook: `Đóng băng thị trường đất nền vùng ven và những bài học đắt giá cho nhà đầu tư cá nhân khi lạm dụng đòn bẩy tài chính.`,
+          threads: `Đóng băng thị trường đất nền vùng ven và bài học đắt giá cho nhà đầu tư.`,
+          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
+          author: 'Nguyễn Văn Nam',
+          tags: newTags
+        }
+      ]);
+      setIsFetching(false);
+    }, 1200);
+  };
+
+  const handleToggle = (key: keyof typeof toggles) => {
+    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Add a new variant copy dynamically
+  const handleAddVariant = () => {
+    const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
+    const firstTags = variants[0]?.tags || '';
+    const newVariant: SocialVariant = {
+      id: nextLetter,
+      facebook: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
+      threads: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
+      title: postData.title,
+      author: postData.author,
+      tags: firstTags
+    };
+    setVariants([...variants, newVariant]);
+  };
+
+  // Update variant field state on inline edit
+  const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
+    setVariants(prev => prev.map(v => v.id === variantId ? { ...v, [field]: value } : v));
+  };
+
+  // Import from Live Explorer
+  const handleImportFromExplorer = async () => {
+    setIsScraping(true);
+    try {
+      const res = await fetch(`/api/scrape?url=${encodeURIComponent(explorerUrl)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.error) {
+          setPostData({
+            title: data.title || '',
+            category: data.category || '',
+            description: data.description || '',
+            author: data.author || '',
+            published_at: '26/04/2026 08:00',
+            views: '51.1K lượt xem',
+            tags: data.tags || '',
+            imageUrl: data.imageUrl || '',
+            full_text: data.description || ''
+          });
+          setUrl(explorerUrl);
+
+          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+          setVariants([
+            {
+              id: 'A',
+              facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
+              threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
+              title: data.title,
+              author: data.author,
+              tags: tagsStr
+            },
+            {
+              id: 'B',
+              facebook: `🔥 BÀI HỌC TỪ ${data.author.toUpperCase()}: ${data.title} \n\nLàm thế nào để thoát cảnh trọ? Trải nghiệm thực tế: "${data.description}"`,
+              threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
+              title: data.title,
+              author: data.author,
+              tags: tagsStr
+            }
+          ]);
+          setIsExplorerOpen(false);
+        }
+      }
+    } catch (e) {
+      console.error("Scraper explorer error:", e);
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  // Back navigation for live proxy iframe
+  const handleIframeBack = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.history.back();
+      } catch (e) {
+        console.error("Failed to navigate back:", e);
+      }
+    }
+  };
+
+  // Inline editable wrapper component that prevents layout shifts
+  const EditableText = ({ 
+    variantId, 
+    field, 
+    value, 
+    textarea = false,
+    className = "" 
+  }: { 
+    variantId: string; 
+    field: keyof SocialVariant; 
+    value: string; 
+    textarea?: boolean;
+    className?: string;
+  }) => {
+    const isEditing = editState?.variantId === variantId && editState?.field === field;
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (isEditing) {
+        if (textarea && textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+      }
+    }, [isEditing, value, textarea]);
+
+    if (isEditing) {
+      return (
+        <div className="w-full relative">
+          {textarea ? (
+            <textarea
+              ref={textareaRef}
+              autoFocus
+              value={value}
+              onChange={(e) => {
+                handleUpdateVariantField(variantId, field, e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onBlur={() => setEditState(null)}
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+            />
+          ) : (
+            <input
+              ref={inputRef}
+              autoFocus
+              type="text"
+              value={value}
+              onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
+              onBlur={() => setEditState(null)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setEditState(null);
+              }}
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
+            />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditState({ variantId, field });
+        }}
+        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+      >
+        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+          <Edit2 size={10} className="text-primary" />
+        </span>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full font-sans">
+      
       {/* Top Header Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
         <div>
-          <h1 className="text-3xl font-bold text-text tracking-tight">AI Publishing Creator</h1>
-          <p className="text-sm text-text-muted mt-1">Orchestrate hyper-optimized copy variants from single URL inputs.</p>
+          <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
+          <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
         </div>
-        <div className="flex items-center self-start md:self-center">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-sidebar text-primary border border-primary/10">
-            Gemini-3.5-Flash Active Engine
-          </span>
+        
+        {/* Step Indicator Wizard */}
+        <div className="flex items-center gap-2 bg-sidebar rounded-2xl p-1.5 border border-gray-200/50 shadow-sm">
+          <button 
+            onClick={() => setStep(1)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+              step === 1 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+            }`}
+          >
+            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
+            {t('aiCreator.step1')}
+          </button>
+          <button 
+            onClick={() => setStep(2)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+              step === 2 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+            }`}
+          >
+            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
+            {t('aiCreator.step2')}
+          </button>
         </div>
       </div>
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Unified layout grid allowing shared layout morphing */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
         
-        {/* Left Column - Inputs & Options (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          
-          {/* Source Context Importer Card */}
-          <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[24px] p-6 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669]">
-                <Globe size={18} />
-              </div>
-              <h2 className="text-lg font-bold text-text">Source Context Importer</h2>
-            </div>
-            
-            <p className="text-xs text-text-muted leading-relaxed">
-              Input any blog, product URL, or topic node. Our server extracts metadata tags to define your brand intent.
-            </p>
-            
-            <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-              <span className="text-gray-400 pl-2">
-                <Link2 size={16} />
-              </span>
-              <input 
-                type="text" 
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
-              />
-              <button className="bg-[#4A6B5D] hover:bg-[#3A5B4D] text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors">
-                Fetch
-              </button>
-            </div>
-          </div>
-
-          {/* Target Channels Card */}
-          <div className="bg-white border border-gray-200 rounded-[24px] p-6 flex flex-col gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <CheckCircle2 size={18} />
-              </div>
-              <h2 className="text-lg font-bold text-text">Target Channels</h2>
-            </div>
-            
-            <p className="text-xs text-text-muted leading-relaxed">
-              Select key target social networks to tailor tone layouts, hashtags structures, and image dimension guides.
-            </p>
-            
-            <div className="flex flex-col gap-2.5">
-              {/* Instagram */}
-              <button 
-                onClick={() => setChannels({ ...channels, instagram: !channels.instagram })}
-                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
-                  channels.instagram 
-                    ? 'border-primary/30 bg-primary/5 text-text' 
-                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
-                }`}
-              >
+        {/* STEP 1: Left column inputs form */}
+        {step === 1 && (
+          <motion.div 
+            layout
+            key="step1-inputs"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            className="lg:col-span-8 flex flex-col gap-6 order-1"
+          >
+            {/* URL Context Importer */}
+            <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Instagram size={16} className={channels.instagram ? 'text-primary' : 'text-gray-400'} />
-                  <span className="text-xs font-semibold">Instagram Direct</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                  channels.instagram ? 'bg-primary text-white' : 'border border-gray-300'
-                }`}>
-                  {channels.instagram && <Check size={12} />}
-                </div>
-              </button>
-
-              {/* Facebook */}
-              <button 
-                onClick={() => setChannels({ ...channels, facebook: !channels.facebook })}
-                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
-                  channels.facebook 
-                    ? 'border-primary/30 bg-primary/5 text-text' 
-                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Facebook size={16} className={channels.facebook ? 'text-primary' : 'text-gray-400'} />
-                  <span className="text-xs font-semibold">Facebook Pages</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                  channels.facebook ? 'bg-primary text-white' : 'border border-gray-300'
-                }`}>
-                  {channels.facebook && <Check size={12} />}
-                </div>
-              </button>
-
-              {/* Threads */}
-              <button 
-                onClick={() => setChannels({ ...channels, threads: !channels.threads })}
-                className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
-                  channels.threads 
-                    ? 'border-primary/30 bg-primary/5 text-text' 
-                    : 'border-gray-200 hover:bg-gray-50 text-text-muted'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <MessageCircle size={16} className={channels.threads ? 'text-primary' : 'text-gray-400'} />
-                  <span className="text-xs font-semibold">Threads Feed</span>
-                </div>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                  channels.threads ? 'bg-primary text-white' : 'border border-gray-300'
-                }`}>
-                  {channels.threads && <Check size={12} />}
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Action CTA Button */}
-          <button className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-4 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 text-sm">
-            <Sparkles size={18} />
-            Generate Optimized Content Variants
-          </button>
-
-        </div>
-
-        {/* Right Column - Sandbox Previews (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-[24px] p-6 shadow-sm flex flex-col gap-6">
-          
-          {/* Header of Sandbox */}
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
-              <h2 className="text-lg font-bold text-text">Variant Sandbox Previews</h2>
-            </div>
-            
-            {/* Variant Switcher Capsule */}
-            <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-              <button 
-                onClick={() => setActiveVariant('A')}
-                className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
-                  activeVariant === 'A' 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-text-muted hover:text-text'
-                }`}
-              >
-                Variant A
-              </button>
-              <button 
-                onClick={() => setActiveVariant('B')}
-                className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${
-                  activeVariant === 'B' 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'text-text-muted hover:text-text'
-                }`}
-              >
-                Variant B
-              </button>
-            </div>
-          </div>
-
-          {/* Platform Toggle Tabs */}
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setActivePlatform('instagram')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                activePlatform === 'instagram' 
-                  ? 'bg-primary/5 border-primary/30 text-primary' 
-                  : 'bg-white border-gray-200 text-text-muted hover:text-text'
-              }`}
-            >
-              <Instagram size={14} />
-              Instagram Feed
-            </button>
-            
-            <button 
-              onClick={() => setActivePlatform('facebook')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                activePlatform === 'facebook' 
-                  ? 'bg-primary/5 border-primary/30 text-primary' 
-                  : 'bg-white border-gray-200 text-text-muted hover:text-text'
-              }`}
-            >
-              <Facebook size={14} />
-              Facebook Desk
-            </button>
-          </div>
-
-          {/* Social Post Feed Wrapper */}
-          <div className="bg-[#F4F5F9]/60 border border-gray-200/50 rounded-2xl p-6 flex justify-center">
-            
-            {/* The Actual Post Card */}
-            <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-              
-              {/* Post Header */}
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Brand Profile Logo Icon */}
-                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-lg shadow-sm">
-                    A
+                  <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
+                    <Globe size={18} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-text">AntBiz Official</h4>
-                    <p className="text-[10px] text-text-muted mt-0.5 font-medium">Sponsored · Paid Audience Reach</p>
+                    <h2 className="text-base font-bold text-text">{t('aiCreator.sourceUrl')}</h2>
+                    <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
                   </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <MoreHorizontal size={18} />
+                
+                {/* Search on Site Button */}
+                <button 
+                  onClick={() => {
+                    setExplorerUrl('https://gocnhinmoi.com.vn/');
+                    setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
+                    setIsExplorerOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none"
+                >
+                  <Search size={14} />
+                  {t('aiCreator.searchGocNhinMoi')}
                 </button>
               </div>
+              
+              <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                <span className="text-gray-400 pl-2">
+                  <Link2 size={16} />
+                </span>
+                <input 
+                  type="text" 
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
+                  placeholder={t('aiCreator.searchPlace')}
+                />
+                <button 
+                  onClick={handleFetch}
+                  disabled={isFetching}
+                  className="bg-[#4A6B5D] hover:bg-[#3A5B4D] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  {isFetching ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      {t('aiCreator.fetching')}
+                    </>
+                  ) : (
+                    t('aiCreator.importButton')
+                  )}
+                </button>
+              </div>
+            </div>
 
-              {/* Post Caption */}
-              <div className="px-4 pb-3 text-xs text-text leading-relaxed">
-                {activeVariant === 'A' ? (
-                  <>
-                    We are thrilled to launch AntBiz Systems: a complete AI Content Orchestration suite. 
-                    Achieve 4x faster production speeds and connect Your Shopify, WordPress, or custom portals directly! 
-                    Check our profile to book a private demonstration. ↗️
-                  </>
+            {/* Manual Edit Form */}
+            <div className="bg-white border border-gray-200/80 rounded-[28px] p-8 flex flex-col gap-6 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+                <Layers size={18} className="text-primary" />
+                <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
+                  <input 
+                    type="text"
+                    value={postData.title}
+                    onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    placeholder={t('aiCreator.labelTitle')}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
+                  <input 
+                    type="text"
+                    value={postData.category}
+                    onChange={(e) => setPostData({ ...postData, category: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
+                  <input 
+                    type="text"
+                    value={postData.author}
+                    onChange={(e) => setPostData({ ...postData, author: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
+                  <input 
+                    type="text"
+                    value={postData.published_at}
+                    onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
+                  <input 
+                    type="text"
+                    value={postData.views}
+                    onChange={(e) => setPostData({ ...postData, views: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
+                  <input 
+                    type="text"
+                    value={postData.imageUrl}
+                    onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
+                  <input 
+                    type="text"
+                    value={postData.tags}
+                    onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
+                  <textarea 
+                    value={postData.description}
+                    onChange={(e) => setPostData({ ...postData, description: e.target.value })}
+                    rows={3}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
+        <motion.div 
+          layout
+          transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+          className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${
+            step === 1 ? 'order-2' : 'order-1'
+          }`}
+        >
+          {/* Article Live Preview Card */}
+          <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
+                <Smartphone size={16} className="text-primary" />
+                {t('aiCreator.articlePreview')}
+              </h3>
+              <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                {language === 'vi' ? 'Trực tiếp' : 'Live'}
+              </span>
+            </div>
+
+            <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
+              <div className="h-44 bg-gray-100 relative">
+                {postData.imageUrl ? (
+                  <img 
+                    src={postData.imageUrl} 
+                    alt={postData.title} 
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <>
-                    Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel 
-                    scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today! 🚀
-                  </>
+                  <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
+                )}
+                {postData.category && (
+                  <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    {postData.category}
+                  </span>
                 )}
               </div>
 
-              {/* Post Image (Beautiful Colorful Wave Gradient matching screenshot) */}
-              <div className="aspect-[1.91/1] w-full bg-gradient-to-tr from-cyan-400 via-purple-500 to-amber-300 relative overflow-hidden flex items-center justify-center">
-                {/* Decorative glowing abstract shape inside image container */}
-                <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-indigo-950 to-black"></div>
-                <div className="absolute w-72 h-72 rounded-full bg-pink-400/30 blur-2xl -top-10 -left-10"></div>
-                <div className="absolute w-72 h-72 rounded-full bg-teal-400/30 blur-2xl -bottom-10 -right-10"></div>
-                <span className="z-10 text-white font-extrabold text-xl tracking-wider drop-shadow-md">ANTBIZ SYSTEMS</span>
-              </div>
+              <div className="p-5 flex flex-col gap-3.5">
+                <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
+                  {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                </h4>
 
-              {/* Post URL Link Preview card */}
-              <div className="p-3.5 bg-gray-50 border-t border-b border-gray-100 flex flex-col gap-0.5">
-                <span className="text-[9px] font-bold text-primary tracking-wider uppercase">ANTBIZ.IO</span>
-                <h5 className="text-xs font-bold text-text leading-tight">AntBiz - Smart Publishing Orchestration Platform</h5>
-                <p className="text-[10px] text-text-muted leading-snug mt-0.5">Instantly deploy, schedule, and refine automated bento workflows using cloud...</p>
-              </div>
-
-              {/* Stats Bar */}
-              <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 text-[10px] text-text-muted font-medium">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[8px] font-bold">👍</span>
-                  <span>2.4k Likes</span>
+                <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
+                  <span className="flex items-center gap-1">
+                    <User size={12} />
+                    {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar size={12} />
+                    {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
+                  </span>
                 </div>
-                <div>
-                  <span>186 Shares</span>
+
+                <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
+                  {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
+                </p>
+
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {postData.tags.split(',').map((tag, idx) => {
+                    const trimmed = tag.trim();
+                    if (!trimmed) return null;
+                    return (
+                      <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
+                        {trimmed}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                  <span className="flex items-center gap-1.5">
+                    <Eye size={14} className="text-amber-500" />
+                    {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
+                  </span>
                 </div>
               </div>
-
-              {/* Interactive Actions Row */}
-              <div className="px-2 py-1 flex items-center justify-between text-xs text-text-muted font-bold">
-                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                  <ThumbsUp size={14} />
-                  <span>Like</span>
-                </button>
-                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                  <MessageSquare size={14} />
-                  <span>Reply</span>
-                </button>
-                <button className="flex-1 py-2 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                  <Share2 size={14} />
-                  <span>Share</span>
-                </button>
-              </div>
-
             </div>
+
+            {/* Next step button */}
+            {step === 1 && (
+              <motion.button 
+                layout
+                onClick={() => setStep(2)}
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+              >
+                {t('aiCreator.proceedToAb')}
+                <ArrowRight size={16} />
+              </motion.button>
+            )}
           </div>
 
-        </div>
+          {/* Toggles Customizer */}
+          {step === 2 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
+            >
+              <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
+                <Layers size={16} className="text-primary" />
+                {t('aiCreator.customDisplay')}
+              </h3>
+
+              <div className="flex flex-col gap-3">
+                {Object.entries({
+                  showTitle: t('aiCreator.showTitle'),
+                  showAuthor: t('aiCreator.showAuthor'),
+                  showDescription: t('aiCreator.showDescription'),
+                  showTags: t('aiCreator.showTags'),
+                  showImage: t('aiCreator.showImage')
+                }).map(([key, label]) => {
+                  const isChecked = toggles[key as keyof typeof toggles];
+                  return (
+                    <button 
+                      key={key}
+                      onClick={() => handleToggle(key as keyof typeof toggles)}
+                      className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
+                    >
+                      <span>{label}</span>
+                      <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${
+                        isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
+                      }`}>
+                        <motion.div 
+                          layout 
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          className="bg-white w-4 h-4 rounded-full shadow-md"
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* STEP 2: Right column A/B testing variants workspace */}
+        {step === 2 && (
+          <motion.div 
+            layout
+            key="step2-variants"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            className="lg:col-span-8 flex flex-col gap-6 order-2"
+          >
+            {/* Platform Selector */}
+            <div className="bg-white border border-gray-200 rounded-[28px] p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+                <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
+              </div>
+
+              <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+                {(['facebook', 'threads'] as const).map((platform) => {
+                  const isActive = selectedPlatform === platform;
+                  return (
+                    <button 
+                      key={platform}
+                      onClick={() => setSelectedPlatform(platform)}
+                      className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
+                        isActive 
+                          ? 'bg-primary text-white shadow-sm' 
+                          : 'text-text-muted hover:text-text'
+                      }`}
+                    >
+                      {platform === 'facebook' && t('aiCreator.fbLabel')}
+                      {platform === 'threads' && t('aiCreator.threadsLabel')}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Displaying Variants in 2-Columns grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <AnimatePresence mode="popLayout">
+                {variants.map((v) => {
+                  const iconBg = selectedPlatform === 'facebook' ? 'bg-blue-600' : 'bg-black';
+                  const platformLabel = selectedPlatform === 'facebook' ? t('aiCreator.fbPreview') : t('aiCreator.threadsFeed');
+
+                  return (
+                    <motion.div 
+                      key={v.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      className="bg-white border border-gray-200/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 relative overflow-hidden"
+                    >
+                      {/* Variant Badge & Platform Header */}
+                      <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
+                            {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
+                            {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
+                          </div>
+                          <span className="text-xs font-extrabold text-text">{platformLabel}</span>
+                        </div>
+                        <span className="text-xs bg-primary/10 text-primary font-black px-3 py-1 rounded-full border border-primary/10 select-none">
+                          {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
+                        </span>
+                      </div>
+
+                      {/* Mockup */}
+                      {selectedPlatform === 'threads' ? (
+                        /* Connected multi-post threads markup */
+                        <div className="flex flex-col gap-0 text-text">
+                          
+                          {/* Thread Post 1/2 */}
+                          <div className="flex gap-3 items-stretch">
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className="relative w-9 h-9">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                  {v.id}
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                  +
+                                </div>
+                              </div>
+                              <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                  <span>24/03/2025</span>
+                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
+                                {toggles.showTitle && (
+                                  <div className="font-extrabold text-xs text-text">
+                                    🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                  </div>
+                                )}
+
+                                {toggles.showDescription && (
+                                  <div className="whitespace-pre-wrap">
+                                    <EditableText 
+                                      variantId={v.id} 
+                                      field="threads" 
+                                      value={v.threads} 
+                                      textarea 
+                                    />
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                                  </div>
+                                )}
+
+                                {(toggles.showAuthor || toggles.showTags) && (
+                                  <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
+                                    {toggles.showAuthor && (
+                                      <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                        <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                        <EditableText variantId={v.id} field="author" value={v.author} />
+                                      </div>
+                                    )}
+                                    {toggles.showTags && (
+                                      <div className="text-primary font-bold">
+                                        <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {toggles.showImage && postData.imageUrl && (
+                                <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 mt-1.5 shadow-sm">
+                                  <img src={postData.imageUrl} alt="Threads content" className="w-full h-full object-cover" />
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-4 text-gray-400 mt-2.5">
+                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Thread Post 2/2 */}
+                          <div className="flex gap-3 items-stretch">
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className="relative w-9 h-9">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                  {v.id}
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                  +
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                  <span>24/03/2025</span>
+                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                </div>
+                              </div>
+
+                              <div className="text-[11px] text-text leading-relaxed mt-0.5">
+                                <span className="text-blue-500 hover:underline cursor-pointer font-medium">
+                                  &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {url.length > 30 ? `${url.substring(0, 30)}...` : url}
+                                </span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
+                              </div>
+
+                              <div className="flex items-center gap-4 text-gray-400 mt-2">
+                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      ) : (
+                        /* Facebook Mockup */
+                        <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                          <div className="p-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {v.id}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-text flex items-center gap-1">
+                                  AntBiz Official
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                </span>
+                                <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                              </div>
+                            </div>
+                            <MoreHorizontal size={14} className="text-gray-400" />
+                          </div>
+
+                          <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
+                            {toggles.showTitle && (
+                              <div className="font-extrabold text-xs text-text mb-0.5">
+                                🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                              </div>
+                            )}
+
+                            {toggles.showDescription && (
+                              <div className="whitespace-pre-wrap">
+                                <EditableText 
+                                  variantId={v.id} 
+                                  field="facebook" 
+                                  value={v.facebook} 
+                                  textarea 
+                                />
+                              </div>
+                            )}
+
+                            {(toggles.showAuthor || toggles.showTags) && (
+                              <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
+                                {toggles.showAuthor && (
+                                  <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                    <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                    <EditableText variantId={v.id} field="author" value={v.author} />
+                                  </div>
+                                )}
+                                {toggles.showTags && (
+                                  <div className="text-primary font-bold">
+                                    <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {toggles.showImage && postData.imageUrl && (
+                            <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
+                              <img src={postData.imageUrl} alt="Post asset" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div className="px-1.5 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between">
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                              <ThumbsUp size={11} /> {language === 'vi' ? 'Thích' : 'Like'}
+                            </button>
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                              <MessageSquare size={11} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
+                            </button>
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                              <Share2 size={11} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
+              {/* Add Variant Card */}
+              <motion.button 
+                onClick={handleAddVariant}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
+              >
+                <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
+                  <Plus size={24} />
+                </div>
+                <div className="text-center">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
+                  <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
+                </div>
+              </motion.button>
+            </div>
+
+            {/* Bottom Actions Row */}
+            <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4">
+              <button 
+                onClick={() => setStep(1)}
+                className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={16} />
+                {t('aiCreator.backToIngestion')}
+              </button>
+
+              <button className="bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-3.5 px-8 rounded-2xl font-extrabold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs">
+                <Send size={15} />
+                {t('aiCreator.publishAndSave')}
+              </button>
+            </div>
+
+          </motion.div>
+        )}
 
       </div>
+
+      {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
+      <AnimatePresence>
+        {isExplorerOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+            >
+              
+              {/* Browser Header Bar */}
+              <div className="bg-gray-100 border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 gap-4">
+                
+                {/* Browser controls */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    onClick={handleIframeBack}
+                    className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={14} />
+                  </button>
+                  <button 
+                    onClick={handleRefresh}
+                    className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                  >
+                    <RefreshCw size={12} />
+                  </button>
+                </div>
+
+                {/* Address Bar showing live URL */}
+                <div className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2 text-xs text-text-muted flex items-center gap-2 shadow-inner">
+                  <Globe size={14} className="text-gray-400" />
+                  <span className="font-semibold text-text truncate">
+                    {explorerUrl}
+                  </span>
+                </div>
+
+                {/* Close Button */}
+                <button 
+                  onClick={() => setIsExplorerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Portal Live Content Area */}
+              <div className="flex-1 bg-white relative flex flex-col">
+                
+                {/* Sticky banner to Import Current Page */}
+                <div className="bg-primary/5 border-b border-primary/20 py-3.5 px-8 flex items-center justify-between shrink-0 gap-4 z-10 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-primary">{language === 'vi' ? 'Trình duyệt trực tiếp hoạt động' : 'Live Explorer Active'}</span>
+                    <span className="text-[11px] text-text-muted truncate max-w-lg mt-0.5">
+                      {language === 'vi' ? 'Đang xem:' : 'Viewing:'} {explorerUrl}
+                    </span>
+                  </div>
+
+                  <button 
+                    onClick={handleImportFromExplorer}
+                    disabled={isScraping}
+                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isScraping ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        {language === 'vi' ? 'Đang nạp dữ liệu...' : 'Scraping...'}
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} />
+                        {language === 'vi' ? 'Sử dụng bài viết này cho Importer' : 'Use this article for Importer'}
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Iframe loading the proxied live website */}
+                <iframe 
+                  key={iframeKey}
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  className="w-full flex-1 border-0"
+                  title="gocnhinmoi Explorer"
+                />
+
+              </div>
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
-

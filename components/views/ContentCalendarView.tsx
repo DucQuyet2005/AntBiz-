@@ -12,6 +12,8 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -28,6 +30,7 @@ const BlogIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 export default function ContentCalendarView() {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'month' | 'quarter'>('week');
 
   return (
@@ -36,8 +39,8 @@ export default function ContentCalendarView() {
       {/* Title Header */}
       <div className="flex justify-between items-end mt-2">
         <div>
-          <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">Content Calendar</h1>
-          <p className="text-text-muted">Visualize and manage your multi-platform campaigns.</p>
+          <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('contentCalendar.title')}</h1>
+          <p className="text-text-muted">{t('contentCalendar.subtitle')}</p>
         </div>
 
         {/* View Selection Toggle */}
@@ -46,19 +49,19 @@ export default function ContentCalendarView() {
             onClick={() => setViewMode('week')}
             className={`px-5 py-2 text-xs font-semibold rounded-xl transition-all ${viewMode === 'week' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'}`}
           >
-            Week
+            {t('contentCalendar.week')}
           </button>
           <button 
             onClick={() => setViewMode('month')}
             className={`px-5 py-2 text-xs font-semibold rounded-xl transition-all ${viewMode === 'month' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'}`}
           >
-            Month
+            {t('contentCalendar.month')}
           </button>
           <button 
             onClick={() => setViewMode('quarter')}
             className={`px-5 py-2 text-xs font-semibold rounded-xl transition-all ${viewMode === 'quarter' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'}`}
           >
-            Quarter
+            {t('contentCalendar.quarter')}
           </button>
         </div>
       </div>
@@ -70,7 +73,7 @@ export default function ContentCalendarView() {
         <div className="col-span-4 bg-[#F8FAFC] border border-gray-200/60 rounded-[32px] p-6 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-text">Active Campaigns</h2>
+              <h2 className="text-xl font-bold text-text">{t('contentCalendar.activeCampaigns')}</h2>
               <button className="w-8 h-8 rounded-full bg-[#DFE5FA] hover:bg-primary/20 flex items-center justify-center text-primary transition-colors">
                 <Plus size={18} />
               </button>
@@ -84,10 +87,10 @@ export default function ContentCalendarView() {
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-text text-sm">Summer Launch &apos;24</h3>
                   <span className="bg-[#EDE9FE] text-[#6366F1] font-semibold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-                    Active
+                    {t('contentCalendar.statusActive')}
                   </span>
                 </div>
-                <p className="text-xs text-text-muted mb-3">12 Posts • Cross-platform</p>
+                <p className="text-xs text-text-muted mb-3">{t('contentCalendar.postsCount', { count: 12 })}</p>
                 
                 {/* Users List Mock */}
                 <div className="flex items-center">
@@ -103,10 +106,10 @@ export default function ContentCalendarView() {
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-text text-sm">Product Update 2.1</h3>
                   <span className="bg-[#E0F2FE] text-[#0369A1] font-semibold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-                    Drafting
+                    {t('contentCalendar.statusDrafting')}
                   </span>
                 </div>
-                <p className="text-xs text-text-muted mb-3">5 Posts • Threads Focused</p>
+                <p className="text-xs text-text-muted mb-3">{t('contentCalendar.threadsFocused', { count: 5 })}</p>
                 
                 {/* Users List Mock */}
                 <div className="flex items-center">
@@ -123,10 +126,10 @@ export default function ContentCalendarView() {
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-text text-sm">User Stories Vol 3</h3>
                   <span className="bg-[#FEF3C7] text-[#D97706] font-semibold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-                    Review
+                    {t('contentCalendar.statusReview')}
                   </span>
                 </div>
-                <p className="text-xs text-text-muted mb-3">8 Posts • Instagram Reels</p>
+                <p className="text-xs text-text-muted mb-3">{t('contentCalendar.instaReels', { count: 8 })}</p>
                 
                 {/* Users List Mock */}
                 <div className="flex items-center">
@@ -142,7 +145,7 @@ export default function ContentCalendarView() {
           {/* Bottom Link */}
           <div className="mt-6 text-center">
             <button className="inline-flex items-center gap-2 text-sm text-[#4F46E5] hover:text-indigo-800 font-bold transition-colors">
-              View All Projects <ArrowRight size={16} />
+              {t('contentCalendar.viewAllProjects')} <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -153,20 +156,20 @@ export default function ContentCalendarView() {
           <div>
             {/* Timeline Header Row */}
             <div className="grid grid-cols-[140px_repeat(7,1fr)] items-center border-b border-gray-100 pb-4 mb-4">
-              <span className="text-xs font-bold text-text-muted uppercase">Platforms</span>
+              <span className="text-xs font-bold text-text-muted uppercase">{t('contentCalendar.platforms')}</span>
               
               {/* Day Labels Container */}
               <div className="col-span-7 grid grid-cols-7 gap-x-3 text-center px-1 text-xs font-semibold text-text-muted select-none">
-                <div>Mon 12</div>
-                <div>Tue 13</div>
-                <div>Wed 14</div>
+                <div>{t('contentCalendar.days.Mon')} 12</div>
+                <div>{t('contentCalendar.days.Tue')} 13</div>
+                <div>{t('contentCalendar.days.Wed')} 14</div>
                 <div className="text-text font-bold relative flex flex-col items-center">
-                  Thu 15
-                  <span className="text-[10px] text-primary mt-[2px] font-medium bg-[#EEF2FF] px-1.5 py-0.2 rounded-full border border-primary/20">Today</span>
+                  {t('contentCalendar.days.Thu')} 15
+                  <span className="text-[10px] text-primary mt-[2px] font-medium bg-[#EEF2FF] px-1.5 py-0.2 rounded-full border border-primary/20">{t('contentCalendar.today')}</span>
                 </div>
-                <div>Fri 16</div>
-                <div className="text-[#E15A5A]">Sat 17</div>
-                <div className="text-[#E15A5A]">Sun 18</div>
+                <div>{t('contentCalendar.days.Fri')} 16</div>
+                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sat')} 17</div>
+                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sun')} 18</div>
               </div>
             </div>
 
@@ -180,7 +183,7 @@ export default function ContentCalendarView() {
                   <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#FFB543] via-[#FF5858] to-[#E1306C] flex items-center justify-center text-white">
                     <Instagram size={18} />
                   </div>
-                  <span className="font-bold text-text text-sm">Instagram</span>
+                  <span className="font-bold text-text text-sm">{t('contentCalendar.instagram')}</span>
                 </div>
                 
                 {/* Timeline cells & pills */}
@@ -216,7 +219,7 @@ export default function ContentCalendarView() {
                   <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white">
                     <ThreadsIcon size={18} />
                   </div>
-                  <span className="font-bold text-text text-sm">Threads</span>
+                  <span className="font-bold text-text text-sm">{t('contentCalendar.threads')}</span>
                 </div>
                 
                 {/* Timeline cells & pills */}
@@ -252,7 +255,7 @@ export default function ContentCalendarView() {
                   <div className="w-9 h-9 rounded-full bg-[#1877F2] flex items-center justify-center text-white">
                     <Facebook size={18} />
                   </div>
-                  <span className="font-bold text-text text-sm">Facebook</span>
+                  <span className="font-bold text-text text-sm">{t('contentCalendar.facebook')}</span>
                 </div>
                 
                 {/* Timeline cells & pills */}
@@ -286,7 +289,7 @@ export default function ContentCalendarView() {
                 {/* Platform Identity */}
                 <div className="flex items-center gap-3">
                   <BlogIcon size={36} />
-                  <span className="font-bold text-text text-sm">Blog</span>
+                  <span className="font-bold text-text text-sm">{t('contentCalendar.blog')}</span>
                 </div>
                 
                 {/* Timeline cells & pills */}
@@ -329,8 +332,8 @@ export default function ContentCalendarView() {
             <Rocket size={24} />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-[#A6783A] uppercase tracking-wider">Upcoming</span>
-            <h3 className="text-3xl font-extrabold text-[#5B3E14] mt-0.5">24 Posts</h3>
+            <span className="text-[11px] font-bold text-[#A6783A] uppercase tracking-wider">{t('contentCalendar.upcoming')}</span>
+            <h3 className="text-3xl font-extrabold text-[#5B3E14] mt-0.5">{t('contentCalendar.postsCountValue', { count: 24 })}</h3>
           </div>
         </div>
 
@@ -340,8 +343,8 @@ export default function ContentCalendarView() {
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-[#1E5C46] uppercase tracking-wider">Published</span>
-            <h3 className="text-3xl font-extrabold text-[#0E3A2A] mt-0.5">12 This Wk</h3>
+            <span className="text-[11px] font-bold text-[#1E5C46] uppercase tracking-wider">{t('contentCalendar.published')}</span>
+            <h3 className="text-3xl font-extrabold text-[#0E3A2A] mt-0.5">{t('contentCalendar.postsCountValue', { count: 12 })} {t('contentCalendar.thisWk')}</h3>
           </div>
         </div>
 
@@ -351,8 +354,8 @@ export default function ContentCalendarView() {
             <AlertTriangle size={24} />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">Needs Approval</span>
-            <h3 className="text-3xl font-extrabold text-[#700D28] mt-0.5">3 Drafts</h3>
+            <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">{t('contentCalendar.needsApproval')}</span>
+            <h3 className="text-3xl font-extrabold text-[#700D28] mt-0.5">{t('contentCalendar.draftsCount', { count: 3 })}</h3>
           </div>
         </div>
 
@@ -361,3 +364,4 @@ export default function ContentCalendarView() {
     </div>
   );
 }
+

@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone()
 
-  const isPublicRoute = url.pathname === '/login' || url.pathname === '/register' || url.pathname.startsWith('/api/auth');
+  const isPublicRoute = url.pathname === '/login' || url.pathname === '/register' || url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/proxy') || url.pathname.startsWith('/api/scrape');
 
   // 1. Nếu người dùng ĐÃ ĐĂNG NHẬP (Có JWT Session hợp lệ) mà cố tình truy cập trang login/register
   if (session && (url.pathname === '/login' || url.pathname === '/register')) {
