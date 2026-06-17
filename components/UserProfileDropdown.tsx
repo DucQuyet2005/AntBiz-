@@ -8,22 +8,57 @@ import { signout } from '@/app/(dashboard)/actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
+// Static particle positions — no Math.random() to avoid hydration mismatch
+const RAIN_POS  = [
+  { left: '8%',  delay: '0s',    dur: '0.82s' },
+  { left: '24%', delay: '0.18s', dur: '0.96s' },
+  { left: '40%', delay: '0.07s', dur: '0.74s' },
+  { left: '56%', delay: '0.33s', dur: '0.88s' },
+  { left: '72%', delay: '0.14s', dur: '1.0s'  },
+  { left: '88%', delay: '0.45s', dur: '0.79s' },
+];
+const SNOW_POS  = [
+  { left: '10%', size: '3px', delay: '0s',   dur: '2.6s' },
+  { left: '30%', size: '4px', delay: '0.5s', dur: '3.0s' },
+  { left: '50%', size: '2px', delay: '0.9s', dur: '2.4s' },
+  { left: '70%', size: '3px', delay: '0.3s', dur: '2.8s' },
+  { left: '88%', size: '2px', delay: '0.7s', dur: '3.2s' },
+];
+const SPARK_POS = [
+  { left: '15%', size: '3px', delay: '0s',    dur: '1.6s' },
+  { left: '35%', size: '4px', delay: '0.2s',  dur: '1.4s' },
+  { left: '55%', size: '3px', delay: '0.5s',  dur: '1.8s' },
+  { left: '75%', size: '2px', delay: '0.35s', dur: '1.5s' },
+];
+const BUBBLE_POS= [
+  { left: '12%', size: '5px', delay: '0s',   dur: '2.3s' },
+  { left: '35%', size: '6px', delay: '0.5s', dur: '2.7s' },
+  { left: '58%', size: '4px', delay: '0.9s', dur: '2.1s' },
+  { left: '80%', size: '5px', delay: '0.3s', dur: '2.5s' },
+];
+const ARCANE_POS= [
+  { left: '15%', top: '30%', size: '5px', delay: '0s',   dur: '3.0s' },
+  { left: '40%', top: '55%', size: '4px', delay: '0.6s', dur: '2.7s' },
+  { left: '65%', top: '25%', size: '5px', delay: '1.1s', dur: '3.2s' },
+  { left: '85%', top: '65%', size: '4px', delay: '0.4s', dur: '2.9s' },
+];
+const GRASS_POS = [
+  { h: '10px', d: '0s'   }, { h: '8px',  d: '0.2s'  }, { h: '11px', d: '0.4s'  },
+  { h: '9px',  d: '0.6s' }, { h: '12px', d: '0.1s'  }, { h: '8px',  d: '0.3s'  },
+  { h: '10px', d: '0.5s' }, { h: '9px',  d: '0.7s'  }, { h: '11px', d: '0.25s' },
+];
+
 // ==========================================
 // HELPERS FOR IN-AVATAR EFFECTS
 // ==========================================
 function EffectOverlay({ effect }: { effect: string }) {
   if (!effect || effect === 'none') return null;
-  
+
   if (effect === 'rain') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="effect-rain-drop" style={{
-            left: `${15 + i * 18}%`,
-            top: `-${Math.random() * 20}%`,
-            animationDelay: `${i * 0.15}s`,
-            animationDuration: `${0.8 + Math.random() * 0.4}s`
-          }} />
+        {RAIN_POS.map((p, i) => (
+          <div key={i} className="av-rain" style={{ left: p.left, animationDelay: p.delay, animationDuration: p.dur }} />
         ))}
       </div>
     );
@@ -32,19 +67,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'snow') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 6 }).map((_, i) => {
-          const size = 1.5 + Math.random() * 2.5;
-          return (
-            <div key={i} className="effect-snowflake" style={{
-              width: size,
-              height: size,
-              left: `${8 + i * 16}%`,
-              top: `-${Math.random() * 10}%`,
-              animationDelay: `${i * 0.3}s`,
-              animationDuration: `${2.2 + Math.random() * 1.5}s`
-            }} />
-          );
-        })}
+        {SNOW_POS.map((p, i) => (
+          <div key={i} className="av-snow" style={{ left: p.left, width: p.size, height: p.size, animationDelay: p.delay, animationDuration: p.dur }} />
+        ))}
       </div>
     );
   }
@@ -52,19 +77,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'sunny') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        <div className="effect-sun-beam" style={{ top: -5, left: -15, width: '130%', height: '30px' }} />
-        {Array.from({ length: 3 }).map((_, i) => {
-          const size = 2 + Math.random() * 2;
-          return (
-            <div key={i} className="effect-sun-dust" style={{
-              width: size,
-              height: size,
-              left: `${25 + i * 25}%`,
-              top: `${30 + Math.random() * 40}%`,
-              animationDelay: `${i * 0.5}s`
-            }} />
-          );
-        })}
+        <div className="av-sunbeam" />
+        <div className="av-sundust" style={{ animationDelay: '0s', animationDuration: '5s' }} />
+        <div className="av-sundust" style={{ animationDelay: '1.5s', left: '65%', top: '35%' }} />
       </div>
     );
   }
@@ -72,19 +87,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'sakura') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 4 }).map((_, i) => {
-          const size = 3 + Math.random() * 3;
-          return (
-            <div key={i} className="effect-sakura" style={{
-              width: size,
-              height: size * 1.4,
-              left: `${15 + i * 20}%`,
-              top: `-${Math.random() * 10}%`,
-              animationDelay: `${i * 0.4}s`,
-              animationDuration: `${3.2 + Math.random() * 1}s`
-            }} />
-          );
-        })}
+        {[{l:'10%',s:'6px',d:'0s',dr:'3.2s'},{l:'32%',s:'5px',d:'0.5s',dr:'3.8s'},{l:'55%',s:'6px',d:'1.0s',dr:'3.4s'},{l:'78%',s:'5px',d:'0.3s',dr:'4.0s'}].map((p,i) => (
+          <div key={i} className="av-sakura" style={{ left: p.l, width: p.s, height: p.s, animationDelay: p.d, animationDuration: p.dr }} />
+        ))}
       </div>
     );
   }
@@ -92,18 +97,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'meteor') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 2 }).map((_, i) => {
-          const width = 15 + Math.random() * 20;
-          return (
-            <div key={i} className="effect-meteor" style={{
-              width: width,
-              top: `${25 + i * 35}%`,
-              right: `-${Math.random() * 15}px`,
-              animationDelay: `${i * 0.8}s`,
-              animationDuration: `${1.8 + Math.random() * 1}s`
-            }} />
-          );
-        })}
+        {[{t:'15%',w:'26px',d:'0s',dr:'2.0s'},{t:'45%',w:'20px',d:'0.9s',dr:'1.7s'}].map((p,i) => (
+          <div key={i} className="av-meteor" style={{ top: p.t, width: p.w, right: '5%', animationDelay: p.d, animationDuration: p.dr }} />
+        ))}
       </div>
     );
   }
@@ -111,19 +107,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'camp') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 5 }).map((_, i) => {
-          const size = 1.5 + Math.random() * 2;
-          return (
-            <div key={i} className="effect-spark" style={{
-              width: size,
-              height: size,
-              left: `${20 + i * 15}%`,
-              bottom: `0px`,
-              animationDelay: `${i * 0.25}s`,
-              animationDuration: `${1.5 + Math.random() * 0.8}s`
-            }} />
-          );
-        })}
+        {SPARK_POS.map((p, i) => (
+          <div key={i} className="av-spark" style={{ left: p.left, width: p.size, height: p.size, animationDelay: p.delay, animationDuration: p.dur }} />
+        ))}
       </div>
     );
   }
@@ -131,19 +117,9 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'bubble') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 5 }).map((_, i) => {
-          const size = 3 + Math.random() * 4;
-          return (
-            <div key={i} className="effect-bubble" style={{
-              width: size,
-              height: size,
-              left: `${15 + i * 18}%`,
-              bottom: `-${Math.random() * 10}%`,
-              animationDelay: `${i * 0.3}s`,
-              animationDuration: `${2.2 + Math.random() * 0.8}s`
-            }} />
-          );
-        })}
+        {BUBBLE_POS.map((p, i) => (
+          <div key={i} className="av-bubble" style={{ left: p.left, width: p.size, height: p.size, animationDelay: p.delay, animationDuration: p.dur }} />
+        ))}
       </div>
     );
   }
@@ -151,42 +127,23 @@ function EffectOverlay({ effect }: { effect: string }) {
   if (effect === 'arcane') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 4 }).map((_, i) => {
-          const size = 2.5 + Math.random() * 3;
-          return (
-            <div key={i} className="effect-arcane" style={{
-              width: size,
-              height: size,
-              left: `${20 + i * 20}%`,
-              top: `${25 + Math.random() * 50}%`,
-              animationDelay: `${i * 0.4}s`
-            }} />
-          );
-        })}
+        {ARCANE_POS.map((p, i) => (
+          <div key={i} className="av-arcane" style={{ left: p.left, top: p.top, width: p.size, height: p.size, animationDelay: p.delay, animationDuration: p.dur }} />
+        ))}
       </div>
     );
   }
 
   if (effect === 'lightning') {
-    return <div className="effect-lightning rounded-full" style={{ zIndex: 2 }} />;
+    return <div className="av-lightning rounded-full" style={{ zIndex: 2 }} />;
   }
 
   if (effect === 'autumn') {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full" style={{ zIndex: 2 }}>
-        {Array.from({ length: 3 }).map((_, i) => {
-          const size = 4 + Math.random() * 4;
-          return (
-            <div key={i} className="effect-autumn-leaf" style={{
-              width: size,
-              height: size * 0.8,
-              left: `${15 + i * 25}%`,
-              top: `-${Math.random() * 10}%`,
-              animationDelay: `${i * 0.6}s`,
-              animationDuration: `${3.5 + Math.random() * 1}s`
-            }} />
-          );
-        })}
+        {[{l:'12%',s:'6px',d:'0s',dr:'3.8s'},{l:'38%',s:'5px',d:'0.7s',dr:'4.2s'},{l:'65%',s:'6px',d:'1.3s',dr:'3.5s'}].map((p,i) => (
+          <div key={i} className="av-autumn" style={{ left: p.l, width: p.s, height: p.s, animationDelay: p.d, animationDuration: p.dr }} />
+        ))}
       </div>
     );
   }
@@ -200,52 +157,21 @@ function EffectOverlay({ effect }: { effect: string }) {
 function BaseOverlay({ base }: { base: string }) {
   if (!base || base === 'none') return null;
 
-  return (
-    <div className="base-container">
-      {base === 'grass' && (
-        <div className="w-full flex justify-center gap-[1px]">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="base-grass-blade" style={{
-              height: `${7 + Math.sin(i) * 2.5}px`,
-              animationDelay: `${i * 0.12}s`
-            }} />
-          ))}
-        </div>
-      )}
-
-      {base === 'beach' && (
-        <div className="base-beach-sand">
-          <div className="base-beach-wave" />
-        </div>
-      )}
-
-      {base === 'ocean' && <div className="base-ocean-waves" />}
-
-      {base === 'magma' && <div className="base-magma" />}
-
-      {base === 'rose' && (
-        <div className="base-rose-bed">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="base-rose-flower" />
-          ))}
-        </div>
-      )}
-
-      {base === 'cloud' && <div className="base-clouds" />}
-
-      {base === 'stone' && (
-        <div className="base-stone">
-          <div className="base-stone-moss" />
-        </div>
-      )}
-
-      {base === 'glacier' && <div className="base-glacier" />}
-
-      {base === 'smoke' && <div className="base-neon-smoke" />}
-
-      {base === 'gold' && <div className="base-gold-pedestal" />}
+  if (base === 'grass') return (
+    <div className="av-base-grass-wrap">
+      {GRASS_POS.map((g, i) => <div key={i} className="av-base-grass-blade" style={{ height: g.h, animationDelay: g.d, animationDuration: '2.2s' }} />)}
     </div>
   );
+  if (base === 'beach') return <div className="av-base-beach"><div className="av-base-beach-wave" /></div>;
+  if (base === 'ocean')   return <div className="av-base-ocean" />;
+  if (base === 'magma')   return <div className="av-base-magma" />;
+  if (base === 'rose')    return <div className="av-base-rose-wrap">{Array.from({length:5}).map((_,i)=><div key={i} className="av-base-rose" />)}</div>;
+  if (base === 'cloud')   return <div className="av-base-cloud" />;
+  if (base === 'stone')   return <div className="av-base-stone"><div className="av-base-stone-moss" /></div>;
+  if (base === 'glacier') return <div className="av-base-glacier" />;
+  if (base === 'smoke')   return <div className="av-base-smoke" />;
+  if (base === 'gold')    return <div className="av-base-gold" />;
+  return null;
 }
 
 const FRAMES = [
