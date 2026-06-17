@@ -327,7 +327,7 @@ CREATE POLICY "audit_logs: admin only"
 -- PROMPTS: mọi marketer đọc, tạo/sửa/xóa
 CREATE POLICY "prompts: authenticated read"
   ON public.prompts FOR SELECT
-  USING (auth.role() = 'authenticated' AND is_deleted = FALSE);
+  USING ((created_by = auth.uid() OR public.is_admin()) AND is_deleted = FALSE);
 
 CREATE POLICY "prompts: authenticated write"
   ON public.prompts FOR INSERT

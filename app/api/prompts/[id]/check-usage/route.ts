@@ -18,7 +18,7 @@ type RouteParams = { params: Promise<{ id: string }> };
  *   401 nếu chưa đăng nhập
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
   const { id } = await params;
@@ -26,7 +26,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   // Kiểm tra prompt tồn tại
   const { data: prompt, error: promptError } = await supabase
     .from('prompts')
-    .select('id')
+    .select('id, created_by')
     .eq('id', id)
     .eq('is_deleted', false)
     .maybeSingle();
@@ -37,6 +37,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
   if (!prompt) {
     return NextResponse.json({ error: 'Không tìm thấy prompt' }, { status: 404 });
+  }
+
+  if (prompt.created_by !== user.id && role !== 'admin') {
+    return NextResponse.json({ error: 'Bạn không có quyền kiểm tra prompt này' }, { status: 403 });
   }
 
   // “Đang được dùng trong post đã lên lịch”:

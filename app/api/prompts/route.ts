@@ -6,7 +6,7 @@ import { createPromptSchema, promptListQuerySchema } from '@/lib/validations/pro
 // GET /api/prompts?platform=facebook&tag=ban-hang&search=tet&page=1&pageSize=20
 // Theo SPEC.md: tìm theo tên, lọc theo Nền tảng và Thẻ phân loại
 export async function GET(request: NextRequest) {
-  const { supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
   const searchParams = request.nextUrl.searchParams;
@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
     .select('*', { count: 'exact' })
     .eq('is_deleted', false)
     .order('created_at', { ascending: false });
+
+  if (role !== 'admin' && user) {
+    query = query.eq('created_by', user.id);
+  }
 
   if (platform) query = query.eq('platform', platform);
   if (tags) {
