@@ -10,8 +10,29 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createClient()
     // Đổi code lấy JWT Session và tự động lưu vào Cookies
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data?.user) {
+      // Tự động kiểm tra và tạo/đồng bộ profile nếu bị thiếu
+      const { data: profile } = await supabase
+        .from('users')
+        .select('status')
+        .eq('id', data.user.id)
+        .maybeSingle()
+
+      if (!profile) {
+        await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: data.user.email || '',
+            role: 'marketer_content',
+            status: 'active'
+          })
+      } else if (profile.status === 'locked') {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(`${origin}/login?error=locked`)
+      }
+
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
