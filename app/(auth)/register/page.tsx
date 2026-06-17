@@ -2,28 +2,39 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { User, Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
+import { User, Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { signup } from "../actions";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, RegisterInput } from "@/lib/validations/auth";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+  });
+
+  const onSubmit = async (data: RegisterInput) => {
+    setServerError(null);
     setSuccess(null);
-    setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.append("fullName", data.fullName);
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+
     const result = await signup(formData);
 
-    setLoading(false);
     if (result?.error) {
-      setError(result.error);
+      setServerError(result.error);
     } else if (result?.success) {
       setSuccess(result.success);
     }
@@ -60,19 +71,21 @@ export default function RegisterPage() {
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Join the Future</h1>
         <p className="text-gray-500 text-sm mb-8">Start your AI publishing journey.</p>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium">
-            {error}
+        {serverError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{serverError}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-xl text-sm font-medium">
-            {success}
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-xl text-sm font-medium flex items-start gap-2">
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-700">Full Name</label>
             <div className="relative">
@@ -80,13 +93,13 @@ export default function RegisterPage() {
                 <User className="h-4 w-4 text-gray-400" />
               </div>
               <input
+                {...register("fullName")}
                 type="text"
-                name="fullName"
-                required
                 placeholder="Alex Carter"
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
               />
             </div>
+            {errors.fullName && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.fullName.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -96,13 +109,13 @@ export default function RegisterPage() {
                 <Mail className="h-4 w-4 text-gray-400" />
               </div>
               <input
+                {...register("email")}
                 type="email"
-                name="email"
-                required
                 placeholder="hello@example.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
               />
             </div>
+            {errors.email && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -112,10 +125,8 @@ export default function RegisterPage() {
                 <Lock className="h-4 w-4 text-gray-400" />
               </div>
               <input
+                {...register("password")}
                 type={showPassword ? "text" : "password"}
-                name="password"
-                required
-                minLength={8}
                 placeholder="••••••••"
                 className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
               />
@@ -127,15 +138,19 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-gray-500 font-medium pt-1 ml-1">Must be at least 8 characters.</p>
+            {errors.password ? (
+               <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.password.message}</p>
+            ) : (
+               <p className="text-[11px] text-gray-500 font-medium pt-1 ml-1">Must be at least 8 characters with 1 uppercase, 1 lowercase and 1 number.</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-full flex items-center justify-center gap-2 transition-colors mt-4 disabled:opacity-50"
+            disabled={isSubmitting}
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-full flex items-center justify-center gap-2 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Creating Account..." : "Create Account"}
+            {isSubmitting ? "Creating Account..." : "Create Account"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>

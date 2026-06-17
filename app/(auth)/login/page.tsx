@@ -2,34 +2,96 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { login, signInWithGoogle } from "../actions";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, LoginInput } from "@/lib/validations/auth";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [lockoutTime, setLockoutTime] = useState<number>(0);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    const formData = new FormData(e.currentTarget);
+  const isLockedOut = lockoutTime > 0;
+
+  useEffect(() => {
+    const storedLockout = localStorage.getItem("login_lockout_until");
+    if (storedLockout) {
+      const remaining = Math.floor((parseInt(storedLockout) - Date.now()) / 1000);
+      if (remaining > 0) {
+        setLockoutTime(remaining);
+      } else {
+        localStorage.removeItem("login_lockout_until");
+        localStorage.removeItem("login_attempts_count");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (lockoutTime > 0) {
+      timer = setInterval(() => {
+        setLockoutTime((prev) => {
+          if (prev <= 1) {
+            localStorage.removeItem("login_lockout_until");
+            localStorage.removeItem("login_attempts_count");
+            setServerError(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [lockoutTime]);
+
+  const onSubmit = async (data: LoginInput) => {
+    if (isLockedOut) return;
+    setServerError(null);
+
+    const formData = new FormData();
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+
     const result = await login(formData);
 
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      setServerError(result.error);
+      
+      let attempts = parseInt(localStorage.getItem("login_attempts_count") || "0", 10);
+      attempts += 1;
+      
+      // @ts-ignore
+      if (result.isLockedOut || attempts >= 5) {
+        const lockoutUntil = Date.now() + 180 * 1000;
+        localStorage.setItem("login_lockout_until", lockoutUntil.toString());
+        localStorage.setItem("login_attempts_count", "0");
+        setLockoutTime(180);
+      } else {
+        localStorage.setItem("login_attempts_count", attempts.toString());
+      }
+    } else {
+      localStorage.removeItem("login_lockout_until");
+      localStorage.removeItem("login_attempts_count");
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setError(null);
+    if (isLockedOut) return;
+    setServerError(null);
     const result = await signInWithGoogle();
     if (result?.error) {
-      setError(result.error);
+      setServerError(result.error);
     }
   };
 
@@ -68,13 +130,14 @@ export default function LoginPage() {
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Welcome Back</h1>
         <p className="text-gray-500 text-sm mb-8">Log in to your AI Creative Studio</p>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium">
-            {error}
+        {serverError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{serverError}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-700">Email Address</label>
             <div className="relative">
@@ -82,13 +145,14 @@ export default function LoginPage() {
                 <Mail className="h-4 w-4 text-gray-400" />
               </div>
               <input
+                {...register("email")}
                 type="email"
-                name="email"
-                required
                 placeholder="creator@example.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
+                disabled={isLockedOut}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
+            {errors.email && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -103,29 +167,31 @@ export default function LoginPage() {
                 <Lock className="h-4 w-4 text-gray-400" />
               </div>
               <input
+                {...register("password")}
                 type={showPassword ? "text" : "password"}
-                name="password"
-                required
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
+                disabled={isLockedOut}
+                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLockedOut}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.password && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.password.message}</p>}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50"
+            disabled={isSubmitting || isLockedOut}
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Signing In..." : "Sign In"}
-            <ArrowRight className="h-4 w-4" />
+            {isLockedOut ? `Vui lòng thử lại sau ${lockoutTime}s` : isSubmitting ? "Signing In..." : "Sign In"}
+            {!isLockedOut && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
@@ -139,7 +205,8 @@ export default function LoginPage() {
           <button 
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full bg-[#F3F4F6] hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+            disabled={isLockedOut}
+            className="w-full bg-[#F3F4F6] hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4">
               <path
