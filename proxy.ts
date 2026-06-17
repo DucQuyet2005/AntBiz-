@@ -39,8 +39,8 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Kiểm tra Session (Chứa JWT Token giải mã) từ Cookie
-  const { data: { session } } = await supabase.auth.getSession()
+  // Kiểm tra Session (Xác thực JWT Token từ Cookie qua Supabase server)
+  const { data: { user } } = await supabase.auth.getUser()
 
   const url = request.nextUrl.clone()
 
@@ -50,11 +50,11 @@ export async function proxy(request: NextRequest) {
   let profileExists = false;
   let isLocked = false;
 
-  if (session) {
+  if (user) {
     const { data: userProfile } = await supabase
       .from('users')
       .select('status')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .maybeSingle();
 
     if (userProfile) {
@@ -66,7 +66,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Nếu người dùng có session nhưng không có profile trong public.users (tài khoản cũ trước khi chạy schema) hoặc bị khóa
-  if (session && (!profileExists || isLocked)) {
+  if (user && (!profileExists || isLocked)) {
     // Đăng xuất session hiện tại khỏi Supabase
     await supabase.auth.signOut()
 
@@ -86,13 +86,13 @@ export async function proxy(request: NextRequest) {
   }
 
   // 1. Nếu người dùng ĐÃ ĐĂNG NHẬP và hợp lệ (có profile và không khóa) mà cố tình truy cập trang login/register
-  if (session && profileExists && !isLocked && (url.pathname === '/login' || url.pathname === '/register')) {
+  if (user && profileExists && !isLocked && (url.pathname === '/login' || url.pathname === '/register')) {
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
   // 2. Nếu người dùng CHƯA ĐĂNG NHẬP hoặc không có profile hợp lệ mà cố tình truy cập các trang được bảo vệ (tất cả trừ public)
-  if (!session && !isPublicRoute) {
+  if (!user && !isPublicRoute) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
