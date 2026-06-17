@@ -91,7 +91,7 @@ export async function signup(formData: FormData) {
   // Nếu cấu hình Supabase đã tắt "Confirm Email", nó sẽ trả về session đăng nhập ngay lập tức.
   // Chúng ta sẽ tự động chuyển hướng người dùng vào thẳng Dashboard.
   if (data?.session) {
-    redirect('/dashboard')
+    redirect('/')
   }
 
   return { success: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' }
