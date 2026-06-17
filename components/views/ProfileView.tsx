@@ -259,6 +259,7 @@ function BaseDecor({ base }: { base: string }) {
     case 'grass':
       return (
         <div className="av-base-grass-wrap">
+          <div className="av-base-grass-field" />
           {GRASS_POSITIONS.map((g, i) => (
             <div key={i} className="av-base-grass-blade" style={{ left: g.left, height: g.height, animationDelay: g.delay }} />
           ))}
@@ -291,11 +292,13 @@ function BaseDecor({ base }: { base: string }) {
     case 'rose':
       return (
         <div className="av-base-rose-wrap">
-          <div className="av-base-rose-leaves" />
+          <div className="av-base-rose-foliage" />
           {ROSE_POSITIONS.map((r, i) => (
             <div key={i} className="av-base-rose-flower" style={{ left: r.left, bottom: r.bottom, transform: `scale(${r.scale})`, animationDelay: r.delay }} />
           ))}
-          <div className="av-base-rose-sparks" />
+          {GOLD_SPARKLES.map((s, i) => (
+            <div key={i} className="av-base-rose-spark" style={{ left: s.left, bottom: s.bottom, animationDelay: s.delay }} />
+          ))}
         </div>
       );
     case 'cloud':
@@ -346,6 +349,45 @@ function BaseDecor({ base }: { base: string }) {
   }
 }
 
+function FrameOrbitParticles({ frame, size }: { frame: string; size: number }) {
+  if (!frame || frame === 'none') return null;
+  if (size < 60) return null;
+
+  if (frame === 'rainbow') {
+    return (
+      <div className="absolute inset-[-8px] pointer-events-none" style={{ zIndex: 5 }}>
+        <div className="absolute inset-0 border border-dashed border-pink-400 rounded-full animate-[spin_8s_linear_infinite]" />
+        <div className="absolute inset-[-4px] border border-dashed border-cyan-400 rounded-full animate-[spin_12s_linear_infinite_reverse]" />
+        <span className="absolute text-[10px] animate-[bounce_1.5s_infinite]" style={{ top: '10%', left: '80%' }}>💎</span>
+        <span className="absolute text-[10px] animate-[bounce_2s_infinite]" style={{ bottom: '15%', left: '5%' }}>✨</span>
+      </div>
+    );
+  }
+
+  if (frame === 'gold') {
+    return (
+      <div className="absolute inset-[-10px] pointer-events-none" style={{ zIndex: 5 }}>
+        <span className="absolute text-sm animate-pulse text-amber-300" style={{ top: '-4px', left: '40%', animationDuration: '1.2s' }}>✦</span>
+        <span className="absolute text-[10px] animate-pulse text-yellow-200" style={{ bottom: '20%', right: '-2px', animationDuration: '1.8s' }}>✧</span>
+        <span className="absolute text-xs animate-bounce text-amber-400" style={{ bottom: '-4px', left: '20%' }}>⭐</span>
+        <span className="absolute text-[11px] animate-pulse text-yellow-300" style={{ top: '30%', left: '-6px' }}>✦</span>
+      </div>
+    );
+  }
+
+  if (frame === 'cyber') {
+    return (
+      <div className="absolute inset-[-6px] pointer-events-none" style={{ zIndex: 5 }}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_#00f0ff] animate-ping" />
+        <div className="absolute bottom-0 left-1/4 w-1.5 h-1.5 bg-pink-500 rounded-full shadow-[0_0_8px_#ff007f] animate-ping" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute top-1/3 right-0 w-1.5 h-1.5 bg-purple-500 rounded-full shadow-[0_0_8px_#a855f7] animate-ping" style={{ animationDelay: '1s' }} />
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function AvatarPreview({
   avatarUrl, initials, frame, effect = 'none', base = 'none', size = 160,
 }: {
@@ -385,6 +427,8 @@ function AvatarPreview({
         {/* Base / pedestal INSIDE avatar (at the bottom, clipped) */}
         <BaseDecor base={base} />
       </div>
+      {/* Dynamic orbits/particles */}
+      <FrameOrbitParticles frame={frame} size={size} />
       {/* Sparkle badge on ring */}
       {ringClass && size > 80 && (
         <>

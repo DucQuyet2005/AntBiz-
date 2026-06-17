@@ -60,7 +60,7 @@ body {
 /* ══════════════════════════════════
    IN-AVATAR WEATHER EFFECT KEYFRAMES
    (particles animate via `top` percentage
-    relative to parent container height)
+   relative to parent container height)
    ══════════════════════════════════ */
 
 /* 1. Rain — diagonal fall */
@@ -234,7 +234,7 @@ body {
    avatar circular container, clipped)
    ══════════════════════════════════ */
 
-/* 1. Grass Base (Dense "lún phún" tufts) */
+/* 1. Grass Base (Dense "lún phún" tufts - Tall & Sharp) */
 @keyframes anim-grass-sway {
   0%, 100% { transform-origin: bottom center; transform: rotate(-5deg) scaleY(1); }
   50%       { transform-origin: bottom center; transform: rotate(7deg) scaleY(1.18); }
@@ -244,11 +244,17 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 28%;
-  background: linear-gradient(to top, #0f2914 0%, #15803d 40%, rgba(21,128,61,0) 100%);
-  display: flex;
+  height: 35%;
   z-index: 3;
   pointer-events: none;
+}
+.av-base-grass-field {
+  position: absolute;
+  inset: 25% 0 0 0;
+  background: linear-gradient(to top, #0f2914, #15803d);
+  clip-path: ellipse(62% 100% at 50% 100%);
+  border-top: 2px solid #22c55e;
+  box-shadow: 0 0 6px rgba(34,197,94,0.3);
 }
 .av-base-grass-blade {
   position: absolute;
@@ -270,7 +276,7 @@ body {
   animation-duration: 2.4s;
 }
 
-/* 2. Beach Base (Lively waves & sand) */
+/* 2. Beach Base (Lively waves & sand - Tall & Sharp) */
 @keyframes anim-beach-surge-1 {
   0%, 100% { transform: scaleY(0.7) translateY(2px); opacity: 0.5; }
   50%       { transform: scaleY(1.05) translateY(-1px); opacity: 0.85; }
@@ -284,8 +290,8 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 26%;
-  background: linear-gradient(to top, #78350f 0%, #ca8a04 45%, #fef08a 85%, rgba(254,240,138,0) 100%);
+  height: 33%;
+  background: linear-gradient(to top, #78350f 0%, #ca8a04 40%, #fef08a 85%, rgba(254,240,138,0) 100%);
   z-index: 3;
   pointer-events: none;
 }
@@ -295,11 +301,11 @@ body {
   left: -10%;
   right: -10%;
   height: 50%;
-  background: linear-gradient(to top, rgba(2,132,199,0.6), rgba(56,189,248,0.25));
-  border-top: 1.5px solid rgba(255,255,255,0.9);
+  background: linear-gradient(to top, rgba(2,132,199,0.7), rgba(56,189,248,0.35));
+  border-top: 1.5px solid rgba(255,255,255,0.95);
   border-radius: 50% 50% 0 0;
   animation: anim-beach-surge-1 3.2s ease-in-out infinite;
-  filter: blur(0.5px) drop-shadow(0 0 3px rgba(56,189,248,0.5));
+  filter: drop-shadow(0 0 3px rgba(56,189,248,0.5));
 }
 .av-base-beach-wave-2 {
   position: absolute;
@@ -307,14 +313,14 @@ body {
   left: -5%;
   right: -5%;
   height: 40%;
-  background: linear-gradient(to top, rgba(14,165,233,0.4), rgba(255,255,255,0.3));
+  background: linear-gradient(to top, rgba(14,165,233,0.5), rgba(255,255,255,0.4));
   border-top: 2px solid rgba(255,255,255,0.95);
   border-radius: 55% 45% 0 0;
   animation: anim-beach-surge-2 2.6s ease-in-out infinite;
-  filter: blur(0.5px) drop-shadow(0 0 2px rgba(255,255,255,0.6));
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.6));
 }
 
-/* 3. Ocean Waves Base (Overlapping blue waves) */
+/* 3. Ocean Waves Base (Overlapping blue waves - Tall) */
 @keyframes anim-ocean-1 {
   0%, 100% { transform: translateY(1px) scaleY(0.95) rotate(-1deg); }
   50%       { transform: translateY(-3px) scaleY(1.05) rotate(1deg); }
@@ -332,7 +338,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30%;
+  height: 36%;
   z-index: 3;
   pointer-events: none;
 }
@@ -363,7 +369,7 @@ body {
   filter: drop-shadow(0 0 3px rgba(34,211,238,0.7));
 }
 
-/* 4. Magma Base (Minecraft/molten flowing lava) */
+/* 4. Magma Base (Minecraft/molten flowing lava - Tall & Sharp) */
 @keyframes anim-magma-flow {
   0%, 100% { background-position: 0% 50%; }
   50%       { background-position: 100% 50%; }
@@ -372,14 +378,14 @@ body {
   0%   { transform: translateY(0) scale(0.5); opacity: 0; }
   15%  { opacity: 0.9; transform: translateY(-4px) scale(1); }
   85%  { opacity: 0.7; }
-  100% { transform: translateY(-15px) scale(0.2); opacity: 0; }
+  100% { transform: translateY(-18px) scale(0.2); opacity: 0; }
 }
 .av-base-magma {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 28%;
+  height: 35%;
   background: linear-gradient(to top, #1e0505, #450a0a);
   z-index: 3;
   pointer-events: none;
@@ -392,7 +398,7 @@ body {
   background-size: 300% 100%;
   animation: anim-magma-flow 5s linear infinite;
   clip-path: ellipse(62% 100% at 50% 100%);
-  border-top: 2.5px solid #fde047;
+  border-top: 3px solid #fde047;
   box-shadow: inset 0 2px 8px rgba(253,224,71,0.6), 0 0 10px rgba(239,68,68,0.75);
 }
 .av-base-magma-bubble {
@@ -405,7 +411,7 @@ body {
   animation: anim-magma-bubble linear infinite;
 }
 
-/* 5. Rose Bed Base (Vibrant rose bed with leaves & sparks) */
+/* 5. Rose Bed Base (Vibrant rose bed with leaves & sparks - Tall & Sharp) */
 @keyframes anim-rose-bloom {
   0%, 100% { transform: translateY(0) scale(1) rotate(-3deg); }
   50%       { transform: translateY(-2px) scale(1.08) rotate(3deg); }
@@ -419,30 +425,31 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 28%;
-  background: linear-gradient(to top, #4c0519 0%, #881337 40%, rgba(136,19,55,0) 100%);
+  height: 35%;
   z-index: 3;
   pointer-events: none;
 }
-.av-base-rose-leaves {
+.av-base-rose-foliage {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 80% at 50% 100%, #14532d 0%, #166534 60%, transparent 100%);
-  opacity: 0.85;
+  inset: 20% 0 0 0;
+  background: linear-gradient(to top, #4c0519, #881337);
+  clip-path: ellipse(62% 100% at 50% 100%);
+  border-top: 2px solid #f43f5e;
+  box-shadow: 0 0 6px rgba(244,63,94,0.3);
 }
 .av-base-rose-flower {
   position: absolute;
-  width: 9px;
-  height: 9px;
-  background: radial-gradient(circle, #ffe4e6 0%, #f43f5e 40%, #be123c 100%);
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, #ffe4e6 0%, #f43f5e 50%, #be123c 100%);
   border-radius: 50%;
-  box-shadow: 0 1.5px 3px rgba(0,0,0,0.4), 0 0 5px rgba(244,63,94,0.6);
+  box-shadow: 0 1.5px 3px rgba(0,0,0,0.35);
   animation: anim-rose-bloom 2.4s ease-in-out infinite;
   transform-origin: bottom center;
 }
 .av-base-rose-flower::before {
   content: '✿';
-  font-size: 7px;
+  font-size: 8px;
   color: #fff;
   display: flex;
   align-items: center;
@@ -454,14 +461,18 @@ body {
   background: radial-gradient(circle, #fecdd3 0%, #ec4899 45%, #9d174d 100%);
   animation-duration: 2s;
 }
-.av-base-rose-sparks {
+.av-base-rose-spark {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(251,113,133,0.3) 0%, transparent 80%);
-  animation: anim-rose-sparkle 2s ease-in-out infinite;
+  color: #fda4af;
+  text-shadow: 0 0 3px #f43f5e;
+  font-size: 8px;
+  animation: anim-gold-sparkle 2.2s ease-in-out infinite;
+}
+.av-base-rose-spark::before {
+  content: '✦';
 }
 
-/* 6. Cloud Base (Dreamy volumetric cloud puffs) */
+/* 6. Cloud Base (Dreamy volumetric cloud puffs - Tall & Sharp) */
 @keyframes anim-cloud-puff-1 {
   0%, 100% { transform: translate(-3px, 1px) scale(1); }
   50%       { transform: translate(3px, -2px) scale(1.05); }
@@ -479,7 +490,7 @@ body {
   bottom: -4px;
   left: 0;
   right: 0;
-  height: 32%;
+  height: 38%;
   z-index: 3;
   pointer-events: none;
 }
@@ -487,8 +498,8 @@ body {
   position: absolute;
   background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f0f9ff 60%, #e0f2fe 100%);
   border-radius: 50%;
-  box-shadow: 0 -2px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(224,242,254,0.4);
-  filter: blur(0.5px);
+  box-shadow: 0 -1.5px 4px rgba(0,0,0,0.06), 0 2px 4px rgba(224,242,254,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.85);
 }
 .av-base-cloud-puff-1 {
   bottom: -4px;
@@ -514,13 +525,13 @@ body {
   animation-delay: 1s;
 }
 
-/* 7. Stone Base (Rugged mossy steps) */
+/* 7. Stone Base (Rugged mossy steps - Tall & Sharp) */
 .av-base-stone-wrap {
   position: absolute;
   bottom: 0;
   left: 8%;
   right: 8%;
-  height: 25%;
+  height: 33%;
   z-index: 3;
   pointer-events: none;
 }
@@ -528,7 +539,7 @@ body {
   position: absolute;
   background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #1f2937 100%);
   box-shadow: inset 1px 1.5px 3px rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.4);
-  border-top: 1px solid #9ca3af;
+  border-top: 1.5px solid #9ca3af;
 }
 .av-base-stone-rock-1 {
   bottom: 0;
@@ -556,7 +567,7 @@ body {
 }
 .av-base-stone-moss-growth {
   position: absolute;
-  top: 12%;
+  top: 10%;
   left: 15%;
   right: 15%;
   height: 25%;
@@ -567,7 +578,7 @@ body {
   opacity: 0.85;
 }
 
-/* 8. Glacier Base (Rich, glowing ice shards) */
+/* 8. Glacier Base (Rich, glowing ice shards - Tall & Sharp) */
 @keyframes anim-glacier-glow {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 2px rgba(56,189,248,0.5)); }
   50%       { filter: brightness(1.25) drop-shadow(0 0 7px rgba(165,243,252,0.9)); }
@@ -577,7 +588,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 32%;
+  height: 38%;
   z-index: 3;
   pointer-events: none;
   animation: anim-glacier-glow 3.5s ease-in-out infinite;
@@ -611,21 +622,21 @@ body {
   background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 30%, #38bdf8 80%, #0284c7 100%);
 }
 
-/* 9. Cyberpunk Smoke (Vibrant swirling neon smoke) */
+/* 9. Cyberpunk Smoke (Vibrant swirling neon smoke - Tall & Sharp-cut) */
 @keyframes anim-smoke-puff-1 {
-  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.6; }
-  50%       { transform: scale(1.1) translate(4px, -2px); opacity: 0.85; }
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.65; }
+  50%       { transform: scale(1.1) translate(4px, -2px); opacity: 0.9; }
 }
 @keyframes anim-smoke-puff-2 {
-  0%, 100% { transform: scale(1.05) translate(2px, -1px); opacity: 0.5; }
-  50%       { transform: scale(0.95) translate(-3px, 1px); opacity: 0.75; }
+  0%, 100% { transform: scale(1.05) translate(2px, -1px); opacity: 0.55; }
+  50%       { transform: scale(0.95) translate(-3px, 1px); opacity: 0.8; }
 }
 .av-base-smoke-wrap {
   position: absolute;
   bottom: -4px;
   left: -5%;
   right: -5%;
-  height: 32%;
+  height: 36%;
   z-index: 3;
   pointer-events: none;
   mix-blend-mode: screen;
@@ -633,7 +644,8 @@ body {
 .av-base-smoke-puff {
   position: absolute;
   border-radius: 50%;
-  filter: blur(3px);
+  filter: blur(0.8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 .av-base-smoke-puff-1 {
   bottom: 0;
@@ -661,7 +673,7 @@ body {
   animation-delay: 0.8s;
 }
 
-/* 10. Royal Gold Base (Metallic gold base with reflections & sparkling stars) */
+/* 10. Royal Gold Base (Metallic gold base with reflections & sparkling stars - Tall & Sharp) */
 @keyframes anim-gold-shine {
   0% { transform: translateX(-150%) skewX(-30deg); }
   100% { transform: translateX(200%) skewX(-30deg); }
@@ -675,7 +687,7 @@ body {
   bottom: 0;
   left: 8%;
   right: 8%;
-  height: 25%;
+  height: 32%;
   z-index: 3;
   pointer-events: none;
 }
