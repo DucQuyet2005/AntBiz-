@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Link2, 
-  Globe, 
-  Check, 
-  Facebook, 
-  Sparkles, 
-  MoreHorizontal, 
-  ThumbsUp, 
-  MessageSquare, 
+import {
+  Link2,
+  Globe,
+  Check,
+  Facebook,
+  Instagram,
+  Sparkles,
+  MoreHorizontal,
+  ThumbsUp,
+  MessageSquare,
   Share2,
   CheckCircle2,
   ArrowRight,
@@ -43,8 +44,8 @@ const CAPTION_MAX: Record<string, number> = {
 
 
 // Threads Custom SVG Logo
-const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+const ThreadsIcon = ({ size = 14, className = "" }: { size?: number; className?: string }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>
     <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
   </svg>
 );
@@ -53,8 +54,6 @@ interface SocialVariant {
   id: string; // A, B, C...
   facebook: string;
   threads: string;
-  fbCaptionId?: string;
-  threadsCaptionId?: string;
   title: string;
   author: string;
   tags: string;
@@ -63,30 +62,52 @@ interface SocialVariant {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Prompt Selector Library States
+  const [promptsList, setPromptsList] = useState<any[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [promptSearch, setPromptSearch] = useState('');
+  const [loadingPrompts, setLoadingPrompts] = useState(false);
+
+  // Fetch prompts library on mount
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setLoadingPrompts(true);
+      try {
+        const res = await fetch('/api/prompts?pageSize=100');
+        if (res.ok) {
+          const json = await res.json();
+          setPromptsList(json.data || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch prompts for selector:", e);
+      } finally {
+        setLoadingPrompts(false);
+      }
+    };
+    fetchPrompts();
+  }, []);
+
+  const filteredPromptsForModal = promptsList.filter(p =>
+    p.name.toLowerCase().includes(promptSearch.toLowerCase()) ||
+    p.content.toLowerCase().includes(promptSearch.toLowerCase())
+  );
+
   const [facebookDate, setFacebookDate] = useState<string>("2026-06-17");
   const [facebookTime, setFacebookTime] = useState<string>("20:00");
   const [threadsDate, setThreadsDate] = useState<string>("2026-06-18");
   const [threadsTime, setThreadsTime] = useState<string>("18:00");
+  const [instagramDate, setInstagramDate] = useState<string>("2026-06-19");
+  const [instagramTime, setInstagramTime] = useState<string>("12:00");
   const [facebookError, setFacebookError] = useState<string>("");
   const [threadsError, setThreadsError] = useState<string>("");
+  const [instagramError, setInstagramError] = useState<string>("");
   const [isScheduled, setIsScheduled] = useState(false);
   const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
   const [fbResetTrigger, setFbResetTrigger] = useState(0);
   const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
-  const [articleId, setArticleId] = useState<string | undefined>(undefined);
-  // T-1.19.4: Thống nhất platform (sử dụng 'thread' theo DB enum)
-  const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram'>('facebook');
-  
-  // Đồng bộ selectedPlatform cho preview (chỉ facebook/threads)
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
 
-  useEffect(() => {
-    if (promptPlatform === 'thread') {
-      setSelectedPlatform('threads');
-    } else if (promptPlatform === 'facebook') {
-      setSelectedPlatform('facebook');
-    }
-  }, [promptPlatform]);
 
   const existingPosts = [
     // Week 1
@@ -97,11 +118,11 @@ export default function AiCreatorView() {
     { date: "2026-06-15", hour: 20, title: "BLOGS", category: "facebook" }, // Mon 20:00
     { date: "2026-06-20", hour: 20, title: "BLOGS", category: "facebook" }, // Sat 20:00
     { date: "2026-06-21", hour: 20, title: "TÍNH NĂNG", category: "threads" }, // Sun 20:00
-    
+
     // Week 2
     { date: "2026-06-24", hour: 17, title: "PRODUCT", category: "threads" },
     { date: "2026-06-26", hour: 19, title: "PROMO", category: "facebook" },
-    
+
     // Week 3
     { date: "2026-07-01", hour: 16, title: "ARTICLE", category: "facebook" },
     { date: "2026-07-03", hour: 21, title: "Q&A", category: "threads" }
@@ -115,12 +136,12 @@ export default function AiCreatorView() {
     const start = new Date(2026, 5, 15); // June 15, 2026 (Mon)
     start.setDate(start.getDate() + index);
     const dateStr = start.toISOString().split('T')[0];
-    
+
     const daysNameMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const name = daysNameMap[start.getDay()];
     const label = start.getDate().toString();
     const isToday = dateStr === '2026-06-17';
-    
+
     return { name, date: dateStr, label, isToday };
   });
 
@@ -144,7 +165,7 @@ export default function AiCreatorView() {
     const hour = parseInt(val.split(':')[0]) || 16;
     const clampedHour = Math.max(16, Math.min(23, hour));
     const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
-    
+
     if (isCellOccupied(facebookDate, clampedHour)) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${facebookDate}.`);
     } else {
@@ -173,7 +194,7 @@ export default function AiCreatorView() {
     const hour = parseInt(val.split(':')[0]) || 16;
     const clampedHour = Math.max(16, Math.min(23, hour));
     const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
-    
+
     if (isCellOccupied(threadsDate, clampedHour)) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${threadsDate}.`);
     } else {
@@ -185,8 +206,8 @@ export default function AiCreatorView() {
   const handleFacebookDragError = (blockedDate: string, hour: number) => {
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setFacebookError(
-      language === 'vi' 
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.` 
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
         : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setFacebookError(""), 4500);
@@ -195,8 +216,8 @@ export default function AiCreatorView() {
   const handleThreadsDragError = (blockedDate: string, hour: number) => {
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setThreadsError(
-      language === 'vi' 
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.` 
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
         : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setThreadsError(""), 4500);
@@ -207,20 +228,25 @@ export default function AiCreatorView() {
     const rect = boardRef.current.getBoundingClientRect();
     const x = info.point.x - rect.left;
     const y = info.point.y - rect.top;
-    
+
     const col = Math.floor(x / (rect.width / 7));
     const row = Math.floor(y / (rect.height / 8));
-    
+
     const clampedCol = Math.max(0, Math.min(6, col));
     const clampedRow = Math.max(0, Math.min(7, row));
-    
+
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = 16 + clampedRow;
-    
-    // Check occupancy against existing posts AND threads active post
+
+    // Check occupancy against existing posts AND threads active post AND instagram active post
     const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
-    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === threadsDate && targetHour === threadsHour);
-    
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    const isOccupied = isCellOccupied(targetDate, targetHour) ||
+      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour) ||
+      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+
     if (isOccupied) {
       handleFacebookDragError(targetDate, targetHour);
       setFbResetTrigger(prev => prev + 1);
@@ -236,20 +262,25 @@ export default function AiCreatorView() {
     const rect = boardRef.current.getBoundingClientRect();
     const x = info.point.x - rect.left;
     const y = info.point.y - rect.top;
-    
+
     const col = Math.floor(x / (rect.width / 7));
     const row = Math.floor(y / (rect.height / 8));
-    
+
     const clampedCol = Math.max(0, Math.min(6, col));
     const clampedRow = Math.max(0, Math.min(7, row));
-    
+
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = 16 + clampedRow;
-    
-    // Check occupancy against existing posts AND facebook active post
+
+    // Check occupancy against existing posts AND facebook active post AND instagram active post
     const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
-    const isOccupied = isCellOccupied(targetDate, targetHour) || (targetDate === facebookDate && targetHour === facebookHour);
-    
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    const isOccupied = isCellOccupied(targetDate, targetHour) ||
+      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
+      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+
     if (isOccupied) {
       handleThreadsDragError(targetDate, targetHour);
       setThreadsResetTrigger(prev => prev + 1);
@@ -260,9 +291,81 @@ export default function AiCreatorView() {
     }
   };
 
+  const handleInstagramDateChange = (val: string) => {
+    const activeHour = parseInt(instagramTime.split(':')[0]) || 12;
+    if (isCellOccupied(val, activeHour)) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+    } else {
+      setInstagramError("");
+      setInstagramDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
+      }
+    }
+  };
+
+  const handleInstagramTimeChange = (val: string) => {
+    const hour = parseInt(val.split(':')[0]) || 12;
+    const clampedHour = Math.max(16, Math.min(23, hour));
+    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+
+    if (isCellOccupied(instagramDate, clampedHour)) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${instagramDate}.`);
+    } else {
+      setInstagramError("");
+      setInstagramTime(clampedTime);
+    }
+  };
+
+  const handleInstagramDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setInstagramError(
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
+        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+    );
+    setTimeout(() => setInstagramError(""), 4500);
+  };
+
+  const handleInstagramDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 8));
+
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(7, row));
+
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = 16 + clampedRow;
+
+    // Check occupancy against existing posts, Facebook active post and Threads active post
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
+    const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
+    const isOccupied = isCellOccupied(targetDate, targetHour) ||
+      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
+      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
+
+    if (isOccupied) {
+      handleInstagramDragError(targetDate, targetHour);
+      setInstagramResetTrigger(prev => prev + 1);
+    } else {
+      setInstagramError("");
+      setInstagramDate(targetDate);
+      setInstagramTime(`${targetHour.toString().padStart(2, '0')}:00`);
+    }
+  };
+
   const getDayLabel = (dayName: string) => {
     if (language === 'vi') {
-      switch(dayName) {
+      switch (dayName) {
         case 'Mon': return 'Thứ hai';
         case 'Tue': return 'Thứ ba';
         case 'Wed': return 'Thứ tư';
@@ -273,7 +376,7 @@ export default function AiCreatorView() {
         default: return dayName;
       }
     } else {
-      switch(dayName) {
+      switch (dayName) {
         case 'Mon': return 'Monday';
         case 'Tue': return 'Tuesday';
         case 'Wed': return 'Wednesday';
@@ -288,6 +391,7 @@ export default function AiCreatorView() {
 
   const [url, setUrl] = useState('https://gocnhinmoi.com.vn/10-nam-mua-vang-va-hanh-trinh-thoat-canh-o-tro-80861');
   const [isFetching, setIsFetching] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
 
   // Gocnhinmoi Explorer Modal State
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
@@ -331,6 +435,7 @@ export default function AiCreatorView() {
       id: 'A',
       facebook: `Bộ Tư lệnh TPHCM phối hợp các đơn vị chuyên môn, nhóm nghiên cứu và nhân chứng lịch sử triển khai khảo sát tại Công viên Lê Thị Riêng (phường Hòa Hưng, TPHCM) nhằm xác định các khu vực nghi có hố chôn tập thể liệt sĩ, phục vụ công tác tìm kiếm, quy tập hài cốt.\n\nĐợt khảo sát diễn ra từ ngày 15 đến 18/6, là bước tiếp theo sau quá trình nhiều năm thu thập tư liệu lịch sử, đối chiếu không ảnh và khảo sát thực địa liên quan đến khu vực được cho là nơi chôn cất các liệt sĩ hy sinh trong cuộc Tổng tiến công và nổi dậy Xuân Mậu Thân 1968.`,
       threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
+      instagram: `Hành trình tích lũy 10 năm mua vàng của một gia đình trẻ mua nhà từ những chỉ số tích lũy đơn giản nhất. Hãy đọc ngay kinh nghiệm này!`,
       title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
       author: 'Linh Trang',
       tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
@@ -339,6 +444,7 @@ export default function AiCreatorView() {
       id: 'B',
       facebook: `Quyết định mua vàng tích lũy thay vì gửi tiết kiệm, liệu có đúng đắn? Câu chuyện thực tế của anh H. đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.`,
       threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
+      instagram: `Từng bước thoát khỏi cuộc sống ở trọ sau 10 năm tích góp. Một câu chuyện đáng học hỏi và suy ngẫm cho các gia đình trẻ hiện nay.`,
       title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
       author: 'Linh Trang',
       tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
@@ -347,208 +453,6 @@ export default function AiCreatorView() {
 
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
-
-  const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
-  
-  // T-1.19.4: State cho prompt content - cho phép người dùng xem và sửa trước khi generate
-  const [activePrompt, setActivePrompt] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingSmartPrompt, setIsGeneratingSmartPrompt] = useState(false);
-
-  // T-1.19.4: Hàm tạo prompt THỰC SỰ thông minh bằng cách gọi AI để viết Prompt
-  const handleGenerateSmartPrompt = async () => {
-    if (!postData.title || !postData.description) return;
-    
-    setIsGeneratingSmartPrompt(true);
-    try {
-      const res = await fetch('/api/prompts/generate-smart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: postData.title,
-          content: postData.description,
-          platform: promptPlatform
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setActivePrompt(data.smartPrompt);
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Lỗi khi tạo Smart Prompt');
-      }
-    } catch (err) {
-      console.error('Error in handleGenerateSmartPrompt:', err);
-    } finally {
-      setIsGeneratingSmartPrompt(false);
-    }
-  };
-
-  // T-1.19.4: Tự động cập nhật prompt theo Template chi tiết khi có bài viết hoặc đổi platform
-  useEffect(() => {
-    if (postData.title && postData.description) {
-      const detailedTemplate = `Bạn là một chuyên gia Content Marketing đỉnh cao. 
-Hãy viết một bài đăng cực kỳ thu hút cho nền tảng ${promptPlatform.toUpperCase()} dựa trên bài báo sau:
-
-Tiêu đề: ${postData.title}
-Nội dung tóm tắt: ${postData.description}
-
-Yêu cầu cụ thể:
-1. Văn phong: Phù hợp với người dùng ${promptPlatform}, sử dụng ngôn ngữ trẻ trung, bắt trend nếu cần.
-2. Cấu trúc: 
-   - Hook: Câu đầu tiên phải cực kỳ gây chú ý.
-   - Body: Trình bày các ý chính một cách súc tích, dễ đọc.
-   - CTA: Lời kêu gọi hành động rõ ràng.
-3. Hình thức: Sử dụng Emoji một cách tinh tế để tăng độ sinh động.
-4. Hashtag: Thêm 3-5 hashtag liên quan nhất (bao gồm hashtag thương hiệu và chủ đề).
-5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
-      
-      setActivePrompt(detailedTemplate);
-    }
-  }, [postData.title, postData.description, promptPlatform]);
-
-  // T-1.19.4: handle prompt selection – chỉ cập nhật nội dung prompt vào ô text, chưa generate ngay
-  const handleSelectPrompt = async (promptContent: string) => {
-    setActivePrompt(promptContent);
-    // Cuộn xuống ô prompt để người dùng thấy
-    const promptEl = document.getElementById('ai-prompt-editor');
-    if (promptEl) promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
-  // T-1.19.4: Hàm thực hiện gọi AI dựa trên activePrompt hiện tại
-  const handleGenerateContent = async () => {
-    if (!activePrompt) return;
-    
-    setIsGenerating(true);
-    setLastGeneratedAiContent(null);
-    try {
-      const genRes = await fetch('/api/prompts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: postData.title,
-          content: postData.description,
-          platform: promptPlatform, // Sử dụng platform đã chọn ở Step 1
-          customPrompt: activePrompt
-        })
-      });
-
-      if (genRes.ok) {
-        const genData = await genRes.json();
-        const aiContent = genData.prompt;
-        setLastGeneratedAiContent(aiContent);
-        
-        // Cập nhật giao diện với nội dung AI vừa sinh
-        setVariants(prev =>
-          prev.map((v, idx) =>
-            idx === 0
-              ? { ...v, [selectedPlatform]: aiContent }
-              : v
-          )
-        );
-        
-        // Tự động chuyển sang Step 2 để xem kết quả
-        setStep(2);
-      } else {
-        const errData = await genRes.json();
-        alert(errData.error || 'Lỗi khi sinh nội dung bằng AI');
-      }
-    } catch (err) {
-      console.error('Error in handleGenerateContent:', err);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // T-1.19.4: Lưu CHÍNH NỘI DUNG PROMPT (Instruction) vào thư viện
-  const handleSaveCurrentPrompt = async () => {
-    if (!activePrompt) return;
-
-    try {
-      // Chuyển đổi 'threads' sang 'thread' nếu cần để khớp DB enum
-      const dbPlatform = promptPlatform === 'thread' ? 'thread' : promptPlatform;
-
-      const res = await fetch('/api/prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `Prompt Template: ${postData.title.substring(0, 30)}`,
-          content: activePrompt, // Lưu instruction/template
-          platform: dbPlatform,
-          tags: ['Custom Prompt', 'User Saved', dbPlatform] // Tags phải là Array
-        })
-      });
-
-      if (res.ok) {
-        alert(language === 'vi' ? '✅ Đã lưu mẫu Prompt này vào thư viện!' : '✅ Prompt template saved to library!');
-      } else {
-        const errData = await res.json();
-        alert(language === 'vi' ? `❌ Lỗi: ${errData.error}` : `❌ Error: ${errData.error}`);
-      }
-    } catch (err) {
-      console.error('Error saving current prompt:', err);
-    }
-  };
-
-  // T-1.19.4: Lưu KẾT QUẢ AI sinh ra vào thư viện
-  const handleSaveAiResult = async () => {
-    if (!lastGeneratedAiContent) return;
-
-    try {
-      // Chuyển đổi 'threads' sang 'thread' nếu cần để khớp DB enum
-      const dbPlatform = promptPlatform === 'thread' ? 'thread' : promptPlatform;
-
-      const res = await fetch('/api/prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `AI Draft: ${postData.title.substring(0, 40)}`,
-          content: lastGeneratedAiContent,
-          platform: dbPlatform,
-          tags: ['AI Generated', 'Scraped Content', dbPlatform] // Tags phải là Array
-        })
-      });
-
-      if (res.ok) {
-        alert(language === 'vi' ? '✅ Đã lưu kết quả AI vào thư viện Prompts!' : '✅ AI result saved to library!');
-      } else {
-        const errData = await res.json();
-        alert(language === 'vi' ? `❌ Lỗi: ${errData.error}` : `❌ Error: ${errData.error}`);
-      }
-    } catch (err) {
-      console.error('Error saving AI result:', err);
-    }
-  };
-
-  // T-1.19.3: Lưu template prompt (không dùng nữa nhưng giữ lại logic nếu cần)
-  const handleSavePrompt = async (templatePrompt: any) => {
-    if (!lastGeneratedAiContent) {
-      alert(language === 'vi' ? 'Vui lòng nhấn "Dùng prompt này" để AI sinh nội dung trước khi lưu!' : 'Please click "Use this prompt" to generate content before saving!');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `Draft: ${postData.title.substring(0, 40)}`,
-          content: lastGeneratedAiContent, // Lưu kết quả AI đã sinh
-          platform: selectedPlatform,
-          tags: ['AI Generated', templatePrompt.name]
-        })
-      });
-
-      if (res.ok) {
-        alert(language === 'vi' ? 'Đã lưu nội dung AI sinh ra vào thư viện!' : 'AI content saved to library!');
-      } else {
-        alert(language === 'vi' ? 'Lỗi khi lưu nội dung' : 'Error saving content');
-      }
-    } catch (err) {
-      console.error('Error saving prompt:', err);
-    }
-  };
 
   // Handle URL change postMessage from Iframe
   useEffect(() => {
@@ -575,10 +479,10 @@ Yêu cầu cụ thể:
   // T-1.13.3: Save generated captions to database to enable autosave & restore
   const saveCaptionsToDb = async (articleId: string, currentVariants: SocialVariant[]) => {
     const updatedVariants = [...currentVariants];
-    
+
     for (let i = 0; i < updatedVariants.length; i++) {
       const v = updatedVariants[i];
-      
+
       // Save FB caption
       try {
         const fbRes = await fetch('/api/captions', {
@@ -625,7 +529,7 @@ Yêu cầu cụ thể:
       if (res.ok) {
         const data = await res.json();
         if (!data.error) {
-          setPostData({
+          const updatedPostData = {
             title: data.title || '',
             category: data.category || '',
             description: data.description || '',
@@ -636,9 +540,9 @@ Yêu cầu cụ thể:
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
           });
-          setArticleId(data.id);
-          const tagsStr = typeof data.tags === 'string' ? data.tags : Array.isArray(data.tags) ? data.tags.join(', ') : '';
-          const newVariants = [
+
+          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+          setVariants([
             {
               id: 'A',
               facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
@@ -655,9 +559,7 @@ Yêu cầu cụ thể:
               author: data.author,
               tags: tagsStr
             }
-          ];
-          setVariants(newVariants);
-          if (data.id) saveCaptionsToDb(data.id, newVariants);
+          ]);
           setIsFetching(false);
           return;
         }
@@ -668,7 +570,7 @@ Yêu cầu cụ thể:
 
     // Fallback if live scrape fails
     setTimeout(() => {
-      setPostData({
+      const updatedPostData = {
         title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
         category: '#Bất động sản',
         description: 'Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.',
@@ -678,27 +580,9 @@ Yêu cầu cụ thể:
         tags: '#Đất nền, #Sốt đất, #Tài chính cá nhân, #Rủi ro',
         imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
         full_text: 'Toàn cảnh cơn sốt đất nền và bài học thức tỉnh nhà đầu tư cá nhân...'
-      });
-      
-      const newTags = '#Đất nền #Sốt đất #Tài chính #Rủi ro';
-      setVariants([
-        {
-          id: 'A',
-          facebook: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông từ đợt khảo sát thực tế.`,
-          threads: `Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.`,
-          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
-          author: 'Nguyễn Văn Nam',
-          tags: newTags
-        },
-        {
-          id: 'B',
-          facebook: `Đóng băng thị trường đất nền vùng ven và những bài học đắt giá cho nhà đầu tư cá nhân khi lạm dụng đòn bẩy tài chính.`,
-          threads: `Đóng băng thị trường đất nền vùng ven và bài học đắt giá cho nhà đầu tư.`,
-          title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
-          author: 'Nguyễn Văn Nam',
-          tags: newTags
-        }
-      ]);
+      };
+      setPostData(updatedPostData);
+      generateVariants(updatedPostData, selectedPrompt);
       setIsFetching(false);
     }, 1200);
   };
@@ -711,10 +595,12 @@ Yêu cầu cụ thể:
   const handleAddVariant = () => {
     const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
     const firstTags = variants[0]?.tags || '';
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
     const newVariant: SocialVariant = {
       id: nextLetter,
-      facebook: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
-      threads: `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}`,
+      facebook: targetPlatforms.includes('facebook') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      threads: targetPlatforms.includes('threads') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      instagram: targetPlatforms.includes('instagram') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
       title: postData.title,
       author: postData.author,
       tags: firstTags
@@ -735,7 +621,7 @@ Yêu cầu cụ thể:
       if (res.ok) {
         const data = await res.json();
         if (!data.error) {
-          setPostData({
+          const updatedPostData = {
             title: data.title || '',
             category: data.category || '',
             description: data.description || '',
@@ -746,10 +632,10 @@ Yêu cầu cụ thể:
             imageUrl: data.imageUrl || '',
             full_text: data.description || ''
           });
-          setArticleId(data.id);
           setUrl(explorerUrl);
-          const tagsStr = typeof data.tags === 'string' ? data.tags : Array.isArray(data.tags) ? data.tags.join(', ') : '';
-          const newVariants = [
+
+          const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+          setVariants([
             {
               id: 'A',
               facebook: `🏠 [${data.category.replace('#', '')}] ${data.title} \n\n"${data.description}" \n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`,
@@ -766,9 +652,7 @@ Yêu cầu cụ thể:
               author: data.author,
               tags: tagsStr
             }
-          ];
-          setVariants(newVariants);
-          if (data.id) saveCaptionsToDb(data.id, newVariants);
+          ]);
           setIsExplorerOpen(false);
         }
       }
@@ -791,16 +675,16 @@ Yêu cầu cụ thể:
   };
 
   // Inline editable wrapper component that prevents layout shifts
-  const EditableText = ({ 
-    variantId, 
-    field, 
-    value, 
+  const EditableText = ({
+    variantId,
+    field,
+    value,
     textarea = false,
-    className = "" 
-  }: { 
-    variantId: string; 
-    field: keyof SocialVariant; 
-    value: string; 
+    className = ""
+  }: {
+    variantId: string;
+    field: keyof SocialVariant;
+    value: string;
     textarea?: boolean;
     className?: string;
   }) => {
@@ -852,7 +736,7 @@ Yêu cầu cụ thể:
     }
 
     return (
-      <div 
+      <div
         onClick={(e) => {
           e.stopPropagation();
           setEditState({ variantId, field });
@@ -869,39 +753,36 @@ Yêu cầu cụ thể:
 
   return (
     <div className="flex flex-col gap-6 w-full font-sans">
-      
+
       {/* Top Header Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
         <div>
           <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')} <span className="text-[10px] text-primary/40 font-normal">v1.1</span></h1>
           <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
         </div>
-        
+
         {/* Step Indicator Wizard */}
         <div className="flex items-center gap-2 bg-sidebar rounded-2xl p-1.5 border border-gray-200/50 shadow-sm">
-          <button 
+          <button
             onClick={() => setStep(1)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
-              step === 1 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${step === 1 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+              }`}
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
             {t('aiCreator.step1')}
           </button>
-          <button 
+          <button
             onClick={() => setStep(2)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
-              step === 2 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${step === 2 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+              }`}
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
             {t('aiCreator.step2')}
           </button>
-          <button 
+          <button
             onClick={() => setStep(3)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${
-              step === 3 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'
+              }`}
           >
             <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
             {t('aiCreator.step3')}
@@ -911,10 +792,10 @@ Yêu cầu cụ thể:
 
       {/* Unified layout grid allowing shared layout morphing */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
-        
+
         {/* STEP 1: Left column inputs form */}
         {step === 1 && (
-          <motion.div 
+          <motion.div
             layout
             key="step1-inputs"
             initial={{ opacity: 0, x: -50 }}
@@ -935,9 +816,9 @@ Yêu cầu cụ thể:
                     <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
                   </div>
                 </div>
-                
+
                 {/* Search on Site Button */}
-                <button 
+                <button
                   onClick={() => {
                     setExplorerUrl('https://gocnhinmoi.com.vn/');
                     setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
@@ -949,19 +830,19 @@ Yêu cầu cụ thể:
                   {t('aiCreator.searchGocNhinMoi')}
                 </button>
               </div>
-              
+
               <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                 <span className="text-gray-400 pl-2">
                   <Link2 size={16} />
                 </span>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
                   placeholder={t('aiCreator.searchPlace')}
                 />
-                <button 
+                <button
                   onClick={handleFetch}
                   disabled={isFetching}
                   className="bg-[#4A6B5D] hover:bg-[#3A5B4D] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
@@ -988,7 +869,7 @@ Yêu cầu cụ thể:
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.title}
                     onChange={(e) => setPostData({ ...postData, title: e.target.value })}
@@ -999,7 +880,7 @@ Yêu cầu cụ thể:
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.category}
                     onChange={(e) => setPostData({ ...postData, category: e.target.value })}
@@ -1008,7 +889,7 @@ Yêu cầu cụ thể:
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.author}
                     onChange={(e) => setPostData({ ...postData, author: e.target.value })}
@@ -1018,7 +899,7 @@ Yêu cầu cụ thể:
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.published_at}
                     onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
@@ -1027,7 +908,7 @@ Yêu cầu cụ thể:
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.views}
                     onChange={(e) => setPostData({ ...postData, views: e.target.value })}
@@ -1037,7 +918,7 @@ Yêu cầu cụ thể:
 
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.imageUrl}
                     onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
@@ -1047,7 +928,7 @@ Yêu cầu cụ thể:
 
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
-                  <input 
+                  <input
                     type="text"
                     value={postData.tags}
                     onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
@@ -1057,7 +938,7 @@ Yêu cầu cụ thể:
 
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
-                  <textarea 
+                  <textarea
                     value={postData.description}
                     onChange={(e) => setPostData({ ...postData, description: e.target.value })}
                     rows={3}
@@ -1079,18 +960,17 @@ Yêu cầu cụ thể:
                     <p className="text-[11px] text-text-muted">Xem và tinh chỉnh yêu cầu gửi tới AI</p>
                   </div>
                 </div>
-                
+
                 {/* Platform Selector for Prompt */}
                 <div className="flex bg-white/50 backdrop-blur-sm rounded-xl p-1 border border-primary/20 shadow-sm">
                   {(['facebook', 'thread', 'instagram'] as const).map((p) => (
                     <button
                       key={p}
                       onClick={() => setPromptPlatform(p)}
-                      className={`text-[10px] font-black uppercase px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
-                        promptPlatform === p 
-                          ? 'bg-primary text-white shadow-md scale-105' 
+                      className={`text-[10px] font-black uppercase px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 ${promptPlatform === p
+                          ? 'bg-primary text-white shadow-md scale-105'
                           : 'text-text-muted hover:text-text hover:bg-white/80'
-                      }`}
+                        }`}
                     >
                       {p === 'facebook' && <Facebook size={12} />}
                       {p === 'thread' && <ThreadsIcon size={12} />}
@@ -1107,7 +987,7 @@ Yêu cầu cụ thể:
                     <Edit2 size={12} />
                     Prompt nội dung
                   </label>
-                  <button 
+                  <button
                     onClick={handleGenerateSmartPrompt}
                     disabled={isGeneratingSmartPrompt || isGenerating}
                     className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
@@ -1116,7 +996,7 @@ Yêu cầu cụ thể:
                     Tạo Prompt thông minh từ bài viết
                   </button>
                 </div>
-                <textarea 
+                <textarea
                   value={activePrompt}
                   onChange={(e) => setActivePrompt(e.target.value)}
                   rows={10}
@@ -1126,13 +1006,13 @@ Yêu cầu cụ thể:
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
-                <button 
+                <button
                   onClick={() => setActivePrompt('')}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold text-text-muted hover:text-text hover:bg-gray-100 transition-all"
                 >
                   Xóa trống
                 </button>
-                <button 
+                <button
                   onClick={handleSaveCurrentPrompt}
                   disabled={!activePrompt}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 border border-primary/20 transition-all flex items-center gap-2"
@@ -1140,7 +1020,7 @@ Yêu cầu cụ thể:
                   <Plus size={14} />
                   Lưu mẫu Prompt này
                 </button>
-                <button 
+                <button
                   onClick={handleGenerateContent}
                   disabled={isGenerating || !activePrompt}
                   className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-xl text-xs font-bold shadow-lg shadow-primary/20 transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-95 cursor-pointer"
@@ -1164,12 +1044,11 @@ Yêu cầu cụ thể:
 
         {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
         {(step === 1 || step === 2) && (
-          <motion.div 
+          <motion.div
             layout
             transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${
-              step === 1 ? 'order-2' : 'order-1'
-            }`}
+            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'
+              }`}
           >
             {/* Article Live Preview Card */}
             <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
@@ -1186,9 +1065,9 @@ Yêu cầu cụ thể:
               <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
                 <div className="h-44 bg-gray-100 relative">
                   {postData.imageUrl ? (
-                    <img 
-                      src={postData.imageUrl} 
-                      alt={postData.title} 
+                    <img
+                      src={postData.imageUrl}
+                      alt={postData.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -1244,7 +1123,7 @@ Yêu cầu cụ thể:
 
               {/* Next step button */}
               {step === 1 && (
-                <motion.button 
+                <motion.button
                   layout
                   onClick={() => setStep(2)}
                   className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
@@ -1267,56 +1146,55 @@ Yêu cầu cụ thể:
               />
             )}
 
-          {/* Toggles Customizer */}
-          {step === 2 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
-            >
-              <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
-                <Layers size={16} className="text-primary" />
-                {t('aiCreator.customDisplay')}
-              </h3>
+            {/* Toggles Customizer */}
+            {step === 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
+              >
+                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
+                  <Layers size={16} className="text-primary" />
+                  {t('aiCreator.customDisplay')}
+                </h3>
 
-              <div className="flex flex-col gap-3">
-                {Object.entries({
-                  showTitle: t('aiCreator.showTitle'),
-                  showAuthor: t('aiCreator.showAuthor'),
-                  showDescription: t('aiCreator.showDescription'),
-                  showTags: t('aiCreator.showTags'),
-                  showImage: t('aiCreator.showImage')
-                }).map(([key, label]) => {
-                  const isChecked = toggles[key as keyof typeof toggles];
-                  return (
-                    <button 
-                      key={key}
-                      onClick={() => handleToggle(key as keyof typeof toggles)}
-                      className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
-                    >
-                      <span>{label}</span>
-                      <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${
-                        isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
-                      }`}>
-                        <motion.div 
-                          layout 
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="bg-white w-4 h-4 rounded-full shadow-md"
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-      )}
+                <div className="flex flex-col gap-3">
+                  {Object.entries({
+                    showTitle: t('aiCreator.showTitle'),
+                    showAuthor: t('aiCreator.showAuthor'),
+                    showDescription: t('aiCreator.showDescription'),
+                    showTags: t('aiCreator.showTags'),
+                    showImage: t('aiCreator.showImage')
+                  }).map(([key, label]) => {
+                    const isChecked = toggles[key as keyof typeof toggles];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleToggle(key as keyof typeof toggles)}
+                        className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
+                      >
+                        <span>{label}</span>
+                        <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
+                          }`}>
+                          <motion.div
+                            layout
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            className="bg-white w-4 h-4 rounded-full shadow-md"
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
 
-      {/* STEP 2: Right column A/B testing variants workspace */}
+        {/* STEP 2: Right column A/B testing variants workspace */}
         {step === 2 && (
-          <motion.div 
+          <motion.div
             layout
             key="step2-variants"
             initial={{ opacity: 0, x: 50 }}
@@ -1332,35 +1210,23 @@ Yêu cầu cụ thể:
                 <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={handleSaveAiResult}
-                  disabled={!lastGeneratedAiContent}
-                  className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 disabled:opacity-50 cursor-pointer"
-                >
-                  <Plus size={14} />
-                  Lưu kết quả AI vào thư viện
-                </button>
-                
-                <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                  {(['facebook', 'threads'] as const).map((platform) => {
-                    const isActive = selectedPlatform === platform;
-                    return (
-                      <button 
-                        key={platform}
-                        onClick={() => setSelectedPlatform(platform)}
-                        className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${
-                          isActive 
-                            ? 'bg-primary text-white shadow-sm' 
-                            : 'text-text-muted hover:text-text'
+              <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+                {(['facebook', 'threads'] as const).map((platform) => {
+                  const isActive = selectedPlatform === platform;
+                  return (
+                    <button
+                      key={platform}
+                      onClick={() => setSelectedPlatform(platform)}
+                      className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-muted hover:text-text'
                         }`}
-                      >
-                        {platform === 'facebook' && t('aiCreator.fbLabel')}
-                        {platform === 'threads' && t('aiCreator.threadsLabel')}
-                      </button>
-                    );
-                  })}
-                </div>
+                    >
+                      {platform === 'facebook' && t('aiCreator.fbLabel')}
+                      {platform === 'threads' && t('aiCreator.threadsLabel')}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1368,11 +1234,21 @@ Yêu cầu cụ thể:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <AnimatePresence mode="popLayout">
                 {variants.map((v) => {
-                  const iconBg = selectedPlatform === 'facebook' ? 'bg-blue-600' : 'bg-black';
-                  const platformLabel = selectedPlatform === 'facebook' ? t('aiCreator.fbPreview') : t('aiCreator.threadsFeed');
+                  let iconBg = 'bg-black';
+                  let platformLabel = '';
+                  if (selectedPlatform === 'facebook') {
+                    iconBg = 'bg-blue-600';
+                    platformLabel = t('aiCreator.fbPreview');
+                  } else if (selectedPlatform === 'threads') {
+                    iconBg = 'bg-black';
+                    platformLabel = t('aiCreator.threadsFeed');
+                  } else if (selectedPlatform === 'instagram') {
+                    iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
+                    platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
+                  }
 
                   return (
-                    <motion.div 
+                    <motion.div
                       key={v.id}
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -1387,6 +1263,7 @@ Yêu cầu cụ thể:
                           <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
                             {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
                             {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
+                            {selectedPlatform === 'instagram' && <Instagram size={12} />}
                           </div>
                           <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                         </div>
@@ -1399,7 +1276,7 @@ Yêu cầu cụ thể:
                       {selectedPlatform === 'threads' ? (
                         /* Connected multi-post threads markup */
                         <div className="flex flex-col gap-0 text-text">
-                          
+
                           {/* Thread Post 1/2 */}
                           <div className="flex gap-3 items-stretch">
                             <div className="flex flex-col items-center shrink-0">
@@ -1514,6 +1391,74 @@ Yêu cầu cụ thể:
                           </div>
 
                         </div>
+                      ) : selectedPlatform === 'instagram' ? (
+                        /* Instagram Mockup */
+                        <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                          <div className="p-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {v.id}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-text flex items-center gap-1">
+                                  antbiz_official
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                </span>
+                                <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                              </div>
+                            </div>
+                            <MoreHorizontal size={14} className="text-gray-400" />
+                          </div>
+
+                          {toggles.showImage && postData.imageUrl && (
+                            <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
+                              <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
+                            <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
+                            <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
+                            <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                          </div>
+
+                          <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                            <div className="font-extrabold text-xs text-text">
+                              Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
+                            </div>
+
+                            {toggles.showTitle && (
+                              <div className="font-extrabold text-xs text-text">
+                                🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                              </div>
+                            )}
+
+                            {toggles.showDescription && (
+                              <div className="whitespace-pre-wrap">
+                                <span className="font-extrabold mr-1.5">antbiz_official</span>
+                                <EditableText
+                                  variantId={v.id}
+                                  field="instagram"
+                                  value={v.instagram}
+                                  textarea
+                                />
+                              </div>
+                            )}
+
+                            {toggles.showAuthor && (
+                              <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
+                                <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                <EditableText variantId={v.id} field="author" value={v.author} />
+                              </div>
+                            )}
+
+                            {toggles.showTags && (
+                              <div className="text-primary font-bold mt-1">
+                                <EditableText variantId={v.id} field="tags" value={v.tags} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       ) : (
                         /* Facebook Mockup */
                         <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
@@ -1541,15 +1486,15 @@ Yêu cầu cụ thể:
                             )}
 
                             {toggles.showDescription && (
-                            <div className="whitespace-pre-wrap">
-                            <CaptionEditor
-                              captionId={v.fbCaptionId}
-                              initialContent={v.facebook}
-                              originalAiContent={v.facebook}
-                              platform="facebook"
-                              onSave={(content) => handleUpdateVariantField(v.id, 'facebook', content)}
-                            />
-                            </div>
+                              <div className="whitespace-pre-wrap">
+                                <CaptionEditor
+                                  captionId={v.fbCaptionId}
+                                  initialContent={v.facebook}
+                                  originalAiContent={v.facebook}
+                                  platform="facebook"
+                                  onSave={(content) => handleUpdateVariantField(v.id, 'facebook', content)}
+                                />
+                              </div>
                             )}
 
                             {(toggles.showAuthor || toggles.showTags) && (
@@ -1616,7 +1561,7 @@ Yêu cầu cụ thể:
               </AnimatePresence>
 
               {/* Add Variant Card */}
-              <motion.button 
+              <motion.button
                 onClick={handleAddVariant}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
@@ -1634,7 +1579,7 @@ Yêu cầu cụ thể:
 
             {/* Bottom Actions Row */}
             <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4">
-              <button 
+              <button
                 onClick={() => setStep(1)}
                 className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
               >
@@ -1642,7 +1587,7 @@ Yêu cầu cụ thể:
                 {t('aiCreator.backToIngestion')}
               </button>
 
-              <button 
+              <button
                 onClick={() => setStep(3)}
                 className="bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white py-3.5 px-8 rounded-2xl font-extrabold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer"
               >
@@ -1656,7 +1601,7 @@ Yêu cầu cụ thể:
 
         {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
         {step === 3 && (
-          <motion.div 
+          <motion.div
             key="step3-scheduler"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1679,92 +1624,143 @@ Yêu cầu cụ thể:
                 </p>
 
                 {/* 1. Facebook Scheduler Inputs */}
-                <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                  <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
-                    <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
-                      <Facebook size={10} className="fill-white" />
+                {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                  <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                      <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                        <Facebook size={10} className="fill-white" />
+                      </div>
+                      <span>Facebook Publication</span>
                     </div>
-                    <span>Facebook Publication</span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={facebookDate}
+                          onChange={(e) => handleFacebookDateChange(e.target.value)}
+                          className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input
+                          type="time"
+                          value={facebookTime}
+                          onChange={(e) => handleFacebookTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    {facebookError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {facebookError}
+                      </div>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.dateInputLabel')}
-                      </label>
-                      <input 
-                        type="date"
-                        min="2026-06-15"
-                        max="2026-07-05"
-                        value={facebookDate}
-                        onChange={(e) => handleFacebookDateChange(e.target.value)}
-                        className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.timeInputLabel')}
-                      </label>
-                      <input 
-                        type="time"
-                        value={facebookTime}
-                        onChange={(e) => handleFacebookTimeChange(e.target.value)}
-                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                      />
-                    </div>
-                  </div>
-
-                  {facebookError && (
-                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                      ⚠️ {facebookError}
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* 2. Threads Scheduler Inputs */}
-                <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                  <div className="flex items-center gap-2 font-bold text-xs text-black">
-                    <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
-                      <ThreadsIcon size={10} />
+                {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                  <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-black">
+                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                        <ThreadsIcon size={10} />
+                      </div>
+                      <span>Threads Publication</span>
                     </div>
-                    <span>Threads Publication</span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={threadsDate}
+                          onChange={(e) => handleThreadsDateChange(e.target.value)}
+                          className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input
+                          type="time"
+                          value={threadsTime}
+                          onChange={(e) => handleThreadsTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    {threadsError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {threadsError}
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.dateInputLabel')}
-                      </label>
-                      <input 
-                        type="date"
-                        min="2026-06-15"
-                        max="2026-07-05"
-                        value={threadsDate}
-                        onChange={(e) => handleThreadsDateChange(e.target.value)}
-                        className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                      />
+                {/* 3. Instagram Scheduler Inputs */}
+                {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                  <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white text-[10px]">
+                        <Instagram size={10} />
+                      </div>
+                      <span>Instagram Publication</span>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 font-sans">
-                      <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                        {t('aiCreator.timeInputLabel')}
-                      </label>
-                      <input 
-                        type="time"
-                        value={threadsTime}
-                        onChange={(e) => handleThreadsTimeChange(e.target.value)}
-                        className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.dateInputLabel')}
+                        </label>
+                        <input
+                          type="date"
+                          min="2026-06-15"
+                          max="2026-07-05"
+                          value={instagramDate}
+                          onChange={(e) => handleInstagramDateChange(e.target.value)}
+                          className={`w-full bg-white border ${instagramError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.timeInputLabel')}
+                        </label>
+                        <input
+                          type="time"
+                          value={instagramTime}
+                          onChange={(e) => handleInstagramTimeChange(e.target.value)}
+                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                        />
+                      </div>
                     </div>
+
+                    {instagramError && (
+                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
+                        ⚠️ {instagramError}
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  {threadsError && (
-                    <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                      ⚠️ {threadsError}
-                    </div>
-                  )}
-                </div>
 
                 {/* Drag instruction warning */}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-800 leading-relaxed font-semibold">
@@ -1775,7 +1771,7 @@ Yêu cầu cụ thể:
 
             {/* Right Column - 2D Calendar Grid (col-span-9) */}
             <div className="lg:col-span-9 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col min-h-[500px]">
-              
+
               {/* Header Title & Dropdown mimicking PostLab */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
                 <div>
@@ -1783,12 +1779,12 @@ Yêu cầu cụ thể:
                     {language === 'vi' ? 'Kế hoạch đăng bài' : 'Publication Plan'}
                   </h3>
                   <p className="text-xs text-text-muted mt-0.5">
-                    {language === 'vi' 
-                      ? 'Kéo thả thẻ bài viết màu sắc trên lịch 2D để đổi ngày/giờ đăng. Bài đăng cũ có màu xám.' 
+                    {language === 'vi'
+                      ? 'Kéo thả thẻ bài viết màu sắc trên lịch 2D để đổi ngày/giờ đăng. Bài đăng cũ có màu xám.'
                       : 'Drag and drop colored cards on the 2D grid to change dates/hours. Old posts are gray.'}
                   </p>
                 </div>
-                
+
                 {/* Active Week Selectors / Tabs */}
                 <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 select-none font-sans gap-1">
                   {[
@@ -1799,11 +1795,10 @@ Yêu cầu cụ thể:
                     <button
                       key={wk.id}
                       onClick={() => setActiveWeek(wk.id as 0 | 1 | 2)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                        activeWeek === wk.id
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeWeek === wk.id
                           ? 'bg-white text-primary shadow-sm font-extrabold border border-gray-250'
                           : 'text-text-muted hover:text-text'
-                      }`}
+                        }`}
                     >
                       {wk.label}
                     </button>
@@ -1814,9 +1809,9 @@ Yêu cầu cụ thể:
               {/* 2D Calendar Board Wrapper */}
               <div className="w-full overflow-x-auto relative border border-gray-150 rounded-2xl p-1 bg-white select-none">
                 <div className="min-w-[760px] flex flex-col">
-                  
+
                   {/* Days of the Week Header Row */}
-                  <div 
+                  <div
                     className="grid border-b border-gray-200 pb-2.5 mb-1 font-sans text-center text-xs font-extrabold"
                     style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}
                   >
@@ -1827,17 +1822,16 @@ Yêu cầu cụ thể:
                       const isFbScheduled = facebookDate === day.date;
                       const isThreadsScheduled = threadsDate === day.date;
                       const isAnyActive = isFbScheduled || isThreadsScheduled;
-                      
+
                       return (
-                        <div 
-                          key={day.date} 
-                          className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${
-                            isAnyActive 
-                              ? 'text-primary font-black bg-primary/5 border border-primary/20 shadow-sm' 
-                              : day.isToday 
-                                ? 'text-text font-black bg-gray-50 border border-gray-255' 
+                        <div
+                          key={day.date}
+                          className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${isAnyActive
+                              ? 'text-primary font-black bg-primary/5 border border-primary/20 shadow-sm'
+                              : day.isToday
+                                ? 'text-text font-black bg-gray-50 border border-gray-255'
                                 : 'text-text-muted font-bold'
-                          }`}
+                            }`}
                         >
                           <span className="text-[10px] tracking-wide">{getDayLabel(day.name)}</span>
                           <span className="text-[11px] mt-0.5 font-bold opacity-80">{day.label} / 06</span>
@@ -1848,7 +1842,7 @@ Yêu cầu cụ thể:
 
                   {/* 2D Grid with Time Labels */}
                   <div className="flex relative w-full" style={{ height: '576px' }}>
-                    
+
                     {/* Hour Column (Left) */}
                     <div className="w-[80px] grid grid-rows-8 h-full pr-2 font-sans border-r border-gray-100/60 bg-gray-50/50 rounded-l-2xl select-none">
                       {[16, 17, 18, 19, 20, 21, 22, 23].map((hr) => (
@@ -1859,7 +1853,7 @@ Yêu cầu cụ thể:
                     </div>
 
                     {/* Draggable Area Relative Board (Right 7 Columns x 8 Rows) */}
-                    <div 
+                    <div
                       ref={boardRef}
                       className="flex-1 relative h-full bg-white select-none overflow-hidden"
                     >
@@ -1869,8 +1863,8 @@ Yêu cầu cụ thể:
                           const isLastCol = (idx + 1) % 7 === 0;
                           const isLastRow = idx >= 49;
                           return (
-                            <div 
-                              key={idx} 
+                            <div
+                              key={idx}
                               className={`border-gray-250/55 ${!isLastCol ? 'border-r' : ''} ${!isLastRow ? 'border-b' : ''}`}
                             />
                           );
@@ -1883,7 +1877,7 @@ Yêu cầu cụ thể:
                         if (dayIdx < 0) return null;
                         const weekIdx = Math.floor(dayIdx / 7);
                         if (weekIdx !== activeWeek) return null;
-                        
+
                         const colIndex = dayIdx % 7;
                         const rowIndex = post.hour - 16;
                         if (rowIndex < 0 || rowIndex >= 8) return null;
@@ -1891,7 +1885,7 @@ Yêu cầu cụ thể:
                         return (
                           <div
                             key={`existing-${index}`}
-                            className="absolute p-2.5 rounded-xl bg-[#FAFBFD] border border-gray-255/70 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60"
+                            className="absolute p-1.5 rounded-xl bg-[#FAFBFD] border border-gray-200/60 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60 overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -1899,24 +1893,21 @@ Yêu cầu cụ thể:
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col">
+                            <div className="flex flex-col overflow-hidden">
                               <span className="text-[9px] font-black text-gray-500 uppercase tracking-wider truncate">
                                 {post.title}
-                              </span>
-                              <span className="text-[8px] text-gray-400 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-gray-400 font-semibold truncate leading-tight mt-0.5">
                                 {post.hour}:00 - {post.hour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 mt-auto pt-1 text-gray-400">
+                            <div className="flex items-center gap-1 mt-auto pt-0.5 text-gray-400 truncate">
                               {post.category === 'facebook' ? (
-                                <Facebook size={10} className="fill-gray-400 stroke-none" />
+                                <Facebook size={9} className="fill-gray-400 stroke-none shrink-0" />
                               ) : (
-                                <ThreadsIcon size={10} />
+                                <ThreadsIcon size={9} className="shrink-0" />
                               )}
-                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400">
+                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400 truncate whitespace-nowrap">
                                 {post.category}
                               </span>
                             </div>
@@ -1925,12 +1916,12 @@ Yêu cầu cụ thể:
                       })}
 
                       {/* 2. Active Facebook Pill (Draggable) */}
-                      {(() => {
+                      {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (() => {
                         const fbIdx = weekDays.findIndex(d => d.date === facebookDate);
                         if (fbIdx < 0) return null;
                         const fbWeek = Math.floor(fbIdx / 7);
                         if (fbWeek !== activeWeek) return null;
-                        
+
                         const colIndex = fbIdx % 7;
                         const fbHour = parseInt(facebookTime.split(':')[0]) || 20;
                         const rowIndex = fbHour - 16;
@@ -1944,7 +1935,7 @@ Yêu cầu cụ thể:
                             dragElastic={0.05}
                             dragMomentum={false}
                             onDragEnd={handleFbDragEnd}
-                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -1952,31 +1943,28 @@ Yêu cầu cụ thể:
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col relative w-full">
+                            <div className="flex flex-col relative w-full overflow-hidden">
                               {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1877F2]"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#1877F2]"></span>
                               </span>
-                              
-                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate">
+
+                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate pr-2">
                                 FACEBOOK
-                              </span>
-                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
                                 {fbHour}:00 - {fbHour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center justify-between mt-auto pt-1">
-                              <div className="flex items-center gap-1 text-[#1877F2]">
-                                <Facebook size={10} className="fill-[#1877F2] stroke-none" />
-                                <span className="text-[8px] font-black uppercase tracking-wider">
-                                  FB Active
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-[#1877F2] min-w-0">
+                                <Facebook size={9} className="fill-[#1877F2] stroke-none shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
                                 </span>
                               </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
                                 {language === 'vi' ? 'Kéo' : 'Drag'}
                               </span>
                             </div>
@@ -1985,12 +1973,12 @@ Yêu cầu cụ thể:
                       })()}
 
                       {/* 3. Active Threads Pill (Draggable) */}
-                      {(() => {
+                      {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (() => {
                         const threadsIdx = weekDays.findIndex(d => d.date === threadsDate);
                         if (threadsIdx < 0) return null;
                         const threadsWeek = Math.floor(threadsIdx / 7);
                         if (threadsWeek !== activeWeek) return null;
-                        
+
                         const colIndex = threadsIdx % 7;
                         const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
                         const rowIndex = threadsHour - 16;
@@ -2004,7 +1992,7 @@ Yêu cầu cụ thể:
                             dragElastic={0.05}
                             dragMomentum={false}
                             onDragEnd={handleThreadsDragEnd}
-                            className="absolute p-2.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none"
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
                             style={{
                               left: `calc(${(colIndex * 100) / 7}% + 5px)`,
                               top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
@@ -2012,31 +2000,85 @@ Yêu cầu cụ thể:
                               height: `calc(${(100) / 8}% - 10px)`,
                             }}
                           >
-                            <div className="flex flex-col relative w-full">
+                            <div className="flex flex-col relative w-full overflow-hidden">
                               {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-2 w-2">
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-black"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-black"></span>
                               </span>
-                              
-                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate">
+
+                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate pr-2">
                                 THREADS
-                              </span>
-                              <span className="text-[8px] text-gray-500 font-medium mt-0.5">
-                                {language === 'vi' ? 'Thời gian dự kiến:' : 'Estimated time:'}
                               </span>
                               <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
                                 {threadsHour}:00 - {threadsHour + 1}:00
                               </span>
                             </div>
-                            <div className="flex items-center justify-between mt-auto pt-1">
-                              <div className="flex items-center gap-1 text-black">
-                                <ThreadsIcon size={10} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">
-                                  TH Active
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-black min-w-0">
+                                <ThreadsIcon size={9} className="shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
                                 </span>
                               </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden sm:inline select-none">
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
+                                {language === 'vi' ? 'Kéo' : 'Drag'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
+
+                      {/* 4. Active Instagram Pill (Draggable) */}
+                      {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (() => {
+                        const instaIdx = weekDays.findIndex(d => d.date === instagramDate);
+                        if (instaIdx < 0) return null;
+                        const instaWeek = Math.floor(instaIdx / 7);
+                        if (instaWeek !== activeWeek) return null;
+
+                        const colIndex = instaIdx % 7;
+                        const instaHour = parseInt(instagramTime.split(':')[0]) || 12;
+                        const rowIndex = instaHour - 16;
+                        if (rowIndex < 0 || rowIndex >= 8) return null;
+
+                        return (
+                          <motion.div
+                            key={`instagram-active-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
+                            drag
+                            dragConstraints={boardRef}
+                            dragElastic={0.05}
+                            dragMomentum={false}
+                            onDragEnd={handleInstagramDragEnd}
+                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-pink-500 shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
+                            style={{
+                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
+                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
+                              width: `calc(${(100) / 7}% - 10px)`,
+                              height: `calc(${(100) / 8}% - 10px)`,
+                            }}
+                          >
+                            <div className="flex flex-col relative w-full overflow-hidden">
+                              {/* Blinking pulse dot */}
+                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-pink-500"></span>
+                              </span>
+
+                              <span className="text-[9px] font-black text-pink-600 uppercase tracking-wider truncate pr-2">
+                                INSTAGRAM
+                              </span>
+                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
+                                {instaHour}:00 - {instaHour + 1}:00
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto pt-0.5">
+                              <div className="flex items-center gap-1 text-pink-600 min-w-0">
+                                <Instagram size={9} className="shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
+                                  Active
+                                </span>
+                              </div>
+                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
                                 {language === 'vi' ? 'Kéo' : 'Drag'}
                               </span>
                             </div>
@@ -2052,7 +2094,7 @@ Yêu cầu cụ thể:
 
               {/* Bottom Actions inside Step 3 */}
               <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6 font-sans">
-                <button 
+                <button
                   onClick={() => setStep(2)}
                   className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
                 >
@@ -2060,17 +2102,26 @@ Yêu cầu cụ thể:
                   {t('aiCreator.backToAb')}
                 </button>
 
-                <button 
+                <button
                   onClick={() => {
-                    if (facebookError || threadsError) return;
+                    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+                    const hasFbError = targetPlatforms.includes('facebook') && !!facebookError;
+                    const hasThreadsError = targetPlatforms.includes('threads') && !!threadsError;
+                    const hasInstaError = targetPlatforms.includes('instagram') && !!instagramError;
+                    if (hasFbError || hasThreadsError || hasInstaError) return;
                     setIsScheduled(true);
                   }}
-                  disabled={!!facebookError || !!threadsError}
-                  className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer font-sans ${
-                    (facebookError || threadsError) 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                  disabled={
+                    (getPromptTargetPlatforms(selectedPrompt).includes('facebook') && !!facebookError) ||
+                    (getPromptTargetPlatforms(selectedPrompt).includes('threads') && !!threadsError) ||
+                    (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && !!instagramError)
+                  }
+                  className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer font-sans ${((getPromptTargetPlatforms(selectedPrompt).includes('facebook') && facebookError) ||
+                      (getPromptTargetPlatforms(selectedPrompt).includes('threads') && threadsError) ||
+                      (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && instagramError))
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                       : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/20'
-                  }`}
+                    }`}
                 >
                   <CheckCircle2 size={15} />
                   {t('aiCreator.confirmSchedule')}
@@ -2086,32 +2137,32 @@ Yêu cầu cụ thể:
       {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
       <AnimatePresence>
         {isExplorerOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
               transition={{ type: 'spring', duration: 0.5 }}
               className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
             >
-              
+
               {/* Browser Header Bar */}
               <div className="bg-gray-100 border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 gap-4">
-                
+
                 {/* Browser controls */}
                 <div className="flex items-center gap-2 shrink-0">
-                  <button 
+                  <button
                     onClick={handleIframeBack}
                     className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
                   >
                     <ArrowLeft size={14} />
                   </button>
-                  <button 
+                  <button
                     onClick={handleRefresh}
                     className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
                   >
@@ -2128,7 +2179,7 @@ Yêu cầu cụ thể:
                 </div>
 
                 {/* Close Button */}
-                <button 
+                <button
                   onClick={() => setIsExplorerOpen(false)}
                   className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer"
                 >
@@ -2138,7 +2189,7 @@ Yêu cầu cụ thể:
 
               {/* Portal Live Content Area */}
               <div className="flex-1 bg-white relative flex flex-col">
-                
+
                 {/* Sticky banner to Import Current Page */}
                 <div className="bg-primary/5 border-b border-primary/20 py-3.5 px-8 flex items-center justify-between shrink-0 gap-4 z-10 shadow-sm">
                   <div className="flex flex-col">
@@ -2148,7 +2199,7 @@ Yêu cầu cụ thể:
                     </span>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleImportFromExplorer}
                     disabled={isScraping}
                     className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/10 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -2168,7 +2219,7 @@ Yêu cầu cụ thể:
                 </div>
 
                 {/* Iframe loading the proxied live website */}
-                <iframe 
+                <iframe
                   key={iframeKey}
                   ref={iframeRef}
                   src={iframeSrc}
@@ -2187,13 +2238,13 @@ Yêu cầu cụ thể:
       {/* SUCCESS CONFIRMATION DIALOG */}
       <AnimatePresence>
         {isScheduled && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
@@ -2208,9 +2259,9 @@ Yêu cầu cụ thể:
                   {t('aiCreator.scheduleSuccess')}
                 </h3>
                 <p className="text-xs text-text-muted mt-2 leading-relaxed">
-                  {language === 'vi' 
-                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên cả hai kênh Facebook và Threads.`
-                    : `Your posts have been successfully scheduled on both Facebook and Threads channels.`}
+                  {language === 'vi'
+                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên các kênh đã chọn.`
+                    : `Your posts have been successfully scheduled on the selected channels.`}
                 </p>
               </div>
 
@@ -2218,25 +2269,36 @@ Yêu cầu cụ thể:
                 <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
                   {language === 'vi' ? 'Thông tin xuất bản' : 'Publication details'}
                 </div>
-                
+
                 <div className="text-xs font-bold text-text truncate border-b border-gray-100 pb-2 font-sans">
                   {postData.title}
                 </div>
 
                 <div className="flex flex-col gap-2.5 font-sans">
-                  <div className="flex items-center justify-between text-xs font-sans">
-                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
-                    <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
-                  </div>
+                  {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
+                      <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
+                    </div>
+                  )}
 
-                  <div className="flex items-center justify-between text-xs font-sans">
-                    <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
-                    <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
-                  </div>
+                  {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                      <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
+                    </div>
+                  )}
+
+                  {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                    <div className="flex items-center justify-between text-xs font-sans">
+                      <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                      <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   setIsScheduled(false);
                   setStep(1);
@@ -2245,6 +2307,91 @@ Yêu cầu cụ thể:
               >
                 {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PROMPT SELECTOR POPUP DIALOG */}
+      <AnimatePresence>
+        {isPromptModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsPromptModalOpen(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh]"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
+                  📝 {language === 'vi' ? 'Chọn Prompt từ thư viện' : 'Select Prompt from Library'}
+                </h3>
+                <button
+                  onClick={() => setIsPromptModalOpen(false)}
+                  className="text-text-muted hover:text-text hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search Field */}
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
+                <input
+                  type="text"
+                  value={promptSearch}
+                  onChange={(e) => setPromptSearch(e.target.value)}
+                  placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
+                  className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                />
+              </div>
+
+              {/* Prompts list */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 font-sans">
+                {loadingPrompts ? (
+                  <div className="flex items-center justify-center py-12 text-xs text-text-muted font-bold gap-2">
+                    <Loader2 className="animate-spin" size={16} />
+                    {language === 'vi' ? 'Đang tải...' : 'Loading...'}
+                  </div>
+                ) : filteredPromptsForModal.length === 0 ? (
+                  <div className="text-center py-12 text-xs text-text-muted font-semibold">
+                    {language === 'vi' ? 'Không tìm thấy prompt nào' : 'No prompts found'}
+                  </div>
+                ) : (
+                  filteredPromptsForModal.map((p) => {
+                    const isSelected = selectedPrompt?.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPrompt(p);
+                          generateVariants(postData, p);
+                          setIsPromptModalOpen(false);
+                        }}
+                        className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
+                            : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between w-full font-sans">
+                          <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
+                          <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                        </div>
+                        <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                          "{p.content}"
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

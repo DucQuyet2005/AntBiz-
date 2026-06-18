@@ -435,6 +435,10 @@ CREATE POLICY "pipeline_runs: service role write"
   ON public.pipeline_runs FOR ALL
   USING (auth.role() = 'service_role');
 
+CREATE POLICY "users: update own avatars"
+  ON public.users FOR UPDATE
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
 
 -- ────────────────────────────────────────────────────────────
 -- SEED: tạo admin đầu tiên
