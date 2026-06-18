@@ -6,8 +6,11 @@ import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import UserProfileDropdown from '@/components/UserProfileDropdown';
 
+import { useRouter } from 'next/navigation';
+
 const Header = () => {
   const { t } = useLanguage();
+  const router = useRouter();
 
   return (
     <header className="flex items-center justify-between py-6">
@@ -21,7 +24,13 @@ const Header = () => {
       </div>
 
       <div className="flex items-center gap-6">
-        <button className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20">
+        <button 
+          onClick={() => {
+            router.push('/ai-creator');
+            window.dispatchEvent(new CustomEvent('ai-creator-go-to-step-1'));
+          }}
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer"
+        >
           <Plus size={18} />
           {t('header.addPost')}
         </button>
