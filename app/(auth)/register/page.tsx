@@ -68,8 +68,8 @@ export default function RegisterPage() {
 
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Join the Future</h1>
-        <p className="text-gray-500 text-sm mb-8">Start your AI publishing journey.</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Tham gia ngay</h1>
+        <p className="text-gray-500 text-sm mb-8">Bắt đầu hành trình sáng tạo nội dung AI của bạn.</p>
 
         {serverError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
@@ -87,7 +87,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Full Name</label>
+            <label className="text-xs font-semibold text-gray-700">Họ và Tên</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <User className="h-4 w-4 text-gray-400" />
@@ -95,7 +95,7 @@ export default function RegisterPage() {
               <input
                 {...register("fullName")}
                 type="text"
-                placeholder="Alex Carter"
+                placeholder="Nguyễn Văn An"
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
               />
             </div>
@@ -103,7 +103,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Email Address</label>
+            <label className="text-xs font-semibold text-gray-700">Địa chỉ Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Mail className="h-4 w-4 text-gray-400" />
@@ -119,7 +119,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Password</label>
+            <label className="text-xs font-semibold text-gray-700">Mật khẩu</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-gray-400" />
@@ -141,7 +141,7 @@ export default function RegisterPage() {
             {errors.password ? (
                <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.password.message}</p>
             ) : (
-               <p className="text-[11px] text-gray-500 font-medium pt-1 ml-1">Must be at least 8 characters with 1 uppercase, 1 lowercase and 1 number.</p>
+               <p className="text-[11px] text-gray-500 font-medium pt-1 ml-1">Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường và chữ số.</p>
             )}
           </div>
 
@@ -150,15 +150,15 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-full flex items-center justify-center gap-2 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Creating Account..." : "Create Account"}
+            {isSubmitting ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
 
         <p className="mt-8 text-center text-xs text-gray-500 font-medium">
-          Already have an account?{" "}
+          Đã có tài khoản?{" "}
           <Link href="/login" className="text-primary hover:text-primary-hover font-semibold transition-colors">
-            Log in
+            Đăng nhập
           </Link>
         </p>
       </div>

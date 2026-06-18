@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { login, signInWithGoogle } from "../actions";
 import { useForm } from "react-hook-form";
@@ -12,15 +12,19 @@ import { loginSchema, LoginInput } from "@/lib/validations/auth";
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lockoutTime, setLockoutTime] = useState<number>(0);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
+
+  const emailValue = watch("email");
 
   const isLockedOut = lockoutTime > 0;
 
@@ -42,12 +46,18 @@ export default function LoginPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const errorParam = params.get("error");
+      const resetParam = params.get("reset");
+      
       if (errorParam === "no_profile") {
         setServerError("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.");
       } else if (errorParam === "locked") {
         setServerError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
       } else if (errorParam) {
         setServerError(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam);
+      }
+
+      if (resetParam === "success") {
+        setSuccessMessage("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại với mật khẩu mới.");
       }
     }
   }, []);
@@ -142,8 +152,8 @@ export default function LoginPage() {
 
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Welcome Back</h1>
-        <p className="text-gray-500 text-sm mb-8">Log in to your AI Creative Studio</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Chào mừng trở lại</h1>
+        <p className="text-gray-500 text-sm mb-8">Đăng nhập vào AI Creative Studio của bạn</p>
 
         {serverError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
@@ -152,9 +162,16 @@ export default function LoginPage() {
           </div>
         )}
 
+        {successMessage && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-sm font-medium flex items-start gap-2">
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Email Address</label>
+            <label className="text-xs font-semibold text-gray-700">Địa chỉ Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Mail className="h-4 w-4 text-gray-400" />
@@ -172,9 +189,12 @@ export default function LoginPage() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-700">Password</label>
-              <Link href="#" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
-                Forgot Password?
+              <label className="text-xs font-semibold text-gray-700">Mật khẩu</label>
+              <Link
+                href={emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : "/forgot-password"}
+                className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
+              >
+                Quên mật khẩu?
               </Link>
             </div>
             <div className="relative">
@@ -205,14 +225,14 @@ export default function LoginPage() {
             disabled={isSubmitting || isLockedOut}
             className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLockedOut ? `Vui lòng thử lại sau ${lockoutTime}s` : isSubmitting ? "Signing In..." : "Sign In"}
+            {isLockedOut ? `Vui lòng thử lại sau ${lockoutTime}s` : isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             {!isLockedOut && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
         <div className="mt-8 flex items-center">
           <div className="flex-1 border-t border-gray-200"></div>
-          <span className="px-4 text-xs text-gray-400 bg-white">or continue with</span>
+          <span className="px-4 text-xs text-gray-400 bg-white">hoặc tiếp tục với</span>
           <div className="flex-1 border-t border-gray-200"></div>
         </div>
 
@@ -246,9 +266,9 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-gray-500 font-medium">
-          Don't have an account?{" "}
+          Chưa có tài khoản?{" "}
           <Link href="/register" className="text-primary hover:text-primary-hover font-semibold transition-colors">
-            Create one
+            Tạo tài khoản mới
           </Link>
         </p>
       </div>
