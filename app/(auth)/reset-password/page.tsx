@@ -32,7 +32,11 @@ export default function ResetPasswordPage() {
     // Gửi tín hiệu đóng các tab forgot-password khác
     const authChannel = new BroadcastChannel('auth_flow');
     authChannel.postMessage('CLOSE_FORGOT_PASSWORD');
-    authChannel.close();
+    
+    // Đóng channel sau một khoảng thời gian ngắn để đảm bảo tin nhắn đã được gửi
+    const timeout = setTimeout(() => {
+      authChannel.close();
+    }, 1000);
 
     async function checkSession() {
       try {
