@@ -43,7 +43,7 @@ Yêu cầu đối với Prompt bạn tạo ra:
 2. Prompt phải hướng dẫn cách khai thác nội dung từ bài báo trên.
 3. Prompt phải quy định rõ văn phong phù hợp với ${platform}.
 4. Prompt phải yêu cầu cấu trúc bài viết (Hook, Body, CTA, Hashtag).
-5. QUAN TRỌNG: Chỉ trả về nội dung của Prompt đó, không thêm lời dẫn giải.`;
+5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẾP nội dung prompt.`;
 
     const result = await model.generateContent(instruction);
     const response = await result.response;

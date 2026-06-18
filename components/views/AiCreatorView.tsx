@@ -402,7 +402,7 @@ Yêu cầu cụ thể:
    - CTA: Lời kêu gọi hành động rõ ràng.
 3. Hình thức: Sử dụng Emoji một cách tinh tế để tăng độ sinh động.
 4. Hashtag: Thêm 3-5 hashtag liên quan nhất (bao gồm hashtag thương hiệu và chủ đề).
-5. QUAN TRỌNG: Chỉ trả về nội dung bài viết hoàn chỉnh, không thêm lời dẫn giải của AI.`;
+5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
       
       setActivePrompt(detailedTemplate);
     }

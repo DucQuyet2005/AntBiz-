@@ -41,7 +41,7 @@ Yêu cầu bài viết:
 2. Có cấu trúc rõ ràng: Hook -> Body -> CTA.
 3. Sử dụng Emoji phù hợp.
 4. Thêm 3-5 hashtag liên quan.
-5. Chỉ trả về nội dung bài viết, không thêm lời dẫn giải của AI.`;
+5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
