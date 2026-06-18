@@ -521,7 +521,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
   const [captionId, setCaptionId] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [streamedCaption, setStreamedCaption] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateDone, setGenerateDone] = useState(false);
@@ -1333,6 +1332,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   />
                 </div>
               </div>
+            </div>
             {/* ── AI Caption Generator Panel (T-1.12.3 / T-1.12.4 / T-1.12.5) ── */}
             <div className="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] border border-[#C7D2FE] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm relative overflow-hidden">
               {/* Decorative glow */}

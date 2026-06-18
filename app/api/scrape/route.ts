@@ -23,6 +23,10 @@ export async function GET(request: NextRequest) {
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
 
+    const title = cleanData.title || '';
+    const description = cleanData.description || '';
+    const author = cleanData.author || '';
+
     // T-1.19.1: Phân loại category bằng AI từ title + description
     // Không dùng URL includes() hay regex URL nữa.
     const { category: aiCategory, confidence } = await classifyArticle(title, description);
@@ -63,13 +67,7 @@ export async function GET(request: NextRequest) {
       imageUrl,
       author,
       category,
-      tags,
-      title: cleanData.title || '',
-      description: cleanData.description || '',
-      imageUrl: imageUrl,
-      author: cleanData.author || '',
-      category: cleanData.category || '',
-      tags: tagsString || '',
+      tags: tagsString || tags,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
       url: targetUrl

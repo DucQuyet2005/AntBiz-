@@ -32,13 +32,13 @@ export async function suggestPrompts(
     let score = 0;
     
     // Exact category match in tags
-    if (prompt.tags.some(tag => tag.toLowerCase() === category.toLowerCase())) {
+    if (Array.isArray(prompt.tags) && (prompt.tags as string[]).some((tag: string) => tag.toLowerCase() === category.toLowerCase())) {
       score += 5;
     }
     
     // Partial tag matches
     searchTags.forEach(searchTag => {
-      if (prompt.tags.some(pTag => pTag.toLowerCase().includes(searchTag.toLowerCase()))) {
+      if (Array.isArray(prompt.tags) && (prompt.tags as string[]).some((pTag: string) => pTag.toLowerCase().includes(searchTag.toLowerCase()))) {
         score += 2;
       }
       if (prompt.content.toLowerCase().includes(searchTag.toLowerCase())) {
