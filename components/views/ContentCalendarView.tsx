@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Instagram, 
   Facebook, 
@@ -10,10 +10,10 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -32,6 +32,126 @@ const BlogIcon = ({ size = 20 }: { size?: number }) => (
 export default function ContentCalendarView() {
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'month' | 'quarter'>('week');
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('/api/scheduled-posts');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setPosts(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch scheduled posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const handleCancel = async (postId: string) => {
+    setActionLoadingId(postId);
+    try {
+      const res = await fetch(`/api/scheduled-posts/${postId}/cancel`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        await fetchPosts();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+      }
+    } catch (err) {
+      console.error('Cancel error:', err);
+      alert('Lỗi kết nối khi hủy lịch đăng bài');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const getDayIndexForPost = (scheduledAtStr: string) => {
+    const date = new Date(scheduledAtStr);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    const weekDates = [
+      '2026-06-15',
+      '2026-06-16',
+      '2026-06-17',
+      '2026-06-18',
+      '2026-06-19',
+      '2026-06-20',
+      '2026-06-21'
+    ];
+    
+    const idx = weekDates.indexOf(dateStr);
+    return idx !== -1 ? idx + 1 : -1;
+  };
+
+  const renderTimelinePills = (platform: string) => {
+    const platformPosts = posts.filter(
+      p => p.platform?.toLowerCase() === platform.toLowerCase()
+    );
+
+    return platformPosts.map(post => {
+      const dayIdx = getDayIndexForPost(post.scheduled_at);
+      if (dayIdx === -1) return null;
+
+      const timeStr = new Date(post.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...';
+
+      let bgClass = 'bg-[#FEF3C7] border-amber-100 text-[#D97706]';
+      let dotClass = 'bg-[#D97706]';
+
+      if (post.status === 'posted') {
+        bgClass = 'bg-emerald-50 border-emerald-100 text-emerald-700';
+        dotClass = 'bg-emerald-500';
+      } else if (post.status === 'failed') {
+        bgClass = 'bg-red-50 border-red-100 text-red-700';
+        dotClass = 'bg-red-500';
+      } else if (post.status === 'cancelled') {
+        bgClass = 'bg-gray-50 border-gray-100 text-gray-500';
+        dotClass = 'bg-gray-400';
+      }
+
+      return (
+        <div
+          key={post.id}
+          style={{ gridColumnStart: dayIdx, gridColumnEnd: dayIdx + 1 }}
+          className={`relative group ${bgClass} border rounded-2xl py-1 px-2 text-[10px] font-semibold flex flex-col justify-center shadow-sm hover:shadow transition-all truncate cursor-pointer h-16`}
+        >
+          <div className="flex items-center gap-1 shrink-0 truncate">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotClass} shrink-0`}></span>
+            <span className="truncate font-extrabold">{timeStr}</span>
+            <span className="text-[8px] opacity-70 uppercase">({post.status})</span>
+          </div>
+          <span className="truncate mt-0.5 opacity-90">{title}</span>
+
+          {post.status === 'pending' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCancel(post.id);
+              }}
+              disabled={actionLoadingId === post.id}
+              className="absolute right-1 top-1 bg-white/90 hover:bg-white text-[9px] text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded border border-red-200/50 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 cursor-pointer"
+            >
+              {actionLoadingId === post.id ? '...' : 'Hủy'}
+            </button>
+          )}
+        </div>
+      );
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -160,16 +280,16 @@ export default function ContentCalendarView() {
               
               {/* Day Labels Container */}
               <div className="col-span-7 grid grid-cols-7 gap-x-3 text-center px-1 text-xs font-semibold text-text-muted select-none">
-                <div>{t('contentCalendar.days.Mon')} 12</div>
-                <div>{t('contentCalendar.days.Tue')} 13</div>
-                <div>{t('contentCalendar.days.Wed')} 14</div>
+                <div>{t('contentCalendar.days.Mon')} 15</div>
+                <div>{t('contentCalendar.days.Tue')} 16</div>
+                <div>{t('contentCalendar.days.Wed')} 17</div>
                 <div className="text-text font-bold relative flex flex-col items-center">
-                  {t('contentCalendar.days.Thu')} 15
+                  {t('contentCalendar.days.Thu')} 18
                   <span className="text-[10px] text-primary mt-[2px] font-medium bg-[#EEF2FF] px-1.5 py-0.2 rounded-full border border-primary/20">{t('contentCalendar.today')}</span>
                 </div>
-                <div>{t('contentCalendar.days.Fri')} 16</div>
-                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sat')} 17</div>
-                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sun')} 18</div>
+                <div>{t('contentCalendar.days.Fri')} 19</div>
+                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sat')} 20</div>
+                <div className="text-[#E15A5A]">{t('contentCalendar.days.Sun')} 21</div>
               </div>
             </div>
 
@@ -197,17 +317,7 @@ export default function ContentCalendarView() {
                   
                   {/* Pills */}
                   <div className="absolute inset-0 grid grid-cols-7 gap-x-3 items-center px-1 z-10">
-                    {/* Pill 1: Tue-Wed */}
-                    <div className="col-start-2 col-span-2 bg-[#FFF1F2] border border-rose-100 text-[#E11D48] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] shrink-0"></span>
-                      <span className="truncate">Summer Launch: Teaser...</span>
-                    </div>
-
-                    {/* Pill 2: Thu-Fri */}
-                    <div className="col-start-4 col-span-2 bg-[#FEF3C7] border border-amber-100 text-[#D97706] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] shrink-0"></span>
-                      <span className="truncate">User Story: Sarah&apos;s...</span>
-                    </div>
+                    {renderTimelinePills('instagram')}
                   </div>
                 </div>
               </div>
@@ -233,17 +343,7 @@ export default function ContentCalendarView() {
                   
                   {/* Pills */}
                   <div className="absolute inset-0 grid grid-cols-7 gap-x-3 items-center px-1 z-10">
-                    {/* Pill 1: Mon-Tue */}
-                    <div className="col-start-1 col-span-2 bg-[#F0FDFA] border border-teal-100 text-[#0F766E] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0F766E] shrink-0"></span>
-                      <span className="truncate">V2.1 Thread</span>
-                    </div>
-
-                    {/* Pill 2: Wed-Thu */}
-                    <div className="col-start-3 col-span-2 bg-[#FFF1F2] border border-rose-100 text-[#E11D48] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] shrink-0"></span>
-                      <span className="truncate">Feature Deep Dive</span>
-                    </div>
+                    {renderTimelinePills('threads')}
                   </div>
                 </div>
               </div>
@@ -269,17 +369,7 @@ export default function ContentCalendarView() {
                   
                   {/* Pills */}
                   <div className="absolute inset-0 grid grid-cols-7 gap-x-3 items-center px-1 z-10">
-                    {/* Pill 1: Tue-Thu */}
-                    <div className="col-start-2 col-span-3 bg-[#FEF3C7] border border-amber-100 text-[#D97706] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] shrink-0"></span>
-                      <span className="truncate">Community Poll</span>
-                    </div>
-
-                    {/* Pill 2: Fri-Sun */}
-                    <div className="col-start-5 col-span-3 bg-[#FFF1F2] border border-rose-100 text-[#E11D48] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] shrink-0"></span>
-                      <span className="truncate">Summer Launch: Live Event</span>
-                    </div>
+                    {renderTimelinePills('facebook')}
                   </div>
                 </div>
               </div>
@@ -303,11 +393,7 @@ export default function ContentCalendarView() {
                   
                   {/* Pills */}
                   <div className="absolute inset-0 grid grid-cols-7 gap-x-3 items-center px-1 z-10">
-                    {/* Pill 1: Wed-Fri */}
-                    <div className="col-start-3 col-span-3 bg-[#F0FDFA] border border-teal-100 text-[#0F766E] rounded-full py-2 px-3 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow transition-shadow truncate cursor-pointer">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0F766E] shrink-0"></span>
-                      <span className="truncate">Release Notes Draft (Internal)</span>
-                    </div>
+                    {renderTimelinePills('blog')}
                   </div>
                 </div>
               </div>
@@ -333,7 +419,9 @@ export default function ContentCalendarView() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-[#A6783A] uppercase tracking-wider">{t('contentCalendar.upcoming')}</span>
-            <h3 className="text-3xl font-extrabold text-[#5B3E14] mt-0.5">{t('contentCalendar.postsCountValue', { count: 24 })}</h3>
+            <h3 className="text-3xl font-extrabold text-[#5B3E14] mt-0.5">
+              {loading ? '...' : posts.filter(p => p.status === 'pending').length}
+            </h3>
           </div>
         </div>
 
@@ -344,18 +432,22 @@ export default function ContentCalendarView() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-[#1E5C46] uppercase tracking-wider">{t('contentCalendar.published')}</span>
-            <h3 className="text-3xl font-extrabold text-[#0E3A2A] mt-0.5">{t('contentCalendar.postsCountValue', { count: 12 })} {t('contentCalendar.thisWk')}</h3>
+            <h3 className="text-3xl font-extrabold text-[#0E3A2A] mt-0.5">
+              {loading ? '...' : posts.filter(p => p.status === 'posted').length}
+            </h3>
           </div>
         </div>
 
-        {/* Card 3: Needs Approval */}
+        {/* Card 3: Failed/Cancelled */}
         <div className="bg-[#FFF1F2] border border-[#FFE4E6] rounded-[32px] p-6 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-14 h-14 rounded-full bg-[#FDE2E4] text-[#BE123C] flex items-center justify-center shadow-inner">
             <AlertTriangle size={24} />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">{t('contentCalendar.needsApproval')}</span>
-            <h3 className="text-3xl font-extrabold text-[#700D28] mt-0.5">{t('contentCalendar.draftsCount', { count: 3 })}</h3>
+            <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">Failed / Cancelled</span>
+            <h3 className="text-3xl font-extrabold text-[#700D28] mt-0.5">
+              {loading ? '...' : posts.filter(p => p.status === 'failed' || p.status === 'cancelled').length}
+            </h3>
           </div>
         </div>
 
@@ -364,4 +456,3 @@ export default function ContentCalendarView() {
     </div>
   );
 }
-
