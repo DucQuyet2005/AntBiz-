@@ -44,7 +44,14 @@ export async function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone()
 
-  const isPublicRoute = url.pathname === '/login' || url.pathname === '/register' || url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/proxy') || url.pathname.startsWith('/api/scrape');
+  const isPublicRoute = 
+    url.pathname === '/login' || 
+    url.pathname === '/register' || 
+    url.pathname === '/forgot-password' || 
+    url.pathname === '/reset-password' || 
+    url.pathname.startsWith('/api/auth') || 
+    url.pathname.startsWith('/api/proxy') || 
+    url.pathname.startsWith('/api/scrape');
 
   // Lấy và kiểm tra thông tin user profile trong database
   let profileExists = false;
