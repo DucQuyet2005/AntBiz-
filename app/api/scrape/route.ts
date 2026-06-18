@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { classifyArticle } from '@/lib/services/articleClassifier';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
 
@@ -22,12 +23,47 @@ export async function GET(request: NextRequest) {
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
 
+    // T-1.19.1: Phân loại category bằng AI từ title + description
+    // Không dùng URL includes() hay regex URL nữa.
+    const { category: aiCategory, confidence } = await classifyArticle(title, description);
+    const category = `#${aiCategory}`;
+    const tags = '#Tiết kiệm tài chính, #Đầu tư, #Mua nhà';
     const imageUrl = cleanData.images.length > 0
       ? cleanData.images.map(img => img.url).join('\n')
       : '';
     const tagsString = cleanData.tags.join(', ');
 
+    // T-1.19.1: Cache result in articles table
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
+    
+    const { data: article, error: dbError } = await supabase
+      .from('articles')
+      .upsert({
+        url: targetUrl,
+        title,
+        description,
+        author,
+        category: aiCategory,
+        category_confidence: confidence,
+        tags: tags.split(',').map(t => t.trim()),
+        crawled_at: new Date().toISOString(),
+      }, { onConflict: 'url' })
+      .select('id')
+      .single();
+
+    if (dbError) {
+      console.error('[scrape API] DB Error:', dbError);
+    }
+
     return NextResponse.json({
+      id: article?.id, // T-1.19.3: Trả về ID để dùng cho prompt suggestions
+      title,
+      description,
+      imageUrl,
+      author,
+      category,
+      tags,
       title: cleanData.title || '',
       description: cleanData.description || '',
       imageUrl: imageUrl,

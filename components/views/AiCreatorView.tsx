@@ -29,10 +29,14 @@ import {
   Repeat2,
   Search,
   RefreshCw,
-  X
+  X,
+  FileText,
+  Save,
+  Wand2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PromptSuggestionSection from '../PromptSuggestionSection';
 
 
 // Threads Custom SVG Logo
@@ -55,10 +59,147 @@ interface SocialVariant {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  
+  // AI Generation States
+  const [articleId, setArticleId] = useState<string | null>(null);
+  const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram' | 'threads'>('facebook');
+  const [activePrompt, setActivePrompt] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingSmartPrompt, setIsGeneratingSmartPrompt] = useState(false);
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
+
+  // Update prompt when platform changes
+  useEffect(() => {
+    if (postData.title && postData.description && !isGenerating && !isGeneratingSmartPrompt) {
+      const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.description);
+      setActivePrompt(newPrompt);
+    }
+  }, [promptPlatform]);
 
   // Prompt Selector Library States
   const [promptsList, setPromptsList] = useState<any[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
+  // AI Logic Functions
+  const handleGenerateSmartPrompt = async () => {
+    if (!postData.title || !postData.description) return;
+    setIsGeneratingSmartPrompt(true);
+    try {
+      const res = await fetch('/api/prompts/generate-smart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.description,
+          platform: selectedPlatform
+        }),
+      });
+      const data = await res.json();
+      if (data.smartPrompt) {
+        setActivePrompt(data.smartPrompt);
+      }
+    } catch (error) {
+      console.error('Error generating smart prompt:', error);
+    } finally {
+      setIsGeneratingSmartPrompt(false);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    if (!activePrompt) return;
+    setIsGenerating(true);
+    setLastGeneratedAiContent(null);
+    try {
+      const res = await fetch('/api/prompts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.description,
+          platform: selectedPlatform,
+          customPrompt: activePrompt
+        }),
+      });
+      const data = await res.json();
+      if (data.content) {
+        setLastGeneratedAiContent(data.content);
+      }
+    } catch (error) {
+      console.error('Error generating content:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSaveCurrentPrompt = async () => {
+    if (!activePrompt) return;
+    setIsSavingPrompt(true);
+    setSaveSuccess(false);
+    try {
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `AI Generated - ${new Date().toLocaleDateString()}`,
+          content: activePrompt,
+          platform: selectedPlatform,
+          tags: ['AI Generated', selectedPlatform]
+        }),
+      });
+      if (res.ok) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        // Refresh prompt list
+        const listRes = await fetch('/api/prompts?pageSize=100');
+        if (listRes.ok) {
+          const json = await listRes.json();
+          setPromptsList(json.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  };
+
+  const handleSaveAiResult = (variantId: string) => {
+    if (!lastGeneratedAiContent) return;
+    handleUpdateVariantField(variantId, selectedPlatform as any, lastGeneratedAiContent);
+    setLastGeneratedAiContent(null);
+  };
+
+  const getDefaultPromptTemplate = (platform: string, title: string, content: string) => {
+    const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+    return `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
+
+**Nền tảng:** ${platformLabel}
+
+**Dữ liệu đầu vào:**
+*   **Tiêu đề bài báo:** "${title}"
+*   **Nội dung tóm tắt:** "${content}"
+
+**Hướng dẫn khai thác nội dung:**
+*   Sử dụng đoạn tóm tắt để tạo hook và gây tò mò ngay từ đầu.
+*   Tập trung vào khía cạnh truyền cảm hứng của câu chuyện: sự kiên trì, mục tiêu tài chính, hành trình tiết kiệm/đầu tư để đạt được mục tiêu.
+*   Bài viết không cần kể chi tiết toàn bộ câu chuyện mà cần gợi mở để khuyến khích sự tương tác và muốn tìm hiểu thêm.
+
+**Văn phong:**
+*   Thân thiện, gần gũi, dễ đọc, truyền cảm hứng.
+*   Sử dụng ngôn ngữ đời thường, tránh thuật ngữ phức tạp.
+*   Khuyến khích sự tương tác, đặt câu hỏi gợi mở.
+
+**Cấu trúc bài viết:**
+1.  **Hook (Móc câu):** Bắt đầu mạnh mẽ, gây tò mò hoặc bất ngờ từ đoạn tóm tắt. Có thể là một câu hỏi hoặc một phát biểu gây chú ý.
+2.  **Body (Nội dung chính):** Phát triển câu chuyện ngắn gọn, nhấn mạnh cảm giác nhẹ nhõm và thành quả. Nhấn mạnh sự nỗ lực và bài học.
+3.  **Call to Action (CTA - Kêu gọi hành động):** Khuyến khích người đọc bình luận, chia sẻ quan điểm, hoặc kể về câu chuyện/mục tiêu của họ.
+4.  **Hashtag:** Đề xuất 3-5 hashtag liên quan, phổ biến và có khả năng viral.
+
+TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+  };
+
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [promptSearch, setPromptSearch] = useState('');
   const [loadingPrompts, setLoadingPrompts] = useState(false);
@@ -709,6 +850,8 @@ export default function AiCreatorView() {
             full_text: data.description || ''
           };
           setPostData(updatedPostData);
+          const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
+          setActivePrompt(defaultPrompt);
           generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
           return;
@@ -732,6 +875,8 @@ export default function AiCreatorView() {
         full_text: 'Toàn cảnh cơn sốt đất nền và bài học thức tỉnh nhà đầu tư cá nhân...'
       };
       setPostData(updatedPostData);
+      const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
+      setActivePrompt(defaultPrompt);
       generateVariants(updatedPostData, selectedPrompt);
       setIsFetching(false);
     }, 1200);
@@ -1042,6 +1187,152 @@ export default function AiCreatorView() {
               </div>
             </div>
 
+            {/* AI Prompt Editor Section */}
+            <div className="bg-white border border-gray-200/80 rounded-[28px] p-8 flex flex-col gap-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                    <Wand2 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-text">AI Prompt Editor</h3>
+                    <p className="text-[11px] text-text-muted">Tinh chỉnh câu lệnh để AI tạo nội dung tốt nhất</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleGenerateSmartPrompt}
+                    disabled={isGeneratingSmartPrompt || isGenerating}
+                    className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
+                  >
+                    <RefreshCw size={12} className={isGeneratingSmartPrompt ? "animate-spin" : ""} />
+                    Tạo Prompt thông minh từ bài viết
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                {/* Main Prompt Area */}
+                <div className="flex flex-col gap-4">
+                  <div className="relative group">
+                    <textarea 
+                      value={activePrompt}
+                      onChange={(e) => setActivePrompt(e.target.value)}
+                      placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
+                      rows={8}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-[24px] px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
+                    />
+                    <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {saveSuccess && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 animate-in fade-in slide-in-from-right-2">
+                          {language === 'vi' ? 'Đã lưu!' : 'Saved!'}
+                        </span>
+                      )}
+                      <button 
+                        onClick={handleSaveCurrentPrompt}
+                        disabled={isSavingPrompt}
+                        className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
+                        title="Lưu prompt này vào thư viện"
+                      >
+                        {isSavingPrompt ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* AI Output Preview (if generated) */}
+                  <AnimatePresence>
+                    {lastGeneratedAiContent && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="bg-emerald-50/50 border border-emerald-100 rounded-[24px] p-6 flex flex-col gap-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-emerald-700">
+                            <Sparkles size={16} />
+                            <span className="text-xs font-black uppercase tracking-wider">Kết quả từ AI</span>
+                          </div>
+                          <button 
+                            onClick={() => setLastGeneratedAiContent(null)}
+                            className="text-emerald-400 hover:text-emerald-600 transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <p className="text-sm text-emerald-900 leading-relaxed font-medium whitespace-pre-wrap">
+                          {lastGeneratedAiContent}
+                        </p>
+                        <div className="flex items-center gap-3 pt-2">
+                          <button 
+                            onClick={() => handleSaveAiResult('A')}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all flex items-center gap-2"
+                          >
+                            <Check size={14} />
+                            Sử dụng cho Biến thể A
+                          </button>
+                          <button 
+                            onClick={() => handleSaveAiResult('B')}
+                            className="bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                          >
+                            Dùng cho Biến thể B
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Action Bar */}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                      {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setPromptPlatform(p)}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                            promptPlatform === p 
+                              ? 'bg-white text-primary shadow-sm border border-gray-200' 
+                              : 'text-text-muted hover:text-text'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button 
+                      onClick={handleGenerateContent}
+                      disabled={isGenerating || !activePrompt}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-2xl text-xs font-black shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 h-11"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          Đang tạo...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          Bắt đầu tạo nội dung AI
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bottom Suggestions Section */}
+                <div className="border-t border-gray-100 pt-6">
+                  <PromptSuggestionSection 
+                    articleId={articleId || ''}
+                    articleTitle={postData.title}
+                    articleContent={postData.description}
+                    platform={promptPlatform}
+                    onSelectPrompt={(content) => setActivePrompt(content)}
+                    onSavePrompt={handleSaveCurrentPrompt}
+                  />
+                </div>
+              </div>
             {/* ── AI Caption Generator Panel (T-1.12.3 / T-1.12.4 / T-1.12.5) ── */}
             <div className="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] border border-[#C7D2FE] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm relative overflow-hidden">
               {/* Decorative glow */}
