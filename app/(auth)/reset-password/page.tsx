@@ -9,12 +9,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema, ResetPasswordInput } from "@/lib/validations/auth";
 import { createClient } from "@/utils/supabase/client";
+import { Toast, useToast } from "@/components/Toast";
+import { AnimatePresence } from "framer-motion";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { toast, showToast, hideToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
   const [isVerifyingSession, setIsVerifyingSession] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
@@ -27,6 +29,11 @@ export default function ResetPasswordPage() {
   });
 
   useEffect(() => {
+    // Gửi tín hiệu đóng các tab forgot-password khác
+    const authChannel = new BroadcastChannel('auth_flow');
+    authChannel.postMessage('CLOSE_FORGOT_PASSWORD');
+    authChannel.close();
+
     async function checkSession() {
       try {
         const supabase = createClient();
@@ -46,7 +53,7 @@ export default function ResetPasswordPage() {
   }, []);
 
   const onSubmit = async (data: ResetPasswordInput) => {
-    setServerError(null);
+    hideToast();
 
     try {
       const response = await fetch("/api/auth/reset-password", {
@@ -64,9 +71,12 @@ export default function ResetPasswordPage() {
       }
 
       // Đổi mật khẩu thành công -> Chuyển về trang đăng nhập với param reset=success
-      router.push("/login?reset=success");
+      showToast("Đặt lại mật khẩu thành công!", "success");
+      setTimeout(() => {
+        router.push("/login?reset=success");
+      }, 1500);
     } catch (err: any) {
-      setServerError(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -101,6 +111,15 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
@@ -133,13 +152,6 @@ export default function ResetPasswordPage() {
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Đặt lại mật khẩu</h1>
         <p className="text-gray-500 text-sm mb-8">Thiết lập mật khẩu mới cho tài khoản của bạn</p>
-
-        {serverError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{serverError}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">

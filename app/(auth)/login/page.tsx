@@ -8,11 +8,12 @@ import { login, signInWithGoogle } from "../actions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validations/auth";
+import { Toast, useToast } from "@/components/Toast";
+import { AnimatePresence } from "framer-motion";
 
 export default function LoginPage() {
+  const { toast, showToast, hideToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lockoutTime, setLockoutTime] = useState<number>(0);
 
   const {
@@ -49,18 +50,18 @@ export default function LoginPage() {
       const resetParam = params.get("reset");
       
       if (errorParam === "no_profile") {
-        setServerError("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.");
+        showToast("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.", "error");
       } else if (errorParam === "locked") {
-        setServerError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        showToast("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.", "error");
       } else if (errorParam) {
-        setServerError(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam);
+        showToast(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam, "error");
       }
 
       if (resetParam === "success") {
-        setSuccessMessage("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại với mật khẩu mới.");
+        showToast("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại với mật khẩu mới.", "success");
       }
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -70,7 +71,7 @@ export default function LoginPage() {
           if (prev <= 1) {
             localStorage.removeItem("login_lockout_until");
             localStorage.removeItem("login_attempts_count");
-            setServerError(null);
+            hideToast();
             return 0;
           }
           return prev - 1;
@@ -78,11 +79,11 @@ export default function LoginPage() {
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [lockoutTime]);
+  }, [lockoutTime, hideToast]);
 
   const onSubmit = async (data: LoginInput) => {
     if (isLockedOut) return;
-    setServerError(null);
+    hideToast();
 
     const formData = new FormData();
     formData.append("email", data.email);
@@ -91,7 +92,7 @@ export default function LoginPage() {
     const result = await login(formData);
 
     if (result?.error) {
-      setServerError(result.error);
+      showToast(result.error, "error");
       
       let attempts = parseInt(localStorage.getItem("login_attempts_count") || "0", 10);
       attempts += 1;
@@ -113,15 +114,24 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     if (isLockedOut) return;
-    setServerError(null);
+    hideToast();
     const result = await signInWithGoogle();
     if (result?.error) {
-      setServerError(result.error);
+      showToast(result.error, "error");
     }
   };
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
@@ -154,20 +164,6 @@ export default function LoginPage() {
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Chào mừng trở lại</h1>
         <p className="text-gray-500 text-sm mb-8">Đăng nhập vào AI Creative Studio của bạn</p>
-
-        {serverError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{serverError}</span>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-sm font-medium flex items-start gap-2">
-            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{successMessage}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
