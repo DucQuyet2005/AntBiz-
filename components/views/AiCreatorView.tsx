@@ -280,7 +280,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   });
 
   const handleFacebookDateChange = (val: string) => {
-    const activeHour = parseInt(facebookTime.split(':')[0]) || 16;
+    const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
     if (isCellOccupied(val, activeHour)) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
     } else {
@@ -296,8 +296,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleFacebookTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 16;
-    const clampedHour = Math.max(16, Math.min(23, hour));
+    const hour = parseInt(val.split(':')[0]) || 9;
+    const clampedHour = Math.max(0, Math.min(23, hour));
     const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
 
     if (isCellOccupied(facebookDate, clampedHour)) {
@@ -309,7 +309,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleThreadsDateChange = (val: string) => {
-    const activeHour = parseInt(threadsTime.split(':')[0]) || 16;
+    const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
     if (isCellOccupied(val, activeHour)) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
     } else {
@@ -325,8 +325,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleThreadsTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 16;
-    const clampedHour = Math.max(16, Math.min(23, hour));
+    const hour = parseInt(val.split(':')[0]) || 10;
+    const clampedHour = Math.max(0, Math.min(23, hour));
     const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
 
     if (isCellOccupied(threadsDate, clampedHour)) {
@@ -364,17 +364,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const y = info.point.y - rect.top;
 
     const col = Math.floor(x / (rect.width / 7));
-    const row = Math.floor(y / (rect.height / 8));
+    const row = Math.floor(y / (rect.height / 24));
 
     const clampedCol = Math.max(0, Math.min(6, col));
-    const clampedRow = Math.max(0, Math.min(7, row));
+    const clampedRow = Math.max(0, Math.min(23, row));
 
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-    const targetHour = 16 + clampedRow;
+    const targetHour = clampedRow;
 
     // Check occupancy against existing posts AND threads active post AND instagram active post
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
     const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
 
     const isOccupied = isCellOccupied(targetDate, targetHour) ||
@@ -398,17 +398,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const y = info.point.y - rect.top;
 
     const col = Math.floor(x / (rect.width / 7));
-    const row = Math.floor(y / (rect.height / 8));
+    const row = Math.floor(y / (rect.height / 24));
 
     const clampedCol = Math.max(0, Math.min(6, col));
-    const clampedRow = Math.max(0, Math.min(7, row));
+    const clampedRow = Math.max(0, Math.min(23, row));
 
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-    const targetHour = 16 + clampedRow;
+    const targetHour = clampedRow;
 
     // Check occupancy against existing posts AND facebook active post AND instagram active post
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
+    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
     const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
 
     const isOccupied = isCellOccupied(targetDate, targetHour) ||
@@ -426,7 +426,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleInstagramDateChange = (val: string) => {
-    const activeHour = parseInt(instagramTime.split(':')[0]) || 12;
+    const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
     if (isCellOccupied(val, activeHour)) {
       setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
     } else {
@@ -442,8 +442,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleInstagramTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 12;
-    const clampedHour = Math.max(16, Math.min(23, hour));
+    const hour = parseInt(val.split(':')[0]) || 11;
+    const clampedHour = Math.max(0, Math.min(23, hour));
     const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
 
     if (isCellOccupied(instagramDate, clampedHour)) {
@@ -471,18 +471,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const y = info.point.y - rect.top;
 
     const col = Math.floor(x / (rect.width / 7));
-    const row = Math.floor(y / (rect.height / 8));
+    const row = Math.floor(y / (rect.height / 24));
 
     const clampedCol = Math.max(0, Math.min(6, col));
-    const clampedRow = Math.max(0, Math.min(7, row));
+    const clampedRow = Math.max(0, Math.min(23, row));
 
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-    const targetHour = 16 + clampedRow;
+    const targetHour = clampedRow;
 
     // Check occupancy against existing posts, Facebook active post and Threads active post
     const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 20;
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
+    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
+    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
     const isOccupied = isCellOccupied(targetDate, targetHour) ||
       (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
       (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
@@ -1621,8 +1621,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   <textarea
                     value={postData.description}
                     onChange={(e) => setPostData({ ...postData, description: e.target.value })}
-                    rows={3}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed transition-all"
+                    rows={10}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
                   />
                 </div>
               </div>
@@ -2239,46 +2239,41 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             transition={{ duration: 0.4 }}
             className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full"
           >
-            {/* Left Column - Decoupled Schedulers Form (col-span-3) */}
-            <div className="lg:col-span-3 flex flex-col gap-6">
+            {/* Left Column - Decoupled Schedulers Form (col-span-4) */}
+            <div className="lg:col-span-4 flex flex-col gap-6">
 
-              {/* Selected Variant Preview Card - thrown from Step 2 with layoutId animation */}
+              {/* Selected Variant Preview Card - Mirrored from Step 2 */}
               {(() => {
-                const sv = variants.find(v => v.id === selectedVariantId);
-                if (!sv) return null;
-                // Render content correctly per platform
-                let svText = '';
-                if (selectedPlatform === 'facebook') svText = sv.facebook || '';
-                else if (selectedPlatform === 'instagram') svText = sv.instagram || '';
-                else {
-                  // threads can be string or array-like
-                  const raw = sv.threads;
-                  svText = typeof raw === 'string' ? raw : (Array.isArray(raw) ? (raw as string[]).join('\n\n') : String(raw || ''));
-                }
-                // Styling matching Step 2
-                let iconBg = 'bg-[#1877F2]';
-                let platformLabel = 'Facebook';
-                let platformTagCls = 'bg-blue-100 text-blue-700';
-                if (selectedPlatform === 'threads') {
-                  iconBg = 'bg-black'; platformLabel = 'Threads'; platformTagCls = 'bg-slate-100 text-slate-700';
+                const v = variants.find(sv => sv.id === selectedVariantId);
+                if (!v) return null;
+
+                let iconBg = 'bg-black';
+                let platformLabel = '';
+                if (selectedPlatform === 'facebook') {
+                  iconBg = 'bg-blue-600';
+                  platformLabel = t('aiCreator.fbPreview');
+                } else if (selectedPlatform === 'threads') {
+                  iconBg = 'bg-black';
+                  platformLabel = t('aiCreator.threadsFeed');
                 } else if (selectedPlatform === 'instagram') {
                   iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
-                  platformLabel = 'Instagram'; platformTagCls = 'bg-pink-100 text-pink-700';
+                  platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
                 }
+
                 return (
                   <motion.div
-                    layoutId={`variant-card-${selectedVariantId}`}
-                    className="bg-white border-2 border-primary rounded-3xl shadow-2xl shadow-primary/15 flex flex-col overflow-hidden"
+                    layoutId={`variant-card-${v.id}`}
+                    className="rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01] select-none"
                   >
-                    {/* Same header style as Step 2 card */}
-                    <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+                    {/* Variant Badge & Platform Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
                           {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
                           {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
                           {selectedPlatform === 'instagram' && <Instagram size={12} />}
                         </div>
-                        <span className="text-xs font-extrabold text-slate-800">{platformLabel}</span>
+                        <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <motion.span
@@ -2287,35 +2282,196 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
                         >
                           <Check size={9} />
-                          Đã chọn · Biến thể {sv.id}
+                          Đã chọn
                         </motion.span>
-                        <button
-                          type="button"
-                          onClick={() => changeStep(2)}
-                          className="text-[9px] text-slate-400 hover:text-primary font-black cursor-pointer border border-slate-200 hover:border-primary/40 bg-white rounded-xl px-2 py-1 transition-all"
-                        >
-                          Đổi
-                        </button>
+                        <span className="text-xs font-black px-3 py-1 rounded-full border bg-primary text-white border-primary select-none">
+                          {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
+                        </span>
                       </div>
                     </div>
-                    {/* Content */}
-                    <div className="px-4 py-3 max-h-40 overflow-y-auto custom-scrollbar">
-                      {svText ? (
-                        <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">{svText}</p>
-                      ) : (
-                        <p className="text-[11px] text-slate-400 italic">Không có nội dung cho nền tảng này.</p>
-                      )}
-                    </div>
-                    {/* Footer platform tag */}
-                    <div className="flex items-center gap-1.5 px-4 pb-3 pt-1">
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${platformTagCls}`}>{selectedPlatform}</span>
-                      {sv.title && <span className="text-[9px] text-slate-400 font-semibold truncate">· {sv.title}</span>}
-                    </div>
+
+                    {/* Mockup */}
+                    {selectedPlatform === 'threads' ? (
+                      <div className="flex flex-col gap-0 text-text">
+                        <div className="flex gap-3 items-stretch">
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className="relative w-9 h-9">
+                              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {v.id}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none">
+                                +
+                              </div>
+                            </div>
+                            <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                          </div>
+
+                          <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                              <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                <span>24/03/2025</span>
+                                <MoreHorizontal size={13} className="text-gray-400" />
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
+                              {toggles.showTitle && (
+                                <div className="font-extrabold text-xs text-text">
+                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                </div>
+                              )}
+                              {toggles.showDescription && (
+                                <div className="whitespace-pre-wrap">
+                                  <EditableText variantId={v.id} field="threads" value={v.threads} textarea />
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle">1/2</span>
+                                </div>
+                              )}
+                              {(toggles.showAuthor || toggles.showTags) && (
+                                <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
+                                  {toggles.showAuthor && (
+                                    <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                      <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                      <EditableText variantId={v.id} field="author" value={v.author} />
+                                    </div>
+                                  )}
+                                  {toggles.showTags && (
+                                    <div className="text-primary font-bold">
+                                      <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {toggles.showImage && postData.imageUrl && (
+                              <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 mt-1.5 shadow-sm">
+                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-4 text-gray-400 mt-2.5">
+                              <Heart size={14} />
+                              <MessageCircle size={14} />
+                              <Repeat2 size={14} />
+                              <Share2 size={14} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : selectedPlatform === 'instagram' ? (
+                      <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                        <div className="p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                              {v.id}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-text flex items-center gap-1">
+                                antbiz_official
+                                <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
+                              </span>
+                              <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                            </div>
+                          </div>
+                          <MoreHorizontal size={14} className="text-gray-400" />
+                        </div>
+
+                        {toggles.showImage && postData.imageUrl && (
+                          <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
+                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+
+                        <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
+                          <Heart size={20} />
+                          <MessageCircle size={20} />
+                          <Send size={18} />
+                        </div>
+
+                        <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                          {toggles.showTitle && (
+                            <div className="font-extrabold text-xs text-text">
+                              🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                            </div>
+                          )}
+                          {toggles.showDescription && (
+                            <div className="whitespace-pre-wrap">
+                              <span className="font-extrabold mr-1.5">antbiz_official</span>
+                              <EditableText variantId={v.id} field="instagram" value={v.instagram} textarea />
+                            </div>
+                          )}
+                          {toggles.showAuthor && (
+                            <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
+                              <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                              <EditableText variantId={v.id} field="author" value={v.author} />
+                            </div>
+                          )}
+                          {toggles.showTags && (
+                            <div className="text-primary font-bold mt-1">
+                              <EditableText variantId={v.id} field="tags" value={v.tags} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                        <div className="p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                              {v.id}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-text flex items-center gap-1">
+                                AntBiz Official
+                                <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
+                              </span>
+                              <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                            </div>
+                          </div>
+                          <MoreHorizontal size={14} className="text-gray-400" />
+                        </div>
+
+                        <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
+                          {toggles.showTitle && (
+                            <div className="font-extrabold text-xs text-text mb-0.5">
+                              🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                            </div>
+                          )}
+                          {toggles.showDescription && (
+                            <div className="whitespace-pre-wrap">
+                              <EditableText variantId={v.id} field="facebook" value={v.facebook} textarea />
+                            </div>
+                          )}
+                          {(toggles.showAuthor || toggles.showTags) && (
+                            <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
+                              {toggles.showAuthor && (
+                                <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                  <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                  <EditableText variantId={v.id} field="author" value={v.author} />
+                                </div>
+                              )}
+                              {toggles.showTags && (
+                                <div className="text-primary font-bold">
+                                  <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {toggles.showImage && postData.imageUrl && (
+                          <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
+                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })()}
 
-              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5 mt-2">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                   <Calendar size={18} className="text-primary" />
                   <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
@@ -2323,204 +2479,92 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </h3>
                 </div>
 
-                <p className="text-xs text-text-muted font-semibold leading-relaxed">
-                  {t('aiCreator.scheduleIntro')}
-                </p>
-
-                {/* 1. Facebook Scheduler Inputs */}
-                {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
-                  <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                    <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
-                      <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
-                        <Facebook size={10} className="fill-white" />
+                {/* Schedulers Inputs for platforms */}
+                <div className="flex flex-col gap-4">
+                  {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                    <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                      <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                        <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                          <Facebook size={10} className="fill-white" />
+                        </div>
+                        <span>Facebook</span>
                       </div>
-                      <span>Facebook Publication</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
                     </div>
+                  )}
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.dateInputLabel')}
-                        </label>
-                        <input
-                          type="date"
-                          min="2026-06-15"
-                          max="2026-07-05"
-                          value={facebookDate}
-                          onChange={(e) => handleFacebookDateChange(e.target.value)}
-                          className={`w-full bg-white border ${facebookError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                        />
+                  {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                    <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                      <div className="flex items-center gap-2 font-bold text-xs text-black">
+                        <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                          <ThreadsIcon size={10} />
+                        </div>
+                        <span>Threads</span>
                       </div>
-
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.timeInputLabel')}
-                        </label>
-                        <input
-                          type="time"
-                          value={facebookTime}
-                          onChange={(e) => handleFacebookTimeChange(e.target.value)}
-                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
+                      {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
                     </div>
+                  )}
 
-                    {facebookError && (
-                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                        ⚠️ {facebookError}
+                  {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                    <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                      <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
+                          <Instagram size={10} />
+                        </div>
+                        <span>Instagram</span>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 2. Threads Scheduler Inputs */}
-                {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
-                  <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                    <div className="flex items-center gap-2 font-bold text-xs text-black">
-                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
-                        <ThreadsIcon size={10} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <span>Threads Publication</span>
+                      {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.dateInputLabel')}
-                        </label>
-                        <input
-                          type="date"
-                          min="2026-06-15"
-                          max="2026-07-05"
-                          value={threadsDate}
-                          onChange={(e) => handleThreadsDateChange(e.target.value)}
-                          className={`w-full bg-white border ${threadsError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.timeInputLabel')}
-                        </label>
-                        <input
-                          type="time"
-                          value={threadsTime}
-                          onChange={(e) => handleThreadsTimeChange(e.target.value)}
-                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                        />
-                      </div>
-                    </div>
-
-                    {threadsError && (
-                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                        ⚠️ {threadsError}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 3. Instagram Scheduler Inputs */}
-                {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
-                  <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                    <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white text-[10px]">
-                        <Instagram size={10} />
-                      </div>
-                      <span>Instagram Publication</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.dateInputLabel')}
-                        </label>
-                        <input
-                          type="date"
-                          min="2026-06-15"
-                          max="2026-07-05"
-                          value={instagramDate}
-                          onChange={(e) => handleInstagramDateChange(e.target.value)}
-                          className={`w-full bg-white border ${instagramError ? 'border-red-400 focus:ring-red-200' : 'border-[#E4E6F8] focus:ring-primary/20'} rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 transition-all font-semibold`}
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 font-sans">
-                        <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-                          {t('aiCreator.timeInputLabel')}
-                        </label>
-                        <input
-                          type="time"
-                          value={instagramTime}
-                          onChange={(e) => handleInstagramTimeChange(e.target.value)}
-                          className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                        />
-                      </div>
-                    </div>
-
-                    {instagramError && (
-                      <div className="text-[10px] text-red-500 font-bold leading-normal font-sans">
-                        ⚠️ {instagramError}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-
-                {/* Drag instruction warning */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-800 leading-relaxed font-semibold">
-                  {t('aiCreator.dragInstruction')}
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right Column - 2D Calendar Grid (col-span-9) */}
-            <div className="lg:col-span-9 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col min-h-[500px]">
+            {/* Right Column - 2D Calendar Grid (col-span-8) */}
+            <div className="lg:col-span-8 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col">
 
-              {/* Header Title & Dropdown mimicking PostLab */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
                 <div>
                   <h3 className="text-lg font-extrabold text-text flex items-center gap-2">
                     {language === 'vi' ? 'Kế hoạch đăng bài' : 'Publication Plan'}
                   </h3>
-                  <p className="text-xs text-text-muted mt-0.5">
+                  <p className="text-[11px] text-text-muted mt-0.5">
                     {language === 'vi'
-                      ? 'Kéo thả thẻ bài viết màu sắc trên lịch 2D để đổi ngày/giờ đăng. Bài đăng cũ có màu xám.'
-                      : 'Drag and drop colored cards on the 2D grid to change dates/hours. Old posts are gray.'}
+                      ? 'Kéo thả thẻ để đổi ngày/giờ. Grid hiển thị 24h.'
+                      : 'Drag cards to change dates/hours. 24h grid view.'}
                   </p>
                 </div>
 
-                {/* Active Week Selectors / Tabs */}
-                <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 select-none font-sans gap-1">
+                <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 gap-1">
                   {[
-                    { id: 0, label: language === 'vi' ? 'Tuần 1 (15/06 - 21/06)' : 'Wk 1', firstDate: '2026-06-16' },
-                    { id: 1, label: language === 'vi' ? 'Tuần 2 (22/06 - 28/06)' : 'Wk 2', firstDate: '2026-06-23' },
-                    { id: 2, label: language === 'vi' ? 'Tuần 3 (29/06 - 05/07)' : 'Wk 3', firstDate: '2026-06-30' }
+                    { id: 0, label: language === 'vi' ? 'Tuần 1' : 'Wk 1', firstDate: '2026-06-16' },
+                    { id: 1, label: language === 'vi' ? 'Tuần 2' : 'Wk 2', firstDate: '2026-06-23' },
+                    { id: 2, label: language === 'vi' ? 'Tuần 3' : 'Wk 3', firstDate: '2026-06-30' }
                   ].map((wk) => (
                     <button
                       key={wk.id}
                       onClick={() => {
                         setActiveWeek(wk.id as 0 | 1 | 2);
-                        // Auto-advance scheduling dates to a day in the new week
                         const platforms = getPromptTargetPlatforms(selectedPrompt);
-                        if (platforms.includes('facebook')) {
-                          setFacebookDate(wk.firstDate);
-                          setFacebookError('');
-                          setFbResetTrigger(prev => prev + 1);
-                        }
-                        if (platforms.includes('threads')) {
-                          setThreadsDate(wk.firstDate);
-                          setThreadsError('');
-                          setThreadsResetTrigger(prev => prev + 1);
-                        }
-                        if (platforms.includes('instagram')) {
-                          setInstagramDate(wk.firstDate);
-                          setInstagramError('');
-                          setInstagramResetTrigger(prev => prev + 1);
-                        }
+                        if (platforms.includes('facebook')) setFacebookDate(wk.firstDate);
+                        if (platforms.includes('threads')) setThreadsDate(wk.firstDate);
+                        if (platforms.includes('instagram')) setInstagramDate(wk.firstDate);
                       }}
-                      className={`text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer ${activeWeek === wk.id
-                        ? 'bg-white text-primary shadow-sm font-extrabold border border-primary/20'
-                        : 'text-text-muted hover:text-text hover:bg-white/60'
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${activeWeek === wk.id
+                        ? 'bg-white text-primary shadow-sm border border-primary/20'
+                        : 'text-text-muted hover:text-text'
                         }`}
                     >
                       {wk.label}
@@ -2529,336 +2573,137 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
               </div>
 
-              {/* 2D Calendar Board Wrapper */}
-              <div className="w-full overflow-x-auto relative border border-gray-150 rounded-2xl p-1 bg-white select-none">
-                <div className="min-w-[760px] flex flex-col">
-
-                  {/* Days of the Week Header Row */}
+              {/* 2D Calendar Board */}
+              <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl p-1 bg-white select-none">
+                <div className="min-w-[700px] flex flex-col">
+                  {/* Days Header */}
                   <div
-                    className="grid border-b border-gray-200 pb-2.5 mb-1 font-sans text-center text-xs font-extrabold"
-                    style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}
+                    className="grid border-b border-gray-200 pb-2 mb-1 text-center text-[10px] font-extrabold"
+                    style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}
                   >
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">
-                      {language === 'vi' ? 'Giờ' : 'Time'}
-                    </span>
-                    {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => {
-                      const isFbScheduled = facebookDate === day.date;
-                      const isThreadsScheduled = threadsDate === day.date;
-                      const isAnyActive = isFbScheduled || isThreadsScheduled;
-
-                      return (
-                        <div
-                          key={day.date}
-                          className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${isAnyActive
-                            ? 'text-primary font-black bg-primary/5 border border-primary/20 shadow-sm'
-                            : day.isToday
-                              ? 'text-text font-black bg-gray-50 border border-gray-255'
-                              : 'text-text-muted font-bold'
-                            }`}
-                        >
-                          <span className="text-[10px] tracking-wide">{getDayLabel(day.name)}</span>
-                          <span className="text-[11px] mt-0.5 font-bold opacity-80">{day.label} / 06</span>
-                        </div>
-                      );
-                    })}
+                    <span className="text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">H</span>
+                    {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => (
+                      <div key={day.date} className={`flex flex-col items-center py-1 rounded-lg ${facebookDate === day.date || threadsDate === day.date ? 'text-primary bg-primary/5' : 'text-text-muted'}`}>
+                        <span>{getDayLabel(day.name).substring(0, 3)}</span>
+                        <span className="text-[11px] font-bold">{day.label}</span>
+                      </div>
+                    ))}
                   </div>
 
-                  {/* 2D Grid with Time Labels */}
-                  <div className="flex relative w-full" style={{ height: '576px' }}>
-
-                    {/* Hour Column (Left) */}
-                    <div className="w-[80px] grid grid-rows-8 h-full pr-2 font-sans border-r border-gray-100/60 bg-gray-50/50 rounded-l-2xl select-none">
-                      {[16, 17, 18, 19, 20, 21, 22, 23].map((hr) => (
-                        <div key={hr} className="flex flex-col justify-start pt-2 items-center text-[11px] font-extrabold text-text-muted">
-                          <span>{hr}:00</span>
+                  {/* 2D Grid with 24 Hours */}
+                  <div className="flex relative w-full" style={{ height: '960px' }}>
+                    {/* Hour Column */}
+                    <div className="w-[60px] grid grid-rows-[repeat(24,minmax(0,1fr))] h-full pr-1 border-r border-gray-100 bg-gray-50/30">
+                      {Array.from({ length: 24 }).map((_, hr) => (
+                        <div key={hr} className="flex items-center justify-center text-[10px] font-bold text-text-muted border-b border-gray-50">
+                          {hr}:00
                         </div>
                       ))}
                     </div>
 
-                    {/* Draggable Area Relative Board (Right 7 Columns x 8 Rows) */}
-                    <div
-                      ref={boardRef}
-                      className="flex-1 relative h-full bg-white select-none overflow-hidden"
-                    >
-                      {/* Background Grid Lines */}
-                      <div className="absolute inset-0 grid grid-cols-7 grid-rows-8 pointer-events-none">
-                        {Array.from({ length: 56 }).map((_, idx) => {
-                          const isLastCol = (idx + 1) % 7 === 0;
-                          const isLastRow = idx >= 49;
-                          return (
-                            <div
-                              key={idx}
-                              className={`border-gray-250/55 ${!isLastCol ? 'border-r' : ''} ${!isLastRow ? 'border-b' : ''}`}
-                            />
-                          );
-                        })}
+                    {/* Board Area */}
+                    <div ref={boardRef} className="flex-1 relative h-full bg-white overflow-hidden">
+                      {/* Grid Lines */}
+                      <div className="absolute inset-0 grid grid-cols-7 grid-rows-[repeat(24,minmax(0,1fr))] pointer-events-none">
+                        {Array.from({ length: 7 * 24 }).map((_, idx) => (
+                          <div key={idx} className="border-r border-b border-gray-100/50" />
+                        ))}
                       </div>
 
-                      {/* 1. Existing Posts (Grayscale) */}
+                      {/* Existing Posts (Grayscale/Compact) */}
                       {existingPosts.map((post, index) => {
                         const dayIdx = weekDays.findIndex(d => d.date === post.date);
-                        if (dayIdx < 0) return null;
-                        const weekIdx = Math.floor(dayIdx / 7);
-                        if (weekIdx !== activeWeek) return null;
-
+                        if (dayIdx < 0 || Math.floor(dayIdx / 7) !== activeWeek) return null;
                         const colIndex = dayIdx % 7;
-                        const rowIndex = post.hour - 16;
-                        if (rowIndex < 0 || rowIndex >= 8) return null;
-
+                        const hr = post.hour;
                         return (
                           <div
                             key={`existing-${index}`}
-                            className="absolute p-1.5 rounded-xl bg-[#FAFBFD] border border-gray-200/60 shadow-sm flex flex-col justify-between select-none pointer-events-none grayscale opacity-60 overflow-hidden"
-                            style={{
-                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
-                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
-                              width: `calc(${(100) / 7}% - 10px)`,
-                              height: `calc(${(100) / 8}% - 10px)`,
-                            }}
+                            className="absolute p-1 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center grayscale opacity-50 overflow-hidden pointer-events-none"
+                            style={{ left: `calc(${(colIndex * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                           >
-                            <div className="flex flex-col overflow-hidden">
-                              <span className="text-[9px] font-black text-gray-500 uppercase tracking-wider truncate">
-                                {post.title}
-                              </span>
-                              <span className="text-[9px] text-gray-400 font-semibold truncate leading-tight mt-0.5">
-                                {post.hour}:00 - {post.hour + 1}:00
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 mt-auto pt-0.5 text-gray-400 truncate">
-                              {post.category === 'facebook' ? (
-                                <Facebook size={9} className="fill-gray-400 stroke-none shrink-0" />
-                              ) : (
-                                <ThreadsIcon size={9} className="shrink-0" />
-                              )}
-                              <span className="text-[8px] font-bold uppercase tracking-widest text-gray-400 truncate whitespace-nowrap">
-                                {post.category}
-                              </span>
-                            </div>
+                            <span className="text-[7px] font-bold text-gray-500 truncate uppercase">{post.title}</span>
                           </div>
                         );
                       })}
 
-                      {/* 2. Active Facebook Pill (Draggable) */}
+                      {/* Active Facebook Pill */}
                       {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (() => {
                         const fbIdx = weekDays.findIndex(d => d.date === facebookDate);
-                        if (fbIdx < 0) return null;
-                        const fbWeek = Math.floor(fbIdx / 7);
-                        if (fbWeek !== activeWeek) return null;
-
-                        const colIndex = fbIdx % 7;
-                        const fbHour = parseInt(facebookTime.split(':')[0]) || 20;
-                        const rowIndex = fbHour - 16;
-                        if (rowIndex < 0 || rowIndex >= 8) return null;
-
+                        if (fbIdx < 0 || Math.floor(fbIdx / 7) !== activeWeek) return null;
+                        const col = fbIdx % 7;
+                        const hr = parseInt(facebookTime.split(':')[0]) || 0;
                         return (
                           <motion.div
-                            key={`fb-active-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
-                            drag
-                            dragConstraints={boardRef}
-                            dragElastic={0.05}
-                            dragMomentum={false}
-                            onDragEnd={handleFbDragEnd}
-                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-[#1877F2] shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
-                            style={{
-                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
-                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
-                              width: `calc(${(100) / 7}% - 10px)`,
-                              height: `calc(${(100) / 8}% - 10px)`,
-                            }}
+                            key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
+                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
+                            className="absolute p-1 rounded-xl bg-white border-2 border-[#1877F2] shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                           >
-                            <div className="flex flex-col relative w-full overflow-hidden">
-                              {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#1877F2]"></span>
-                              </span>
-
-                              <span className="text-[9px] font-black text-[#1877F2] uppercase tracking-wider truncate pr-2">
-                                FACEBOOK
-                              </span>
-                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
-                                {fbHour}:00 - {fbHour + 1}:00
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between mt-auto pt-0.5">
-                              <div className="flex items-center gap-1 text-[#1877F2] min-w-0">
-                                <Facebook size={9} className="fill-[#1877F2] stroke-none shrink-0" />
-                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
-                                  Active
-                                </span>
-                              </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
-                                {language === 'vi' ? 'Kéo' : 'Drag'}
-                              </span>
+                            <div className="flex items-center gap-1">
+                              <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
+                              <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {hr}:00</span>
                             </div>
                           </motion.div>
                         );
                       })()}
 
-                      {/* 3. Active Threads Pill (Draggable) */}
+                      {/* Active Threads Pill */}
                       {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (() => {
-                        const threadsIdx = weekDays.findIndex(d => d.date === threadsDate);
-                        if (threadsIdx < 0) return null;
-                        const threadsWeek = Math.floor(threadsIdx / 7);
-                        if (threadsWeek !== activeWeek) return null;
-
-                        const colIndex = threadsIdx % 7;
-                        const threadsHour = parseInt(threadsTime.split(':')[0]) || 18;
-                        const rowIndex = threadsHour - 16;
-                        if (rowIndex < 0 || rowIndex >= 8) return null;
-
+                        const tIdx = weekDays.findIndex(d => d.date === threadsDate);
+                        if (tIdx < 0 || Math.floor(tIdx / 7) !== activeWeek) return null;
+                        const col = tIdx % 7;
+                        const hr = parseInt(threadsTime.split(':')[0]) || 0;
                         return (
                           <motion.div
-                            key={`threads-active-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
-                            drag
-                            dragConstraints={boardRef}
-                            dragElastic={0.05}
-                            dragMomentum={false}
-                            onDragEnd={handleThreadsDragEnd}
-                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-black shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
-                            style={{
-                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
-                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
-                              width: `calc(${(100) / 7}% - 10px)`,
-                              height: `calc(${(100) / 8}% - 10px)`,
-                            }}
+                            key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
+                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
+                            className="absolute p-1 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                           >
-                            <div className="flex flex-col relative w-full overflow-hidden">
-                              {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-black"></span>
-                              </span>
-
-                              <span className="text-[9px] font-black text-black uppercase tracking-wider truncate pr-2">
-                                THREADS
-                              </span>
-                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
-                                {threadsHour}:00 - {threadsHour + 1}:00
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between mt-auto pt-0.5">
-                              <div className="flex items-center gap-1 text-black min-w-0">
-                                <ThreadsIcon size={9} className="shrink-0" />
-                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
-                                  Active
-                                </span>
-                              </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
-                                {language === 'vi' ? 'Kéo' : 'Drag'}
-                              </span>
+                            <div className="flex items-center gap-1">
+                              <ThreadsIcon size={10} className="shrink-0" />
+                              <span className="text-[8px] font-black text-black uppercase truncate">TR {hr}:00</span>
                             </div>
                           </motion.div>
                         );
                       })()}
 
-                      {/* 4. Active Instagram Pill (Draggable) */}
+                      {/* Active Instagram Pill */}
                       {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (() => {
-                        const instaIdx = weekDays.findIndex(d => d.date === instagramDate);
-                        if (instaIdx < 0) return null;
-                        const instaWeek = Math.floor(instaIdx / 7);
-                        if (instaWeek !== activeWeek) return null;
-
-                        const colIndex = instaIdx % 7;
-                        const instaHour = parseInt(instagramTime.split(':')[0]) || 12;
-                        const rowIndex = instaHour - 16;
-                        if (rowIndex < 0 || rowIndex >= 8) return null;
-
+                        const iIdx = weekDays.findIndex(d => d.date === instagramDate);
+                        if (iIdx < 0 || Math.floor(iIdx / 7) !== activeWeek) return null;
+                        const col = iIdx % 7;
+                        const hr = parseInt(instagramTime.split(':')[0]) || 0;
                         return (
                           <motion.div
-                            key={`instagram-active-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
-                            drag
-                            dragConstraints={boardRef}
-                            dragElastic={0.05}
-                            dragMomentum={false}
-                            onDragEnd={handleInstagramDragEnd}
-                            className="absolute p-1.5 rounded-2xl bg-white border-2 border-pink-500 shadow-xl flex flex-col justify-between cursor-grab active:cursor-grabbing z-20 hover:shadow-2xl transition-shadow select-none overflow-hidden"
-                            style={{
-                              left: `calc(${(colIndex * 100) / 7}% + 5px)`,
-                              top: `calc(${(rowIndex * 100) / 8}% + 5px)`,
-                              width: `calc(${(100) / 7}% - 10px)`,
-                              height: `calc(${(100) / 8}% - 10px)`,
-                            }}
+                            key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
+                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
+                            className="absolute p-1 rounded-xl bg-white border-2 border-pink-500 shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                           >
-                            <div className="flex flex-col relative w-full overflow-hidden">
-                              {/* Blinking pulse dot */}
-                              <span className="absolute top-0 right-0 flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-pink-500"></span>
-                              </span>
-
-                              <span className="text-[9px] font-black text-pink-600 uppercase tracking-wider truncate pr-2">
-                                INSTAGRAM
-                              </span>
-                              <span className="text-[9px] text-text font-black truncate leading-tight mt-0.5">
-                                {instaHour}:00 - {instaHour + 1}:00
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between mt-auto pt-0.5">
-                              <div className="flex items-center gap-1 text-pink-600 min-w-0">
-                                <Instagram size={9} className="shrink-0" />
-                                <span className="text-[8px] font-black uppercase tracking-wider truncate whitespace-nowrap">
-                                  Active
-                                </span>
-                              </div>
-                              <span className="text-[7px] text-gray-400 font-bold uppercase tracking-widest hidden md:inline select-none shrink-0">
-                                {language === 'vi' ? 'Kéo' : 'Drag'}
-                              </span>
+                            <div className="flex items-center gap-1">
+                              <Instagram size={10} className="text-pink-600 shrink-0" />
+                              <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {hr}:00</span>
                             </div>
                           </motion.div>
                         );
                       })()}
-
                     </div>
                   </div>
-
                 </div>
               </div>
 
-              {/* Bottom Actions inside Step 3 */}
-              {schedulingError && (
-                <div className="bg-red-50 border border-red-200 text-red-750 text-xs font-semibold p-3.5 rounded-xl mt-4">
-                  ⚠️ {schedulingError}
-                </div>
-              )}
-              <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6 font-sans">
-                <button
-                  onClick={() => changeStep(2)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <ArrowLeft size={16} />
-                  {t('aiCreator.backToAb')}
+              {/* Step 3 Actions */}
+              <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
+                <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
+                  <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
                 </button>
-
-                <button
-                  id="confirm-schedule-btn"
-                  onClick={handleConfirmSchedule}
-                  disabled={
-                    isSchedulingLoading ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('facebook') && !!facebookError) ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('threads') && !!threadsError) ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && !!instagramError)
-                  }
-                  className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer font-sans ${
-                    isSchedulingLoading ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('facebook') && facebookError) ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('threads') && threadsError) ||
-                    (getPromptTargetPlatforms(selectedPrompt).includes('instagram') && instagramError)
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/20'
-                  }`}
-                >
-                  {isSchedulingLoading ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <CheckCircle2 size={15} />
-                  )}
-                  {isSchedulingLoading
-                    ? (language === 'vi' ? 'Đang lên lịch...' : 'Scheduling...')
-                    : t('aiCreator.confirmSchedule')}
+                <button id="confirm-schedule-btn" onClick={handleConfirmSchedule} disabled={isSchedulingLoading || !!facebookError || !!threadsError || !!instagramError} className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer ${isSchedulingLoading ? 'bg-gray-200 text-gray-400 shadow-none' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/20'}`}>
+                  {isSchedulingLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                  {isSchedulingLoading ? (language === 'vi' ? 'Đang lên lịch...' : 'Scheduling...') : t('aiCreator.confirmSchedule')}
                 </button>
               </div>
-
             </div>
           </motion.div>
         )}

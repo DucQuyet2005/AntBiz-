@@ -5,6 +5,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 ---
 
+## [1.2.1] - 2026-06-18
+
+### Changed
+- **Kéo dài vùng soạn thảo Nội dung trong AI Creator**: Tăng số lượng dòng hiển thị (`rows`) từ 3 lên 10 cho ô nhập liệu "Nội dung" (Description) tại Bước 1 của AI Creator (`AiCreatorView.tsx`), đồng thời chuyển thuộc tính từ cố định (`resize-none`) sang cho phép người dùng kéo giãn chiều cao thủ công (`resize-y`).
+
 ## [1.2.0] - 2026-06-17
 
 ### Added
