@@ -7,9 +7,14 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPasswordSchema, ForgotPasswordInput } from "@/lib/validations/auth";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
+import { Toast, useToast } from "@/components/Toast";
+import { AnimatePresence } from "framer-motion";
 
 export default function ForgotPasswordPage() {
-  const [serverError, setServerError] = useState<string | null>(null);
+  const router = useRouter();
+  const { toast, showToast, hideToast } = useToast();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const {
@@ -22,6 +27,27 @@ export default function ForgotPasswordPage() {
   });
 
   useEffect(() => {
+    const supabase = createClient();
+    const authChannel = new BroadcastChannel('auth_flow');
+    
+    // Lắng nghe tín hiệu từ tab mới
+    authChannel.onmessage = (event) => {
+      if (event.data === 'CLOSE_FORGOT_PASSWORD') {
+        window.close();
+        // Nếu trình duyệt chặn window.close(), hiển thị thông báo thay thế
+        showToast("Yêu cầu của bạn đang được xử lý ở tab khác. Bạn có thể đóng tab này để tránh nhầm lẫn.", "info");
+      }
+    };
+    
+    // Lắng nghe sự thay đổi trạng thái đăng nhập
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Thay vì redirect ngay, ta thử đóng tab trước
+        window.close();
+        router.push("/reset-password");
+      }
+    });
+
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const emailParam = params.get("email");
@@ -29,10 +55,15 @@ export default function ForgotPasswordPage() {
         setValue("email", emailParam);
       }
     }
-  }, [setValue]);
+
+    return () => {
+      subscription.unsubscribe();
+      authChannel.close();
+    };
+  }, [setValue, router, showToast]);
 
   const onSubmit = async (data: ForgotPasswordInput) => {
-    setServerError(null);
+    hideToast();
     setSuccessMessage(null);
 
     try {
@@ -51,13 +82,23 @@ export default function ForgotPasswordPage() {
       }
 
       setSuccessMessage(result.message || "Yêu cầu khôi phục mật khẩu đã được gửi đi thành công.");
+      showToast("Email khôi phục đã được gửi!", "success");
     } catch (err: any) {
-      setServerError(err.message);
+      showToast(err.message, "error");
     }
   };
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
@@ -95,13 +136,6 @@ export default function ForgotPasswordPage() {
 
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Quên mật khẩu</h1>
         <p className="text-gray-500 text-sm mb-8">Nhập email của bạn để nhận liên kết khôi phục mật khẩu</p>
-
-        {serverError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{serverError}</span>
-          </div>
-        )}
 
         {successMessage ? (
           <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl text-center flex flex-col items-center">

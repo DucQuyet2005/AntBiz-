@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     const hashedToken = data.properties.hashed_token;
-    const actionLink = `${origin}/api/auth/confirm?token_hash=${hashedToken}&type=recovery&next=/reset-password`;
+    const actionLink = `${origin}/api/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=/reset-password`;
 
     // 3. Gửi email qua Nodemailer
     const transporter = nodemailer.createTransport({
