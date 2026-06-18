@@ -3,7 +3,7 @@ import { requireUserWithRole } from '@/lib/api/auth';
 import { initScheduler } from '@/lib/scheduler/scheduler';
 
 // Khởi chạy trình chạy ngầm scheduler
-initScheduler();
+// [ĐÃ COMMENT ĐỂ DEPLOY LÊN VERCEL] initScheduler();
 
 // GET /api/scheduled-posts - Lấy danh sách bài đăng đã lên lịch
 export async function GET(request: NextRequest) {
