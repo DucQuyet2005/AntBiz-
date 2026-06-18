@@ -10,6 +10,8 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createClient()
     // Đổi code lấy JWT Session và tự động lưu vào Cookies
+    // Lưu ý: Luồng recovery từ admin.generateLink (server-side) không nên đi qua đây
+    // vì sẽ thiếu code_verifier cho PKCE flow. Nên redirect trực tiếp về trang reset-password.
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data?.user) {
       // Tự động kiểm tra và tạo/đồng bộ profile nếu bị thiếu
