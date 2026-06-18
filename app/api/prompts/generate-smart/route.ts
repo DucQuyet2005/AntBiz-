@@ -27,8 +27,11 @@ export async function POST(request: NextRequest) {
     const { title, content, platform } = smartPromptSchema.parse(body);
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Sử dụng model 2.5-flash mới nhất
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Sử dụng model 2.5-flash mới nhất với system instruction để cực kỳ nghiêm ngặt
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      systemInstruction: "Bạn là một chuyên gia Prompt Engineering. Bạn CHỈ trả về nội dung prompt được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là prompt'. Chỉ trả về duy nhất nội dung prompt.",
+    });
 
     const instruction = `Bạn là một chuyên gia Prompt Engineering.
 Hãy viết một Prompt (câu lệnh) chi tiết để yêu cầu một AI khác viết bài đăng mạng xã hội.

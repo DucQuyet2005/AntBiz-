@@ -1109,9 +1109,10 @@ Yêu cầu cụ thể:
                   </label>
                   <button 
                     onClick={handleGenerateSmartPrompt}
-                    className="bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
+                    disabled={isGeneratingSmartPrompt || isGenerating}
+                    className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
                   >
-                    <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
+                    <RefreshCw size={12} className={isGeneratingSmartPrompt ? "animate-spin" : ""} />
                     Tạo Prompt thông minh từ bài viết
                   </button>
                 </div>
