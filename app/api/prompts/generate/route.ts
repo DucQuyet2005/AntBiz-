@@ -51,7 +51,7 @@ Yêu cầu bài viết:
     const generatedText = response.text();
 
     return NextResponse.json({ 
-      prompt: generatedText,
+      content: generatedText,
       name: `AI Draft: ${title.substring(0, 30)}...`,
       tags: ['AI Generated', platform]
     });
