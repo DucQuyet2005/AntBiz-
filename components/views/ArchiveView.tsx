@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/utils/supabase/client';
 
 import { 
   Facebook, 
@@ -27,65 +28,48 @@ export default function ArchiveView() {
   const { t } = useLanguage();
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [sortBy, setSortBy] = useState('Publish Date');
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const archiveItems = [
-    {
-      id: 1,
-      type: 'TỔ ẤM 4.0',
-      platform: 'blog',
-      image: 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80',
-      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
-      description: 'Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.',
-      reach: '51.1k',
-      conversions: '3.2k',
-      likes: 1240,
-      comments: 185,
-      nodeType: 'Case Study',
-      link: '/archive/80861'
-    },
-    {
-      id: 2,
-      type: 'TÀI CHÍNH',
-      platform: 'facebook',
-      image: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&q=80',
-      title: 'Quy tắc 50/30/20: Cách phân bổ lương 15 triệu',
-      description: 'Bí quyết giúp người trẻ ở thành phố lớn không chỉ đủ sống mà còn có khoản tiết kiệm phòng thân với mức thu nhập cơ bản.',
-      reach: '120k',
-      conversions: '4.5k',
-      likes: 3400,
-      comments: 420,
-      nodeType: 'Guide',
-      link: '#'
-    },
-    {
-      id: 3,
-      type: 'BẤT ĐỘNG SẢN',
-      platform: 'instagram',
-      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-      title: 'Sốt ảo vùng ven: Dấu hiệu nhận biết và cách né',
-      description: 'Phân tích các dự án đất nền vùng ven đang bị đẩy giá lên cao bất thường. Đừng để dính bẫy tâm lý đám đông.',
-      reach: '85k',
-      conversions: '1.2k',
-      likes: 850,
-      comments: 95,
-      nodeType: 'Analysis',
-      link: '#'
-    },
-    {
-      id: 4,
-      type: 'THREAD',
-      platform: 'threads',
-      gradient: 'from-[#6366F1] via-[#D946EF] to-[#EC4899]',
-      title: 'Chuyện gen Z bỏ việc lương cao để... bán trà sữa',
-      description: 'Làm văn phòng thu nhập 30 triệu/tháng nhưng stress tột độ. Đánh đổi lấy sự tự do tài chính và tinh thần, liệu có đáng?',
-      reach: '450k',
-      conversions: '2.1k',
-      likes: 432,
-      comments: 37,
-      nodeType: 'Organic Content Node',
-      link: '#'
+  useEffect(() => {
+    async function fetchArticles() {
+      try {
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          setArticles(data);
+        }
+      } catch (err) {
+        console.error('Error fetching articles:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    fetchArticles();
+  }, []);
+
+  const archiveItems = articles.map(art => {
+    const images = Array.isArray(art.images) ? art.images : [];
+    const mainImage = images.length > 0 ? images[0].url : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
+    return {
+      id: art.id,
+      type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
+      platform: 'blog',
+      image: mainImage,
+      title: art.title || 'Không có tiêu đề',
+      description: art.description || 'Không có mô tả',
+      reach: art.views || '0',
+      conversions: '0',
+      likes: 0,
+      comments: 0,
+      nodeType: 'Article',
+      link: `/archive/${art.id}`,
+      gradient: ''
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">
