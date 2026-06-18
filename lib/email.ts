@@ -22,7 +22,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
   try {
     const smtpHost = process.env.SMTP_HOST;
     const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
+    const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
 
     if (smtpHost && smtpUser && smtpPass) {
       try {
@@ -39,7 +39,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
         });
 
         await transporter.sendMail({
-          from: process.env.EMAIL_FROM || 'no-reply@antbiz.vn',
+          from: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'no-reply@antbiz.vn',
           to: options.to,
           subject: options.subject,
           text: options.text,
