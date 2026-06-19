@@ -47,8 +47,7 @@ export default function ContentCalendarView() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     'facebook',
     'instagram',
-    'threads',
-    'blog'
+    'threads'
   ]);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -503,60 +502,11 @@ export default function ContentCalendarView() {
                 </div>
               </button>
 
-              {/* Blog */}
-              <button 
-                onClick={() => handleTogglePlatform('blog')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer w-full bg-transparent ${
-                  selectedPlatforms.includes('blog') 
-                    ? 'border-emerald-200 bg-emerald-50/20' 
-                    : 'border-slate-100 hover:border-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full transition-all ${
-                    selectedPlatforms.includes('blog') ? 'bg-[#1f5f4a] scale-110 shadow-sm' : 'bg-slate-300'
-                  }`} />
-                  <span className={`text-xs font-bold ${selectedPlatforms.includes('blog') ? 'text-emerald-900 font-extrabold' : 'text-slate-500'}`}>Blog (Articles)</span>
-                </div>
-                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors cursor-pointer ${
-                  selectedPlatforms.includes('blog') ? 'bg-[#1f5f4a]' : 'bg-slate-200'
-                }`}>
-                  <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform ${
-                    selectedPlatforms.includes('blog') ? 'translate-x-2.5' : 'translate-x-0'
-                  }`} />
-                </div>
-              </button>
+
             </div>
           </div>
 
-          {/* Quick Access Navigation Buttons with side indicator animations */}
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-              {language === 'vi' ? 'Kho phân hệ' : 'Quick Nav'}
-            </span>
-            <div className="flex flex-col gap-1.5">
-              <Link 
-                href="/archive"
-                className="group flex items-center justify-between px-3.5 py-3 text-xs font-black text-slate-700 hover:bg-slate-50 border border-slate-100 rounded-2xl transition-all cursor-pointer decoration-none shadow-sm"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm group-hover:scale-110 transition-transform">📦</span>
-                  <span>{language === 'vi' ? 'Kho lưu trữ bài viết' : 'Content Archive'}</span>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <Link 
-                href="/ai-creator"
-                className="group flex items-center justify-between px-3.5 py-3 text-xs font-black text-slate-700 hover:bg-slate-50 border border-slate-100 rounded-2xl transition-all cursor-pointer decoration-none shadow-sm"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm group-hover:scale-110 transition-transform">✨</span>
-                  <span>{language === 'vi' ? 'Trình tạo bài viết AI' : 'AICreator Platform'}</span>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-          </div>
+
 
         </div>
 
