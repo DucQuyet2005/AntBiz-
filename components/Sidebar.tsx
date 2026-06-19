@@ -26,10 +26,11 @@ const Sidebar = () => {
     <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between py-8 px-6 rounded-r-[32px] fixed left-0 top-0 overflow-y-auto z-50">
       <div>
         <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-300">
+          <div className="w-10 h-10 flex items-center justify-center">
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop"
-              alt="User"
+              src="/images/logo.png"
+              alt="AntBiz Logo"
+              className="w-full h-full object-contain"
             />
           </div>
           <div>

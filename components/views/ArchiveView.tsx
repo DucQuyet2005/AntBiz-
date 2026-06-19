@@ -20,7 +20,9 @@ import {
   FileText,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // Threads Custom SVG Logo
@@ -40,16 +42,22 @@ export default function ArchiveView() {
 
   // Added States for tabs, role, and export functionality
   const [activeTab, setActiveTab] = useState<'posts' | 'preview' | 'history'>('posts');
-  const [userRole, setUserRole] = useState<string>('viewer');
+  const [userRole, setUserRole] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState<boolean>(false);
   const [exportJobs, setExportJobs] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [platformFilter, sortBy, searchQuery]);
 
   useEffect(() => {
     async function fetchArticles() {
@@ -261,6 +269,13 @@ export default function ArchiveView() {
       }
     });
 
+  const ITEMS_PER_PAGE = 6;
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -391,7 +406,7 @@ export default function ArchiveView() {
 
           {/* 3-Column Grid Cards */}
           <div className="grid grid-cols-3 gap-6 mt-2">
-            {filteredItems.map((item) => (
+            {paginatedItems.map((item) => (
               <Link
                 href={item.link}
                 key={item.id}
@@ -489,6 +504,49 @@ export default function ArchiveView() {
               </Link>
             ))}
           </div>
+
+          {/* Premium Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
+              <div className="text-xs text-text-muted font-bold">
+                {language === 'vi' 
+                  ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} trong tổng số ${filteredItems.length} bài đăng`
+                  : `Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} posts`
+                }
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                      currentPage === page
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : 'border border-gray-200/80 text-text hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : activeTab === 'preview' ? (
         /* Data Preview Tab */

@@ -384,10 +384,105 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
 
 
-  const existingPosts: Array<{ date: string; hour: number; title: string; category: string }> = [];
+  const [existingPosts, setExistingPosts] = useState<any[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{ dateStr: string; hour: number; posts: any[] } | null>(null);
+
+  useEffect(() => {
+    async function loadExistingPosts() {
+      try {
+        const res = await fetch('/api/scheduled-posts');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) {
+            setExistingPosts(json.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load existing scheduled posts:', err);
+      }
+    }
+    loadExistingPosts();
+  }, [step]);
+
+  const getPostDateAndHour = (scheduledAtStr: string) => {
+    const date = new Date(scheduledAtStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const hour = date.getHours();
+    return { dateStr, hour };
+  };
 
   const isCellOccupied = (dateStr: string, hour: number) => {
-    return existingPosts.some(p => p.date === dateStr && p.hour === hour);
+    return existingPosts.some(p => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
+      return postDate === dateStr && postHour === hour;
+    });
+  };
+
+  const getCellPosts = (dateStr: string, hour: number) => {
+    const list: any[] = [];
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'facebook',
+          timeStr: facebookTime,
+          title: language === 'vi' ? 'Facebook (Bản nháp)' : 'Facebook (Draft)',
+          time: facebookTime,
+        });
+      }
+    }
+
+    if (targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'threads',
+          timeStr: threadsTime,
+          title: language === 'vi' ? 'Threads (Bản nháp)' : 'Threads (Draft)',
+          time: threadsTime,
+        });
+      }
+    }
+
+    if (targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'instagram',
+          timeStr: instagramTime,
+          title: language === 'vi' ? 'Instagram (Bản nháp)' : 'Instagram (Draft)',
+          time: instagramTime,
+        });
+      }
+    }
+
+    existingPosts.forEach((post) => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(post.scheduled_at);
+      if (postDate === dateStr && postHour === hour) {
+        const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...' || (language === 'vi' ? 'Bài viết không tên' : 'Untitled Post');
+        const date = new Date(post.scheduled_at);
+        const mins = String(date.getMinutes()).padStart(2, '0');
+        const timeStr = `${String(postHour).padStart(2, '0')}:${mins}`;
+        list.push({
+          type: 'existing',
+          platform: post.platform,
+          timeStr: timeStr,
+          title: title,
+          status: post.status,
+          id: post.id
+        });
+      }
+    });
+
+    return list.sort((a, b) => a.timeStr.localeCompare(b.timeStr));
   };
 
   const weekDays = Array.from({ length: 21 }, (_, index) => {
@@ -2403,7 +2498,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   {selectedVariantId ? (
                     <>
                       <CheckCircle2 size={15} />
-                      Lên lịch biến thể {selectedVariantId}
+                      {t('aiCreator.scheduleVariant', { variant: selectedVariantId })}
                       <ArrowRight size={14} />
                     </>
                   ) : (
@@ -2801,84 +2896,118 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         ))}
                       </div>
 
-                      {/* Existing Posts (Grayscale/Compact) */}
-                      {existingPosts.map((post, index) => {
-                        const dayIdx = weekDays.findIndex(d => d.date === post.date);
-                        if (dayIdx < 0 || Math.floor(dayIdx / 7) !== activeWeek) return null;
-                        const colIndex = dayIdx % 7;
-                        const hr = post.hour;
-                        return (
-                          <div
-                            key={`existing-${index}`}
-                            className="absolute p-1 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center grayscale opacity-50 overflow-hidden pointer-events-none"
-                            style={{ left: `calc(${(colIndex * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                          >
-                            <span className="text-[7px] font-bold text-gray-500 truncate uppercase">{post.title}</span>
-                          </div>
-                        );
-                      })}
+                      {/* Unified Posts Layer */}
+                      {(() => {
+                        const cellsWithPosts: any[] = [];
+                        for (let col = 0; col < 7; col++) {
+                          const dayDate = weekDays[activeWeek * 7 + col].date;
+                          for (let hr = 0; hr < 24; hr++) {
+                            const cellPosts = getCellPosts(dayDate, hr);
+                            if (cellPosts.length > 0) {
+                              cellsWithPosts.push({ col, hr, dayDate, posts: cellPosts });
+                            }
+                          }
+                        }
 
-                      {/* Active Facebook Pill */}
-                      {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (() => {
-                        const fbIdx = weekDays.findIndex(d => d.date === facebookDate);
-                        if (fbIdx < 0 || Math.floor(fbIdx / 7) !== activeWeek) return null;
-                        const col = fbIdx % 7;
-                        const hr = parseInt(facebookTime.split(':')[0]) || 0;
-                        return (
-                          <motion.div
-                            key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
-                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
-                            className="absolute p-1 rounded-xl bg-white border-2 border-[#1877F2] shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
-                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                          >
-                            <div className="flex items-center gap-1">
-                              <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
-                              <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
-                            </div>
-                          </motion.div>
-                        );
-                      })()}
-
-                      {/* Active Threads Pill */}
-                      {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (() => {
-                        const tIdx = weekDays.findIndex(d => d.date === threadsDate);
-                        if (tIdx < 0 || Math.floor(tIdx / 7) !== activeWeek) return null;
-                        const col = tIdx % 7;
-                        const hr = parseInt(threadsTime.split(':')[0]) || 0;
-                        return (
-                          <motion.div
-                            key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
-                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
-                            className="absolute p-1 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
-                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                          >
-                            <div className="flex items-center gap-1">
-                              <ThreadsIcon size={10} className="shrink-0" />
-                              <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
-                            </div>
-                          </motion.div>
-                        );
-                      })()}
-
-                      {/* Active Instagram Pill */}
-                      {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (() => {
-                        const iIdx = weekDays.findIndex(d => d.date === instagramDate);
-                        if (iIdx < 0 || Math.floor(iIdx / 7) !== activeWeek) return null;
-                        const col = iIdx % 7;
-                        const hr = parseInt(instagramTime.split(':')[0]) || 0;
-                        return (
-                          <motion.div
-                            key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
-                            drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
-                            className="absolute p-1 rounded-xl bg-white border-2 border-pink-500 shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
-                            style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                          >
-                            <div className="flex items-center gap-1">
-                              <Instagram size={10} className="text-pink-600 shrink-0" />
-                              <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
-                            </div>
-                          </motion.div>
-                        );
+                        return cellsWithPosts.map(({ col, hr, dayDate, posts: cellPosts }, cellIdx) => {
+                          const count = cellPosts.length;
+                          
+                          if (count === 1) {
+                            const post = cellPosts[0];
+                            if (post.type === 'draft') {
+                              if (post.platform === 'facebook') {
+                                return (
+                                  <motion.div
+                                    key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
+                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
+                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-[#1877F2] shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                    style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
+                                      <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
+                                    </div>
+                                  </motion.div>
+                                );
+                              } else if (post.platform === 'threads') {
+                                return (
+                                  <motion.div
+                                    key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
+                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
+                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                    style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <ThreadsIcon size={10} className="shrink-0" />
+                                      <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
+                                    </div>
+                                  </motion.div>
+                                );
+                              } else if (post.platform === 'instagram') {
+                                return (
+                                  <motion.div
+                                    key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
+                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
+                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-pink-500 shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                    style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <Instagram size={10} className="text-pink-600 shrink-0" />
+                                      <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
+                                    </div>
+                                  </motion.div>
+                                );
+                              }
+                            } else {
+                              // Existing post
+                              return (
+                                <div
+                                  key={`existing-${post.id}-${cellIdx}`}
+                                  className="absolute p-1.5 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center overflow-hidden z-10 cursor-pointer hover:bg-gray-100 transition-colors"
+                                  style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                  onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
+                                >
+                                  <div className="flex items-center gap-1 truncate">
+                                    <span className="w-2.5 h-2.5 rounded bg-gray-400 text-[6px] text-white flex items-center justify-center font-bold">✓</span>
+                                    <span className="text-[7.5px] font-bold text-gray-650 truncate uppercase">{post.title}</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                          } else {
+                            // Multiple posts in the same cell
+                            return (
+                              <div
+                                key={`multiple-${dayDate}-${hr}`}
+                                onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
+                                className="absolute p-1.5 rounded-xl bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
+                                style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                              >
+                                <div className="flex items-center justify-between gap-1 select-none">
+                                  <span className="text-[7.5px] font-black text-indigo-700 bg-indigo-200/60 px-1.5 py-0.5 rounded-lg">
+                                    {count} bài
+                                  </span>
+                                  <div className="flex gap-0.5 items-center">
+                                    {cellPosts.map((cp: any, idx: number) => {
+                                      if (cp.platform === 'facebook') {
+                                        return <Facebook key={idx} size={7} className="text-[#1877F2] fill-[#1877F2]" />;
+                                      } else if (cp.platform === 'threads' || cp.platform === 'thread') {
+                                        return <ThreadsIcon key={idx} size={7} className="text-black" />;
+                                      } else if (cp.platform === 'instagram') {
+                                        return <Instagram key={idx} size={7} className="text-pink-600" />;
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                </div>
+                                <span className="text-[7px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
+                                  {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        });
                       })()}
                     </div>
                   </div>
@@ -3074,6 +3203,114 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 className="w-full bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-2xl font-bold shadow-md shadow-primary/20 transition-all text-xs cursor-pointer font-sans"
               >
                 {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CELL POSTS TIMELINE DIALOG */}
+      <AnimatePresence>
+        {selectedCell && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedCell(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                    {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                    {language === 'vi' 
+                      ? `Ngày ${selectedCell.dateStr} · Khung giờ ${selectedCell.hour}:00`
+                      : `Date: ${selectedCell.dateStr} · Time slot: ${selectedCell.hour}:00`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedCell(null)}
+                  className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-0 bg-transparent"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-1">
+                {selectedCell.posts.map((post: any, idx: number) => {
+                  let platIcon = <Globe size={12} />;
+                  let platLabel = 'Web';
+                  let platBg = 'bg-gray-50 text-gray-700 border-gray-200/60';
+                  
+                  if (post.platform === 'facebook') {
+                    platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
+                    platLabel = 'Facebook';
+                    platBg = 'bg-blue-50 text-[#1877F2] border-blue-100/60';
+                  } else if (post.platform === 'threads' || post.platform === 'thread') {
+                    platIcon = <ThreadsIcon size={11} className="text-black" />;
+                    platLabel = 'Threads';
+                    platBg = 'bg-slate-50 text-slate-900 border-slate-200/65';
+                  } else if (post.platform === 'instagram') {
+                    platIcon = <Instagram size={11} className="text-pink-650" />;
+                    platLabel = 'Instagram';
+                    platBg = 'bg-pink-50 text-pink-650 border-pink-100/60';
+                  }
+
+                  return (
+                    <div 
+                      key={idx}
+                      className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/40 flex flex-col gap-2 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
+                            {platIcon}
+                            <span>{platLabel}</span>
+                          </span>
+                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100/40 font-mono">
+                            {post.timeStr}
+                          </span>
+                        </div>
+
+                        {post.type === 'draft' ? (
+                          <span className="bg-amber-50 text-amber-700 border border-amber-200/60 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                            {language === 'vi' ? 'Bản nháp' : 'Draft'}
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${
+                            post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
+                            post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
+                            post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
+                            'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                          }`}>
+                            {language === 'vi' 
+                              ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
+                              : post.status}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-700 font-bold leading-normal line-clamp-3">
+                        {post.title}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setSelectedCell(null)}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border-0 active:scale-95"
+              >
+                {language === 'vi' ? 'Đóng' : 'Close'}
               </button>
             </motion.div>
           </motion.div>

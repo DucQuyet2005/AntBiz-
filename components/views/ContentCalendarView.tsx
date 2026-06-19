@@ -25,10 +25,12 @@ import {
   Search,
   Eye,
   Sliders,
-  Send
+  Send,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -51,6 +53,15 @@ export default function ContentCalendarView() {
   ]);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedCell, setSelectedCell] = useState<{ date: Date; hour: number; posts: any[] } | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Base calendar state - June 19, 2026 is Friday
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
@@ -109,17 +120,16 @@ export default function ContentCalendarView() {
     }
   };
 
-  // Check if today (June 19, 2026) is within current week
+  // Check if today is within current week
   const isCurrentWeekToday = () => {
-    const today = new Date('2026-06-19T09:09:00+07:00');
     const start = new Date(currentWeekStart);
     const end = new Date(currentWeekStart);
     end.setDate(start.getDate() + 7);
-    return today >= start && today < end;
+    return currentTime >= start && currentTime < end;
   };
 
-  const todayIndex = 5; // Friday is 5th index from Sunday (0)
-  const currentTimeOffset = 9 * 60 + 9; // 9:09 AM = 549px
+  const todayIndex = currentTime.getDay(); // Sunday is 0, Monday is 1... Friday is 5.
+  const currentTimeOffset = currentTime.getHours() * 60 + currentTime.getMinutes();
 
   // Weekly Date Range
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -199,7 +209,10 @@ export default function ContentCalendarView() {
   };
 
   const isToday = (date: Date) => {
-    return date.getDate() === 19 && date.getMonth() === 5 && date.getFullYear() === 2026;
+    const today = new Date();
+    return date.getDate() === today.getDate() && 
+           date.getMonth() === today.getMonth() && 
+           date.getFullYear() === today.getFullYear();
   };
 
   const handleTogglePlatform = (platform: string) => {
@@ -396,7 +409,11 @@ export default function ContentCalendarView() {
                 : ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d} className="py-0.5">{d}</div>)
               }
               {miniCalendarDays.map((d, idx) => {
-                const isToday = d.isCurrentMonth && d.day === 19;
+                const today = new Date();
+                const isToday = d.isCurrentMonth && 
+                                d.day === today.getDate() && 
+                                today.getMonth() === 5 && 
+                                today.getFullYear() === 2026;
                 return (
                   <div 
                     key={idx} 
@@ -589,263 +606,329 @@ export default function ContentCalendarView() {
                     ))}
                   </div>
 
-                  {/* Dynamic Red Time Line with Pulse Ring Radar effect */}
+                  {/* Dynamic Time Line with Radar Pulse Indicator */}
                   {isCurrentWeekToday() && (
                     <div 
-                      className="absolute left-0 right-0 pointer-events-none z-30"
+                      className="absolute left-0 right-0 pointer-events-none z-30 font-sans"
                       style={{ 
                         top: `${currentTimeOffset}px`,
                       }}
                     >
-                      <div className="grid grid-cols-7 h-full w-full relative">
-                        {/* Circle Indicator on the active day column */}
+                      <div className="relative w-full h-full">
+                        {/* Pulse indicator at the left border of the current day column */}
                         <div 
-                          className="absolute w-3 h-3 bg-red-500 rounded-full -left-[6px] -top-1 animate-radar shadow-sm shadow-red-500/50"
+                          className="absolute w-2.5 h-2.5 bg-rose-500 rounded-full -top-[4.5px] z-40 shadow-sm shadow-rose-500/30"
                           style={{
                             left: `${(todayIndex / 7) * 100}%`,
+                            transform: 'translateX(-50%)'
                           }}
-                        />
-                        {/* Line extending across the active day column */}
+                        >
+                          <span className="absolute -inset-1.5 rounded-full bg-rose-500/30 animate-ping pointer-events-none" />
+                        </div>
+                        {/* High-contrast solid line for the active day column */}
                         <div 
-                          className="absolute h-[2px] bg-gradient-to-r from-red-500 to-transparent"
+                          className="absolute h-[1.5px] bg-rose-500 z-30"
                           style={{
                             left: `${(todayIndex / 7) * 100}%`,
                             width: `${100 / 7}%`
                           }}
                         />
+                        {/* Low-contrast timeline extending across the rest of the week */}
+                        <div className="absolute left-0 right-0 h-[1px] bg-rose-400/25 z-10" />
                       </div>
                     </div>
                   )}
 
                   {/* Post Event Cards */}
-                  {filteredPosts.map(post => {
-                    const pos = getDayAndPosition(post.scheduled_at, currentWeekStart);
-                    if (!pos) return null;
+                  {(() => {
+                    const grouped: { [key: string]: any[] } = {};
+                    
+                    filteredPosts.forEach(post => {
+                      const pos = getDayAndPosition(post.scheduled_at, currentWeekStart);
+                      if (!pos) return;
+                      const key = `${pos.dayIndex}-${pos.hours}`;
+                      if (!grouped[key]) {
+                        grouped[key] = [];
+                      }
+                      grouped[key].push({
+                        ...post,
+                        pos
+                      });
+                    });
 
-                    const { dayIndex, hours, minutes, timeStr } = pos;
-                    const topOffset = hours * 60 + minutes;
-                    const cardHeight = 54; // Standard height of post card
+                    return Object.keys(grouped).map(key => {
+                      const groupPosts = grouped[key];
+                      groupPosts.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                      
+                      const count = groupPosts.length;
+                      const firstPost = groupPosts[0];
+                      const { dayIndex, hours } = firstPost.pos;
+                      
+                      if (count === 1) {
+                        const post = firstPost;
+                        const { minutes, timeStr } = post.pos;
+                        const topOffset = hours * 60 + minutes;
+                        const cardHeight = 54;
+                        
+                        const platform = post.platform?.toLowerCase() || 'blog';
+                        let borderClass = 'border-amber-500';
+                        let bgGradient = 'from-amber-500/5 to-amber-600/15';
+                        let textClass = 'text-amber-800';
+                        let iconBg = 'bg-amber-100 text-amber-600';
+                        let platformIcon = <Globe size={11} />;
 
-                    const platform = post.platform?.toLowerCase() || 'blog';
-                    let borderClass = 'border-amber-500';
-                    let bgGradient = 'from-amber-500/5 to-amber-600/15';
-                    let textClass = 'text-amber-800';
-                    let iconBg = 'bg-amber-100 text-amber-600';
-                    let platformIcon = <Globe size={11} />;
+                        if (platform === 'facebook') {
+                          borderClass = 'border-blue-600';
+                          bgGradient = 'from-blue-500/5 to-blue-600/15';
+                          textClass = 'text-blue-900';
+                          iconBg = 'bg-blue-100 text-blue-600';
+                          platformIcon = <Facebook size={11} className="fill-blue-600 text-blue-600" />;
+                        } else if (platform === 'instagram') {
+                          borderClass = 'border-pink-500';
+                          bgGradient = 'from-pink-500/5 to-rose-600/15';
+                          textClass = 'text-pink-900';
+                          iconBg = 'bg-pink-100 text-pink-600';
+                          platformIcon = <Instagram size={11} className="text-pink-600" />;
+                        } else if (platform === 'threads' || platform === 'thread') {
+                          borderClass = 'border-slate-800';
+                          bgGradient = 'from-slate-700/5 to-slate-900/15';
+                          textClass = 'text-slate-950';
+                          iconBg = 'bg-slate-200 text-slate-800';
+                          platformIcon = <ThreadsIcon size={11} className="text-black" />;
+                        } else if (platform === 'blog') {
+                          borderClass = 'border-emerald-600';
+                          bgGradient = 'from-emerald-500/5 to-teal-600/15';
+                          textClass = 'text-emerald-900';
+                          iconBg = 'bg-emerald-100 text-emerald-700';
+                          platformIcon = <Globe size={11} className="text-emerald-700" />;
+                        }
 
-                    if (platform === 'facebook') {
-                      borderClass = 'border-blue-600';
-                      bgGradient = 'from-blue-500/5 to-blue-600/15';
-                      textClass = 'text-blue-900';
-                      iconBg = 'bg-blue-100 text-blue-600';
-                      platformIcon = <Facebook size={11} className="fill-blue-600 text-blue-600" />;
-                    } else if (platform === 'instagram') {
-                      borderClass = 'border-pink-500';
-                      bgGradient = 'from-pink-500/5 to-rose-600/15';
-                      textClass = 'text-pink-900';
-                      iconBg = 'bg-pink-100 text-pink-600';
-                      platformIcon = <Instagram size={11} className="text-pink-600" />;
-                    } else if (platform === 'threads') {
-                      borderClass = 'border-slate-800';
-                      bgGradient = 'from-slate-700/5 to-slate-900/15';
-                      textClass = 'text-slate-950';
-                      iconBg = 'bg-slate-200 text-slate-800';
-                      platformIcon = <ThreadsIcon size={11} className="text-black" />;
-                    } else if (platform === 'blog') {
-                      borderClass = 'border-emerald-600';
-                      bgGradient = 'from-emerald-500/5 to-teal-600/15';
-                      textClass = 'text-emerald-900';
-                      iconBg = 'bg-emerald-100 text-emerald-700';
-                      platformIcon = <Globe size={11} className="text-emerald-700" />;
-                    }
+                        let statusIcon = null;
+                        if (post.status === 'posted') {
+                          statusIcon = <span className="bg-emerald-100 text-emerald-700 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✓</span>;
+                        } else if (post.status === 'failed') {
+                          statusIcon = <span className="bg-rose-100 text-rose-600 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">⚠️</span>;
+                        } else if (post.status === 'cancelled') {
+                          statusIcon = <span className="bg-slate-100 text-slate-500 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✕</span>;
+                        }
 
-                    // Check status representation
-                    let statusIcon = null;
-                    if (post.status === 'posted') {
-                      statusIcon = <span className="bg-emerald-100 text-emerald-700 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✓</span>;
-                    } else if (post.status === 'failed') {
-                      statusIcon = <span className="bg-rose-100 text-rose-600 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">⚠️</span>;
-                    } else if (post.status === 'cancelled') {
-                      statusIcon = <span className="bg-slate-100 text-slate-500 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✕</span>;
-                    }
+                        const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...';
+                        const isRightSide = dayIndex >= 4;
+                        const popoverPositionClass = isRightSide ? 'right-[102%]' : 'left-[102%]';
 
-                    const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...';
+                        return (
+                          <div
+                            key={post.id}
+                            style={{
+                              gridColumnStart: dayIndex + 1,
+                              gridColumnEnd: dayIndex + 2,
+                              top: `${topOffset}px`,
+                              height: `${cardHeight}px`
+                            }}
+                            className={`absolute left-1 right-1 rounded-2xl p-2.5 text-[10px] font-bold border-l-[4px] border-y border-r border-slate-200/60 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-slate-300/80 z-10 group overflow-visible bg-gradient-to-r ${bgGradient} ${borderClass} ${textClass}`}
+                          >
+                            <div className="flex items-center justify-between gap-1 select-none">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className={`w-4 h-4 rounded-lg flex items-center justify-center shadow-inner ${iconBg}`}>
+                                  {platformIcon}
+                                </span>
+                                <span className="truncate text-[9px] font-black tracking-wide font-mono opacity-80">{timeStr}</span>
+                              </div>
+                              {statusIcon}
+                            </div>
 
-                    // Hover Popover layout config based on column position
-                    const isRightSide = dayIndex >= 4;
-                    const popoverPositionClass = isRightSide ? 'right-[102%]' : 'left-[102%]';
-
-                    return (
-                      <div
-                        key={post.id}
-                        style={{
-                          gridColumnStart: dayIndex + 1,
-                          gridColumnEnd: dayIndex + 2,
-                          top: `${topOffset}px`,
-                          height: `${cardHeight}px`
-                        }}
-                        className={`absolute left-1 right-1 rounded-2xl p-2.5 text-[10px] font-bold border-l-[4px] border-y border-r border-slate-200/60 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-slate-300/80 z-10 group overflow-visible bg-gradient-to-r ${bgGradient} ${borderClass} ${textClass}`}
-                      >
-                        <div className="flex items-center justify-between gap-1 select-none">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className={`w-4 h-4 rounded-lg flex items-center justify-center shadow-inner ${iconBg}`}>
-                              {platformIcon}
+                            <span className="truncate text-[9.5px] leading-tight font-black mt-1 tracking-tight select-none">
+                              {title}
                             </span>
-                            <span className="truncate text-[9px] font-black tracking-wide font-mono opacity-80">{timeStr}</span>
-                          </div>
-                          {statusIcon}
-                        </div>
 
-                        <span className="truncate text-[9.5px] leading-tight font-black mt-1 tracking-tight select-none">
-                          {title}
-                        </span>
-
-                        {/* HOVER PREVIEW POPOVER (A/B TESTING HIGH-FIDELITY PREVIEW) */}
-                        <div className={`hidden group-hover:block absolute ${popoverPositionClass} top-[-15px] w-[330px] bg-white border border-slate-200/80 rounded-[30px] shadow-2xl z-50 text-text p-4 cursor-default animate-popover border-collapse`}>
-                          
-                          {/* Popover Header */}
-                          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
-                                <Sparkles size={11} className="animate-pulse" />
-                              </div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">
-                                {language === 'vi' ? 'Bản mô phỏng A/B' : 'A/B Mock Preview'}
-                              </span>
-                            </div>
-                            <span className={`text-[8px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${
-                              post.status === 'posted' ? 'bg-emerald-50 text-emerald-600' :
-                              post.status === 'failed' ? 'bg-rose-50 text-rose-600' :
-                              post.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-600'
-                            }`}>
-                              {post.status}
-                            </span>
-                          </div>
-
-                          {/* Social Mockup Preview depending on platform */}
-                          {platform === 'facebook' && (
-                            <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                              <div className="flex items-center gap-2.5 mb-2.5">
-                                <div className="w-8 h-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-bold text-xs shadow-inner select-none">AB</div>
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-0.5 select-none">
-                                    AntBiz Official
-                                    <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
-                                  </span>
-                                  <span className="text-[8px] text-slate-400 font-semibold">Scheduled: {timeStr} · 🌍</span>
-                                </div>
-                              </div>
-                              <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-3 font-semibold">
-                                {post.captions?.edited_content || post.captions?.ai_content || 'No content available'}
-                              </p>
-                              {post.captions?.articles?.images?.[0]?.url && (
-                                <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
-                                  <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
-                                </div>
-                              )}
-                              <div className="flex border-t border-slate-100 pt-2.5 text-[9px] text-slate-450 font-bold justify-between select-none">
-                                <span className="hover:text-blue-600 cursor-pointer">👍 {language === 'vi' ? 'Thích' : 'Like'}</span>
-                                <span className="hover:text-blue-600 cursor-pointer font-bold">💬 {language === 'vi' ? 'Bình luận' : 'Comment'}</span>
-                                <span className="hover:text-blue-600 cursor-pointer font-bold">↩ {language === 'vi' ? 'Chia sẻ' : 'Share'}</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {platform === 'instagram' && (
-                            <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                              <div className="flex items-center gap-2.5 mb-2.5">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs p-[1px] select-none">
-                                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-black text-[9px] font-black">AB</div>
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
-                                  <span className="text-[8px] text-slate-400 font-semibold">Instagram Post · {timeStr}</span>
-                                </div>
-                              </div>
-                              {post.captions?.articles?.images?.[0]?.url && (
-                                <div className="aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
-                                  <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
-                                </div>
-                              )}
-                              <p className="text-[10px] text-slate-700 leading-normal line-clamp-3 font-semibold">
-                                <span className="font-black mr-1.5 text-slate-900">antbiz_official</span>
-                                {post.captions?.edited_content || post.captions?.ai_content}
-                              </p>
-                            </div>
-                          )}
-
-                          {platform === 'threads' && (
-                            <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                              <div className="flex items-start gap-2.5 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs select-none">T</div>
-                                <div className="flex-1 flex flex-col">
-                                  <div className="flex justify-between items-center select-none">
-                                    <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
-                                    <span className="text-[8px] text-slate-400 font-semibold">{timeStr}</span>
+                            {/* HOVER PREVIEW POPOVER */}
+                            <div className={`hidden group-hover:block absolute ${popoverPositionClass} top-[-15px] w-[330px] bg-white border border-slate-200/80 rounded-[30px] shadow-2xl z-50 text-text p-4 cursor-default animate-popover border-collapse`}>
+                              
+                              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-5 h-5 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                    <Sparkles size={11} className="animate-pulse" />
                                   </div>
-                                  <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mt-1.5 font-semibold">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">
+                                    {language === 'vi' ? 'Bản mo phỏng A/B' : 'A/B Mock Preview'}
+                                  </span>
+                                </div>
+                                <span className={`text-[8px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${
+                                  post.status === 'posted' ? 'bg-emerald-50 text-emerald-600' :
+                                  post.status === 'failed' ? 'bg-rose-50 text-rose-600' :
+                                  post.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-600'
+                                }`}>
+                                  {post.status}
+                                </span>
+                              </div>
+
+                              {platform === 'facebook' && (
+                                <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
+                                  <div className="flex items-center gap-2.5 mb-2.5">
+                                    <div className="w-8 h-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-bold text-xs shadow-inner select-none">AB</div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-black text-slate-800 flex items-center gap-0.5 select-none">
+                                        AntBiz Official
+                                        <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
+                                      </span>
+                                      <span className="text-[8px] text-slate-400 font-semibold">Scheduled: {timeStr} · 🌍</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-3 font-semibold">
+                                    {post.captions?.edited_content || post.captions?.ai_content || 'No content available'}
+                                  </p>
+                                  {post.captions?.articles?.images?.[0]?.url && (
+                                    <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
+                                      <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                  <div className="flex border-t border-slate-100 pt-2.5 text-[9px] text-slate-450 font-bold justify-between select-none">
+                                    <span className="hover:text-blue-600 cursor-pointer font-bold">👍 {language === 'vi' ? 'Thích' : 'Like'}</span>
+                                    <span className="hover:text-blue-600 cursor-pointer font-bold">💬 {language === 'vi' ? 'Bình luận' : 'Comment'}</span>
+                                    <span className="hover:text-blue-600 cursor-pointer font-bold">↩ {language === 'vi' ? 'Chia sẻ' : 'Share'}</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {platform === 'instagram' && (
+                                <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
+                                  <div className="flex items-center gap-2.5 mb-2.5">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs p-[1px] select-none">
+                                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-black text-[9px] font-black">AB</div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
+                                      <span className="text-[8px] text-slate-400 font-semibold">Instagram Post · {timeStr}</span>
+                                    </div>
+                                  </div>
+                                  {post.captions?.articles?.images?.[0]?.url && (
+                                    <div className="aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
+                                      <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                  <p className="text-[10px] text-slate-700 leading-normal line-clamp-3 font-semibold">
+                                    <span className="font-black mr-1.5 text-slate-900">antbiz_official</span>
                                     {post.captions?.edited_content || post.captions?.ai_content}
                                   </p>
                                 </div>
-                              </div>
-                              {post.captions?.articles?.images?.[0]?.url && (
-                                <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 ml-10 max-w-[calc(100%-40px)] border border-slate-100">
-                                  <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
+                              )}
+
+                              {(platform === 'threads' || platform === 'thread') && (
+                                <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
+                                  <div className="flex items-start gap-2.5 mb-2">
+                                    <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs select-none">T</div>
+                                    <div className="flex-1 flex flex-col">
+                                      <div className="flex justify-between items-center select-none">
+                                        <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
+                                        <span className="text-[8px] text-slate-450 font-semibold">{timeStr}</span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mt-1.5 font-semibold">
+                                        {post.captions?.edited_content || post.captions?.ai_content}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {post.captions?.articles?.images?.[0]?.url && (
+                                    <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 ml-10 max-w-[calc(100%-40px)] border border-slate-100">
+                                      <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-4 text-slate-400 mt-2.5 ml-10 select-none">
+                                    <Heart size={12} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                    <MessageCircle size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
+                                    <Repeat2 size={12} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                    <Share2 size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
+                                  </div>
                                 </div>
                               )}
-                              <div className="flex items-center gap-4 text-slate-400 mt-2.5 ml-10 select-none">
-                                <Heart size={12} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                <MessageCircle size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
-                                <Repeat2 size={12} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                <Share2 size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
-                              </div>
-                            </div>
-                          )}
 
-                          {platform === 'blog' && (
-                            <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                              <div className="flex items-center gap-2.5 mb-2.5">
-                                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs select-none">B</div>
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-slate-800">AntBiz Blog</span>
-                                  <span className="text-[8px] text-slate-400 font-semibold">Publication · {timeStr}</span>
+                              {platform === 'blog' && (
+                                <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
+                                  <div className="flex items-center gap-2.5 mb-2.5">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs select-none">B</div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-black text-slate-800">AntBiz Blog</span>
+                                      <span className="text-[8px] text-slate-400 font-semibold">Publication · {timeStr}</span>
+                                    </div>
+                                  </div>
+                                  <h4 className="text-[10px] font-black text-emerald-800 truncate mb-1">
+                                    {post.captions?.articles?.title}
+                                  </h4>
+                                  <p className="text-[9.5px] text-slate-500 leading-relaxed line-clamp-3 mb-2.5 font-semibold">
+                                    {post.captions?.edited_content || post.captions?.ai_content || post.captions?.articles?.description}
+                                  </p>
                                 </div>
+                              )}
+
+                              <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 select-none">
+                                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">
+                                  {language === 'vi' ? 'Lên lịch tự động' : 'Auto scheduled'}
+                                </span>
+                                
+                                {post.status === 'pending' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancel(post.id);
+                                    }}
+                                    disabled={actionLoadingId === post.id}
+                                    className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-3 py-2 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
+                                  >
+                                    {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                                    <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
+                                  </button>
+                                )}
                               </div>
-                              <h4 className="text-[10px] font-black text-emerald-800 truncate mb-1">
-                                {post.captions?.articles?.title}
-                              </h4>
-                              <p className="text-[9.5px] text-slate-500 leading-relaxed line-clamp-3 mb-2.5 font-semibold">
-                                {post.captions?.edited_content || post.captions?.ai_content || post.captions?.articles?.description}
-                              </p>
                             </div>
-                          )}
-
-                          {/* Action Footer */}
-                          <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 select-none">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">
-                              {language === 'vi' ? 'Lên lịch tự động' : 'Auto scheduled'}
-                            </span>
-                            
-                            {post.status === 'pending' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancel(post.id);
-                                }}
-                                disabled={actionLoadingId === post.id}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-3 py-2 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
-                              >
-                                {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
-                                <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
-                              </button>
-                            )}
                           </div>
-                        </div>
+                        );
+                      } else {
+                        // Stacked layout for multiple posts in same hour
+                        const topOffset = hours * 60;
+                        const cardHeight = 54;
+                        const dateOfPost = new Date(firstPost.scheduled_at);
 
-                      </div>
-                    );
-                  })}
-
+                        return (
+                          <div
+                            key={`multiple-${dayIndex}-${hours}`}
+                            onClick={() => {
+                              setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
+                            }}
+                            style={{
+                              gridColumnStart: dayIndex + 1,
+                              gridColumnEnd: dayIndex + 2,
+                              top: `${topOffset}px`,
+                              height: `${cardHeight}px`
+                            }}
+                            className="absolute left-1 right-1 rounded-2xl p-2.5 bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
+                          >
+                            <div className="flex items-center justify-between gap-1 select-none">
+                              <span className="text-[8px] font-black text-indigo-750 bg-indigo-200/60 px-2 py-0.5 rounded-lg">
+                                {count} {language === 'vi' ? 'bài đăng' : 'posts'}
+                              </span>
+                              <div className="flex gap-0.5 items-center">
+                                {groupPosts.map((gp, idx) => {
+                                  const plat = gp.platform?.toLowerCase();
+                                  if (plat === 'facebook') {
+                                    return <Facebook key={idx} size={8} className="text-[#1877F2] fill-[#1877F2]" />;
+                                  } else if (plat === 'threads' || plat === 'thread') {
+                                    return <ThreadsIcon key={idx} size={8} className="text-black" />;
+                                  } else if (plat === 'instagram') {
+                                    return <Instagram key={idx} size={8} className="text-pink-650" />;
+                                  } else if (plat === 'blog') {
+                                    return <Globe key={idx} size={8} className="text-emerald-700" />;
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                            <span className="text-[7.5px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
+                              {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
+                            </span>
+                          </div>
+                        );
+                      }
+                    });
+                  })()}
                 </div>
 
               </div>
@@ -855,6 +938,163 @@ export default function ContentCalendarView() {
         </div>
 
       </div>
+
+      {/* CELL POSTS TIMELINE DIALOG */}
+      <AnimatePresence>
+        {selectedCell && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedCell(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[28px] border border-slate-200/80 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                    {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                    {language === 'vi' 
+                      ? `Ngày ${selectedCell.date.getDate()}/${selectedCell.date.getMonth() + 1}/${selectedCell.date.getFullYear()} · Khung giờ ${selectedCell.hour}:00`
+                      : `Date: ${selectedCell.date.getMonth() + 1}/${selectedCell.date.getDate()}/${selectedCell.date.getFullYear()} · Time slot: ${selectedCell.hour}:00`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedCell(null)}
+                  className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-0 bg-transparent"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-1">
+                {[...selectedCell.posts]
+                  .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                  .map((post: any, idx: number) => {
+                    let platIcon = <Globe size={12} />;
+                    let platLabel = 'Web';
+                    let platBg = 'bg-gray-50 text-gray-700 border-gray-200/60';
+                    
+                    const platform = post.platform?.toLowerCase() || 'blog';
+
+                    if (platform === 'facebook') {
+                      platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
+                      platLabel = 'Facebook';
+                      platBg = 'bg-blue-50 text-[#1877F2] border-blue-100/60';
+                    } else if (platform === 'threads' || platform === 'thread') {
+                      platIcon = <ThreadsIcon size={11} className="text-black" />;
+                      platLabel = 'Threads';
+                      platBg = 'bg-slate-50 text-slate-900 border-slate-200/65';
+                    } else if (platform === 'instagram') {
+                      platIcon = <Instagram size={11} className="text-pink-650" />;
+                      platLabel = 'Instagram';
+                      platBg = 'bg-pink-50 text-pink-650 border-pink-100/60';
+                    } else if (platform === 'blog') {
+                      platIcon = <Globe size={11} className="text-emerald-700" />;
+                      platLabel = 'Blog';
+                      platBg = 'bg-emerald-50 text-emerald-700 border-emerald-100/60';
+                    }
+
+                    const timeStr = post.pos?.timeStr || new Date(post.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const postTitle = post.captions?.articles?.title || post.captions?.ai_content || '';
+
+                    return (
+                      <div 
+                        key={idx}
+                        className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/40 flex flex-col gap-2.5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
+                              {platIcon}
+                              <span>{platLabel}</span>
+                            </span>
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100/40 font-mono">
+                              {timeStr}
+                            </span>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${
+                            post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
+                            post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
+                            post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
+                            'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                          }`}>
+                            {language === 'vi' 
+                              ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
+                              : post.status}
+                          </span>
+                        </div>
+
+                        {postTitle && (
+                          <p className="text-xs text-slate-700 font-bold leading-normal">
+                            {postTitle}
+                          </p>
+                        )}
+
+                        {(post.captions?.edited_content || post.captions?.ai_content) ? (
+                          <p className="text-[10px] text-slate-500 leading-relaxed font-medium bg-white p-2.5 rounded-xl border border-slate-100 max-h-[100px] overflow-y-auto whitespace-pre-wrap">
+                            {post.captions?.edited_content || post.captions?.ai_content}
+                          </p>
+                        ) : null}
+
+                        <div className="flex justify-end gap-2 mt-1">
+                          {post.status === 'pending' && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setActionLoadingId(post.id);
+                                try {
+                                  const res = await fetch(`/api/scheduled-posts/${post.id}/cancel`, {
+                                    method: 'POST',
+                                  });
+                                  if (res.ok) {
+                                    const updatedPosts = selectedCell.posts.map(p => 
+                                      p.id === post.id ? { ...p, status: 'cancelled' } : p
+                                    );
+                                    setSelectedCell({ ...selectedCell, posts: updatedPosts });
+                                    await fetchPosts();
+                                  } else {
+                                    const errJson = await res.json().catch(() => ({}));
+                                    alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+                                  }
+                                } catch (err) {
+                                  console.error('Cancel error:', err);
+                                  alert('Lỗi kết nối khi hủy lịch đăng bài');
+                                } finally {
+                                  setActionLoadingId(null);
+                                }
+                              }}
+                              disabled={actionLoadingId === post.id}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
+                            >
+                              {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                              <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <button
+                onClick={() => setSelectedCell(null)}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border-0 active:scale-95"
+              >
+                {language === 'vi' ? 'Đóng' : 'Close'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

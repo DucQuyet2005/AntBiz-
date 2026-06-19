@@ -15,10 +15,6 @@ export async function GET(request: NextRequest) {
     .select('*, captions(id, ai_content, edited_content, platform, articles(id, title, category, description))')
     .order('scheduled_at', { ascending: true });
 
-  if (role !== 'admin' && user) {
-    query = query.eq('created_by', user.id);
-  }
-
   const { data, error } = await query;
   if (error) {
     console.error('[GET /api/scheduled-posts] Supabase error:', error);

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Plus,
   Search,
@@ -85,6 +86,7 @@ function parseTagsText(tagsText: string): string[] {
 }
 
 export default function PromptsView() {
+  const { t } = useLanguage();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -146,12 +148,12 @@ export default function PromptsView() {
         const res = await fetch(`/api/prompts?${params.toString()}`);
         const json = await res.json();
         if (!res.ok) {
-          throw new Error(json?.error || "Không thể tải danh sách prompt");
+          throw new Error(json?.error || t("prompts.cannotLoad"));
         }
         setPrompts(json.data ?? []);
         setTotal(json.pagination?.total ?? json.data?.length ?? 0);
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+        setLoadError(err instanceof Error ? err.message : t("prompts.errorOccurred"));
       } finally {
         setLoading(false);
       }
@@ -233,7 +235,7 @@ export default function PromptsView() {
               .map((d: { field: string; message: string }) => d.message)
               .join("; ")
           : null;
-        throw new Error(detailMsg || json?.error || "Không thể lưu prompt");
+        throw new Error(detailMsg || json?.error || t("prompts.cannotSave"));
       }
 
       setModal(null);
@@ -251,7 +253,7 @@ export default function PromptsView() {
       setPage(1);
       await fetchPrompts({ search, platform: platformFilter, tags: tagsFilter, page: 1, pageSize });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      setFormError(err instanceof Error ? err.message : t("prompts.errorOccurred"));
     } finally {
       setSubmitting(false);
     }
@@ -265,7 +267,7 @@ export default function PromptsView() {
       const res = await fetch(`/api/prompts/${prompt.id}/check-usage`);
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.error || "Không thể kiểm tra trạng thái prompt");
+        throw new Error(json?.error || t("prompts.cannotCheckUsage"));
       }
       setDeleteState({
         phase: "confirmed",
@@ -274,7 +276,7 @@ export default function PromptsView() {
       });
     } catch (err) {
       setDeleteState({ phase: "idle" });
-      setActionError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      setActionError(err instanceof Error ? err.message : t("prompts.errorOccurred"));
     }
   }
 
@@ -296,7 +298,7 @@ export default function PromptsView() {
       });
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.error || "Không thể xóa prompt");
+        throw new Error(json?.error || t("prompts.cannotDelete"));
       }
       setDeleteState({ phase: "idle" });
       // Nếu đang filter theo tag vừa xóa prompt cuối cùng → reset tag filter
@@ -311,7 +313,7 @@ export default function PromptsView() {
       setPage(1);
       await fetchPrompts({ search, platform: platformFilter, tags: tagsFilter, page: 1, pageSize });
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      setDeleteError(err instanceof Error ? err.message : t("prompts.errorOccurred"));
       setDeleteState({ phase: "confirmed", prompt, captionCount });
     }
   }
@@ -330,12 +332,12 @@ export default function PromptsView() {
       });
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.error || "Không thể nhân bản prompt");
+        throw new Error(json?.error || t("prompts.cannotClone"));
       }
       setPage(1);
       await fetchPrompts({ search, platform: platformFilter, tags: tagsFilter, page: 1, pageSize });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      setActionError(err instanceof Error ? err.message : t("prompts.errorOccurred"));
     } finally {
       setCloningId(null);
     }
@@ -356,10 +358,10 @@ export default function PromptsView() {
       <div className="mt-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">
-            Prompts
+            {t("prompts.title")}
           </h1>
           <p className="text-text-muted">
-            Kho công thức hướng dẫn AI viết content theo từng nền tảng.
+            {t("prompts.subtitle")}
           </p>
         </div>
         <button
@@ -367,7 +369,7 @@ export default function PromptsView() {
           className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-full flex items-center gap-2 font-bold text-sm transition-colors shadow-md shadow-primary/20 shrink-0"
         >
           <Plus size={18} />
-          Tạo Prompt mới
+          {t("prompts.createNew")}
         </button>
       </div>
 
@@ -381,7 +383,7 @@ export default function PromptsView() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên prompt..."
+              placeholder={t("prompts.searchPlaceholder")}
               className="w-full bg-card border border-gray-200/70 rounded-full py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted"
             />
           </div>
@@ -395,7 +397,7 @@ export default function PromptsView() {
                   : "bg-card text-text-muted border border-gray-200/70 hover:text-text"
               }`}
             >
-              Tất cả
+              {t("prompts.all")}
             </button>
             {PLATFORM_OPTIONS.map((opt) => (
               <button
@@ -420,20 +422,20 @@ export default function PromptsView() {
               onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
               className="bg-card border border-gray-200/70 rounded-full px-4 py-2.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus:outline-none"
             >
-              Lọc theo thẻ ({tagsFilter.length})
+              {t("prompts.filterByTag", { count: tagsFilter.length })}
             </button>
             {isTagDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsTagDropdownOpen(false)} />
                 <div className="absolute left-0 mt-2 w-48 bg-card border border-gray-200/70 rounded-2xl p-2 shadow-lg z-20 max-h-60 overflow-y-auto">
                   {allDbTags.length === 0 ? (
-                    <div className="text-xs text-text-muted p-2 text-center">Không có thẻ nào</div>
+                    <div className="text-xs text-text-muted p-2 text-center">{t("prompts.noTags")}</div>
                   ) : (
                     allDbTags.map((tag) => {
                       const isSelected = tagsFilter.includes(tag);
                       return (
                         <label
-                          key={tag}
+                           key={tag}
                           className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-50 cursor-pointer select-none text-text"
                         >
                           <input
@@ -457,7 +459,7 @@ export default function PromptsView() {
           </div>
 
           <span className="text-xs text-text-muted ml-auto">
-            {total} prompt
+            {total} prompts
           </span>
         </div>
 
@@ -465,7 +467,7 @@ export default function PromptsView() {
         {tagsFilter.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-text-muted shrink-0">
-              Đang lọc:
+              {t("prompts.filteringBy")}
             </span>
             {tagsFilter.map((tag) => (
               <button
@@ -481,7 +483,7 @@ export default function PromptsView() {
               onClick={() => setTagsFilter([])}
               className="text-xs font-semibold text-text-muted hover:text-red-500 transition-colors"
             >
-              Xóa tất cả bộ lọc
+              {t("prompts.clearAllFilters")}
             </button>
           </div>
         )}
@@ -498,7 +500,7 @@ export default function PromptsView() {
       {loading ? (
         <div className="flex items-center justify-center py-20 text-text-muted gap-2">
           <Loader2 className="animate-spin" size={20} />
-          Đang tải...
+          {t("common.loading")}
         </div>
       ) : loadError ? (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-3 rounded-2xl">
@@ -509,13 +511,13 @@ export default function PromptsView() {
         <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-12 flex flex-col items-center text-center gap-2">
           <p className="font-bold text-text">
             {search || platformFilter || tagsFilter.length > 0
-              ? "Không tìm thấy prompt phù hợp"
-              : "Chưa có prompt nào"}
+              ? t("prompts.noMatching")
+              : t("prompts.noPromptsYet")}
           </p>
           <p className="text-text-muted text-sm">
             {search || platformFilter || tagsFilter.length > 0
-              ? "Thử thay đổi từ khóa hoặc bộ lọc."
-              : "Tạo prompt đầu tiên để bắt đầu hướng dẫn AI viết content theo phong cách của bạn."}
+              ? t("prompts.tryChangingFilters")
+              : t("prompts.createFirstPrompt")}
           </p>
           {(search || platformFilter || tagsFilter.length > 0) && (
             <button
@@ -526,7 +528,7 @@ export default function PromptsView() {
               }}
               className="mt-2 text-xs font-bold text-primary hover:underline"
             >
-              Xoá tất cả bộ lọc
+              {t("prompts.clearAllFilters")}
             </button>
           )}
         </div>
@@ -547,7 +549,7 @@ export default function PromptsView() {
                   </span>
                   {prompt.cloned_from && (
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-text-muted">
-                      Bản nhân bản
+                      {t("prompts.clonedBadge")}
                     </span>
                   )}
                   {prompt.tags.map((tag) => {
@@ -576,7 +578,7 @@ export default function PromptsView() {
                   <button
                     onClick={() => handleClone(prompt)}
                     disabled={cloningId === prompt.id}
-                    title="Nhân bản"
+                    title={t("prompts.cloneTooltip")}
                     className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
                   >
                     {cloningId === prompt.id ? (
@@ -587,7 +589,7 @@ export default function PromptsView() {
                   </button>
                   <button
                     onClick={() => openEditModal(prompt)}
-                    title="Sửa"
+                    title={t("prompts.editTooltip")}
                     className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
                   >
                     <Pencil size={16} />
@@ -597,7 +599,7 @@ export default function PromptsView() {
                     disabled={
                       isCheckingDelete && deletingPrompt?.id === prompt.id
                     }
-                    title="Xóa"
+                    title={t("prompts.deleteTooltip")}
                     className="p-2 rounded-full text-text-muted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
                     {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
@@ -622,7 +624,7 @@ export default function PromptsView() {
       {!loading && prompts.length > 0 && (
         <div className="flex items-center justify-between mt-6 border-t border-gray-100 pt-6">
           <span className="text-xs text-text-muted">
-            Hiển thị {prompts.length} / {total} kết quả (Trang {page} / {Math.ceil(total / pageSize) || 1})
+            {t("prompts.paginationInfo", { count: prompts.length, total: total, page: page, totalPages: Math.ceil(total / pageSize) || 1 })}
           </span>
           <div className="flex gap-2">
             <button
@@ -630,14 +632,14 @@ export default function PromptsView() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Trước
+              {t("prompts.prev")}
             </button>
             <button
               disabled={page >= Math.ceil(total / pageSize)}
               onClick={() => setPage((p) => p + 1)}
               className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Sau
+              {t("prompts.next")}
             </button>
           </div>
         </div>
@@ -652,7 +654,7 @@ export default function PromptsView() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-text">
-                {modal.mode === "edit" ? "Sửa Prompt" : "Tạo Prompt mới"}
+                {modal.mode === "edit" ? t("prompts.editPrompt") : t("prompts.createNew")}
               </h2>
               <button
                 type="button"
@@ -672,7 +674,7 @@ export default function PromptsView() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
-                Tên Prompt
+                {t("prompts.promptName")}
               </label>
               <input
                 type="text"
@@ -681,14 +683,14 @@ export default function PromptsView() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="Ví dụ: Bán hàng - giọng văn hài hước"
+                placeholder={t("prompts.promptNamePlaceholder")}
                 className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
-                Nền tảng áp dụng
+                {t("prompts.applicablePlatform")}
               </label>
               <div className="flex gap-2">
                 {PLATFORM_OPTIONS.map((opt) => (
@@ -713,7 +715,7 @@ export default function PromptsView() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
-                Nội dung hướng dẫn
+                {t("prompts.instructionContent")}
               </label>
               <textarea
                 required
@@ -722,14 +724,14 @@ export default function PromptsView() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, content: e.target.value }))
                 }
-                placeholder="Hướng dẫn chi tiết để AI viết content theo đúng phong cách mong muốn..."
+                placeholder={t("prompts.instructionPlaceholder")}
                 className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25 resize-none"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
-                Thẻ phân loại (cách nhau bởi dấu phẩy)
+                {t("prompts.tagsLabel")}
               </label>
               <input
                 type="text"
@@ -737,7 +739,7 @@ export default function PromptsView() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, tagsText: e.target.value }))
                 }
-                placeholder="Bán hàng, Tin tức, Giải trí"
+                placeholder={t("prompts.tagsPlaceholder")}
                 list="prompt-tag-suggestions"
                 className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25"
               />
@@ -755,7 +757,7 @@ export default function PromptsView() {
                 disabled={submitting}
                 className="px-6 py-3 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50"
               >
-                Hủy
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
@@ -763,7 +765,7 @@ export default function PromptsView() {
                 className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-full font-bold text-sm transition-colors shadow-md shadow-primary/20 inline-flex items-center gap-2 disabled:opacity-60"
               >
                 {submitting && <Loader2 size={16} className="animate-spin" />}
-                {modal.mode === "edit" ? "Lưu thay đổi" : "Tạo Prompt"}
+                {modal.mode === "edit" ? t("common.save") : t("prompts.createNew")}
               </button>
             </div>
           </form>
@@ -786,25 +788,24 @@ export default function PromptsView() {
             <div className="flex flex-col gap-1">
               <h2 className="text-lg font-bold text-text">
                 {deleteState.captionCount > 0
-                  ? "Prompt đang được sử dụng"
-                  : "Xóa Prompt?"}
+                  ? t("prompts.promptInUse")
+                  : t("prompts.deletePromptTitle")}
               </h2>
               <p className="text-sm text-text-muted">
-                Bạn có chắc muốn xóa prompt{" "}
+                {t("prompts.deletePromptConfirm")}{" "}
                 <span className="font-bold text-text">
                   &quot;{deleteState.prompt.name}&quot;
                 </span>
                 {deleteState.captionCount > 0 ? (
                   <>
                     ?{" "}
-                    <span className="text-amber-600 font-semibold">
-                      Prompt này đang được dùng bởi {deleteState.captionCount}{" "}
-                      caption.
+                    <span className="text-amber-600 font-semibold block mt-1">
+                      {t("prompts.promptInUseWarn", { count: deleteState.captionCount })}
                     </span>{" "}
-                    Các caption đó sẽ mất liên kết tới prompt sau khi xóa.
+                    {t("prompts.promptInUseInfo")}
                   </>
                 ) : (
-                  <>? Hành động này không thể hoàn tác.</>
+                  <>? {t("prompts.actionUndone")}</>
                 )}
               </p>
             </div>
@@ -822,7 +823,7 @@ export default function PromptsView() {
                 disabled={deleteState.phase === "deleting"}
                 className="px-5 py-2.5 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50"
               >
-                Hủy
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
@@ -836,7 +837,7 @@ export default function PromptsView() {
                 {deleteState.phase === "deleting" && (
                   <Loader2 size={16} className="animate-spin" />
                 )}
-                {deleteState.captionCount > 0 ? "Vẫn xóa" : "Xóa"}
+                {deleteState.captionCount > 0 ? t("prompts.deleteAnyway") : t("prompts.deleteBtn")}
               </button>
             </div>
           </div>
