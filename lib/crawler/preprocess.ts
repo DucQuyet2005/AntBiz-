@@ -99,16 +99,20 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   }
 
   // ── Description / sapo ────────────────────────────────────────────────
-  const description = cleanText(scope.find('p.mb-5').first().text()) ||
-                      cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+  let description = cleanText(scope.find('p.mb-5').first().text()) ||
+                    cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+
+  if (!description && raw.metadata?.description) {
+    description = cleanText(raw.metadata.description);
+  }
 
   // ── Author ────────────────────────────────────────────────────────────
   const author = cleanText(scope.find('span.font-bold.text-gray-900').first().text() ||
-                           scope.find('a[href^="/authors/"] p').first().text() || '');
+    scope.find('a[href^="/authors/"] p').first().text() || '');
 
   // ── Published date ────────────────────────────────────────────────────
   const published_at = cleanText(scope.find('p.text-gray-400').first().text() ||
-                                 scope.find('span.text-gray-500').first().text() || '');
+    scope.find('span.text-gray-500').first().text() || '');
 
   // ── Views (element next to lucide-eye svg) ────────────────────────────
   let views = '';
@@ -196,7 +200,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
   // ── Fallback image from og:image if no body images found ─────────────
   if (images.length === 0) {
-    const ogImg = $('meta[property="og:image"]').attr('content');
+    let ogImg = $('meta[property="og:image"]').attr('content');
+    if (!ogImg && raw.metadata?.['og:image']) {
+      ogImg = raw.metadata['og:image'];
+    }
     if (ogImg) {
       images.push({ url: ogImg, caption: title });
       console.log('   📸 Dùng og:image làm ảnh đại diện');
