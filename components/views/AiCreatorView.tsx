@@ -56,6 +56,52 @@ interface SocialVariant {
   tags: string;
 }
 
+type SocialPlatform = 'facebook' | 'threads' | 'instagram';
+
+const toDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const toHourInputValue = (date: Date) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const getFutureScheduleSlot = (offsetHours: number) => {
+  const date = new Date();
+  date.setMinutes(0, 0, 0);
+  date.setHours(date.getHours() + offsetHours);
+  return {
+    date: toDateInputValue(date),
+    time: toHourInputValue(date),
+  };
+};
+
+const getWeekStartDate = () => {
+  const start = new Date();
+  const day = start.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + diffToMonday);
+  return start;
+};
+
+const createEmptyVariant = (id: string): SocialVariant => ({
+  id,
+  facebook: '',
+  threads: '',
+  instagram: '',
+  title: '',
+  author: '',
+  tags: '',
+});
+
+const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
+
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -77,10 +123,85 @@ export default function AiCreatorView() {
   const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram' | 'threads'>('facebook');
   const [activePrompt, setActivePrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingAB, setIsGeneratingAB] = useState(false);
   const [isGeneratingSmartPrompt, setIsGeneratingSmartPrompt] = useState(false);
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
+
+  // ... (existing code)
+
+  const handleProceedToABTest = async () => {
+    if (!activePrompt) {
+      alert(language === 'vi' ? 'Vui lòng cấu hình prompt trước khi sinh bài viết.' : 'Please configure a prompt before generating.');
+      return;
+    }
+
+    setIsGeneratingAB(true);
+    try {
+      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+      const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+
+      // Request Variant A
+      const reqA = fetch('/api/prompts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.full_text || postData.description,
+          platform: selectedPlatform,
+          customPrompt: activePrompt
+        }),
+      }).then(r => r.json());
+
+      // Request Variant B (Engaging style)
+      const promptB = `${activePrompt}\n\nLưu ý cho phiên bản này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
+      const reqB = fetch('/api/prompts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: postData.title,
+          content: postData.full_text || postData.description,
+          platform: selectedPlatform,
+          customPrompt: promptB
+        }),
+      }).then(r => r.json());
+
+      const [resA, resB] = await Promise.all([reqA, reqB]);
+
+      const contentA = resA.content || '';
+      const contentB = resB.content || '';
+
+      const newVariants: SocialVariant[] = [
+        {
+          id: 'A',
+          facebook: targetPlatforms.includes('facebook') ? contentA : "",
+          threads: targetPlatforms.includes('threads') ? contentA : "",
+          instagram: targetPlatforms.includes('instagram') ? contentA : "",
+          title: postData.title,
+          author: postData.author,
+          tags: tagsStr
+        },
+        {
+          id: 'B',
+          facebook: targetPlatforms.includes('facebook') ? contentB : "",
+          threads: targetPlatforms.includes('threads') ? contentB : "",
+          instagram: targetPlatforms.includes('instagram') ? contentB : "",
+          title: postData.title,
+          author: postData.author,
+          tags: tagsStr
+        }
+      ];
+
+      setVariants(newVariants);
+      setStep(2);
+    } catch (error) {
+      console.error('Error generating A/B variants:', error);
+      alert(language === 'vi' ? 'Lỗi khi sinh nội dung AI. Vui lòng thử lại.' : 'Error generating AI content. Please retry.');
+    } finally {
+      setIsGeneratingAB(false);
+    }
+  };
 
   // Update prompt when platform changes
   useEffect(() => {
@@ -96,7 +217,7 @@ export default function AiCreatorView() {
 
   // AI Logic Functions
   const handleGenerateSmartPrompt = async () => {
-    if (!postData.title || !postData.description) return;
+    if (!postData.title || !(postData.full_text || postData.description)) return;
     setIsGeneratingSmartPrompt(true);
     try {
       const res = await fetch('/api/prompts/generate-smart', {
@@ -104,7 +225,7 @@ export default function AiCreatorView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: postData.title,
-          content: postData.description,
+          content: postData.full_text || postData.description,
           platform: selectedPlatform
         }),
       });
@@ -129,7 +250,7 @@ export default function AiCreatorView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: postData.title,
-          content: postData.description,
+          content: postData.full_text || postData.description,
           platform: selectedPlatform,
           customPrompt: activePrompt
         }),
@@ -241,12 +362,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   );
 
 
-  const [facebookDate, setFacebookDate] = useState<string>("2026-06-19");
-  const [facebookTime, setFacebookTime] = useState<string>("20:00");
-  const [threadsDate, setThreadsDate] = useState<string>("2026-06-19");
-  const [threadsTime, setThreadsTime] = useState<string>("18:00");
-  const [instagramDate, setInstagramDate] = useState<string>("2026-06-19");
-  const [instagramTime, setInstagramTime] = useState<string>("12:00");
+  const [facebookSlot] = useState(() => getFutureScheduleSlot(1));
+  const [threadsSlot] = useState(() => getFutureScheduleSlot(2));
+  const [instagramSlot] = useState(() => getFutureScheduleSlot(3));
+  const [facebookDate, setFacebookDate] = useState<string>(facebookSlot.date);
+  const [facebookTime, setFacebookTime] = useState<string>(facebookSlot.time);
+  const [threadsDate, setThreadsDate] = useState<string>(threadsSlot.date);
+  const [threadsTime, setThreadsTime] = useState<string>(threadsSlot.time);
+  const [instagramDate, setInstagramDate] = useState<string>(instagramSlot.date);
+  const [instagramTime, setInstagramTime] = useState<string>(instagramSlot.time);
   const [facebookError, setFacebookError] = useState<string>("");
   const [threadsError, setThreadsError] = useState<string>("");
   const [instagramError, setInstagramError] = useState<string>("");
@@ -267,14 +391,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const weekDays = Array.from({ length: 21 }, (_, index) => {
-    const start = new Date(2026, 5, 15); // June 15, 2026 (Mon)
+    const start = getWeekStartDate();
     start.setDate(start.getDate() + index);
-    const dateStr = start.toISOString().split('T')[0];
+    const dateStr = toDateInputValue(start);
 
     const daysNameMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const name = daysNameMap[start.getDay()];
     const label = start.getDate().toString();
-    const isToday = dateStr === '2026-06-17';
+    const isToday = dateStr === toDateInputValue(new Date());
 
     return { name, date: dateStr, label, isToday };
   });
@@ -282,7 +406,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
     if (isCellOccupied(val, activeHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${facebookTime} on ${val}.`);
     } else {
       setFacebookError("");
       setFacebookDate(val);
@@ -296,22 +420,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleFacebookTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 9;
-    const clampedHour = Math.max(0, Math.min(23, hour));
-    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(facebookDate, clampedHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${facebookDate}.`);
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${facebookDate}.`);
     } else {
       setFacebookError("");
-      setFacebookTime(clampedTime);
+      setFacebookTime(finalTime);
     }
   };
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
     if (isCellOccupied(val, activeHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${threadsTime} on ${val}.`);
     } else {
       setThreadsError("");
       setThreadsDate(val);
@@ -325,15 +450,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleThreadsTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 10;
-    const clampedHour = Math.max(0, Math.min(23, hour));
-    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(threadsDate, clampedHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${threadsDate}.`);
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${threadsDate}.`);
     } else {
       setThreadsError("");
-      setThreadsTime(clampedTime);
+      setThreadsTime(finalTime);
     }
   };
 
@@ -387,7 +513,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     } else {
       setFacebookError("");
       setFacebookDate(targetDate);
-      setFacebookTime(`${targetHour.toString().padStart(2, '0')}:00`);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = facebookTime.split(':')[1] || "00";
+      setFacebookTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
     }
   };
 
@@ -421,14 +549,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     } else {
       setThreadsError("");
       setThreadsDate(targetDate);
-      setThreadsTime(`${targetHour.toString().padStart(2, '0')}:00`);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = threadsTime.split(':')[1] || "00";
+      setThreadsTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
     }
   };
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
     if (isCellOccupied(val, activeHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${activeHour}:00 ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${activeHour}:00 on ${val}.`);
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${instagramTime} on ${val}.`);
     } else {
       setInstagramError("");
       setInstagramDate(val);
@@ -442,15 +572,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const handleInstagramTimeChange = (val: string) => {
-    const hour = parseInt(val.split(':')[0]) || 11;
-    const clampedHour = Math.max(0, Math.min(23, hour));
-    const clampedTime = `${clampedHour.toString().padStart(2, '0')}:00`;
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(instagramDate, clampedHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${clampedTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${clampedTime} on ${instagramDate}.`);
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${instagramDate}.`);
     } else {
       setInstagramError("");
-      setInstagramTime(clampedTime);
+      setInstagramTime(finalTime);
     }
   };
 
@@ -493,7 +624,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     } else {
       setInstagramError("");
       setInstagramDate(targetDate);
-      setInstagramTime(`${targetHour.toString().padStart(2, '0')}:00`);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = instagramTime.split(':')[1] || "00";
+      setInstagramTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
     }
   };
 
@@ -609,6 +742,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               if (parsed.done && parsed.captionId) {
                 setCaptionId(parsed.captionId);
               }
+              if (parsed.done && parsed.articleId) {
+                setArticleId(parsed.articleId);
+              }
               if (parsed.error) throw new Error(parsed.error);
             } catch (e: any) {
               if (e?.name !== 'SyntaxError') throw e;
@@ -670,24 +806,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   // State for Social Media Variants (A/B Test copies)
   const [variants, setVariants] = useState<SocialVariant[]>([
-    {
-      id: 'A',
-      facebook: `Bộ Tư lệnh TPHCM phối hợp các đơn vị chuyên môn, nhóm nghiên cứu và nhân chứng lịch sử triển khai khảo sát tại Công viên Lê Thị Riêng (phường Hòa Hưng, TPHCM) nhằm xác định các khu vực nghi có hố chôn tập thể liệt sĩ, phục vụ công tác tìm kiếm, quy tập hài cốt.\n\nĐợt khảo sát diễn ra từ ngày 15 đến 18/6, là bước tiếp theo sau quá trình nhiều năm thu thập tư liệu lịch sử, đối chiếu không ảnh và khảo sát thực địa liên quan đến khu vực được cho là nơi chôn cất các liệt sĩ hy sinh trong cuộc Tổng tiến công và nổi dậy Xuân Mậu Thân 1968.`,
-      threads: `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng. Jun được học lớp 11 và 12 ở TP HCM.\n\nHoàn thành cấp 3, Jun về Hàn Quốc đi nghĩa vụ quân sự, học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước.\n\n"Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`,
-      instagram: `Hành trình tích lũy 10 năm mua vàng của một gia đình trẻ mua nhà từ những chỉ số tích lũy đơn giản nhất. Hãy đọc ngay kinh nghiệm này!`,
-      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
-      author: 'Linh Trang',
-      tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
-    },
-    {
-      id: 'B',
-      facebook: `Quyết định mua vàng tích lũy thay vì gửi tiết kiệm, liệu có đúng đắn? Câu chuyện thực tế của anh H. đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.`,
-      threads: `Scale your content publishing effortlessly with AntBiz. Our AI-driven content generation and multi-channel scheduler automate your workflows. Connect your ecommerce or blog directly and start scaling today!`,
-      instagram: `Từng bước thoát khỏi cuộc sống ở trọ sau 10 năm tích góp. Một câu chuyện đáng học hỏi và suy ngẫm cho các gia đình trẻ hiện nay.`,
-      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
-      author: 'Linh Trang',
-      tags: '#Tiết kiệm tài chính #Mua nhà #Cuộc sống đô thị #Đầu tư'
-    }
+    createEmptyVariant('A'),
+    createEmptyVariant('B'),
   ]);
 
   // Inline Editing Active States
@@ -744,45 +864,39 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return platforms;
   };
 
-  // Helper to generate platform-specific mock content
-  const generatePlatformContent = (platform: 'facebook' | 'threads' | 'instagram', prompt: any, data: typeof postData, isVariantB: boolean = false) => {
-    const promptStyle = prompt ? `[Prompt: ${prompt.name}] ` : "";
-    const categoryClean = (data.category || '').replace('#', '');
-
-    if (platform === 'facebook') {
-      if (isVariantB) {
-        return `🔥 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz #SocialMedia`;
-      }
-      if (prompt) {
-        return `📱 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\n👉 Chi tiết hành trình được chia sẻ bởi tác giả ${data.author}. Đọc thêm dưới phần bình luận! ${data.tags}`;
-      }
-      return `🏠 [${categoryClean}] ${data.title}\n\n"${data.description}"\n\nMột câu chuyện đầy cảm hứng từ tác giả ${data.author}. Hãy đọc ngay hành trình chi tiết để có thêm kinh nghiệm tích lũy!`;
+  // Helper to generate platform-specific content from the current article data only.
+  const generatePlatformContent = (platform: SocialPlatform, prompt: any, data: typeof postData, isVariantB: boolean = false) => {
+    const categoryClean = (data.category || '').replace('#', '').trim();
+    const title = data.title.trim();
+    const description = (data.full_text || data.description).trim();
+    const author = data.author.trim();
+    const tags = data.tags.trim();
+    const promptName = prompt?.name ? `[${prompt.name}]` : '';
+    
+    // T-1.19.1: Tạo 2 phong cách khác nhau cho A/B testing
+    let body = description;
+    if (isVariantB) {
+      // Phong cách B: Thân thiện, đặt câu hỏi gợi mở, thêm emoji
+      body = `✨ ${description}\n\n🤔 Bạn nghĩ sao về vấn đề này? Hãy để lại ý kiến dưới phần bình luận nhé! 👇`;
     }
 
+    const intro = [promptName, categoryClean ? `[${categoryClean}]` : '', title].filter(Boolean).join(' ');
+
+    if (!intro && !body && !author && !tags) return '';
+
     if (platform === 'threads') {
-      if (isVariantB) {
-        return `🧵 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz`;
-      }
-      if (prompt) {
-        return `🧵 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\nTác giả: ${data.author} ${data.tags}`;
-      }
-      return `Choi Won Jun, 33 tuổi, quê ở Jeju, Hàn Quốc. Năm 2009, bố anh sang Việt Nam công tác nên đưa con theo cùng.\n\nHoàn thành cấp 3, Jun về Hàn Quốc học đại học và làm việc trong một công ty bất động sản ở Seoul. Sau 6 năm, anh trở thành trưởng phòng với mức lương nhiều người ao ước. "Nhưng tôi không thấy hạnh phúc, mỗi ngày như một vòng lặp tẻ nhạt", anh nói.`;
+      return [intro, body, author ? `Tác giả: ${author}` : '', tags].filter(Boolean).join('\n\n');
     }
 
     if (platform === 'instagram') {
-      if (isVariantB) {
-        return `📸 [A/B Test Variant B] ${data.title}\n\n${data.description}\n\n#AntBiz`;
-      }
-      if (prompt) {
-        return `📸 ${promptStyle}\n🏠 [${categoryClean}] ${data.title}\n\n${data.description}\n\n📸 Photo by: ${data.author}\n\n${data.tags}`;
-      }
-      return `📸 [${categoryClean}] ${data.title}\n\n"${data.description}"\n\nChia sẻ bởi tác giả ${data.author}.\n\n${data.tags}`;
+      return [intro, body, author ? `Photo/Credit: ${author}` : '', tags].filter(Boolean).join('\n\n');
     }
 
-    return "";
+    return [intro, body, author ? `Nguồn: ${author}` : '', tags].filter(Boolean).join('\n\n');
   };
 
   // Helper to generate new variants with prompt-platform filtering constraints
+  // T-1.19.1: Tạo 2 bản A/B với 2 phong cách khác nhau từ cùng 1 prompt
   const generateVariants = (data: typeof postData, prompt: any) => {
     const targetPlatforms = getPromptTargetPlatforms(prompt);
     const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
@@ -799,6 +913,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       },
       {
         id: 'B',
+        // Bản B sẽ có văn phong khác một chút (ví dụ: thêm câu hỏi gợi mở hoặc thay đổi cách tiếp cận)
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
@@ -843,6 +958,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
+    if (!url || !url.trim()) {
+      alert(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL');
+      return;
+    }
     setIsFetching(true);
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
@@ -858,9 +977,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.description || ''
+            full_text: data.full_text || data.description || ''
           };
           setPostData(updatedPostData);
+          setArticleId(data.id || null);
+          setCaptionId('');
           const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
           setActivePrompt(defaultPrompt);
           generateVariants(updatedPostData, selectedPrompt);
@@ -870,27 +991,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
     } catch (e) {
       console.error("Scraper fetch error:", e);
-    }
-
-    // Fallback if live scrape fails
-    setTimeout(() => {
-      const updatedPostData = {
-        title: 'Cơn sốt đất nền vùng ven và bài học đắt giá',
-        category: '#Bất động sản',
-        description: 'Những lô đất từng được định giá hàng tỷ đồng nay nằm phơi sương không người hỏi mua. Bài học về đòn bẩy tài chính và tâm lý đám đông.',
-        author: 'Nguyễn Văn Nam',
-        published_at: '17/06/2026 09:30',
-        views: '12.4K lượt xem',
-        tags: '#Đất nền, #Sốt đất, #Tài chính cá nhân, #Rủi ro',
-        imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-        full_text: 'Toàn cảnh cơn sốt đất nền và bài học thức tỉnh nhà đầu tư cá nhân...'
-      };
-      setPostData(updatedPostData);
-      const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
-      setActivePrompt(defaultPrompt);
-      generateVariants(updatedPostData, selectedPrompt);
+    } finally {
       setIsFetching(false);
-    }, 1200);
+    }
   };
 
   const handleToggle = (key: keyof typeof toggles) => {
@@ -936,9 +1039,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.description || ''
+            full_text: data.full_text || data.description || ''
           };
           setPostData(updatedPostData);
+          setArticleId(data.id || null);
+          setCaptionId('');
           setUrl(explorerUrl);
           generateVariants(updatedPostData, selectedPrompt);
           setIsExplorerOpen(false);
@@ -1039,17 +1144,89 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     );
   };
 
-  const handleConfirmSchedule = async () => {
-    // Không thực hiện lên lịch nếu có lỗi xảy ra đối với ngày/giờ Facebook hoặc Threads
-    if (facebookError || threadsError) return;
+  const getSelectedVariantCaption = () => {
+    const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
+    if (!selectedVariant) return '';
+    return (selectedVariant[selectedPlatform] || '').trim();
+  };
 
-    // Yêu cầu người dùng phải tạo nội dung caption trước
-    if (!captionId) {
-      setSchedulingError('Vui lòng tạo caption bằng AI ở Bước 1 trước khi thực hiện lên lịch.');
-      return;
+  const ensureArticleForCaption = async () => {
+    if (articleId) return articleId;
+    if (!url.trim()) {
+      throw new Error(
+        language === 'vi'
+          ? 'Vui lòng nhập hoặc import URL bài viết trước khi lên lịch.'
+          : 'Please enter or import an article URL before scheduling.'
+      );
     }
 
-    const scheduledAt = new Date(`${facebookDate}T${facebookTime}`);
+    const scrapeRes = await fetch(`/api/scrape?url=${encodeURIComponent(url.trim())}`);
+    const scrapeData = await scrapeRes.json().catch(() => ({}));
+
+    if (!scrapeRes.ok || scrapeData.error || !scrapeData.id) {
+      throw new Error(
+        scrapeData.error ||
+        (language === 'vi'
+          ? 'Không thể tạo dữ liệu bài viết để lưu caption.'
+          : 'Could not create article data for saving the caption.')
+      );
+    }
+
+    setArticleId(scrapeData.id);
+    return scrapeData.id as string;
+  };
+
+  const ensureCaptionDraft = async () => {
+    if (captionId) return captionId;
+
+    const selectedContent = getSelectedVariantCaption();
+    if (!selectedContent) {
+      throw new Error(
+        language === 'vi'
+          ? 'Vui lòng chọn biến thể có nội dung trước khi lên lịch.'
+          : 'Please select a variant with content before scheduling.'
+      );
+    }
+
+    const resolvedArticleId = await ensureArticleForCaption();
+    const res = await fetch('/api/captions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        article_id: resolvedArticleId,
+        platform: toDatabasePlatform(selectedPlatform),
+        ai_content: selectedContent,
+        ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+          ? { prompt_id: selectedPrompt.id }
+          : {}),
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.data?.id) {
+      throw new Error(
+        data?.error ||
+        (language === 'vi'
+          ? 'Không thể lưu caption nháp trước khi lên lịch.'
+          : 'Could not save a draft caption before scheduling.')
+      );
+    }
+
+    setCaptionId(data.data.id);
+    return data.data.id as string;
+  };
+
+  const handleConfirmSchedule = async () => {
+    // Không thực hiện lên lịch nếu có lỗi xảy ra đối với ngày/giờ Facebook hoặc Threads
+    if (facebookError || threadsError || instagramError) return;
+
+    const scheduleByPlatform = {
+      facebook: { date: facebookDate, time: facebookTime },
+      threads: { date: threadsDate, time: threadsTime },
+      instagram: { date: instagramDate, time: instagramTime },
+    };
+    const selectedSchedule = scheduleByPlatform[selectedPlatform];
+    const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
 
     // Đảm bảo thời gian lên lịch phải ở tương lai so với thời điểm hiện tại
     if (scheduledAt.getTime() <= Date.now()) {
@@ -1066,12 +1243,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       : [];
 
     try {
+      const draftCaptionId = await ensureCaptionDraft();
+
       // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
       const res = await fetch('/api/scheduled-posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          captionId,
+          captionId: draftCaptionId,
           scheduledAt: scheduledAt.toISOString(),
           imageUrls,
         }),
@@ -1619,8 +1798,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
                   <textarea
-                    value={postData.description}
-                    onChange={(e) => setPostData({ ...postData, description: e.target.value })}
+                    value={postData.full_text}
+                    onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
                     rows={10}
                     className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
                   />
@@ -1744,11 +1923,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               {step === 1 && (
                 <motion.button
                   layout
-                  onClick={() => changeStep(2)}
-                  className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                  onClick={handleProceedToABTest}
+                  disabled={isGeneratingAB || isFetching}
+                  className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
                 >
-                  {t('aiCreator.proceedToAb')}
-                  <ArrowRight size={16} />
+                  {isGeneratingAB ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {language === 'vi' ? 'Đang dùng AI sinh 2 bản A/B...' : 'AI Generating A/B variants...'}
+                    </>
+                  ) : (
+                    <>
+                      {t('aiCreator.proceedToAb')}
+                      <ArrowRight size={16} />
+                    </>
+                  )}
                 </motion.button>
               )}
             </div>
@@ -1857,6 +2046,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
                   }
 
+                  const previewTimestamp = postData.published_at || toDateInputValue(new Date());
                   const isCardSelected = selectedVariantId === v.id;
                   return (
                     <motion.div
@@ -1926,7 +2116,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-extrabold text-text">antbiz_official</span>
                                 <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                  <span>24/03/2025</span>
+                                  <span>{previewTimestamp}</span>
                                   <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
                                 </div>
                               </div>
@@ -1999,7 +2189,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-extrabold text-text">antbiz_official</span>
                                 <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                  <span>24/03/2025</span>
+                                  <span>{previewTimestamp}</span>
                                   <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
                                 </div>
                               </div>
@@ -2259,6 +2449,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
                   platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
                 }
+                const previewTimestamp = postData.published_at || toDateInputValue(new Date());
 
                 return (
                   <motion.div
@@ -2310,7 +2501,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-extrabold text-text">antbiz_official</span>
                               <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                <span>24/03/2025</span>
+                                <span>{previewTimestamp}</span>
                                 <MoreHorizontal size={13} className="text-gray-400" />
                               </div>
                             </div>
@@ -2549,9 +2740,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                 <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 gap-1">
                   {[
-                    { id: 0, label: language === 'vi' ? 'Tuần 1' : 'Wk 1', firstDate: '2026-06-16' },
-                    { id: 1, label: language === 'vi' ? 'Tuần 2' : 'Wk 2', firstDate: '2026-06-23' },
-                    { id: 2, label: language === 'vi' ? 'Tuần 3' : 'Wk 3', firstDate: '2026-06-30' }
+                    { id: 0, label: language === 'vi' ? 'Tuần 1' : 'Wk 1', firstDate: weekDays[0].date },
+                    { id: 1, label: language === 'vi' ? 'Tuần 2' : 'Wk 2', firstDate: weekDays[7].date },
+                    { id: 2, label: language === 'vi' ? 'Tuần 3' : 'Wk 3', firstDate: weekDays[14].date }
                   ].map((wk) => (
                     <button
                       key={wk.id}
@@ -2642,7 +2833,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           >
                             <div className="flex items-center gap-1">
                               <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
-                              <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {hr}:00</span>
+                              <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
                             </div>
                           </motion.div>
                         );
@@ -2663,7 +2854,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           >
                             <div className="flex items-center gap-1">
                               <ThreadsIcon size={10} className="shrink-0" />
-                              <span className="text-[8px] font-black text-black uppercase truncate">TR {hr}:00</span>
+                              <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
                             </div>
                           </motion.div>
                         );
@@ -2684,7 +2875,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           >
                             <div className="flex items-center gap-1">
                               <Instagram size={10} className="text-pink-600 shrink-0" />
-                              <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {hr}:00</span>
+                              <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
                             </div>
                           </motion.div>
                         );

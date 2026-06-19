@@ -4,7 +4,9 @@ import { z } from 'zod';
 
 const createCaptionSchema = z.object({
   article_id: z.string().uuid('article_id phải là UUID hợp lệ'),
-  platform: z.enum(['facebook', 'thread', 'instagram']),
+  platform: z
+    .enum(['facebook', 'thread', 'threads', 'instagram'])
+    .transform((platform) => (platform === 'threads' ? 'thread' : platform)),
   ai_content: z.string().min(1, 'ai_content không được rỗng'),
   prompt_id: z.string().uuid().optional(),
   utm_config_id: z.string().uuid().optional(),

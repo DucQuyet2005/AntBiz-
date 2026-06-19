@@ -15,6 +15,7 @@ export async function publishToFacebookPage(
 ): Promise<FacebookPublishResult> {
   const pageId = process.env.FB_PAGE_ID;
   const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  const graphVersion = process.env.FB_GRAPH_API_VERSION || 'v19.0';
 
   if (!pageId || !token) {
     return {
@@ -39,7 +40,7 @@ export async function publishToFacebookPage(
     for (const imgUrl of targetImages) {
       try {
         const uploadRes = await fetch(
-          `https://graph.facebook.com/v19.0/${pageId}/photos`,
+          `https://graph.facebook.com/${graphVersion}/${pageId}/photos`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -61,22 +62,23 @@ export async function publishToFacebookPage(
       }
     }
 
-    const feedUrl = `https://graph.facebook.com/v19.0/${pageId}/feed`;
+    const feedUrl = `https://graph.facebook.com/${graphVersion}/${pageId}/feed`;
     let response: Response;
 
     if (photoIds.length > 0) {
-      const payload: any = {
-        message,
-        access_token: token,
-      };
+      // T-1.19.4: Sử dụng FormData hoặc URLSearchParams để đảm bảo Facebook nhận diện đúng attached_media
+      const params = new URLSearchParams();
+      params.append('message', message);
+      params.append('access_token', token);
+      
       photoIds.forEach((pid, idx) => {
-        payload[`attached_media[${idx}]`] = JSON.stringify({ media_fbid: pid });
+        params.append(`attached_media[${idx}]`, JSON.stringify({ media_fbid: pid }));
       });
 
+      console.log(`[Facebook API] Đang đăng bài kèm ${photoIds.length} ảnh đã upload...`);
       response = await fetch(feedUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: params,
       });
     } else {
       response = await fetch(feedUrl, {
