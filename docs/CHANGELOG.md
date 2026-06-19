@@ -4,6 +4,68 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.2.6] - 2026-06-19
+
+### Changed
+- **Cải tiến giao diện Lịch biểu Gantt 2D (ContentCalendarView)**:
+  - Thiết kế lại thẻ đại diện cho nhiều bài đăng trùng giờ (Multi-post card): Chuyển sang nền đục hoàn toàn (`bg-[#ECEEF9]`) để không bị trong suốt, tích hợp hiệu ứng xếp lớp 3D (Stacked Cards) chân thực tương ứng với số lượng bài viết lên lịch. Tinh chỉnh hướng xếp chồng bằng cách dịch chuyển các lớp phụ lên phía trên (`topOffset - layerIndex * 3.5`), đồng thời đồng bộ độ rộng của các lớp phụ trùng khớp hoàn toàn với thẻ chính (sử dụng `left-1 right-1`), chỉ cho phép các viền thẻ phụ nhô ra ở mép trên và che khuất hoàn toàn các góc thừa ở mép dưới.
+  - Rút ngắn nhãn hiển thị số lượng từ "bài đăng" thành "bài" (ví dụ: "2 bài") và áp dụng kiểu co gọn văn bản (`whitespace-nowrap`) tránh tình trạng xuống dòng xé khung.
+  - Tối ưu hóa hiển thị icon nền tảng: Chỉ hiển thị các icon đại diện cho các nền tảng duy nhất (`uniquePlatforms`) đang có bài đăng lên lịch trong ô giờ đó thay vì lặp lại tất cả bài viết.
+  - Căn giữa dọc chữ số hiển thị giờ (như `1 AM`, `2 AM`...) vào chính giữa dòng giờ tương ứng thay vì bị lệch xuống dưới.
+- **Ẩn Scrollbar và tinh chỉnh Thanh chỉ báo ở Sidebar (Taskbar) sát mép trái**:
+  - Sửa lỗi ghi đè CSS bằng cách di chuyển lớp `.no-scrollbar` xuống cuối cùng của `globals.css`, ẩn hoàn toàn và triệt để thanh cuộn dọc trên Sidebar.
+  - Tinh chỉnh bố cục Sidebar: Loại bỏ padding-left của Sidebar (`pl-0`), dịch chuyển Logo, Footer tương ứng, giúp thanh chỉ báo dạng vạch dọc có màu (`border-l-4 border-primary`) của nút chức năng đang kích hoạt (active item) nằm sát mép trái của Sidebar (tọa độ x=0) thay vì bị lơ lửng cách mép 24px, đem lại giao diện chuyên nghiệp và rõ ràng hơn.
+- **Tùy biến Scrollbar toàn cục triệt để**:
+  - Áp dụng các quy tắc tùy biến thanh cuộn webkit (`::-webkit-scrollbar`) cho toàn bộ ứng dụng để các thanh cuộn mặc định (bao gồm cả khung hiển thị chính) trở nên thanh mảnh, bo tròn góc, không chứa các nút mũi tên điều hướng (`::-webkit-scrollbar-button`), đem lại tính đồng bộ thẩm mỹ tối đa.
+- **Tinh chỉnh giao diện Trình tạo AI (AiCreatorView)**:
+  - Tách biệt và sắp xếp lại các thành phần ở cột bên trái theo từng bước:
+    - Ở **Step 1**: Giữ nguyên hộp "Prompt sử dụng" (Prompt Selector) lồng bên trong và nằm dưới cùng của khung preview "Bài viết gốc" (Original Article Preview) để giữ đúng luồng chỉnh sửa tập trung.
+    - Ở **Step 2**: Tách biệt thành 3 khối riêng biệt: "Tùy chỉnh mục hiển thị" ở trên cùng, "Prompt sử dụng" ở giữa và khung preview "Bài viết gốc" ở dưới cùng.
+  - Sửa lỗi lệch khung hiển thị của ô nhập liệu "NỘI DUNG" ở Step 1: Bổ sung khoảng đệm phía dưới (`pb-6`) và thiết lập thuộc tính cuộn an toàn (`scroll-pb-4`) giúp văn bản ở dòng cuối cùng không bao giờ bị cắt hay chạm sát viền dưới của textarea khi người dùng kéo dãn hoặc nhập nội dung dài.
+  - Xóa bỏ nhãn `✓ Đã chọn` (Selected) trên thẻ biến thể được chọn ở cả Step 2 và Step 3 để giao diện thoáng mắt và bớt chi tiết thừa.
+  - Sửa lỗi con trỏ soạn thảo (cursor position) tự động nhảy về ký tự đầu tiên khi chỉnh sửa nội dung mô tả của biến thể: Di chuyển component `EditableText` lên cấp module bên ngoài `AiCreatorView` và sử dụng `EditableTextContext` để chia sẻ trạng thái chỉnh sửa, ngăn chặn việc React unmount/remount lại phần tử input/textarea mỗi khi cập nhật state.
+
+
+## [1.2.5] - 2026-06-19
+
+### Fixed
+- **Sửa lỗi treo xác thực ("Đang xác thực tài khoản...") khi đăng nhập thành công**:
+  - Xóa cờ `logging_out` khỏi `sessionStorage` ngay khi tải trang `/login` và `/register` để tránh rò rỉ trạng thái đăng xuất khiến `DashboardLayout` bị bỏ qua kiểm tra auth và treo loading spinner.
+- **Đồng bộ hóa luồng Đăng xuất trong UserProfileDropdown**:
+  - Chuyển đổi nút đăng xuất trong dropdown từ dạng Server Action sang xử lý client-side thống nhất với Sidebar.
+  - Sử dụng chung logic thiết lập `logging_out = 'true'`, gọi `supabase.auth.signOut()` để làm sạch cache client, và điều hướng cứng bằng `window.location.href = '/'`.
+- **Sửa luồng chuyển hướng của Google OAuth callback**:
+  - Cập nhật tuyến đường callback mặc định của Google OAuth sang `/overview` thay vì `/` để tránh vòng lặp chuyển hướng không cần thiết qua trang Landing.
+- **Chuyển hướng người dùng chưa đăng nhập về trang Landing**:
+  - Cập nhật cơ chế bảo vệ định tuyến trong `DashboardLayout` ([app/(dashboard)/layout.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/app/(dashboard)/layout.tsx)) và bộ lọc ủy quyền trong `proxy.ts` ([proxy.ts](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/proxy.ts)) để tự động chuyển hướng các truy cập trái phép hoặc khi chưa đăng nhập về trang Landing (`/`) thay vì trang Đăng nhập (`/login`).
+  - Thêm đường dẫn gốc `/` vào danh sách các tuyến đường công khai (`isPublicRoute`) trong `proxy.ts` để tránh lỗi lặp chuyển hướng vô hạn (infinite redirect loop / `ERR_TOO_MANY_REDIRECTS`).
+  - Cập nhật `proxy.ts` để chuyển hướng người dùng đã đăng nhập khi cố truy cập `/login` hoặc `/register` trực tiếp về `/overview` thay vì `/`.
+- **Cải tiến giao diện Header của Landing Page**:
+  - Đổi màu nền của Header sang màu lavender nhạt (`bg-[#E9EAF5]`) trùng khớp với màu nền chân trang (Footer), tạo tính nhất quán thương hiệu.
+  - Chuyển đổi toàn bộ màu chữ điều hướng của Header sang gam màu tối phù hợp để đảm bảo khả năng tương phản dễ đọc.
+  - Thay thế nút kêu gọi hành động đơn lẻ "Trải nghiệm" thành cặp nút "Đăng nhập" (dạng viền thanh lịch) và "Đăng ký" (nền đỏ nổi bật) tương thích đa ngôn ngữ.
+
+## [1.2.4] - 2026-06-19
+
+### Added
+- **Landing Page độc lập phong cách Garena**:
+  - Thiết kế lại trang Landing Page hoàn chỉnh tại tuyến đường gốc `/`, loại bỏ Sidebar và các Header/Footer của Dashboard.
+  - Tích hợp thanh Header tối màu phong cách Garena có viền đỏ chạy phía trên cùng, chứa các menu liên kết, bộ chọn ngôn ngữ VN/EN và nút Trải nghiệm.
+  - Thêm Slider trình chiếu banner tự động chạy, nút điều hướng mũi tên và chấm chỉ số.
+  - Thiết kế các khối nội dung "Chúng tôi làm gì" dạng thẻ có đường kẻ đỏ bên cạnh tiêu đề, phần giới thiệu nền tảng và khối typographic workflow ở dưới cùng.
+  - Tích hợp Footer sẵn có của ứng dụng ở chân trang.
+
+### Changed
+- **Cơ chế điều hướng Đăng nhập/Đăng ký & Bảo vệ tuyến đường**:
+  - Trang chủ `/` tự động chuyển hướng người dùng đã đăng nhập sang ứng dụng (`/overview`) từ phía Server-side.
+  - Bảo vệ toàn bộ layout `(dashboard)` bằng kiểm tra session client-side, tự động chuyển hướng người dùng chưa đăng nhập về `/login`.
+  - Tự động chuyển hướng người dùng đã đăng nhập tại trang `/login` và `/register` về `/overview`.
+  - Cấu hình lại toàn bộ các nút kêu gọi hành động (CTA) trên Landing Page trỏ về `/login` để yêu cầu xác thực.
+
+### Fixed
+- **Sửa lỗi Đăng xuất trong app không hiển thị Landing Page**:
+  - Chuyển đổi logic Đăng xuất từ Server Action form sang nút bấm xử lý Client-side thực hiện `signOut` và điều hướng cứng bằng `window.location.href = '/'`.
+  - Tích hợp cờ `logging_out` trong `sessionStorage` để thông báo cho `DashboardLayout` không tự động chuyển hướng về `/login` khi phiên đăng nhập bị hủy trong lúc thoát, đảm bảo người dùng về thẳng Landing Page thành công.
 
 ## [1.2.3] - 2026-06-19
 

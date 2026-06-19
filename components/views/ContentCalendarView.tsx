@@ -581,9 +581,9 @@ export default function ContentCalendarView() {
               <div className="grid grid-cols-[80px_1fr] relative h-[1440px] overflow-x-visible">
                 
                 {/* Hours Left Column */}
-                <div className="border-r border-slate-100 bg-slate-50/30 pt-2 flex flex-col z-20">
+                <div className="border-r border-slate-100 bg-slate-50/30 flex flex-col z-20">
                   {hoursArray.map(hour => (
-                    <div key={hour} className="h-[60px] text-right pr-4 text-[10px] text-slate-400 font-bold relative -top-[6px] select-none">
+                    <div key={hour} className="h-[60px] flex items-center justify-end pr-4 text-[10px] text-slate-400 font-bold select-none">
                       {hour > 0 ? formatHour(hour) : ''}
                     </div>
                   ))}
@@ -886,45 +886,66 @@ export default function ContentCalendarView() {
                         const topOffset = hours * 60;
                         const cardHeight = 54;
                         const dateOfPost = new Date(firstPost.scheduled_at);
+                        const uniquePlatforms = Array.from(new Set(groupPosts.map(gp => gp.platform?.toLowerCase())));
 
                         return (
-                          <div
-                            key={`multiple-${dayIndex}-${hours}`}
-                            onClick={() => {
-                              setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
-                            }}
-                            style={{
-                              gridColumnStart: dayIndex + 1,
-                              gridColumnEnd: dayIndex + 2,
-                              top: `${topOffset}px`,
-                              height: `${cardHeight}px`
-                            }}
-                            className="absolute left-1 right-1 rounded-2xl p-2.5 bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
-                          >
-                            <div className="flex items-center justify-between gap-1 select-none">
-                              <span className="text-[8px] font-black text-indigo-750 bg-indigo-200/60 px-2 py-0.5 rounded-lg">
-                                {count} {language === 'vi' ? 'bài đăng' : 'posts'}
-                              </span>
-                              <div className="flex gap-0.5 items-center">
-                                {groupPosts.map((gp, idx) => {
-                                  const plat = gp.platform?.toLowerCase();
-                                  if (plat === 'facebook') {
-                                    return <Facebook key={idx} size={8} className="text-[#1877F2] fill-[#1877F2]" />;
-                                  } else if (plat === 'threads' || plat === 'thread') {
-                                    return <ThreadsIcon key={idx} size={8} className="text-black" />;
-                                  } else if (plat === 'instagram') {
-                                    return <Instagram key={idx} size={8} className="text-pink-650" />;
-                                  } else if (plat === 'blog') {
-                                    return <Globe key={idx} size={8} className="text-emerald-700" />;
-                                  }
-                                  return null;
-                                })}
+                          <React.Fragment key={`multiple-${dayIndex}-${hours}`}>
+                            {/* Render helper layers underneath to show stacked deck of cards (only extending upwards) */}
+                            {Array.from({ length: Math.min(count - 1, 3) }).map((_, i) => {
+                              const layerIndex = i + 1;
+                              return (
+                                <div
+                                  key={`layer-${dayIndex}-${hours}-${layerIndex}`}
+                                  style={{
+                                    gridColumnStart: dayIndex + 1,
+                                    gridColumnEnd: dayIndex + 2,
+                                    top: `${topOffset - layerIndex * 3.5}px`,
+                                    height: `${cardHeight}px`,
+                                    zIndex: 20 - layerIndex,
+                                  }}
+                                  className="absolute left-1 right-1 rounded-2xl bg-[#E8EAF6] border border-[#C5CAE9] shadow-sm pointer-events-none"
+                                />
+                              );
+                            })}
+                            
+                            {/* Main Card (Fully solid/opaque background) */}
+                            <div
+                              onClick={() => {
+                                setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
+                              }}
+                              style={{
+                                gridColumnStart: dayIndex + 1,
+                                gridColumnEnd: dayIndex + 2,
+                                top: `${topOffset}px`,
+                                height: `${cardHeight}px`,
+                                zIndex: 20
+                              }}
+                              className="absolute left-1 right-1 rounded-2xl p-2 bg-[#ECEEF9] border border-[#9FA8DA] shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all group"
+                            >
+                              <div className="flex items-center justify-between gap-1 select-none">
+                                <span className="whitespace-nowrap text-[8px] font-black text-indigo-750 bg-indigo-200/60 px-1.5 py-0.5 rounded-md">
+                                  {count} {language === 'vi' ? 'bài' : 'posts'}
+                                </span>
+                                <div className="flex gap-1 items-center">
+                                  {uniquePlatforms.map((plat, idx) => {
+                                    if (plat === 'facebook') {
+                                      return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2]" />;
+                                    } else if (plat === 'threads' || plat === 'thread') {
+                                      return <ThreadsIcon key={idx} size={10} className="text-black" />;
+                                    } else if (plat === 'instagram') {
+                                      return <Instagram key={idx} size={10} className="text-pink-650" />;
+                                    } else if (plat === 'blog') {
+                                      return <Globe key={idx} size={10} className="text-emerald-700" />;
+                                    }
+                                    return null;
+                                  })}
+                                </div>
                               </div>
+                              <span className="text-[7.5px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
+                                {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
+                              </span>
                             </div>
-                            <span className="text-[7.5px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
-                              {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
-                            </span>
-                          </div>
+                          </React.Fragment>
                         );
                       }
                     });

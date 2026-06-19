@@ -3,9 +3,10 @@
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { LanguageProvider } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function DashboardLayout({
   children,
@@ -13,28 +14,55 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      if (typeof window !== 'undefined' && sessionStorage.getItem('logging_out') === 'true') {
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/');
+      } else {
+        setLoading(false);
+      }
+    };
+    checkUser();
+  }, [router, supabase]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F4F5F9]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-semibold text-slate-500">Đang xác thực tài khoản...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <LanguageProvider>
-      <div className="flex h-screen w-screen overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 ml-[280px] overflow-y-auto flex flex-col justify-between">
-          <div className="max-w-[1200px] w-full mx-auto px-10 flex flex-col pb-12">
-            <Header />
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="w-full"
-            >
-              {children}
-            </motion.div>
-          </div>
-          <Footer />
-        </main>
-      </div>
-    </LanguageProvider>
+    <div className="flex h-screen w-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 ml-[280px] overflow-y-auto flex flex-col justify-between">
+        <div className="max-w-[1200px] w-full mx-auto px-10 flex flex-col pb-12">
+          <Header />
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="w-full"
+          >
+            {children}
+          </motion.div>
+        </div>
+        <Footer />
+      </main>
+    </div>
   );
 }
 
