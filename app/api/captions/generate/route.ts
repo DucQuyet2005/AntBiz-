@@ -162,11 +162,16 @@ export async function POST(request: NextRequest) {
 
     // 4. Connect to Gemini API for Streaming
     const geminiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL;
 
     if (!geminiKey) {
       console.error('[Generate API] GEMINI_API_KEY is not defined in .env');
       return NextResponse.json({ error: 'Chưa cấu hình API key cho Gemini' }, { status: 500 });
+    }
+
+    if (!model) {
+      console.error('[Generate API] GEMINI_MODEL is not defined in .env');
+      return NextResponse.json({ error: 'Chưa cấu hình model cho Gemini' }, { status: 500 });
     }
 
     const promptText = `

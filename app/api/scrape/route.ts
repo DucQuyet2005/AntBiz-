@@ -19,7 +19,43 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log(`[Scrape API] Scraping with TS Playwright: ${targetUrl}`);
+    // T-1.19.1: Check if URL already exists in database first
+    const { createAdminClient } = await import('@/utils/supabase/admin');
+    const supabase = createAdminClient();
+
+    console.log(`[Scrape API] Checking cache for: ${targetUrl}`);
+    const { data: existingArticle, error: fetchError } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('url', targetUrl)
+      .single();
+
+    if (existingArticle && !fetchError) {
+      console.log(`[Scrape API] Cache HIT for: ${targetUrl}`);
+      // Return cached data immediately
+      const imageUrl = Array.isArray(existingArticle.images) 
+        ? existingArticle.images.map((img: any) => img.url).join('\n')
+        : '';
+      const tagsString = Array.isArray(existingArticle.tags)
+        ? existingArticle.tags.join(', ')
+        : '';
+
+      return NextResponse.json({
+        id: existingArticle.id,
+        title: existingArticle.title,
+        description: existingArticle.description,
+        full_text: existingArticle.full_text || existingArticle.description || '',
+        imageUrl,
+        author: existingArticle.author,
+        category: existingArticle.category,
+        tags: tagsString,
+        published_at: existingArticle.published_at || '',
+        views: existingArticle.views || '',
+        url: existingArticle.url
+      });
+    }
+
+    console.log(`[Scrape API] Cache MISS for: ${targetUrl}. Starting crawl...`);
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
 
@@ -27,20 +63,19 @@ export async function GET(request: NextRequest) {
     const description = cleanData.description || '';
     const author = cleanData.author || '';
 
-    // T-1.19.1: Phân loại category bằng AI từ title + description
-    // Không dùng URL includes() hay regex URL nữa.
-    const { category: aiCategory, confidence } = await classifyArticle(title, description);
-    const category = `#${aiCategory}`;
-    const tags = '#Tiết kiệm tài chính, #Đầu tư, #Mua nhà';
+    // Ưu tiên danh mục từ HTML crawl (ví dụ: "#Xã hội số").
+    // T-1.19.1: Chỉ dùng danh mục từ HTML crawl, không fallback AI để tránh sai lệch dữ liệu.
+    const crawledCategory = cleanData.category || '';
+    let savedCategory = crawledCategory; // đã có dấu # từ crawler hoặc chuỗi rỗng
+    let confidence = crawledCategory ? 1.0 : 0.0;
+
     const imageUrl = cleanData.images.length > 0
       ? cleanData.images.map(img => img.url).join('\n')
       : '';
+    // Dùng tags từ HTML crawl, không hardcode
     const tagsString = cleanData.tags.join(', ');
 
     // T-1.19.1: Cache result in articles table
-    const { createClient } = await import('@/utils/supabase/server');
-    const supabase = createClient();
-    
     const { data: article, error: dbError } = await supabase
       .from('articles')
       .upsert({
@@ -48,9 +83,16 @@ export async function GET(request: NextRequest) {
         title,
         description,
         author,
-        category: aiCategory,
+        // Lưu category với dấu # (ví dụ: "#Xã hội số" hoặc "#Kinh doanh")
+        category: savedCategory,
         category_confidence: confidence,
-        tags: tags.split(',').map(t => t.trim()),
+        // Dùng tags từ HTML, không hardcode
+        tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
+        images: cleanData.images || [],
+        body: cleanData.body || [],
+        full_text: cleanData.full_text || '',
+        published_at: cleanData.published_at || '',
+        views: cleanData.views || '',
         crawled_at: new Date().toISOString(),
       }, { onConflict: 'url' })
       .select('id')
@@ -64,10 +106,11 @@ export async function GET(request: NextRequest) {
       id: article?.id, // T-1.19.3: Trả về ID để dùng cho prompt suggestions
       title,
       description,
+      full_text: cleanData.full_text || '', // Trả về nội dung đầy đủ
       imageUrl,
       author,
-      category,
-      tags: tagsString || tags,
+      category: savedCategory,
+      tags: tagsString,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
       url: targetUrl

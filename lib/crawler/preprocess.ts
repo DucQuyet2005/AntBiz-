@@ -43,7 +43,15 @@ function cleanText(text: string): string {
  */
 function findArticleScope($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
   const h1 = $('h1').first();
-  const contentRoot = $('#html_content').first();
+  let contentRoot = $('#html_content').first();
+
+  // If #html_content is not found, try <article> or <main>
+  if (!contentRoot.length) {
+    contentRoot = $('article').first();
+  }
+  if (!contentRoot.length) {
+    contentRoot = $('main').first();
+  }
 
   if (!h1.length || !contentRoot.length) return $.root() as cheerio.Cheerio<any>;
 
@@ -80,9 +88,37 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
   const scope = findArticleScope($);
 
-  // ── Category (hashtag đầu bài, e.g. #Tổ ấm 4.0) ──────────────────────
-  const categoryEl = scope.find("a[href^='/hashtag/']").first();
-  const category = cleanText(categoryEl.text());
+  // ── Category ──────────────────────
+  let category = '';
+  // Try to find category in metadata-like areas first
+  const potentialCategoryLinks = scope.find('a[href*="/category/"], a[href*="/the-loai/"], a[href^="/hashtag/"]');
+
+  potentialCategoryLinks.each((_, el) => {
+    const text = cleanText($(el).text());
+    if (text && (text.startsWith('#') || $(el).attr('href')?.includes('/category/') || $(el).attr('href')?.includes('/the-loai/'))) {
+      category = text.startsWith('#') ? text : `#${text}`; // Ensure # prefix
+      return false; // Found first one, break loop
+    }
+  });
+
+  if (!category) {
+    // Fallback: Check for category-like text in common metadata locations
+    const metaCategory = scope.find('.article-category, .post-category, .news-category').first();
+    if (metaCategory.length) {
+      const text = cleanText(metaCategory.text());
+      if (text) category = text.startsWith('#') ? text : `#${text}`;
+    }
+  }
+
+  // Fallback to older method if still no category (might be present in broader scope)
+  if (!category) {
+    const categoryEl = scope.find("a[href^='/hashtag/']").first();
+    if (categoryEl.length) {
+      const text = cleanText(categoryEl.text());
+      if (text) category = text.startsWith('#') ? text : `#${text}`;
+    }
+  }
+
 
   // ── Title ──────────────────────────────────────────────────────────────
   let title = '';
@@ -104,15 +140,22 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
   // ── Author ────────────────────────────────────────────────────────────
   const author = cleanText(scope.find('span.font-bold.text-gray-900').first().text() ||
-                           scope.find('a[href^="/authors/"] p').first().text() || '');
+                           scope.find('a[href^="/authors/"] p').first().text() ||
+                           $('span.font-bold.text-gray-900').first().text() ||
+                           $('a[href^="/authors/"] p').first().text() || '');
 
   // ── Published date ────────────────────────────────────────────────────
   const published_at = cleanText(scope.find('p.text-gray-400').first().text() ||
-                                 scope.find('span.text-gray-500').first().text() || '');
+                                 scope.find('span.text-gray-500').first().text() ||
+                                 $('p.text-gray-400').first().text() ||
+                                 $('span.text-gray-500').first().text() || '');
 
   // ── Views (element next to lucide-eye svg) ────────────────────────────
   let views = '';
-  const eyeSvg = scope.find('svg.lucide-eye').first();
+  let eyeSvg = scope.find('svg.lucide-eye').first();
+  if (!eyeSvg.length) {
+    eyeSvg = $('svg.lucide-eye').first();
+  }
   if (eyeSvg.length) {
     const parentSpan = eyeSvg.parent('span');
     if (parentSpan.length) views = cleanText(parentSpan.text());
@@ -145,15 +188,16 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
       }
     });
   } else {
-    // Fallback: parse generic p/h2/h3 tags and images in DOM order
+    // Fallback: parse generic p/h2/h3/div tags and images in DOM order within the determined scope
     const seenTexts = new Set<string>();
     const seenImageUrls = new Set<string>();
 
-    $('p, h2, h3, img').each((_, el) => {
+    scope.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
       const tagName = (el as any).tagName || el.name;
+      const cheerioEl = $(el);
 
       if (tagName === 'img') {
-        const src = $(el).attr('src') || '';
+        const src = cheerioEl.attr('src') || '';
         if (
           !src ||
           src.startsWith('/') ||
@@ -166,11 +210,11 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         }
         if (!seenImageUrls.has(src)) {
           seenImageUrls.add(src);
-          images.push({ url: src, caption: '' });
-          bodyBlocks.push({ type: 'image', url: src, caption: '' });
+          images.push({ url: src, caption: cheerioEl.attr('alt') || '' }); // Use alt text as caption
+          bodyBlocks.push({ type: 'image', url: src, caption: cheerioEl.attr('alt') || '' });
         }
       } else {
-        const text = cleanText($(el).text());
+        const text = cleanText(cheerioEl.text());
         if (!text || text.length <= 20) return;
 
         // Skip boilerplate / author / date / category / bookmark text
@@ -188,7 +232,12 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         if (seenTexts.has(text)) return;
         seenTexts.add(text);
 
-        const btype = tagName === 'p' ? 'paragraph' : (`heading${tagName[1]}` as 'heading2' | 'heading3');
+        let btype: BodyBlock['type'] = 'paragraph';
+        if (tagName === 'h2') btype = 'heading2';
+        else if (tagName === 'h3') btype = 'heading3';
+        // If it's a div and contains significant text, treat as paragraph
+        else if (tagName === 'div' && text.length > 50) btype = 'paragraph';
+
         bodyBlocks.push({ type: btype, text });
       }
     });

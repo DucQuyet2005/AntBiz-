@@ -131,6 +131,7 @@ describe('Captions Generate API Endpoint', () => {
     mockPromptsDb = [];
     mockCaptionsDb = [];
     process.env.GEMINI_API_KEY = 'mock-key';
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash';
 
     // Default crawler mock: returns structured article data
     const defaultArticleData = {

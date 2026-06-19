@@ -70,9 +70,15 @@ const Footer = () => {
           <div className="flex flex-col gap-4">
             {/* Logo + Brand Name */}
             <div className="flex items-center gap-3">
-              <BrandLogo size={36} />
+              <div className="w-9 h-9 flex items-center justify-center">
+                <img
+                  src="/images/logo.png"
+                  alt="AntBiz Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <span className="font-extrabold text-2xl tracking-tight text-text">
-                Antbiz
+                AntBiz
               </span>
             </div>
             

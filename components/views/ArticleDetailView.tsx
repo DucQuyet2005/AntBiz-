@@ -87,6 +87,8 @@ export default function ArticleDetailView() {
       { id: 'mock-threads', platform: 'threads', content: threadsText }
     ]);
 
+    setActiveArticle(articleData);
+
     setCheckpoints([
       {
         id: 'cp-3',
@@ -146,14 +148,28 @@ export default function ArticleDetailView() {
           return;
         }
 
+        // Derive full_text từ body blocks nếu full_text rỗng (bài cũ chưa re-crawl)
+        const bodyText = Array.isArray(art.body)
+          ? art.body
+              .filter((b: any) => b.type !== 'image' && b.text)
+              .map((b: any) => b.text)
+              .join('\n')
+          : '';
+
         const mappedArticle = {
           url: art.url || '',
           title: art.title || 'Không có tiêu đề',
-          category: art.category || '#Chưa phân loại',
+          // Đảm bảo category luôn có dấu # (bài cũ DB có thể lưu không có #)
+          category: art.category
+            ? (art.category.startsWith('#') ? art.category : `#${art.category}`)
+            : '#Chưa phân loại',
           description: art.description || '',
           author: art.author || 'Không rõ',
           published_at: art.published_at || 'Vừa xong',
+          // Giữ nguyên chuỗi views thô cào được (ví dụ: "1.0K lượt xem", "996 lượt xem")
           views: art.views || '0 lượt xem',
+          // Ưu tiên full_text từ DB, fallback derive từ body blocks
+          full_text: art.full_text || bodyText,
           tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',').map((t: string) => t.trim()) : []),
           images: Array.isArray(art.images) ? art.images : [{ url: art.images || 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80', caption: 'Hình ảnh bài viết' }]
         };
@@ -519,6 +535,20 @@ export default function ArticleDetailView() {
             </p>
           </div>
 
+          {/* Nội dung bài viết (full_text từ crawler) */}
+          {activeArticle.full_text && (
+            <div className="bg-white border border-gray-200/80 rounded-[32px] p-8 shadow-sm flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg border-b border-gray-100 pb-4">
+                <span className="text-2xl">📄</span>
+                <h2>Nội dung bài viết</h2>
+              </div>
+              {/* Hiển thị toàn bộ nội dung thô cào được, giữ nguyên xuống dòng */}
+              <div className="text-[14px] text-text leading-[1.85] whitespace-pre-wrap font-medium max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                {activeArticle.full_text}
+              </div>
+            </div>
+          )}
+
           {/* Image Cards Row */}
           <div className="grid grid-cols-2 gap-5">
             {activeArticle.images.map((img: any, idx: number) => (
@@ -556,7 +586,8 @@ export default function ArticleDetailView() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews')}</span>
-                <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views.replace(/[^0-9.]/g, '') || '51.1K'}</span>
+                {/* Lấy phần số từ chuỗi views thô (ví dụ: "1.0K lượt xem" → "1.0K", "996 lượt xem" → "996") */}
+                <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
               </div>
             </div>
             

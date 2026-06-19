@@ -93,6 +93,7 @@ CREATE TABLE public.articles (
   url             TEXT        NOT NULL UNIQUE,
   title           TEXT,
   category        TEXT,
+  category_confidence FLOAT,
   description     TEXT,
   author          TEXT,
   published_at    TEXT,
