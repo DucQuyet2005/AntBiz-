@@ -34,10 +34,12 @@ export default function DashboardLayout({
   }, [router, supabase]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editorSidebarHover, setEditorSidebarHover] = useState(false);
 
   useEffect(() => {
     // Close sidebar on pathname change (navigation)
     setIsSidebarOpen(false);
+    setEditorSidebarHover(false);
   }, [pathname]);
 
   if (loading) {
@@ -51,13 +53,35 @@ export default function DashboardLayout({
     );
   }
 
+  const isLandingEditor = pathname.includes('/admin/landing-editor');
+
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      {isLandingEditor ? (
+        <>
+          {/* Bulletproof CSS Hover Sidebar */}
+          <div className="fixed top-0 bottom-0 left-0 w-4 hover:w-[280px] z-[9999] group/sidebar transition-all duration-300 ease-out">
+            <div className="absolute top-0 bottom-0 left-0 w-[280px] -translate-x-full group-hover/sidebar:translate-x-0 transition-transform duration-300 ease-out shadow-2xl">
+              <Sidebar isOpen={true} onClose={() => {}} />
+            </div>
+          </div>
+
+          {/* Bulletproof CSS Hover Header */}
+          <div className="fixed top-0 left-0 right-0 h-4 hover:h-20 z-[9998] group/header transition-all duration-300 ease-out">
+            <div className="absolute top-0 left-0 right-0 -translate-y-full group-hover/header:translate-y-0 transition-transform duration-300 ease-out bg-white/95 backdrop-blur-md shadow-md px-4 sm:px-6 lg:px-10 flex items-center h-20">
+              <div className="max-w-[1200px] w-full mx-auto">
+                <Header onMenuClick={() => {}} />
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      )}
       
       {/* Backdrop for mobile */}
       <AnimatePresence>
-        {isSidebarOpen && (
+        {!isLandingEditor && isSidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -68,9 +92,9 @@ export default function DashboardLayout({
         )}
       </AnimatePresence>
 
-      <main className="flex-1 lg:ml-[280px] ml-0 overflow-y-auto flex flex-col min-w-0">
-        <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-10 flex flex-col pb-12 flex-1">
-          <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <main className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}>
+        <div className={`max-w-[1200px] w-full mx-auto ${isLandingEditor ? 'px-0' : 'px-4 sm:px-6 lg:px-10'} flex flex-col pb-12 flex-1`}>
+          {!isLandingEditor && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 12 }}
@@ -81,7 +105,7 @@ export default function DashboardLayout({
             {children}
           </motion.div>
         </div>
-        <Footer />
+        {!isLandingEditor && <Footer />}
       </main>
     </div>
   );

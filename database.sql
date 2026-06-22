@@ -442,6 +442,52 @@ CREATE POLICY "users: update own avatars"
   WITH CHECK (id = auth.uid());
 
 -- ────────────────────────────────────────────────────────────
+-- LANDING PAGE CONFIGURATION & HISTORY (EPIC-07)
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE public.landing_page_config (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key VARCHAR(255) NOT NULL,
+    value JSONB NOT NULL,
+    section VARCHAR(255) NOT NULL,
+    updated_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX idx_landing_page_config_key ON public.landing_page_config(key);
+CREATE INDEX idx_landing_page_config_section ON public.landing_page_config(section);
+
+CREATE TABLE public.landing_page_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    config_snapshot JSONB NOT NULL,
+    note VARCHAR(500),
+    created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.landing_page_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.landing_page_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public profiles are viewable by everyone" ON public.landing_page_config
+    FOR SELECT USING (true);
+
+CREATE POLICY "Admins have full access to config" ON public.landing_page_config
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.users
+            WHERE users.id = auth.uid() AND users.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Admins have full access to history" ON public.landing_page_history
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.users
+            WHERE users.id = auth.uid() AND users.role = 'admin'
+        )
+    );
+
+-- ────────────────────────────────────────────────────────────
 -- SEED: tạo admin đầu tiên
 -- Cách dùng: Tạo user qua Supabase Auth trước, lấy UUID, rồi chạy lệnh này
 -- UPDATE public.users SET role = 'admin', status = 'active' WHERE email = 'your@email.com';

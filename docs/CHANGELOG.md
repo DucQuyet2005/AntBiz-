@@ -16,7 +16,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - **Ẩn nút "Add Post" trên giao diện Admin**:
   - Cập nhật `components/Header.tsx` sử dụng hook `usePathname` để nhận diện các đường dẫn bắt đầu bằng `/admin` và tự động ẩn nút thêm bài viết ("Add Post").
 - **Điều chỉnh hiển thị Sidebar theo phân quyền Admin**:
-  - Cập nhật `components/Sidebar.tsx` để truy vấn vai trò của người dùng hiện tại; tự động ẩn các liên kết "AI Creator", "Prompts", "Lịch nội dung", "Lưu trữ" và chỉ hiển thị "Bảng điều khiển Admin" khi tài khoản đăng nhập là Admin.
+  - Cập nhật `components/Sidebar.tsx` để truy vấn vai trò của người dùng hiện tại; tự động ẩn các liên kết "AI Creator", "Prompts", "Lịch nội dung", "Lưu trữ" khi đăng nhập bằng tài khoản Admin.
+  - Tách Bảng điều khiển Admin thành hai mục riêng biệt trên Taskbar (Sidebar): **Quản lý người dùng** (sử dụng icon `Users`) và **Nhật ký hệ thống** (sử dụng icon `History`).
+- **Loại bỏ thanh Tab Sub-navigation trùng lặp ở trang Admin**:
+  - Cập nhật [AdminHeaderTabs.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/app/(dashboard)/admin/AdminHeaderTabs.tsx) để loại bỏ hoàn toàn các liên kết Tab Navigation (tránh trùng lặp do đã có trên Sidebar).
+  - Tự động thay đổi tiêu đề và mô tả đầu trang tương ứng với trang đang truy cập (Quản lý người dùng hoặc Nhật ký hệ thống).
 - **Bổ sung từ điển dịch thuật đa ngôn ngữ (i18n) cho Admin**:
   - Cập nhật [translations.ts](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/lib/i18n/translations.ts) bổ sung toàn bộ các khóa dịch Việt/Anh (`admin.*`) phục vụ trang quản trị, hộp thoại khóa tài khoản, phân trang, và nhật ký bảo mật.
 - **Cho phép lên lịch tối đa 3 bài đăng trong cùng một khung giờ**:

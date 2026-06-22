@@ -14,6 +14,8 @@ import {
   FileText,
   Compass,
   X,
+  Users,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -54,7 +56,11 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
       { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
       { href: "/archive", label: t("sidebar.archive"), icon: Archive },
     ] : []),
-    ...(userRole === 'admin' ? [{ href: "/admin/users", label: t("sidebar.adminPanel"), icon: Compass }] : []),
+    ...(userRole === 'admin' ? [
+      { href: "/admin/users", label: t("admin.userManagement"), icon: Users },
+      { href: "/admin/audit-logs", label: t("admin.auditLogs"), icon: History },
+      { href: "/admin/landing-editor", label: "Landing Editor", icon: Globe },
+    ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
   ];
