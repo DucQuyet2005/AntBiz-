@@ -2515,50 +2515,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 )}
               </div>
-
-              {/* Toggles Customizer */}
-              {step === 2 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
-                  className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
-                >
-                  <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
-                    <Layers size={16} className="text-primary" />
-                    {t('aiCreator.customDisplay')}
-                  </h3>
-
-                  <div className="flex flex-col gap-3">
-                    {Object.entries({
-                      showTitle: t('aiCreator.showTitle'),
-                      showAuthor: t('aiCreator.showAuthor'),
-                      showDescription: t('aiCreator.showDescription'),
-                      showTags: t('aiCreator.showTags'),
-                      showImage: t('aiCreator.showImage')
-                    }).map(([key, label]) => {
-                      const isChecked = toggles[key as keyof typeof toggles];
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => handleToggle(key as keyof typeof toggles)}
-                          className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
-                        >
-                          <span>{label}</span>
-                          <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
-                            }`}>
-                            <motion.div
-                              layout
-                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                              className="bg-white w-4 h-4 rounded-full shadow-md"
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
             </motion.div>
           )}
 
