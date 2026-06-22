@@ -36,12 +36,10 @@ export default function ArchiveView() {
   const { t, language } = useLanguage();
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [sortBy, setSortBy] = useState('Publish Date');
-  const [articles, setArticles] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'posts' | 'preview' | 'history'>('posts');
+  const [captions, setCaptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
-
-  // Added States for tabs, role, and export functionality
-  const [activeTab, setActiveTab] = useState<'posts' | 'preview' | 'history'>('posts');
   const [userRole, setUserRole] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
@@ -50,6 +48,19 @@ export default function ArchiveView() {
   const [exportJobs, setExportJobs] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = new Set(expandedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setExpandedIds(next);
+  };
 
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -60,22 +71,38 @@ export default function ArchiveView() {
   }, [platformFilter, sortBy, searchQuery]);
 
   useEffect(() => {
-    async function fetchArticles() {
+    async function fetchCaptions() {
       try {
         const { data, error } = await supabase
-          .from('articles')
-          .select('*')
+          .from('captions')
+          .select(`
+            id,
+            platform,
+            ai_content,
+            edited_content,
+            status,
+            created_at,
+            article_id,
+            articles (
+              id,
+              title,
+              category,
+              description,
+              views,
+              images
+            )
+          `)
           .order('created_at', { ascending: false });
         if (!error && data) {
-          setArticles(data);
+          setCaptions(data);
         }
       } catch (err) {
-        console.error('Error fetching articles:', err);
+        console.error('Error fetching captions:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetchArticles();
+    fetchCaptions();
   }, []);
 
   useEffect(() => {
@@ -232,24 +259,25 @@ export default function ArchiveView() {
     }
   };
 
-  const archiveItems = articles.map(art => {
+  const archiveItems = captions.map(cap => {
+    const art = cap.articles || {};
     const images = Array.isArray(art.images) ? art.images : [];
     const mainImage = images.length > 0 ? images[0].url : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
     return {
-      id: art.id,
+      id: cap.id,
       type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
-      platform: art.platform || 'blog',
+      platform: cap.platform || 'facebook',
       image: mainImage,
       title: art.title || 'Không có tiêu đề',
-      description: art.description || 'Không có mô tả',
+      description: cap.edited_content || cap.ai_content || 'Không có mô tả',
       reach: art.views || '0',
       conversions: '0',
-      likes: art.likes || 0,
-      comments: art.comments || 0,
-      nodeType: 'Article',
-      link: `/archive/${art.id}`,
+      likes: 0,
+      comments: 0,
+      nodeType: 'Caption',
+      link: `/archive/${art.id || ''}`,
       gradient: '',
-      created_at: art.created_at
+      created_at: cap.created_at
     };
   });
 
@@ -458,8 +486,29 @@ export default function ArchiveView() {
                     <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted leading-relaxed font-medium">
-                      {item.description}
+                    <p className="text-xs text-text-muted leading-relaxed font-medium whitespace-pre-wrap">
+                      {(() => {
+                        const isExpanded = expandedIds.has(item.id);
+                        const shouldTruncate = item.description.length > 150;
+                        const displayedText = shouldTruncate && !isExpanded 
+                          ? `${item.description.slice(0, 150)}...` 
+                          : item.description;
+                        return (
+                          <>
+                            {displayedText}
+                            {shouldTruncate && (
+                              <button
+                                onClick={(e) => toggleExpand(item.id, e)}
+                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block"
+                              >
+                                {isExpanded 
+                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Show less') 
+                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </p>
                   </div>
 
