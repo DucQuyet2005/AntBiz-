@@ -58,7 +58,7 @@ const Footer = () => {
   const isVi = language === 'vi';
 
   return (
-    <footer className="mt-16 bg-[#E9EAF5] text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
+    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
       
       {/* Decorative top ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-md"></div>

@@ -103,6 +103,94 @@ const createEmptyVariant = (id: string): SocialVariant => ({
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
 
+interface EditableTextContextProps {
+  editState: { variantId: string; field: string } | null;
+  setEditState: (state: { variantId: string; field: keyof SocialVariant } | null) => void;
+  handleUpdateVariantField: (variantId: string, field: keyof SocialVariant, value: string) => void;
+}
+
+const EditableTextContext = React.createContext<EditableTextContextProps | null>(null);
+
+const EditableText = ({
+  variantId,
+  field,
+  value,
+  textarea = false,
+  className = ""
+}: {
+  variantId: string;
+  field: keyof SocialVariant;
+  value: string;
+  textarea?: boolean;
+  className?: string;
+}) => {
+  const context = React.useContext(EditableTextContext);
+  if (!context) return null;
+
+  const { editState, setEditState, handleUpdateVariantField } = context;
+  const isEditing = editState?.variantId === variantId && editState?.field === field;
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (isEditing) {
+      if (textarea && textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    }
+  }, [isEditing, value, textarea]);
+
+  if (isEditing) {
+    return (
+      <div className="w-full relative">
+        {textarea ? (
+          <textarea
+            ref={textareaRef}
+            autoFocus
+            value={value}
+            onChange={(e) => {
+              handleUpdateVariantField(variantId, field, e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onBlur={() => setEditState(null)}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            autoFocus
+            type="text"
+            value={value}
+            onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
+            onBlur={() => setEditState(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setEditState(null);
+            }}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditState({ variantId, field });
+      }}
+      className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+    >
+      <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+      <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+        <Edit2 size={10} className="text-primary" />
+      </span>
+    </div>
+  );
+};
+
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -118,7 +206,7 @@ export default function AiCreatorView() {
     window.addEventListener('ai-creator-go-to-step-1', onGoStep1);
     return () => window.removeEventListener('ai-creator-go-to-step-1', onGoStep1);
   }, []);
-  
+
   // AI Generation States
   const [articleId, setArticleId] = useState<string | null>(null);
   const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram' | 'threads'>('facebook');
@@ -233,9 +321,9 @@ export default function AiCreatorView() {
                     prev.map((v) =>
                       v.id === variantId
                         ? {
-                            ...v,
-                            [selectedPlatform]: accumulated,
-                          }
+                          ...v,
+                          [selectedPlatform]: accumulated,
+                        }
                         : v
                     )
                   );
@@ -263,12 +351,12 @@ export default function AiCreatorView() {
           prev.map((v) =>
             v.id === variantId
               ? {
-                  ...v,
-                  [selectedPlatform]:
-                    language === 'vi'
-                      ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
-                      : 'Error generating AI content for this variant.',
-                }
+                ...v,
+                [selectedPlatform]:
+                  language === 'vi'
+                    ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
+                    : 'Error generating AI content for this variant.',
+              }
               : v
           )
         );
@@ -567,7 +655,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       });
       if (res.ok) {
         if (selectedCell) {
-          const updatedPosts = selectedCell.posts.map((p: any) => 
+          const updatedPosts = selectedCell.posts.map((p: any) =>
             p.id === postId ? { ...p, status: 'cancelled' } : p
           );
           setSelectedCell({ ...selectedCell, posts: updatedPosts });
@@ -1160,7 +1248,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const author = data.author.trim();
     const tags = data.tags.trim();
     const promptName = prompt?.name ? `[${prompt.name}]` : '';
-    
+
     // T-1.19.1: Tạo 2 phong cách khác nhau cho A/B testing
     let body = description;
     if (isVariantB) {
@@ -1424,18 +1512,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         }}
         className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
       >
-        <span className="whitespace-pre-wrap">
-          {value ? (
-            value
-          ) : isGeneratingAB ? (
-            <span className="text-gray-400 italic flex items-center gap-1.5">
-              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
-            </span>
-          ) : (
-            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
-          )}
-        </span>
+        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
         <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
           <Edit2 size={10} className="text-primary" />
         </span>
@@ -1480,8 +1557,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     if (toggles.showTitle && variant.title) {
       const categoryClean = postData.category.replace('#', '').trim();
-      const titleLine = categoryClean 
-        ? `🏠 [${categoryClean}] ${variant.title}` 
+      const titleLine = categoryClean
+        ? `🏠 [${categoryClean}] ${variant.title}`
         : `🏠 ${variant.title}`;
       parts.push(titleLine);
     }
@@ -1651,794 +1728,1225 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full font-sans">
+    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField }}>
+      <div className="flex flex-col gap-6 w-full font-sans">
 
-      {/* Top Header Row */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
-        <div>
-          <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
-          <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
-        </div>
+        {/* Top Header Row */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
+          <div>
+            <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
+            <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
+          </div>
 
-        {/* Step Indicator Wizard */}
-        <div className="flex items-center gap-1 bg-slate-100/90 rounded-2xl p-1.5 border border-slate-200/70 shadow-sm select-none">
-          <button
-            onClick={() => changeStep(1)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
-            }`}
-          >
-            <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 1 ? 'bg-white/20' : 'bg-slate-200'}`}>1</span>
-            {t('aiCreator.step1')}
-          </button>
-          <button
-            onClick={() => changeStep(2)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
-            }`}
-          >
-            <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 2 ? 'bg-white/20' : 'bg-slate-200'}`}>2</span>
-            {t('aiCreator.step2')}
-          </button>
-          <button
-            onClick={() => { if (selectedVariantId) changeStep(3); }}
-            disabled={!selectedVariantId}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${
-              step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
-              selectedVariantId ? 'text-slate-500 hover:text-slate-800 hover:bg-white/70 cursor-pointer' :
-              'text-slate-300 cursor-not-allowed'
-            }`}
-          >
-            <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 3 ? 'bg-white/20' : 'bg-slate-200'}`}>3</span>
-            {t('aiCreator.step3')}
-          </button>
-        </div>
-      </div>
-
-      {/* Unified layout grid allowing shared layout morphing */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
-
-        {/* STEP 1: Left column inputs form */}
-        {step === 1 && (
-          <motion.div
-            layout
-            key="step1-inputs"
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
-            className="lg:col-span-8 flex flex-col gap-6 order-1"
-          >
-            {/* URL Context Importer */}
-            <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
-                    <Globe size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-text">{t('aiCreator.sourceUrl')}</h2>
-                    <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
-                  </div>
-                </div>
-
-                {/* Search on Site Button */}
-                <button
-                  onClick={() => {
-                    setExplorerUrl('https://gocnhinmoi.com.vn/');
-                    setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
-                    setIsExplorerOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none"
-                >
-                  <Search size={14} />
-                  {t('aiCreator.searchGocNhinMoi')}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                <span className="text-gray-400 pl-2">
-                  <Link2 size={16} />
-                </span>
-                <input
-                  type="text"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
-                  placeholder={t('aiCreator.searchPlace')}
-                />
-                <button
-                  onClick={handleFetch}
-                  disabled={isFetching}
-                  className="bg-[#4A6B5D] hover:bg-[#3A5B4D] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  {isFetching ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      {t('aiCreator.fetching')}
-                    </>
-                  ) : (
-                    t('aiCreator.importButton')
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* ─── AI PROMPT CONFIGURATION BAR ─── */}
+          {/* Step Indicator Wizard */}
+          <div className="flex items-center gap-1 bg-slate-100/90 rounded-2xl p-1.5 border border-slate-200/70 shadow-sm select-none">
             <button
-              type="button"
-              onClick={() => setIsAiPromptDialogOpen(true)}
-              className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center justify-between shadow-sm hover:border-primary/40 hover:shadow-lg cursor-pointer transition-all duration-300 group text-left w-full"
+              onClick={() => changeStep(1)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                }`}
             >
-              <div className="flex items-center gap-4">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 flex items-center justify-center text-primary border border-primary/15 group-hover:scale-105 transition-transform duration-300">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                    Cấu hình AI Prompt &amp; Nội dung
-                    <span className="text-[9px] bg-primary/10 text-primary font-black px-2 py-0.5 rounded-full">AI Powered</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 font-semibold">
-                    {selectedPrompt
-                      ? `Đang dùng: [${selectedPrompt.platform?.toUpperCase()}] ${selectedPrompt.name}`
-                      : activePrompt
-                        ? 'Đã soạn câu lệnh tùy chỉnh · Nhấn để chỉnh sửa'
-                        : 'Nhấp để chọn Prompt từ thư viện hoặc tự soạn câu lệnh AI'
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {(selectedPrompt || activePrompt) && (
-                  <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
-                    Đã thiết lập
-                  </span>
-                )}
-                <span className="bg-primary/10 text-primary px-4 py-2.5 rounded-xl text-xs font-black group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                  {selectedPrompt ? 'Thay đổi' : 'Cấu hình'}
-                </span>
-              </div>
+              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 1 ? 'bg-white/20' : 'bg-slate-200'}`}>1</span>
+              {t('aiCreator.step1')}
             </button>
+            <button
+              onClick={() => changeStep(2)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                }`}
+            >
+              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 2 ? 'bg-white/20' : 'bg-slate-200'}`}>2</span>
+              {t('aiCreator.step2')}
+            </button>
+            <button
+              onClick={() => { if (selectedVariantId) changeStep(3); }}
+              disabled={!selectedVariantId}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
+                  selectedVariantId ? 'text-slate-500 hover:text-slate-800 hover:bg-white/70 cursor-pointer' :
+                    'text-slate-300 cursor-not-allowed'
+                }`}
+            >
+              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 3 ? 'bg-white/20' : 'bg-slate-200'}`}>3</span>
+              {t('aiCreator.step3')}
+            </button>
+          </div>
+        </div>
 
-            {/* AI Prompt Editor - moved to dialog */}
-            <div className="hidden">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                    <Wand2 size={18} />
+        {/* Unified layout grid allowing shared layout morphing */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+
+          {/* STEP 1: Left column inputs form */}
+          {step === 1 && (
+            <motion.div
+              layout
+              key="step1-inputs"
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              className="lg:col-span-8 flex flex-col gap-6 order-1"
+            >
+              {/* URL Context Importer */}
+              <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
+                      <Globe size={18} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-text">{t('aiCreator.sourceUrl')}</h2>
+                      <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-text">AI Prompt Editor</h3>
-                    <p className="text-[11px] text-text-muted">Tinh chỉnh câu lệnh để AI tạo nội dung tốt nhất</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={handleGenerateSmartPrompt}
-                    disabled={isGeneratingSmartPrompt || isGenerating}
-                    className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
+
+                  {/* Search on Site Button */}
+                  <button
+                    onClick={() => {
+                      setExplorerUrl('https://gocnhinmoi.com.vn/');
+                      setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
+                      setIsExplorerOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none"
                   >
-                    <RefreshCw size={12} className={isGeneratingSmartPrompt ? "animate-spin" : ""} />
-                    Tạo Prompt thông minh từ bài viết
+                    <Search size={14} />
+                    {t('aiCreator.searchGocNhinMoi')}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                  <span className="text-gray-400 pl-2">
+                    <Link2 size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
+                    placeholder={t('aiCreator.searchPlace')}
+                  />
+                  <button
+                    onClick={handleFetch}
+                    disabled={isFetching}
+                    className="bg-[#4A6B5D] hover:bg-[#3A5B4D] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    {isFetching ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        {t('aiCreator.fetching')}
+                      </>
+                    ) : (
+                      t('aiCreator.importButton')
+                    )}
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-6">
-                {/* Main Prompt Area */}
-                <div className="flex flex-col gap-4">
-                  <div className="relative group">
-                    <textarea 
-                      value={activePrompt}
-                      onChange={(e) => setActivePrompt(e.target.value)}
-                      placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
-                      rows={8}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-[24px] px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
-                    />
-                    <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {saveSuccess && (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 animate-in fade-in slide-in-from-right-2">
-                          {language === 'vi' ? 'Đã lưu!' : 'Saved!'}
-                        </span>
-                      )}
-                      <button 
-                        onClick={handleSaveCurrentPrompt}
-                        disabled={isSavingPrompt}
-                        className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
-                        title="Lưu prompt này vào thư viện"
-                      >
-                        {isSavingPrompt ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                      </button>
+              {/* ─── AI PROMPT CONFIGURATION BAR ─── */}
+              <button
+                type="button"
+                onClick={() => setIsAiPromptDialogOpen(true)}
+                className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center justify-between shadow-sm hover:border-primary/40 hover:shadow-lg cursor-pointer transition-all duration-300 group text-left w-full"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 flex items-center justify-center text-primary border border-primary/15 group-hover:scale-105 transition-transform duration-300">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      Cấu hình AI Prompt &amp; Nội dung
+                      <span className="text-[9px] bg-primary/10 text-primary font-black px-2 py-0.5 rounded-full">AI Powered</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5 font-semibold">
+                      {selectedPrompt
+                        ? `Đang dùng: [${selectedPrompt.platform?.toUpperCase()}] ${selectedPrompt.name}`
+                        : activePrompt
+                          ? 'Đã soạn câu lệnh tùy chỉnh · Nhấn để chỉnh sửa'
+                          : 'Nhấp để chọn Prompt từ thư viện hoặc tự soạn câu lệnh AI'
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {(selectedPrompt || activePrompt) && (
+                    <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
+                      Đã thiết lập
+                    </span>
+                  )}
+                  <span className="bg-primary/10 text-primary px-4 py-2.5 rounded-xl text-xs font-black group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                    {selectedPrompt ? 'Thay đổi' : 'Cấu hình'}
+                  </span>
+                </div>
+              </button>
+
+              {/* AI Prompt Editor - moved to dialog */}
+              <div className="hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                      <Wand2 size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-text">AI Prompt Editor</h3>
+                      <p className="text-[11px] text-text-muted">Tinh chỉnh câu lệnh để AI tạo nội dung tốt nhất</p>
                     </div>
                   </div>
 
-                  {/* AI Output Preview (if generated) */}
-                  <AnimatePresence>
-                    {lastGeneratedAiContent && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="bg-emerald-50/50 border border-emerald-100 rounded-[24px] p-6 flex flex-col gap-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-emerald-700">
-                            <Sparkles size={16} />
-                            <span className="text-xs font-black uppercase tracking-wider">Kết quả từ AI</span>
-                          </div>
-                          <button 
-                            onClick={() => setLastGeneratedAiContent(null)}
-                            className="text-emerald-400 hover:text-emerald-600 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                        <p className="text-sm text-emerald-900 leading-relaxed font-medium whitespace-pre-wrap">
-                          {lastGeneratedAiContent}
-                        </p>
-                        <div className="flex items-center gap-3 pt-2">
-                          <button 
-                            onClick={() => handleSaveAiResult('A')}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all flex items-center gap-2"
-                          >
-                            <Check size={14} />
-                            Sử dụng cho Biến thể A
-                          </button>
-                          <button 
-                            onClick={() => handleSaveAiResult('B')}
-                            className="bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
-                          >
-                            Dùng cho Biến thể B
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Action Bar */}
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
-                      {(['facebook', 'threads', 'instagram'] as const).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => setPromptPlatform(p)}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                            promptPlatform === p 
-                              ? 'bg-white text-primary shadow-sm border border-gray-200' 
-                              : 'text-text-muted hover:text-text'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button 
-                      onClick={handleGenerateContent}
-                      disabled={isGenerating || !activePrompt}
-                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-2xl text-xs font-black shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 h-11"
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleGenerateSmartPrompt}
+                      disabled={isGeneratingSmartPrompt || isGenerating}
+                      className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
                     >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin" />
-                          Đang tạo...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={16} />
-                          Bắt đầu tạo nội dung AI
-                        </>
-                      )}
+                      <RefreshCw size={12} className={isGeneratingSmartPrompt ? "animate-spin" : ""} />
+                      Tạo Prompt thông minh từ bài viết
                     </button>
                   </div>
                 </div>
 
-                {/* Bottom Suggestions Section */}
-                <div className="border-t border-gray-100 pt-6">
-                  <PromptSuggestionSection 
-                    articleId={articleId || ''}
-                    articleTitle={postData.title}
-                    articleContent={postData.description}
-                    platform={promptPlatform}
-                    onSelectPrompt={(content) => setActivePrompt(content)}
-                    onSavePrompt={handleSaveCurrentPrompt}
-                  />
-                </div>
-              </div>
-            </div>
-            {/* AI Caption Generator - moved to dialog */}
-            <div className="hidden">
-              {/* Decorative glow */}
-              <div className="absolute -top-8 -right-8 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary shadow-sm">
-                    <Sparkles size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-text">
-                      {language === 'vi' ? 'Sinh caption bằng AI' : 'AI Caption Generator'}
-                    </h2>
-                    <p className="text-[11px] text-text-muted">
-                      {language === 'vi' ? 'Chọn prompt → Bấm Tạo → AI sinh caption ngay' : 'Pick a prompt → Click Generate → AI writes instantly'}
-                    </p>
-                  </div>
-                </div>
-                {generateDone && (
-                  <span className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-3 py-1.5 rounded-full border border-emerald-200">
-                    <CheckCircle2 size={13} />
-                    {language === 'vi' ? 'Đã điền vào Biến thể A' : 'Filled into Variant A'}
-                  </span>
-                )}
-              </div>
-
-              {/* Prompt selector */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-extrabold text-text uppercase tracking-wider">
-                  {language === 'vi' ? 'Prompt AI' : 'AI Prompt'}
-                </label>
-                {promptsLoading ? (
-                  <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-[#C7D2FE] text-xs text-text-muted">
-                    <Loader2 size={14} className="animate-spin text-primary" />
-                    {language === 'vi' ? 'Đang tải prompts...' : 'Loading prompts...'}
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <select
-                      id="ai-prompt-select"
-                      value={selectedPromptId}
-                      onChange={(e) => { setSelectedPromptId(e.target.value); setGenerateError(null); }}
-                      className="w-full appearance-none bg-white border border-[#C7D2FE] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-all cursor-pointer font-semibold"
-                    >
-                      <option value="" disabled>
-                        {language === 'vi' ? '── Chọn một prompt ──' : '── Select a prompt ──'}
-                      </option>
-                      {prompts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          [{p.platform?.toUpperCase()}] {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
-                      <Layers size={14} />
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Error banner */}
-              {generateError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
-                >
-                  <span className="text-xs text-red-700 font-semibold flex-1">
-                    ⚠️ {generateError}
-                  </span>
-                  <button
-                    onClick={handleGenerate}
-                    className="flex items-center gap-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
-                  >
-                    <RefreshCw size={12} />
-                    {language === 'vi' ? 'Thử lại' : 'Retry'}
-                  </button>
-                  <button
-                    onClick={() => setGenerateError(null)}
-                    className="text-red-400 hover:text-red-600 transition-colors shrink-0"
-                  >
-                    <X size={14} />
-                  </button>
-                </motion.div>
-              )}
-
-              {/* Streaming output box */}
-              <AnimatePresence>
-                {(isGenerating || streamedCaption) && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="relative bg-white border border-[#C7D2FE] rounded-2xl p-4 overflow-hidden"
-                  >
-                    {/* Shimmer bar while generating */}
-                    {isGenerating && (
-                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%] animate-[shimmer_1.5s_linear_infinite]" />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                        {isGenerating && <Loader2 size={11} className="animate-spin" />}
-                        {isGenerating
-                          ? (language === 'vi' ? 'AI đang sinh nội dung...' : 'AI is writing...')
-                          : (language === 'vi' ? 'Nội dung đã sinh' : 'Generated content')}
-                      </span>
-                      {isGenerating && (
+                <div className="flex flex-col gap-6">
+                  {/* Main Prompt Area */}
+                  <div className="flex flex-col gap-4">
+                    <div className="relative group">
+                      <textarea
+                        value={activePrompt}
+                        onChange={(e) => setActivePrompt(e.target.value)}
+                        placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
+                        rows={8}
+                        className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-[24px] px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
+                      />
+                      <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {saveSuccess && (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 animate-in fade-in slide-in-from-right-2">
+                            {language === 'vi' ? 'Đã lưu!' : 'Saved!'}
+                          </span>
+                        )}
                         <button
-                          onClick={handleCancelGenerate}
-                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-500 font-bold transition-colors cursor-pointer"
+                          onClick={handleSaveCurrentPrompt}
+                          disabled={isSavingPrompt}
+                          className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
+                          title="Lưu prompt này vào thư viện"
                         >
-                          <X size={11} />
-                          {language === 'vi' ? 'Huỷ' : 'Cancel'}
+                          {isSavingPrompt ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                         </button>
-                      )}
+                      </div>
                     </div>
-                    <p className="text-xs text-text leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
-                      {streamedCaption}
-                      {isGenerating && (
-                        <span className="inline-block w-0.5 h-3.5 bg-primary align-middle ml-0.5 animate-[blink_0.8s_step-end_infinite]" />
+
+                    {/* AI Output Preview (if generated) */}
+                    <AnimatePresence>
+                      {lastGeneratedAiContent && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="bg-emerald-50/50 border border-emerald-100 rounded-[24px] p-6 flex flex-col gap-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-emerald-700">
+                              <Sparkles size={16} />
+                              <span className="text-xs font-black uppercase tracking-wider">Kết quả từ AI</span>
+                            </div>
+                            <button
+                              onClick={() => setLastGeneratedAiContent(null)}
+                              className="text-emerald-400 hover:text-emerald-600 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                          <p className="text-sm text-emerald-900 leading-relaxed font-medium whitespace-pre-wrap">
+                            {lastGeneratedAiContent}
+                          </p>
+                          <div className="flex items-center gap-3 pt-2">
+                            <button
+                              onClick={() => handleSaveAiResult('A')}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all flex items-center gap-2"
+                            >
+                              <Check size={14} />
+                              Sử dụng cho Biến thể A
+                            </button>
+                            <button
+                              onClick={() => handleSaveAiResult('B')}
+                              className="bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                            >
+                              Dùng cho Biến thể B
+                            </button>
+                          </div>
+                        </motion.div>
                       )}
-                    </p>
+                    </AnimatePresence>
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                        {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setPromptPlatform(p)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${promptPlatform === p
+                                ? 'bg-white text-primary shadow-sm border border-gray-200'
+                                : 'text-text-muted hover:text-text'
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleGenerateContent}
+                        disabled={isGenerating || !activePrompt}
+                        className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-2xl text-xs font-black shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 h-11"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Đang tạo...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Bắt đầu tạo nội dung AI
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Suggestions Section */}
+                  <div className="border-t border-gray-100 pt-6">
+                    <PromptSuggestionSection
+                      articleId={articleId || ''}
+                      articleTitle={postData.title}
+                      articleContent={postData.description}
+                      platform={promptPlatform}
+                      onSelectPrompt={(content) => setActivePrompt(content)}
+                      onSavePrompt={handleSaveCurrentPrompt}
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* AI Caption Generator - moved to dialog */}
+              <div className="hidden">
+                {/* Decorative glow */}
+                <div className="absolute -top-8 -right-8 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary shadow-sm">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-text">
+                        {language === 'vi' ? 'Sinh caption bằng AI' : 'AI Caption Generator'}
+                      </h2>
+                      <p className="text-[11px] text-text-muted">
+                        {language === 'vi' ? 'Chọn prompt → Bấm Tạo → AI sinh caption ngay' : 'Pick a prompt → Click Generate → AI writes instantly'}
+                      </p>
+                    </div>
+                  </div>
+                  {generateDone && (
+                    <span className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-3 py-1.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 size={13} />
+                      {language === 'vi' ? 'Đã điền vào Biến thể A' : 'Filled into Variant A'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Prompt selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Prompt AI' : 'AI Prompt'}
+                  </label>
+                  {promptsLoading ? (
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-[#C7D2FE] text-xs text-text-muted">
+                      <Loader2 size={14} className="animate-spin text-primary" />
+                      {language === 'vi' ? 'Đang tải prompts...' : 'Loading prompts...'}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        id="ai-prompt-select"
+                        value={selectedPromptId}
+                        onChange={(e) => { setSelectedPromptId(e.target.value); setGenerateError(null); }}
+                        className="w-full appearance-none bg-white border border-[#C7D2FE] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-all cursor-pointer font-semibold"
+                      >
+                        <option value="" disabled>
+                          {language === 'vi' ? '── Chọn một prompt ──' : '── Select a prompt ──'}
+                        </option>
+                        {prompts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{p.platform?.toUpperCase()}] {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                        <Layers size={14} />
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Error banner */}
+                {generateError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+                  >
+                    <span className="text-xs text-red-700 font-semibold flex-1">
+                      ⚠️ {generateError}
+                    </span>
+                    <button
+                      onClick={handleGenerate}
+                      className="flex items-center gap-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      <RefreshCw size={12} />
+                      {language === 'vi' ? 'Thử lại' : 'Retry'}
+                    </button>
+                    <button
+                      onClick={() => setGenerateError(null)}
+                      className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
                   </motion.div>
                 )}
-              </AnimatePresence>
 
-              {/* Generate button */}
-              <button
-                id="ai-generate-btn"
-                onClick={handleGenerate}
-                disabled={isGenerating || !selectedPromptId || promptsLoading}
-                className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 px-6 rounded-2xl font-extrabold shadow-lg shadow-primary/25 text-sm transition-all hover:scale-[1.01] active:scale-95 cursor-pointer relative overflow-hidden"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    {language === 'vi' ? 'Đang tạo caption...' : 'Generating caption...'}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} />
-                    {language === 'vi' ? 'Tạo Caption AI' : 'Generate AI Caption'}
-                  </>
-                )}
-              </button>
-            </div>
+                {/* Streaming output box */}
+                <AnimatePresence>
+                  {(isGenerating || streamedCaption) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="relative bg-white border border-[#C7D2FE] rounded-2xl p-4 overflow-hidden"
+                    >
+                      {/* Shimmer bar while generating */}
+                      {isGenerating && (
+                        <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%] animate-[shimmer_1.5s_linear_infinite]" />
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          {isGenerating && <Loader2 size={11} className="animate-spin" />}
+                          {isGenerating
+                            ? (language === 'vi' ? 'AI đang sinh nội dung...' : 'AI is writing...')
+                            : (language === 'vi' ? 'Nội dung đã sinh' : 'Generated content')}
+                        </span>
+                        {isGenerating && (
+                          <button
+                            onClick={handleCancelGenerate}
+                            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-500 font-bold transition-colors cursor-pointer"
+                          >
+                            <X size={11} />
+                            {language === 'vi' ? 'Huỷ' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-text leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
+                        {streamedCaption}
+                        {isGenerating && (
+                          <span className="inline-block w-0.5 h-3.5 bg-primary align-middle ml-0.5 animate-[blink_0.8s_step-end_infinite]" />
+                        )}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-            {/* Manual Edit Form */}
-            <div className="bg-white border border-gray-200/80 rounded-[28px] p-8 flex flex-col gap-6 shadow-sm">
-              <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
-                <Layers size={18} className="text-primary" />
-                <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
-                  <input
-                    type="text"
-                    value={postData.title}
-                    onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder={t('aiCreator.labelTitle')}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
-                  <input
-                    type="text"
-                    value={postData.category}
-                    onChange={(e) => setPostData({ ...postData, category: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
-                  <input
-                    type="text"
-                    value={postData.author}
-                    onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
-                  <input
-                    type="text"
-                    value={postData.published_at}
-                    onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
-                  <input
-                    type="text"
-                    value={postData.views}
-                    onChange={(e) => setPostData({ ...postData, views: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
-                  <textarea
-                    value={postData.imageUrl}
-                    onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
-                    rows={3}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
-                    placeholder="Nhập mỗi URL hình ảnh trên một dòng..."
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
-                  <input
-                    type="text"
-                    value={postData.tags}
-                    onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
-                  <textarea
-                    value={postData.full_text}
-                    onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
-                    rows={10}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
-        {(step === 1 || step === 2) && (
-          <motion.div
-            layout
-            transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'
-              }`}
-          >
-            {/* Article Live Preview Card */}
-            <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
-                  <Smartphone size={16} className="text-primary" />
-                  {t('aiCreator.articlePreview')}
-                </h3>
-                <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  {language === 'vi' ? 'Trực tiếp' : 'Live'}
-                </span>
-              </div>
-
-              <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
-                <div className="h-44 bg-gray-100 relative">
-                  {postData.imageUrl ? (
-                    <img
-                      src={postData.imageUrl.split('\n')[0].trim()}
-                      alt={postData.title}
-                      className="w-full h-full object-cover"
-                    />
+                {/* Generate button */}
+                <button
+                  id="ai-generate-btn"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !selectedPromptId || promptsLoading}
+                  className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 px-6 rounded-2xl font-extrabold shadow-lg shadow-primary/25 text-sm transition-all hover:scale-[1.01] active:scale-95 cursor-pointer relative overflow-hidden"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {language === 'vi' ? 'Đang tạo caption...' : 'Generating caption...'}
+                    </>
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
+                    <>
+                      <Sparkles size={16} />
+                      {language === 'vi' ? 'Tạo Caption AI' : 'Generate AI Caption'}
+                    </>
                   )}
-                  {postData.category && (
-                    <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                      {postData.category}
-                    </span>
-                  )}
+                </button>
+              </div>
+
+              {/* Manual Edit Form */}
+              <div className="bg-white border border-gray-200/80 rounded-[28px] p-8 flex flex-col gap-6 shadow-sm">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+                  <Layers size={18} className="text-primary" />
+                  <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
                 </div>
 
-                <div className="p-5 flex flex-col gap-3.5">
-                  <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
-                    {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
-                  </h4>
-
-                  <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
-                    <span className="flex items-center gap-1">
-                      <User size={12} />
-                      {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
-                    </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2 flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
+                    <input
+                      type="text"
+                      value={postData.title}
+                      onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      placeholder={t('aiCreator.labelTitle')}
+                    />
                   </div>
 
-                  <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
-                    {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
-                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
+                    <input
+                      type="text"
+                      value={postData.category}
+                      onChange={(e) => setPostData({ ...postData, category: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
+                    <input
+                      type="text"
+                      value={postData.author}
+                      onChange={(e) => setPostData({ ...postData, author: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
 
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {postData.tags.split(',').map((tag, idx) => {
-                      const trimmed = tag.trim();
-                      if (!trimmed) return null;
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
+                    <input
+                      type="text"
+                      value={postData.published_at}
+                      onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
+                    <input
+                      type="text"
+                      value={postData.views}
+                      onChange={(e) => setPostData({ ...postData, views: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
+                    <textarea
+                      value={postData.imageUrl}
+                      onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
+                      rows={3}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
+                      placeholder="Nhập mỗi URL hình ảnh trên một dòng..."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
+                    <input
+                      type="text"
+                      value={postData.tags}
+                      onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex flex-col gap-1.5">
+                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
+                    <textarea
+                      value={postData.full_text}
+                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
+                      rows={10}
+                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
+                    />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
+          {(step === 1 || step === 2) && (
+            <motion.div
+              layout
+              transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+              className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
+            >
+              {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
+              {step === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
+                >
+                  <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
+                    <Layers size={16} className="text-primary" />
+                    {t('aiCreator.customDisplay')}
+                  </h3>
+
+                  <div className="flex flex-col gap-3">
+                    {Object.entries({
+                      showTitle: t('aiCreator.showTitle'),
+                      showAuthor: t('aiCreator.showAuthor'),
+                      showDescription: t('aiCreator.showDescription'),
+                      showTags: t('aiCreator.showTags'),
+                      showImage: t('aiCreator.showImage')
+                    }).map(([key, label]) => {
+                      const isChecked = toggles[key as keyof typeof toggles];
                       return (
-                        <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
-                          {trimmed}
-                        </span>
+                        <button
+                          key={key}
+                          onClick={() => handleToggle(key as keyof typeof toggles)}
+                          className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
+                        >
+                          <span>{label}</span>
+                          <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'}`}>
+                            <motion.div
+                              layout
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              className="bg-white w-4 h-4 rounded-full shadow-md"
+                            />
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
+                </motion.div>
+              )}
 
-                  <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
-                    <span className="flex items-center gap-1.5">
-                      <Eye size={14} className="text-amber-500" />
-                      {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
+              {/* 2. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 2 (as a standalone card) */}
+              {step === 2 && (
+                <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4 font-sans">
+                  <div className="flex items-center justify-between font-sans">
+                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                      📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAiPromptDialogOpen(true)}
+                      className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
+                    >
+                      {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
+                    </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Prompt Selector Section */}
-              <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 mt-1 font-sans">
-                <div className="flex items-center justify-between font-sans">
-                  <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                    📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsAiPromptDialogOpen(true)}
-                    className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
-                  >
-                    {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
-                  </button>
-                </div>
-                {selectedPrompt ? (
-                  <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
-                    <div className="flex items-center justify-between font-sans">
-                      <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
-                      <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                  {selectedPrompt ? (
+                    <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                      <div className="flex items-center justify-between font-sans">
+                        <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
+                        <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                      </div>
+                      <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                        "{selectedPrompt.content}"
+                      </p>
                     </div>
-                    <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
-                      "{selectedPrompt.content}"
-                    </p>
+                  ) : (
+                    <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                      {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. Article Live Preview Card (Bài viết gốc) */}
+              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
+                    <Smartphone size={16} className="text-primary" />
+                    {t('aiCreator.articlePreview')}
+                  </h3>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    {language === 'vi' ? 'Trực tiếp' : 'Live'}
+                  </span>
+                </div>
+
+                {/* Preview Content */}
+                <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
+                  <div className="h-44 bg-gray-100 relative">
+                    {postData.imageUrl ? (
+                      <img
+                        src={postData.imageUrl.split('\n')[0].trim()}
+                        alt={postData.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-tr from-indigo-550 to-purple-550"></div>
+                    )}
+                    {postData.category && (
+                      <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        {postData.category}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
-                    {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+
+                  <div className="p-5 flex flex-col gap-3.5">
+                    <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
+                      {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                    </h4>
+
+                    <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
+                      <span className="flex items-center gap-1">
+                        <User size={12} />
+                        {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} />
+                        {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
+                      {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {postData.tags.split(',').map((tag, idx) => {
+                        const trimmed = tag.trim();
+                        if (!trimmed) return null;
+                        return (
+                          <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
+                            {trimmed}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                      <span className="flex items-center gap-1.5">
+                        <Eye size={14} className="text-amber-500" />
+                        {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 1 (inside Article Preview Card) */}
+                {step === 1 && (
+                  <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 mt-1 font-sans">
+                    <div className="flex items-center justify-between font-sans">
+                      <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                        📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsAiPromptDialogOpen(true)}
+                        className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
+                      >
+                        {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
+                      </button>
+                    </div>
+                    {selectedPrompt ? (
+                      <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                        <div className="flex items-center justify-between font-sans">
+                          <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
+                          <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                        </div>
+                        <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                          "{selectedPrompt.content}"
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                        {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Next step button */}
+                {step === 1 && (
+                  <div className="flex flex-col gap-2">
+                    {/* Variant count segmented control */}
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs font-bold text-text-muted">
+                        {language === 'vi' ? 'Số biến thể' : 'Variant count'}
+                      </span>
+                      <div className="flex bg-sidebar rounded-full p-0.5 border border-gray-200 shadow-inner">
+                        {([2, 3] as const).map((count) => (
+                          <button
+                            key={count}
+                            onClick={() => setVariantCount(count)}
+                            className={`text-xs font-extrabold px-4 py-1.5 rounded-full transition-all duration-200 ${variantCount === count
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'text-text-muted hover:text-text'
+                              }`}
+                          >
+                            {count}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <motion.button
+                      layout
+                      onClick={handleProceedToABTest}
+                      disabled={isGeneratingAB || isFetching}
+                      className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                    >
+                      {isGeneratingAB ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          {language === 'vi'
+                            ? `Đang sinh ${variantCount} biến thể...`
+                            : `AI generating ${variantCount} variants...`}
+                        </>
+                      ) : (
+                        <>
+                          {t('aiCreator.proceedToAb')}
+                          <ArrowRight size={16} />
+                        </>
+                      )}
+                    </motion.button>
                   </div>
                 )}
               </div>
+            </motion.div>
+          )}
 
-              {/* T-1.18: Variant count selector + Next step button */}
-              {step === 1 && (
-                <div className="flex flex-col gap-2">
-                  {/* Variant count segmented control */}
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-xs font-bold text-text-muted">
-                      {language === 'vi' ? 'Số biến thể' : 'Variant count'}
-                    </span>
-                    <div className="flex bg-sidebar rounded-full p-0.5 border border-gray-200 shadow-inner">
-                      {([2, 3] as const).map((count) => (
+          {/* STEP 2: Right column A/B testing variants workspace */}
+          {step === 2 && (
+            <motion.div
+              layout
+              key="step2-variants"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              className="lg:col-span-8 flex flex-col gap-6 order-2"
+            >
+              {/* Platform Selector */}
+              <div className="bg-white border border-gray-200 rounded-[28px] p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+                  <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
+                </div>
+
+                <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+                  {(['facebook', 'threads', 'instagram'] as const)
+                    .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
+                    .map((platform) => {
+                      const isActive = selectedPlatform === platform;
+                      return (
                         <button
-                          key={count}
-                          onClick={() => setVariantCount(count)}
-                          className={`text-xs font-extrabold px-4 py-1.5 rounded-full transition-all duration-200 ${
-                            variantCount === count
-                              ? 'bg-primary text-white shadow-sm'
-                              : 'text-text-muted hover:text-text'
-                          }`}
+                          key={platform}
+                          onClick={() => setSelectedPlatform(platform)}
+                          className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-text-muted hover:text-text'
+                            }`}
                         >
-                          {count}
+                          {platform === 'facebook' && t('aiCreator.fbLabel')}
+                          {platform === 'threads' && t('aiCreator.threadsLabel')}
+                          {platform === 'instagram' && 'Instagram'}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Displaying Variants in 2-Columns grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <AnimatePresence mode="popLayout">
+                  {variants.map((v) => {
+                    let iconBg = 'bg-black';
+                    let platformLabel = '';
+                    if (selectedPlatform === 'facebook') {
+                      iconBg = 'bg-blue-600';
+                      platformLabel = t('aiCreator.fbPreview');
+                    } else if (selectedPlatform === 'threads') {
+                      iconBg = 'bg-black';
+                      platformLabel = t('aiCreator.threadsFeed');
+                    } else if (selectedPlatform === 'instagram') {
+                      iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
+                      platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
+                    }
+
+                    const previewTimestamp = postData.published_at || toDateInputValue(new Date());
+                    const isCardSelected = selectedVariantId === v.id;
+                    return (
+                      <motion.div
+                        key={v.id}
+                        layout
+                        layoutId={`variant-card-${v.id}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
+                            ? 'bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
+                            : 'bg-white border border-gray-200/80 hover:border-primary/30 hover:shadow-lg shadow-sm'
+                          }`}
+                      >
+                        {/* Variant Badge & Platform Header */}
+                        <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
+                              {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
+                              {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
+                              {selectedPlatform === 'instagram' && <Instagram size={12} />}
+                            </div>
+                            <span className="text-xs font-extrabold text-text">{platformLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {isCardSelected && (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
+                              >
+                                <Check size={9} />
+                                Đã chọn
+                              </motion.span>
+                            )}
+                            <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
+                              }`}>
+                              {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mockup */}
+                        {selectedPlatform === 'threads' ? (
+                          /* Connected multi-post threads markup */
+                          <div className="flex flex-col gap-0 text-text">
+
+                            {/* Thread Post 1/2 */}
+                            <div className="flex gap-3 items-stretch">
+                              <div className="flex flex-col items-center shrink-0">
+                                <div className="relative w-9 h-9">
+                                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                    {v.id}
+                                  </div>
+                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                    +
+                                  </div>
+                                </div>
+                                <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                              </div>
+
+                              <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                    <span>{previewTimestamp}</span>
+                                    <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
+                                  {toggles.showTitle && (
+                                    <div className="font-extrabold text-xs text-text">
+                                      🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                    </div>
+                                  )}
+
+                                  {toggles.showDescription && (
+                                    <div className="whitespace-pre-wrap">
+                                      <EditableText
+                                        variantId={v.id}
+                                        field="threads"
+                                        value={v.threads}
+                                        textarea
+                                      />
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                                    </div>
+                                  )}
+
+                                  {(toggles.showAuthor || toggles.showTags) && (
+                                    <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
+                                      {toggles.showAuthor && (
+                                        <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                          <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                          <EditableText variantId={v.id} field="author" value={v.author} />
+                                        </div>
+                                      )}
+                                      {toggles.showTags && (
+                                        <div className="text-primary font-bold">
+                                          <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {toggles.showImage && postData.imageUrl && (
+                                  <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 mt-1.5 shadow-sm">
+                                    <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-4 text-gray-400 mt-2.5">
+                                  <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                  <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                  <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                  <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Thread Post 2/2 */}
+                            <div className="flex gap-3 items-stretch">
+                              <div className="flex flex-col items-center shrink-0">
+                                <div className="relative w-9 h-9">
+                                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                    {v.id}
+                                  </div>
+                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                    +
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                    <span>{previewTimestamp}</span>
+                                    <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                  </div>
+                                </div>
+
+                                <div className="text-[11px] text-text leading-relaxed mt-0.5">
+                                  <span className="text-blue-500 hover:underline cursor-pointer font-medium">
+                                    &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {url.length > 30 ? `${url.substring(0, 30)}...` : url}
+                                  </span>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-gray-400 mt-2">
+                                  <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                  <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                  <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                  <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+                        ) : selectedPlatform === 'instagram' ? (
+                          /* Instagram Mockup */
+                          <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                            <div className="p-3.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                  {v.id}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-text flex items-center gap-1">
+                                    antbiz_official
+                                    <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                  </span>
+                                  <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                                </div>
+                              </div>
+                              <MoreHorizontal size={14} className="text-gray-400" />
+                            </div>
+
+                            {toggles.showImage && postData.imageUrl && (
+                              <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
+                                <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+
+                            <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
+                              <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
+                              <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
+                              <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                            </div>
+
+                            <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                              <div className="font-extrabold text-xs text-text">
+                                Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
+                              </div>
+
+                              {toggles.showTitle && (
+                                <div className="font-extrabold text-xs text-text">
+                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                </div>
+                              )}
+
+                              {toggles.showDescription && (
+                                <div className="whitespace-pre-wrap">
+                                  <span className="font-extrabold mr-1.5">antbiz_official</span>
+                                  <EditableText
+                                    variantId={v.id}
+                                    field="instagram"
+                                    value={v.instagram}
+                                    textarea
+                                  />
+                                </div>
+                              )}
+
+                              {toggles.showAuthor && (
+                                <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
+                                  <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                  <EditableText variantId={v.id} field="author" value={v.author} />
+                                </div>
+                              )}
+
+                              {toggles.showTags && (
+                                <div className="text-primary font-bold mt-1">
+                                  <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Facebook Mockup */
+                          <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                            <div className="p-3.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                  {v.id}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-text flex items-center gap-1">
+                                    AntBiz Official
+                                    <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                  </span>
+                                  <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                                </div>
+                              </div>
+                              <MoreHorizontal size={14} className="text-gray-400" />
+                            </div>
+
+                            <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
+                              {toggles.showTitle && (
+                                <div className="font-extrabold text-xs text-text mb-0.5">
+                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                </div>
+                              )}
+
+                              {toggles.showDescription && (
+                                <div className="whitespace-pre-wrap">
+                                  <EditableText
+                                    variantId={v.id}
+                                    field="facebook"
+                                    value={v.facebook}
+                                    textarea
+                                  />
+                                </div>
+                              )}
+
+                              {(toggles.showAuthor || toggles.showTags) && (
+                                <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
+                                  {toggles.showAuthor && (
+                                    <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                      <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                      <EditableText variantId={v.id} field="author" value={v.author} />
+                                    </div>
+                                  )}
+                                  {toggles.showTags && (
+                                    <div className="text-primary font-bold">
+                                      <EditableText variantId={v.id} field="tags" value={v.tags} />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {toggles.showImage && postData.imageUrl && (
+                              <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
+                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+
+                            <div className="px-1.5 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between">
+                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                                <ThumbsUp size={11} /> {language === 'vi' ? 'Thích' : 'Like'}
+                              </button>
+                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                                <MessageSquare size={11} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
+                              </button>
+                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
+                                <Share2 size={11} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* Add Variant Card */}
+                <motion.button
+                  onClick={handleAddVariant}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
+                    <Plus size={24} />
                   </div>
-                  <motion.button
-                    layout
-                    onClick={handleProceedToABTest}
-                    disabled={isGeneratingAB || isFetching}
-                    className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                  <div className="text-center">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
+                    <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
+                  </div>
+                </motion.button>
+              </div>
+
+              {/* Bottom Actions Row */}
+              <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4">
+                <button
+                  onClick={() => changeStep(1)}
+                  className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={16} />
+                  {t('aiCreator.backToIngestion')}
+                </button>
+
+                <div className="flex flex-col items-end gap-1.5">
+                  {!selectedVariantId && (
+                    <p className="text-[10px] text-slate-400 font-semibold animate-pulse">
+                      ← Nhấn vào một biến thể để chọn
+                    </p>
+                  )}
+                  <button
+                    onClick={() => { if (selectedVariantId) changeStep(3); }}
+                    disabled={!selectedVariantId}
+                    className={`py-3.5 px-8 rounded-2xl font-extrabold flex items-center gap-2 transition-all text-xs ${selectedVariantId
+                        ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 cursor-pointer'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                      }`}
                   >
-                    {isGeneratingAB ? (
+                    {selectedVariantId ? (
                       <>
-                        <Loader2 size={16} className="animate-spin" />
-                        {language === 'vi'
-                          ? `Đang sinh ${variantCount} biến thể...`
-                          : `AI generating ${variantCount} variants...`}
+                        <CheckCircle2 size={15} />
+                        {t('aiCreator.scheduleVariant', { variant: selectedVariantId })}
+                        <ArrowRight size={14} />
                       </>
                     ) : (
                       <>
-                        {t('aiCreator.proceedToAb')}
-                        <ArrowRight size={16} />
+                        {t('aiCreator.step3')}
+                        <ArrowRight size={15} />
                       </>
                     )}
-                  </motion.button>
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Toggles Customizer */}
-            {step === 2 && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
-                className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
-              >
-                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
-                  <Layers size={16} className="text-primary" />
-                  {t('aiCreator.customDisplay')}
-                </h3>
-
-                <div className="flex flex-col gap-3">
-                  {Object.entries({
-                    showTitle: t('aiCreator.showTitle'),
-                    showAuthor: t('aiCreator.showAuthor'),
-                    showDescription: t('aiCreator.showDescription'),
-                    showTags: t('aiCreator.showTags'),
-                    showImage: t('aiCreator.showImage')
-                  }).map(([key, label]) => {
-                    const isChecked = toggles[key as keyof typeof toggles];
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => handleToggle(key as keyof typeof toggles)}
-                        className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
-                      >
-                        <span>{label}</span>
-                        <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
-                          }`}>
-                          <motion.div
-                            layout
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="bg-white w-4 h-4 rounded-full shadow-md"
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* STEP 2: Right column A/B testing variants workspace */}
-        {step === 2 && (
-          <motion.div
-            layout
-            key="step2-variants"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
-            className="lg:col-span-8 flex flex-col gap-6 order-2"
-          >
-            {/* Platform Selector */}
-            <div className="bg-white border border-gray-200 rounded-[28px] p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
-                <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
               </div>
 
-              <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                {(['facebook', 'threads', 'instagram'] as const)
-                  .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
-                  .map((platform) => {
-                    const isActive = selectedPlatform === platform;
-                    return (
-                      <button
-                        key={platform}
-                        onClick={() => setSelectedPlatform(platform)}
-                        className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-text-muted hover:text-text'
-                          }`}
-                      >
-                        {platform === 'facebook' && t('aiCreator.fbLabel')}
-                        {platform === 'threads' && t('aiCreator.threadsLabel')}
-                        {platform === 'instagram' && 'Instagram'}
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
+            </motion.div>
+          )}
 
-            {/* Displaying Variants in 2-Columns grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <AnimatePresence mode="popLayout">
-                {variants.map((v) => {
+          {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
+          {step === 3 && (
+            <motion.div
+              key="step3-scheduler"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              transition={{ duration: 0.4 }}
+              className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full"
+            >
+              {/* Left Column - Decoupled Schedulers Form (col-span-4) */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
+
+                {/* Selected Variant Preview Card - Mirrored from Step 2 */}
+                {(() => {
+                  const v = variants.find(sv => sv.id === selectedVariantId);
+                  if (!v) return null;
+
                   let iconBg = 'bg-black';
                   let platformLabel = '';
                   if (selectedPlatform === 'facebook') {
@@ -2451,24 +2959,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
                     platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
                   }
-
                   const previewTimestamp = postData.published_at || toDateInputValue(new Date());
-                  const isCardSelected = selectedVariantId === v.id;
+
                   return (
                     <motion.div
-                      key={v.id}
-                      layout
                       layoutId={`variant-card-${v.id}`}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                      onClick={() => setSelectedVariantId(v.id)}
-                      className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${
-                        isCardSelected
-                          ? 'bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
-                          : 'bg-white border border-gray-200/80 hover:border-primary/30 hover:shadow-lg shadow-sm'
-                      }`}
+                      className="rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01] select-none"
                     >
                       {/* Variant Badge & Platform Header */}
                       <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
@@ -2481,36 +2977,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {isCardSelected && (
-                            <motion.span
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                            >
-                              <Check size={9} />
-                              Đã chọn
-                            </motion.span>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRegenerateVariant(v.id);
-                            }}
-                            disabled={regeneratingVariantId === v.id}
-                            className={`p-1.5 rounded-full hover:bg-gray-100 border border-gray-200 transition-colors ${
-                              regeneratingVariantId === v.id ? 'opacity-50 pointer-events-none' : ''
-                            }`}
-                            title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
-                          >
-                            {regeneratingVariantId === v.id ? (
-                              <Loader2 size={13} className="animate-spin text-primary" />
-                            ) : (
-                              <RefreshCw size={13} className="text-gray-500" />
-                            )}
-                          </button>
-                          <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${
-                            isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
-                          }`}>
+                          <span className="text-xs font-black px-3 py-1 rounded-full border bg-primary text-white border-primary select-none">
                             {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
                           </span>
                         </div>
@@ -2518,17 +2985,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                       {/* Mockup */}
                       {selectedPlatform === 'threads' ? (
-                        /* Connected multi-post threads markup */
                         <div className="flex flex-col gap-0 text-text">
-
-                          {/* Thread Post 1/2 */}
                           <div className="flex gap-3 items-stretch">
                             <div className="flex flex-col items-center shrink-0">
                               <div className="relative w-9 h-9">
-                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
                                   {v.id}
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none">
                                   +
                                 </div>
                               </div>
@@ -2540,7 +3004,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 <span className="text-xs font-extrabold text-text">antbiz_official</span>
                                 <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
                                   <span>{previewTimestamp}</span>
-                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                  <MoreHorizontal size={13} className="text-gray-400" />
                                 </div>
                               </div>
 
@@ -2550,19 +3014,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                                   </div>
                                 )}
-
                                 {toggles.showDescription && (
                                   <div className="whitespace-pre-wrap">
-                                    <EditableText
-                                      variantId={v.id}
-                                      field="threads"
-                                      value={v.threads}
-                                      textarea
-                                    />
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                                    <EditableText variantId={v.id} field="threads" value={v.threads} textarea />
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle">1/2</span>
                                   </div>
                                 )}
-
                                 {(toggles.showAuthor || toggles.showTags) && (
                                   <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
                                     {toggles.showAuthor && (
@@ -2587,55 +3044,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               )}
 
                               <div className="flex items-center gap-4 text-gray-400 mt-2.5">
-                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                <Heart size={14} />
+                                <MessageCircle size={14} />
+                                <Repeat2 size={14} />
+                                <Share2 size={14} />
                               </div>
                             </div>
                           </div>
-
-                          {/* Thread Post 2/2 */}
-                          <div className="flex gap-3 items-stretch">
-                            <div className="flex flex-col items-center shrink-0">
-                              <div className="relative w-9 h-9">
-                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
-                                  {v.id}
-                                </div>
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
-                                  +
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-extrabold text-text">antbiz_official</span>
-                                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                  <span>{previewTimestamp}</span>
-                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
-                                </div>
-                              </div>
-
-                              <div className="text-[11px] text-text leading-relaxed mt-0.5">
-                                <span className="text-blue-500 hover:underline cursor-pointer font-medium">
-                                  &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {url.length > 30 ? `${url.substring(0, 30)}...` : url}
-                                </span>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
-                              </div>
-
-                              <div className="flex items-center gap-4 text-gray-400 mt-2">
-                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                              </div>
-                            </div>
-                          </div>
-
                         </div>
                       ) : selectedPlatform === 'instagram' ? (
-                        /* Instagram Mockup */
                         <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
                           <div className="p-3.5 flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -2645,7 +3062,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="flex flex-col">
                                 <span className="text-xs font-bold text-text flex items-center gap-1">
                                   antbiz_official
-                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
                                 </span>
                                 <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
                               </div>
@@ -2655,46 +3072,34 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                           {toggles.showImage && postData.imageUrl && (
                             <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                              <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
                             </div>
                           )}
 
                           <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
-                            <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
-                            <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
-                            <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                            <Heart size={20} />
+                            <MessageCircle size={20} />
+                            <Send size={18} />
                           </div>
 
                           <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
-                            <div className="font-extrabold text-xs text-text">
-                              Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
-                            </div>
-
                             {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text">
                                 🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
-
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
                                 <span className="font-extrabold mr-1.5">antbiz_official</span>
-                                <EditableText
-                                  variantId={v.id}
-                                  field="instagram"
-                                  value={v.instagram}
-                                  textarea
-                                />
+                                <EditableText variantId={v.id} field="instagram" value={v.instagram} textarea />
                               </div>
                             )}
-
                             {toggles.showAuthor && (
                               <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
                                 <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                 <EditableText variantId={v.id} field="author" value={v.author} />
                               </div>
                             )}
-
                             {toggles.showTags && (
                               <div className="text-primary font-bold mt-1">
                                 <EditableText variantId={v.id} field="tags" value={v.tags} />
@@ -2703,7 +3108,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           </div>
                         </div>
                       ) : (
-                        /* Facebook Mockup */
                         <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
                           <div className="p-3.5 flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -2713,7 +3117,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="flex flex-col">
                                 <span className="text-xs font-bold text-text flex items-center gap-1">
                                   AntBiz Official
-                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
                                 </span>
                                 <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
                               </div>
@@ -2727,18 +3131,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
-
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
-                                <EditableText
-                                  variantId={v.id}
-                                  field="facebook"
-                                  value={v.facebook}
-                                  textarea
-                                />
+                                <EditableText variantId={v.id} field="facebook" value={v.facebook} textarea />
                               </div>
                             )}
-
                             {(toggles.showAuthor || toggles.showTags) && (
                               <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
                                 {toggles.showAuthor && (
@@ -2761,1208 +3158,886 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
                             </div>
                           )}
-
-                          <div className="px-1.5 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between">
-                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                              <ThumbsUp size={11} /> {language === 'vi' ? 'Thích' : 'Like'}
-                            </button>
-                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                              <MessageSquare size={11} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
-                            </button>
-                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                              <Share2 size={11} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
-                            </button>
-                          </div>
                         </div>
                       )}
-
                     </motion.div>
                   );
-                })}
-              </AnimatePresence>
+                })()}
 
-              {/* Add Variant Card */}
-              <motion.button
-                onClick={handleAddVariant}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
-              >
-                <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
-                  <Plus size={24} />
-                </div>
-                <div className="text-center">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
-                  <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
-                </div>
-              </motion.button>
-            </div>
-
-            {/* Bottom Actions Row */}
-            <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4">
-              <button
-                onClick={() => changeStep(1)}
-                className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <ArrowLeft size={16} />
-                {t('aiCreator.backToIngestion')}
-              </button>
-
-              <div className="flex flex-col items-end gap-1.5">
-                {!selectedVariantId && (
-                  <p className="text-[10px] text-slate-400 font-semibold animate-pulse">
-                    ← Nhấn vào một biến thể để chọn
-                  </p>
-                )}
-                <button
-                  onClick={() => { if (selectedVariantId) changeStep(3); }}
-                  disabled={!selectedVariantId}
-                  className={`py-3.5 px-8 rounded-2xl font-extrabold flex items-center gap-2 transition-all text-xs ${
-                    selectedVariantId
-                      ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 cursor-pointer'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                  }`}
-                >
-                  {selectedVariantId ? (
-                    <>
-                      <CheckCircle2 size={15} />
-                      {t('aiCreator.scheduleVariant', { variant: selectedVariantId })}
-                      <ArrowRight size={14} />
-                    </>
-                  ) : (
-                    <>
-                      {t('aiCreator.step3')}
-                      <ArrowRight size={15} />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-          </motion.div>
-        )}
-
-        {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
-        {step === 3 && (
-          <motion.div
-            key="step3-scheduler"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            transition={{ duration: 0.4 }}
-            className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full"
-          >
-            {/* Left Column - Decoupled Schedulers Form (col-span-4) */}
-            <div className="lg:col-span-4 flex flex-col gap-6">
-
-              {/* Selected Variant Preview Card - Mirrored from Step 2 */}
-              {(() => {
-                const v = variants.find(sv => sv.id === selectedVariantId);
-                if (!v) return null;
-
-                let iconBg = 'bg-black';
-                let platformLabel = '';
-                if (selectedPlatform === 'facebook') {
-                  iconBg = 'bg-blue-600';
-                  platformLabel = t('aiCreator.fbPreview');
-                } else if (selectedPlatform === 'threads') {
-                  iconBg = 'bg-black';
-                  platformLabel = t('aiCreator.threadsFeed');
-                } else if (selectedPlatform === 'instagram') {
-                  iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
-                  platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
-                }
-                const previewTimestamp = postData.published_at || toDateInputValue(new Date());
-
-                return (
-                  <motion.div
-                    layoutId={`variant-card-${v.id}`}
-                    className="rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01] select-none"
-                  >
-                    {/* Variant Badge & Platform Header */}
-                    <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
-                          {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
-                          {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
-                          {selectedPlatform === 'instagram' && <Instagram size={12} />}
-                        </div>
-                        <span className="text-xs font-extrabold text-text">{platformLabel}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                        >
-                          <Check size={9} />
-                          Đã chọn
-                        </motion.span>
-                        <span className="text-xs font-black px-3 py-1 rounded-full border bg-primary text-white border-primary select-none">
-                          {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Mockup */}
-                    {selectedPlatform === 'threads' ? (
-                      <div className="flex flex-col gap-0 text-text">
-                        <div className="flex gap-3 items-stretch">
-                          <div className="flex flex-col items-center shrink-0">
-                            <div className="relative w-9 h-9">
-                              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
-                                {v.id}
-                              </div>
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none">
-                                +
-                              </div>
-                            </div>
-                            <div className="w-0.5 bg-gray-200 grow my-2"></div>
-                          </div>
-
-                          <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-extrabold text-text">antbiz_official</span>
-                              <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                <span>{previewTimestamp}</span>
-                                <MoreHorizontal size={13} className="text-gray-400" />
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
-                              {toggles.showTitle && (
-                                <div className="font-extrabold text-xs text-text">
-                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                                </div>
-                              )}
-                              {toggles.showDescription && (
-                                <div className="whitespace-pre-wrap">
-                                  <EditableText variantId={v.id} field="threads" value={v.threads} textarea />
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle">1/2</span>
-                                </div>
-                              )}
-                              {(toggles.showAuthor || toggles.showTags) && (
-                                <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
-                                  {toggles.showAuthor && (
-                                    <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                      <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                      <EditableText variantId={v.id} field="author" value={v.author} />
-                                    </div>
-                                  )}
-                                  {toggles.showTags && (
-                                    <div className="text-primary font-bold">
-                                      <EditableText variantId={v.id} field="tags" value={v.tags} />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {toggles.showImage && postData.imageUrl && (
-                              <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 mt-1.5 shadow-sm">
-                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full h-full object-cover" />
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-4 text-gray-400 mt-2.5">
-                              <Heart size={14} />
-                              <MessageCircle size={14} />
-                              <Repeat2 size={14} />
-                              <Share2 size={14} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : selectedPlatform === 'instagram' ? (
-                      <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
-                        <div className="p-3.5 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
-                              {v.id}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-text flex items-center gap-1">
-                                antbiz_official
-                                <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
-                              </span>
-                              <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
-                            </div>
-                          </div>
-                          <MoreHorizontal size={14} className="text-gray-400" />
-                        </div>
-
-                        {toggles.showImage && postData.imageUrl && (
-                          <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
-                          </div>
-                        )}
-
-                        <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
-                          <Heart size={20} />
-                          <MessageCircle size={20} />
-                          <Send size={18} />
-                        </div>
-
-                        <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
-                          {toggles.showTitle && (
-                            <div className="font-extrabold text-xs text-text">
-                              🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                            </div>
-                          )}
-                          {toggles.showDescription && (
-                            <div className="whitespace-pre-wrap">
-                              <span className="font-extrabold mr-1.5">antbiz_official</span>
-                              <EditableText variantId={v.id} field="instagram" value={v.instagram} textarea />
-                            </div>
-                          )}
-                          {toggles.showAuthor && (
-                            <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
-                              <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                              <EditableText variantId={v.id} field="author" value={v.author} />
-                            </div>
-                          )}
-                          {toggles.showTags && (
-                            <div className="text-primary font-bold mt-1">
-                              <EditableText variantId={v.id} field="tags" value={v.tags} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
-                        <div className="p-3.5 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
-                              {v.id}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-text flex items-center gap-1">
-                                AntBiz Official
-                                <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
-                              </span>
-                              <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
-                            </div>
-                          </div>
-                          <MoreHorizontal size={14} className="text-gray-400" />
-                        </div>
-
-                        <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
-                          {toggles.showTitle && (
-                            <div className="font-extrabold text-xs text-text mb-0.5">
-                              🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                            </div>
-                          )}
-                          {toggles.showDescription && (
-                            <div className="whitespace-pre-wrap">
-                              <EditableText variantId={v.id} field="facebook" value={v.facebook} textarea />
-                            </div>
-                          )}
-                          {(toggles.showAuthor || toggles.showTags) && (
-                            <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
-                              {toggles.showAuthor && (
-                                <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                  <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                  <EditableText variantId={v.id} field="author" value={v.author} />
-                                </div>
-                              )}
-                              {toggles.showTags && (
-                                <div className="text-primary font-bold">
-                                  <EditableText variantId={v.id} field="tags" value={v.tags} />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {toggles.showImage && postData.imageUrl && (
-                          <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })()}
-
-              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5 mt-2">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-                  <Calendar size={18} className="text-primary" />
-                  <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
-                    {t('aiCreator.scheduleTitle')}
-                  </h3>
-                </div>
-
-                {/* Schedulers Inputs for platforms */}
-                <div className="flex flex-col gap-4">
-                  {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
-                    <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                      <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
-                        <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
-                          <Facebook size={10} className="fill-white" />
-                        </div>
-                        <span>Facebook</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                      </div>
-                      {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
-                    </div>
-                  )}
-
-                  {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
-                    <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                      <div className="flex items-center gap-2 font-bold text-xs text-black">
-                        <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
-                          <ThreadsIcon size={10} />
-                        </div>
-                        <span>Threads</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                      </div>
-                      {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
-                    </div>
-                  )}
-
-                  {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
-                    <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                      <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
-                          <Instagram size={10} />
-                        </div>
-                        <span>Instagram</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                      </div>
-                      {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - 2D Calendar Grid (col-span-8) */}
-            <div className="lg:col-span-8 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col">
-
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
-                <div>
-                  <h3 className="text-lg font-extrabold text-text flex items-center gap-2">
-                    {language === 'vi' ? 'Kế hoạch đăng bài' : 'Publication Plan'}
-                  </h3>
-                  <p className="text-[11px] text-text-muted mt-0.5">
-                    {language === 'vi'
-                      ? 'Kéo thả thẻ để đổi ngày/giờ. Grid hiển thị 24h.'
-                      : 'Drag cards to change dates/hours. 24h grid view.'}
-                  </p>
-                </div>
-
-                <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 gap-1">
-                  {[
-                    { id: 0, label: language === 'vi' ? 'Tuần 1' : 'Wk 1', firstDate: weekDays[0].date },
-                    { id: 1, label: language === 'vi' ? 'Tuần 2' : 'Wk 2', firstDate: weekDays[7].date },
-                    { id: 2, label: language === 'vi' ? 'Tuần 3' : 'Wk 3', firstDate: weekDays[14].date }
-                  ].map((wk) => (
-                    <button
-                      key={wk.id}
-                      onClick={() => {
-                        setActiveWeek(wk.id as 0 | 1 | 2);
-                        const platforms = getPromptTargetPlatforms(selectedPrompt);
-                        if (platforms.includes('facebook')) setFacebookDate(wk.firstDate);
-                        if (platforms.includes('threads')) setThreadsDate(wk.firstDate);
-                        if (platforms.includes('instagram')) setInstagramDate(wk.firstDate);
-                      }}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${activeWeek === wk.id
-                        ? 'bg-white text-primary shadow-sm border border-primary/20'
-                        : 'text-text-muted hover:text-text'
-                        }`}
-                    >
-                      {wk.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2D Calendar Board */}
-              <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl p-1 bg-white select-none">
-                <div className="min-w-[700px] flex flex-col">
-                  {/* Days Header */}
-                  <div
-                    className="grid border-b border-gray-200 pb-2 mb-1 text-center text-[10px] font-extrabold"
-                    style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}
-                  >
-                    <span className="text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">H</span>
-                    {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => (
-                      <div key={day.date} className={`flex flex-col items-center py-1 rounded-lg ${facebookDate === day.date || threadsDate === day.date ? 'text-primary bg-primary/5' : 'text-text-muted'}`}>
-                        <span>{getDayLabel(day.name).substring(0, 3)}</span>
-                        <span className="text-[11px] font-bold">{day.label}</span>
-                      </div>
-                    ))}
+                <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5 mt-2">
+                  <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                    <Calendar size={18} className="text-primary" />
+                    <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
+                      {t('aiCreator.scheduleTitle')}
+                    </h3>
                   </div>
 
-                  {/* 2D Grid with 24 Hours */}
-                  <div className="flex relative w-full" style={{ height: '960px' }}>
-                    {/* Hour Column */}
-                    <div className="w-[60px] grid grid-rows-[repeat(24,minmax(0,1fr))] h-full pr-1 border-r border-gray-100 bg-gray-50/30">
-                      {Array.from({ length: 24 }).map((_, hr) => (
-                        <div key={hr} className="flex items-center justify-center text-[10px] font-bold text-text-muted border-b border-gray-50">
-                          {hr}:00
+                  {/* Schedulers Inputs for platforms */}
+                  <div className="flex flex-col gap-4">
+                    {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                      <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                          <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                            <Facebook size={10} className="fill-white" />
+                          </div>
+                          <span>Facebook</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
+                      </div>
+                    )}
+
+                    {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                      <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-black">
+                          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                            <ThreadsIcon size={10} />
+                          </div>
+                          <span>Threads</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
+                      </div>
+                    )}
+
+                    {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                      <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
+                            <Instagram size={10} />
+                          </div>
+                          <span>Instagram</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - 2D Calendar Grid (col-span-8) */}
+              <div className="lg:col-span-8 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col">
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-text flex items-center gap-2">
+                      {language === 'vi' ? 'Kế hoạch đăng bài' : 'Publication Plan'}
+                    </h3>
+                    <p className="text-[11px] text-text-muted mt-0.5">
+                      {language === 'vi'
+                        ? 'Kéo thả thẻ để đổi ngày/giờ. Grid hiển thị 24h.'
+                        : 'Drag cards to change dates/hours. 24h grid view.'}
+                    </p>
+                  </div>
+
+                  <div className="flex bg-[#F1F3F9] p-1 rounded-xl border border-gray-250 gap-1">
+                    {[
+                      { id: 0, label: language === 'vi' ? 'Tuần 1' : 'Wk 1', firstDate: weekDays[0].date },
+                      { id: 1, label: language === 'vi' ? 'Tuần 2' : 'Wk 2', firstDate: weekDays[7].date },
+                      { id: 2, label: language === 'vi' ? 'Tuần 3' : 'Wk 3', firstDate: weekDays[14].date }
+                    ].map((wk) => (
+                      <button
+                        key={wk.id}
+                        onClick={() => {
+                          setActiveWeek(wk.id as 0 | 1 | 2);
+                          const platforms = getPromptTargetPlatforms(selectedPrompt);
+                          if (platforms.includes('facebook')) setFacebookDate(wk.firstDate);
+                          if (platforms.includes('threads')) setThreadsDate(wk.firstDate);
+                          if (platforms.includes('instagram')) setInstagramDate(wk.firstDate);
+                        }}
+                        className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${activeWeek === wk.id
+                          ? 'bg-white text-primary shadow-sm border border-primary/20'
+                          : 'text-text-muted hover:text-text'
+                          }`}
+                      >
+                        {wk.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2D Calendar Board */}
+                <div className="w-full overflow-x-auto border border-gray-150 rounded-2xl p-1 bg-white select-none">
+                  <div className="min-w-[700px] flex flex-col">
+                    {/* Days Header */}
+                    <div
+                      className="grid border-b border-gray-200 pb-2 mb-1 text-center text-[10px] font-extrabold"
+                      style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}
+                    >
+                      <span className="text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">H</span>
+                      {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => (
+                        <div key={day.date} className={`flex flex-col items-center py-1 rounded-lg ${facebookDate === day.date || threadsDate === day.date ? 'text-primary bg-primary/5' : 'text-text-muted'}`}>
+                          <span>{getDayLabel(day.name).substring(0, 3)}</span>
+                          <span className="text-[11px] font-bold">{day.label}</span>
                         </div>
                       ))}
                     </div>
 
-                    {/* Board Area */}
-                    <div ref={boardRef} className="flex-1 relative h-full bg-white overflow-hidden">
-                      {/* Grid Lines */}
-                      <div className="absolute inset-0 grid grid-cols-7 grid-rows-[repeat(24,minmax(0,1fr))] pointer-events-none">
-                        {Array.from({ length: 7 * 24 }).map((_, idx) => (
-                          <div key={idx} className="border-r border-b border-gray-100/50" />
+                    {/* 2D Grid with 24 Hours */}
+                    <div className="flex relative w-full" style={{ height: '960px' }}>
+                      {/* Hour Column */}
+                      <div className="w-[60px] grid grid-rows-[repeat(24,minmax(0,1fr))] h-full pr-1 border-r border-gray-100 bg-gray-50/30">
+                        {Array.from({ length: 24 }).map((_, hr) => (
+                          <div key={hr} className="flex items-center justify-center text-[10px] font-bold text-text-muted border-b border-gray-50">
+                            {hr}:00
+                          </div>
                         ))}
                       </div>
 
-                      {/* Unified Posts Layer */}
-                      {(() => {
-                        const cellsWithPosts: any[] = [];
-                        for (let col = 0; col < 7; col++) {
-                          const dayDate = weekDays[activeWeek * 7 + col].date;
-                          for (let hr = 0; hr < 24; hr++) {
-                            const cellPosts = getCellPosts(dayDate, hr);
-                            if (cellPosts.length > 0) {
-                              cellsWithPosts.push({ col, hr, dayDate, posts: cellPosts });
+                      {/* Board Area */}
+                      <div ref={boardRef} className="flex-1 relative h-full bg-white overflow-hidden">
+                        {/* Grid Lines */}
+                        <div className="absolute inset-0 grid grid-cols-7 grid-rows-[repeat(24,minmax(0,1fr))] pointer-events-none">
+                          {Array.from({ length: 7 * 24 }).map((_, idx) => (
+                            <div key={idx} className="border-r border-b border-gray-100/50" />
+                          ))}
+                        </div>
+
+                        {/* Unified Posts Layer */}
+                        {(() => {
+                          const cellsWithPosts: any[] = [];
+                          for (let col = 0; col < 7; col++) {
+                            const dayDate = weekDays[activeWeek * 7 + col].date;
+                            for (let hr = 0; hr < 24; hr++) {
+                              const cellPosts = getCellPosts(dayDate, hr);
+                              if (cellPosts.length > 0) {
+                                cellsWithPosts.push({ col, hr, dayDate, posts: cellPosts });
+                              }
                             }
                           }
-                        }
 
-                        return cellsWithPosts.map(({ col, hr, dayDate, posts: cellPosts }, cellIdx) => {
-                          const count = cellPosts.length;
-                          
-                          if (count === 1) {
-                            const post = cellPosts[0];
-                            if (post.type === 'draft') {
-                              if (post.platform === 'facebook') {
+                          return cellsWithPosts.map(({ col, hr, dayDate, posts: cellPosts }, cellIdx) => {
+                            const count = cellPosts.length;
+
+                            if (count === 1) {
+                              const post = cellPosts[0];
+                              if (post.type === 'draft') {
+                                if (post.platform === 'facebook') {
+                                  return (
+                                    <motion.div
+                                      key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
+                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
+                                      className="absolute p-1.5 rounded-xl bg-white border-2 border-[#1877F2] shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                      style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
+                                        <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                } else if (post.platform === 'threads') {
+                                  return (
+                                    <motion.div
+                                      key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
+                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
+                                      className="absolute p-1.5 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                      style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <ThreadsIcon size={10} className="shrink-0" />
+                                        <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                } else if (post.platform === 'instagram') {
+                                  return (
+                                    <motion.div
+                                      key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
+                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
+                                      className="absolute p-1.5 rounded-xl bg-white border-2 border-pink-500 shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                      style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <Instagram size={10} className="text-pink-600 shrink-0" />
+                                        <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                }
+                              } else {
+                                // Existing post
                                 return (
-                                  <motion.div
-                                    key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
-                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
-                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-[#1877F2] shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                  <div
+                                    key={`existing-${post.id}-${cellIdx}`}
+                                    className="absolute p-1.5 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center overflow-hidden z-10 cursor-pointer hover:bg-gray-100 transition-colors"
                                     style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                    onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
                                   >
-                                    <div className="flex items-center gap-1.5">
-                                      <Facebook size={10} className="fill-[#1877F2] stroke-none shrink-0" />
-                                      <span className="text-[8px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
+                                    <div className="flex items-center gap-1 truncate">
+                                      <span className="w-2.5 h-2.5 rounded bg-gray-400 text-[6px] text-white flex items-center justify-center font-bold">✓</span>
+                                      <span className="text-[7.5px] font-bold text-gray-650 truncate uppercase">{post.title}</span>
                                     </div>
-                                  </motion.div>
-                                );
-                              } else if (post.platform === 'threads') {
-                                return (
-                                  <motion.div
-                                    key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
-                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
-                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
-                                    style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <ThreadsIcon size={10} className="shrink-0" />
-                                      <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
-                                    </div>
-                                  </motion.div>
-                                );
-                              } else if (post.platform === 'instagram') {
-                                return (
-                                  <motion.div
-                                    key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
-                                    drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
-                                    className="absolute p-1.5 rounded-xl bg-white border-2 border-pink-500 shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
-                                    style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <Instagram size={10} className="text-pink-600 shrink-0" />
-                                      <span className="text-[8px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
-                                    </div>
-                                  </motion.div>
+                                  </div>
                                 );
                               }
                             } else {
-                              // Existing post
+                              // Multiple posts in the same cell
                               return (
                                 <div
-                                  key={`existing-${post.id}-${cellIdx}`}
-                                  className="absolute p-1.5 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center overflow-hidden z-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                                  style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
+                                  key={`multiple-${dayDate}-${hr}`}
                                   onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
+                                  className="absolute p-1.5 rounded-xl bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
+                                  style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                                 >
-                                  <div className="flex items-center gap-1 truncate">
-                                    <span className="w-2.5 h-2.5 rounded bg-gray-400 text-[6px] text-white flex items-center justify-center font-bold">✓</span>
-                                    <span className="text-[7.5px] font-bold text-gray-650 truncate uppercase">{post.title}</span>
+                                  <div className="flex items-center justify-between gap-1 select-none">
+                                    <span className="text-[7.5px] font-black text-indigo-700 bg-indigo-200/60 px-1.5 py-0.5 rounded-lg">
+                                      {count} bài
+                                    </span>
+                                    <div className="flex gap-0.5 items-center">
+                                      {cellPosts.map((cp: any, idx: number) => {
+                                        if (cp.platform === 'facebook') {
+                                          return <Facebook key={idx} size={7} className="text-[#1877F2] fill-[#1877F2]" />;
+                                        } else if (cp.platform === 'threads' || cp.platform === 'thread') {
+                                          return <ThreadsIcon key={idx} size={7} className="text-black" />;
+                                        } else if (cp.platform === 'instagram') {
+                                          return <Instagram key={idx} size={7} className="text-pink-600" />;
+                                        }
+                                        return null;
+                                      })}
+                                    </div>
                                   </div>
+                                  <span className="text-[7px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
+                                    {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
+                                  </span>
                                 </div>
                               );
                             }
-                          } else {
-                            // Multiple posts in the same cell
-                            return (
-                              <div
-                                key={`multiple-${dayDate}-${hr}`}
-                                onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
-                                className="absolute p-1.5 rounded-xl bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
-                                style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
-                              >
-                                <div className="flex items-center justify-between gap-1 select-none">
-                                  <span className="text-[7.5px] font-black text-indigo-700 bg-indigo-200/60 px-1.5 py-0.5 rounded-lg">
-                                    {count} bài
-                                  </span>
-                                  <div className="flex gap-0.5 items-center">
-                                    {cellPosts.map((cp: any, idx: number) => {
-                                      if (cp.platform === 'facebook') {
-                                        return <Facebook key={idx} size={7} className="text-[#1877F2] fill-[#1877F2]" />;
-                                      } else if (cp.platform === 'threads' || cp.platform === 'thread') {
-                                        return <ThreadsIcon key={idx} size={7} className="text-black" />;
-                                      } else if (cp.platform === 'instagram') {
-                                        return <Instagram key={idx} size={7} className="text-pink-600" />;
-                                      }
-                                      return null;
-                                    })}
-                                  </div>
-                                </div>
-                                <span className="text-[7px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
-                                  {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
-                                </span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        });
-                      })()}
+                            return null;
+                          });
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Step 3 Actions */}
+                <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
+                  <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
+                    <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
+                  </button>
+                  <button id="confirm-schedule-btn" onClick={handleConfirmSchedule} disabled={isSchedulingLoading || !!facebookError || !!threadsError || !!instagramError} className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer ${isSchedulingLoading ? 'bg-gray-200 text-gray-400 shadow-none' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/20'}`}>
+                    {isSchedulingLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                    {isSchedulingLoading ? (language === 'vi' ? 'Đang lên lịch...' : 'Scheduling...') : t('aiCreator.confirmSchedule')}
+                  </button>
+                </div>
               </div>
+            </motion.div>
+          )}
 
-              {/* Step 3 Actions */}
-              <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
-                <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
-                  <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
-                </button>
-                <button id="confirm-schedule-btn" onClick={handleConfirmSchedule} disabled={isSchedulingLoading || !!facebookError || !!threadsError || !!instagramError} className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer ${isSchedulingLoading ? 'bg-gray-200 text-gray-400 shadow-none' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/20'}`}>
-                  {isSchedulingLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                  {isSchedulingLoading ? (language === 'vi' ? 'Đang lên lịch...' : 'Scheduling...') : t('aiCreator.confirmSchedule')}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        </div>
 
-      </div>
-
-      {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
-      <AnimatePresence>
-        {isExplorerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          >
+        {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
+        <AnimatePresence>
+          {isExplorerOpen && (
             <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              transition={{ type: 'spring', duration: 0.5 }}
-              className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', duration: 0.5 }}
+                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+              >
 
-              {/* Browser Header Bar */}
-              <div className="bg-gray-100 border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 gap-4">
+                {/* Browser Header Bar */}
+                <div className="bg-gray-100 border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 gap-4">
 
-                {/* Browser controls */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={handleIframeBack}
-                    className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft size={14} />
-                  </button>
-                  <button
-                    onClick={handleRefresh}
-                    className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
-                  >
-                    <RefreshCw size={12} />
-                  </button>
-                </div>
+                  {/* Browser controls */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleIframeBack}
+                      className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft size={14} />
+                    </button>
+                    <button
+                      onClick={handleRefresh}
+                      className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                    >
+                      <RefreshCw size={12} />
+                    </button>
+                  </div>
 
-                {/* Address Bar showing live URL */}
-                <div className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2 text-xs text-text-muted flex items-center gap-2 shadow-inner">
-                  <Globe size={14} className="text-gray-400" />
-                  <span className="font-semibold text-text truncate">
-                    {explorerUrl}
-                  </span>
-                </div>
-
-                {/* Close Button */}
-                <button
-                  onClick={() => setIsExplorerOpen(false)}
-                  className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Portal Live Content Area */}
-              <div className="flex-1 bg-white relative flex flex-col">
-
-                {/* Sticky banner to Import Current Page */}
-                <div className="bg-primary/5 border-b border-primary/20 py-3.5 px-8 flex items-center justify-between shrink-0 gap-4 z-10 shadow-sm">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-primary">{language === 'vi' ? 'Trình duyệt trực tiếp hoạt động' : 'Live Explorer Active'}</span>
-                    <span className="text-[11px] text-text-muted truncate max-w-lg mt-0.5">
-                      {language === 'vi' ? 'Đang xem:' : 'Viewing:'} {explorerUrl}
+                  {/* Address Bar showing live URL */}
+                  <div className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2 text-xs text-text-muted flex items-center gap-2 shadow-inner">
+                    <Globe size={14} className="text-gray-400" />
+                    <span className="font-semibold text-text truncate">
+                      {explorerUrl}
                     </span>
                   </div>
 
+                  {/* Close Button */}
                   <button
-                    onClick={handleImportFromExplorer}
-                    disabled={isScraping}
-                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                    onClick={() => setIsExplorerOpen(false)}
+                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer"
                   >
-                    {isScraping ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        {language === 'vi' ? 'Đang nạp dữ liệu...' : 'Scraping...'}
-                      </>
-                    ) : (
-                      <>
-                        <Check size={14} />
-                        {language === 'vi' ? 'Sử dụng bài viết này cho Importer' : 'Use this article for Importer'}
-                      </>
-                    )}
+                    <X size={16} />
                   </button>
                 </div>
 
-                {/* Iframe loading the proxied live website */}
-                <iframe
-                  key={iframeKey}
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  className="w-full flex-1 border-0"
-                  title="gocnhinmoi Explorer"
-                />
+                {/* Portal Live Content Area */}
+                <div className="flex-1 bg-white relative flex flex-col">
 
-              </div>
-
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-
-      {/* SUCCESS CONFIRMATION DIALOG */}
-      <AnimatePresence>
-        {isScheduled && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-white rounded-[32px] border border-gray-200 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5"
-            >
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner animate-bounce">
-                <CheckCircle2 size={36} />
-              </div>
-
-              <div>
-                <h3 className="text-xl font-extrabold text-text">
-                  {t('aiCreator.scheduleSuccess')}
-                </h3>
-                <p className="text-xs text-text-muted mt-2 leading-relaxed">
-                  {language === 'vi'
-                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên các kênh đã chọn.`
-                    : `Your posts have been successfully scheduled on the selected channels.`}
-                </p>
-              </div>
-
-              <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
-                <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
-                  {language === 'vi' ? 'Thông tin xuất bản' : 'Publication details'}
-                </div>
-
-                <div className="text-xs font-bold text-text truncate border-b border-gray-100 pb-2 font-sans">
-                  {postData.title}
-                </div>
-
-                <div className="flex flex-col gap-2.5 font-sans">
-                  {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
-                    <div className="flex items-center justify-between text-xs font-sans">
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
-                      <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
+                  {/* Sticky banner to Import Current Page */}
+                  <div className="bg-primary/5 border-b border-primary/20 py-3.5 px-8 flex items-center justify-between shrink-0 gap-4 z-10 shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-primary">{language === 'vi' ? 'Trình duyệt trực tiếp hoạt động' : 'Live Explorer Active'}</span>
+                      <span className="text-[11px] text-text-muted truncate max-w-lg mt-0.5">
+                        {language === 'vi' ? 'Đang xem:' : 'Viewing:'} {explorerUrl}
+                      </span>
                     </div>
-                  )}
 
-                  {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
-                    <div className="flex items-center justify-between text-xs font-sans">
-                      <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
-                      <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
-                    </div>
-                  )}
-
-                  {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
-                    <div className="flex items-center justify-between text-xs font-sans">
-                      <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
-                      <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  setIsScheduled(false);
-                  changeStep(1);
-                  setSelectedVariantId('');
-                }}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-2xl font-bold shadow-md shadow-primary/20 transition-all text-xs cursor-pointer font-sans"
-              >
-                {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* CELL POSTS TIMELINE DIALOG */}
-      <AnimatePresence>
-        {selectedCell && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-            onClick={(e) => { if (e.target === e.currentTarget) setSelectedCell(null); }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4"
-            >
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <div className="flex flex-col">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
-                    {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
-                  </h3>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                    {language === 'vi' 
-                      ? `Ngày ${selectedCell.dateStr} · Khung giờ ${selectedCell.hour}:00`
-                      : `Date: ${selectedCell.dateStr} · Time slot: ${selectedCell.hour}:00`}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedCell(null)}
-                  className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-0 bg-transparent"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-1">
-                {selectedCell.posts.map((post: any, idx: number) => {
-                  let platIcon = <Globe size={12} />;
-                  let platLabel = 'Web';
-                  let platBg = 'bg-gray-50 text-gray-700 border-gray-200/60';
-                  
-                  if (post.platform === 'facebook') {
-                    platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
-                    platLabel = 'Facebook';
-                    platBg = 'bg-blue-50 text-[#1877F2] border-blue-100/60';
-                  } else if (post.platform === 'threads' || post.platform === 'thread') {
-                    platIcon = <ThreadsIcon size={11} className="text-black" />;
-                    platLabel = 'Threads';
-                    platBg = 'bg-slate-50 text-slate-900 border-slate-200/65';
-                  } else if (post.platform === 'instagram') {
-                    platIcon = <Instagram size={11} className="text-pink-650" />;
-                    platLabel = 'Instagram';
-                    platBg = 'bg-pink-50 text-pink-650 border-pink-100/60';
-                  }
-
-                  return (
-                    <div 
-                      key={idx}
-                      className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/40 flex flex-col gap-2 shadow-sm"
+                    <button
+                      onClick={handleImportFromExplorer}
+                      disabled={isScraping}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/10 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
-                            {platIcon}
-                            <span>{platLabel}</span>
-                          </span>
-                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100/40 font-mono">
-                            {post.timeStr}
-                          </span>
+                      {isScraping ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          {language === 'vi' ? 'Đang nạp dữ liệu...' : 'Scraping...'}
+                        </>
+                      ) : (
+                        <>
+                          <Check size={14} />
+                          {language === 'vi' ? 'Sử dụng bài viết này cho Importer' : 'Use this article for Importer'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Iframe loading the proxied live website */}
+                  <iframe
+                    key={iframeKey}
+                    ref={iframeRef}
+                    src={iframeSrc}
+                    className="w-full flex-1 border-0"
+                    title="gocnhinmoi Explorer"
+                  />
+
+                </div>
+
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+        {/* SUCCESS CONFIRMATION DIALOG */}
+        <AnimatePresence>
+          {isScheduled && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5"
+              >
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner animate-bounce">
+                  <CheckCircle2 size={36} />
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-extrabold text-text">
+                    {t('aiCreator.scheduleSuccess')}
+                  </h3>
+                  <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                    {language === 'vi'
+                      ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên các kênh đã chọn.`
+                      : `Your posts have been successfully scheduled on the selected channels.`}
+                  </p>
+                </div>
+
+                <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
+                  <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
+                    {language === 'vi' ? 'Thông tin xuất bản' : 'Publication details'}
+                  </div>
+
+                  <div className="text-xs font-bold text-text truncate border-b border-gray-100 pb-2 font-sans">
+                    {postData.title}
+                  </div>
+
+                  <div className="flex flex-col gap-2.5 font-sans">
+                    {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                      <div className="flex items-center justify-between text-xs font-sans">
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
+                        <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
+                      </div>
+                    )}
+
+                    {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                      <div className="flex items-center justify-between text-xs font-sans">
+                        <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                        <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
+                      </div>
+                    )}
+
+                    {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                      <div className="flex items-center justify-between text-xs font-sans">
+                        <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                        <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsScheduled(false);
+                    changeStep(1);
+                    setSelectedVariantId('');
+                  }}
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-2xl font-bold shadow-md shadow-primary/20 transition-all text-xs cursor-pointer font-sans"
+                >
+                  {language === 'vi' ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CELL POSTS TIMELINE DIALOG */}
+        <AnimatePresence>
+          {selectedCell && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedCell(null); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex flex-col">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                      {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
+                    </h3>
+                    <span className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                      {language === 'vi'
+                        ? `Ngày ${selectedCell.dateStr} · Khung giờ ${selectedCell.hour}:00`
+                        : `Date: ${selectedCell.dateStr} · Time slot: ${selectedCell.hour}:00`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedCell(null)}
+                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-0 bg-transparent"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-1">
+                  {selectedCell.posts.map((post: any, idx: number) => {
+                    let platIcon = <Globe size={12} />;
+                    let platLabel = 'Web';
+                    let platBg = 'bg-gray-50 text-gray-700 border-gray-200/60';
+
+                    if (post.platform === 'facebook') {
+                      platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
+                      platLabel = 'Facebook';
+                      platBg = 'bg-blue-50 text-[#1877F2] border-blue-100/60';
+                    } else if (post.platform === 'threads' || post.platform === 'thread') {
+                      platIcon = <ThreadsIcon size={11} className="text-black" />;
+                      platLabel = 'Threads';
+                      platBg = 'bg-slate-50 text-slate-900 border-slate-200/65';
+                    } else if (post.platform === 'instagram') {
+                      platIcon = <Instagram size={11} className="text-pink-650" />;
+                      platLabel = 'Instagram';
+                      platBg = 'bg-pink-50 text-pink-650 border-pink-100/60';
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/40 flex flex-col gap-2 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
+                              {platIcon}
+                              <span>{platLabel}</span>
+                            </span>
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100/40 font-mono">
+                              {post.timeStr}
+                            </span>
+                          </div>
+
+                          {post.type === 'draft' ? (
+                            <span className="bg-amber-50 text-amber-700 border border-amber-200/60 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                              {language === 'vi' ? 'Bản nháp' : 'Draft'}
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
+                                post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
+                                  post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
+                                    'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                              }`}>
+                              {language === 'vi'
+                                ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
+                                : post.status}
+                            </span>
+                          )}
                         </div>
 
-                        {post.type === 'draft' ? (
-                          <span className="bg-amber-50 text-amber-700 border border-amber-200/60 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
-                            {language === 'vi' ? 'Bản nháp' : 'Draft'}
-                          </span>
-                        ) : (
-                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${
-                            post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
-                            post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
-                            post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
-                            'bg-indigo-50 text-indigo-700 border-indigo-200/60'
-                          }`}>
-                            {language === 'vi' 
-                              ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
-                              : post.status}
-                          </span>
+                        <p className="text-xs text-slate-700 font-bold leading-normal line-clamp-3">
+                          {post.title}
+                        </p>
+
+                        {post.type === 'existing' && post.status === 'pending' && (
+                          <div className="flex justify-end mt-1">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                handleCancel(post.id);
+                              }}
+                              disabled={actionLoadingId === post.id}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
+                            >
+                              {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                              <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
+                            </button>
+                          </div>
                         )}
                       </div>
-
-                      <p className="text-xs text-slate-700 font-bold leading-normal line-clamp-3">
-                        {post.title}
-                      </p>
-
-                      {post.type === 'existing' && post.status === 'pending' && (
-                        <div className="flex justify-end mt-1">
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              handleCancel(post.id);
-                            }}
-                            disabled={actionLoadingId === post.id}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
-                          >
-                            {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
-                            <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => setSelectedCell(null)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border-0 active:scale-95"
-              >
-                {language === 'vi' ? 'Đóng' : 'Close'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* PROMPT SELECTOR POPUP DIALOG */}
-      <AnimatePresence>
-        {isPromptModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-            onClick={(e) => { if (e.target === e.currentTarget) setIsPromptModalOpen(false); }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh]"
-            >
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
-                  📝 {language === 'vi' ? 'Chọn Prompt từ thư viện' : 'Select Prompt from Library'}
-                </h3>
-                <button
-                  onClick={() => setIsPromptModalOpen(false)}
-                  className="text-text-muted hover:text-text hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Search Field */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
-                <input
-                  type="text"
-                  value={promptSearch}
-                  onChange={(e) => setPromptSearch(e.target.value)}
-                  placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
-                  className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                />
-              </div>
-
-              {/* Prompts list */}
-              <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 font-sans">
-                {loadingPrompts ? (
-                  <div className="flex items-center justify-center py-12 text-xs text-text-muted font-bold gap-2">
-                    <Loader2 className="animate-spin" size={16} />
-                    {language === 'vi' ? 'Đang tải...' : 'Loading...'}
-                  </div>
-                ) : filteredPromptsForModal.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-text-muted font-semibold">
-                    {language === 'vi' ? 'Không tìm thấy prompt nào' : 'No prompts found'}
-                  </div>
-                ) : (
-                  filteredPromptsForModal.map((p) => {
-                    const isSelected = selectedPrompt?.id === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPrompt(p);
-                          generateVariants(postData, p);
-                          setIsPromptModalOpen(false);
-                        }}
-                        className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
-                          : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between w-full font-sans">
-                          <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
-                          <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
-                        </div>
-                        <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
-                          "{p.content}"
-                        </p>
-                      </button>
                     );
-                  })
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  })}
+                </div>
 
-      {/* ═══════════════════════════════════════════════════════════════
+                <button
+                  onClick={() => setSelectedCell(null)}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border-0 active:scale-95"
+                >
+                  {language === 'vi' ? 'Đóng' : 'Close'}
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* PROMPT SELECTOR POPUP DIALOG */}
+        <AnimatePresence>
+          {isPromptModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsPromptModalOpen(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh]"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
+                    📝 {language === 'vi' ? 'Chọn Prompt từ thư viện' : 'Select Prompt from Library'}
+                  </h3>
+                  <button
+                    onClick={() => setIsPromptModalOpen(false)}
+                    className="text-text-muted hover:text-text hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Search Field */}
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
+                  <input
+                    type="text"
+                    value={promptSearch}
+                    onChange={(e) => setPromptSearch(e.target.value)}
+                    placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                  />
+                </div>
+
+                {/* Prompts list */}
+                <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 font-sans">
+                  {loadingPrompts ? (
+                    <div className="flex items-center justify-center py-12 text-xs text-text-muted font-bold gap-2">
+                      <Loader2 className="animate-spin" size={16} />
+                      {language === 'vi' ? 'Đang tải...' : 'Loading...'}
+                    </div>
+                  ) : filteredPromptsForModal.length === 0 ? (
+                    <div className="text-center py-12 text-xs text-text-muted font-semibold">
+                      {language === 'vi' ? 'Không tìm thấy prompt nào' : 'No prompts found'}
+                    </div>
+                  ) : (
+                    filteredPromptsForModal.map((p) => {
+                      const isSelected = selectedPrompt?.id === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPrompt(p);
+                            generateVariants(postData, p);
+                            setIsPromptModalOpen(false);
+                          }}
+                          className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
+                            : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
+                            }`}
+                        >
+                          <div className="flex items-center justify-between w-full font-sans">
+                            <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
+                            <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                          </div>
+                          <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                            "{p.content}"
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ═══════════════════════════════════════════════════════════════
           AI PROMPT CONFIGURATION DIALOG
           Compact bar click → tabbed modal: Editor + Sinh Prompt bằng mẫu
       ═══════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {isAiPromptDialogOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-            onClick={(e) => { if (e.target === e.currentTarget) setIsAiPromptDialogOpen(false); }}
-          >
+        <AnimatePresence>
+          {isAiPromptDialogOpen && (
             <motion.div
-              initial={{ scale: 0.96, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.96, y: 20, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsAiPromptDialogOpen(false); }}
             >
-              {/* Dialog Header */}
-              <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 px-7 py-5 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                    <Sparkles size={20} />
+              <motion.div
+                initial={{ scale: 0.96, y: 20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.96, y: 20, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+              >
+                {/* Dialog Header */}
+                <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 px-7 py-5 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-black text-slate-800">Cấu hình AI Prompt &amp; Nội dung</h2>
+                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Tùy chỉnh câu lệnh AI và sinh nội dung theo ý muốn</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-base font-black text-slate-800">Cấu hình AI Prompt &amp; Nội dung</h2>
-                    <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Tùy chỉnh câu lệnh AI và sinh nội dung theo ý muốn</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAiPromptDialogOpen(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer border-none"
-                >
-                  <X size={17} />
-                </button>
-              </div>
-
-              {/* Tab Bar */}
-              <div className="flex border-b border-gray-100 px-7 shrink-0 bg-gray-50/60">
-                {[
-                  { key: 'editor' as const, label: 'AI Prompt Editor', icon: Wand2 },
-                  { key: 'generator' as const, label: 'Sinh Prompt bằng mẫu', icon: Sparkles }
-                ].map(({ key, label, icon: Icon }) => (
                   <button
-                    key={key}
                     type="button"
-                    onClick={() => setActiveAiTab(key)}
-                    className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${
-                      activeAiTab === key ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
+                    onClick={() => setIsAiPromptDialogOpen(false)}
+                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer border-none"
                   >
-                    <Icon size={13} />
-                    {label}
+                    <X size={17} />
                   </button>
-                ))}
-              </div>
+                </div>
 
-              {/* Tab Content */}
-              <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-5 custom-scrollbar">
-                {activeAiTab === 'editor' ? (
-                  <>
-                    {/* Platform selector */}
-                    <div className="flex flex-col gap-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng mạng xã hội</label>
-                      <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
-                        {(['facebook', 'threads', 'instagram'] as const).map((p) => (
-                          <button key={p} type="button" onClick={() => setPromptPlatform(p)}
-                            className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                              promptPlatform === p ? 'bg-white text-primary shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800'
-                            }`}>
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                {/* Tab Bar */}
+                <div className="flex border-b border-gray-100 px-7 shrink-0 bg-gray-50/60">
+                  {[
+                    { key: 'editor' as const, label: 'AI Prompt Editor', icon: Wand2 },
+                    { key: 'generator' as const, label: 'Sinh Prompt bằng mẫu', icon: Sparkles }
+                  ].map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveAiTab(key)}
+                      className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeAiTab === key ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                      <Icon size={13} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-                    {/* Custom prompt title */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên Prompt (tùy chọn)</label>
-                      <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
-                        placeholder="Đặt tên cho Prompt này..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
-                      />
-                    </div>
-
-                    {/* Textarea for prompt */}
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nội dung Prompt</label>
-                        <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
-                          className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 text-primary text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 cursor-pointer">
-                          <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
-                          Tạo Prompt thông minh
-                        </button>
-                      </div>
-                      <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
-                        placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
-                      />
-                    </div>
-                  </>
-                  ) : (
-                  /* ─── TAB 2: SINH PROMPT BẰNG MẪU (Thư viện) ─── */
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3 bg-primary/5 border border-primary/15 rounded-2xl px-4 py-3">
-                      <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
-                        <Layers size={15} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-black text-slate-800">Thư viện Prompt mẫu</p>
-                        <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Chọn một prompt để tự động điền vào Tab Editor</p>
-                      </div>
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
-                        placeholder="Tìm theo tên hoặc nội dung..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
-                      />
-                    </div>
-
-                    {/* Library Results as cards */}
-                    <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
-                      {loadingPrompts ? (
-                        <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
-                          <Loader2 size={16} className="animate-spin text-primary" /> Đang tải thư viện...
-                        </div>
-                      ) : filteredPromptsForModal.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 gap-2">
-                          <Layers size={24} className="text-slate-200" />
-                          <p className="text-xs text-slate-400 font-semibold">Không tìm thấy prompt nào</p>
-                        </div>
-                      ) : (
-                        filteredPromptsForModal.map((p) => {
-                          const isSel = selectedPrompt?.id === p.id;
-                          return (
-                            <button key={p.id} type="button"
-                              onClick={() => {
-                                setCustomPromptTitle(p.name);
-                                setActivePrompt(p.content);
-                                setSelectedPrompt(p);
-                                setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
-                              }}
-                              className={`text-left p-4 rounded-2xl border-2 transition-all flex flex-col gap-2 cursor-pointer ${
-                                isSel
-                                  ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-                                  : 'border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm'
-                              }`}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  {isSel && <Check size={13} className="text-primary shrink-0" />}
-                                  <span className="text-sm font-extrabold text-slate-800 truncate max-w-[60%]">{p.name}</span>
-                                </div>
-                                <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl uppercase ${
-                                  p.platform === 'facebook' ? 'bg-blue-100 text-blue-700' :
-                                  p.platform === 'threads' ? 'bg-slate-100 text-slate-700' :
-                                  'bg-pink-100 text-pink-700'
-                                }`}>{p.platform}</span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
-                              {isSel && (
-                                <div className="flex items-center gap-1.5 text-[9px] text-primary font-black uppercase tracking-wider">
-                                  <CheckCircle2 size={10} />
-                                  Đã điền vào Tab Editor
-                                </div>
-                              )}
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-5 custom-scrollbar">
+                  {activeAiTab === 'editor' ? (
+                    <>
+                      {/* Platform selector */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng mạng xã hội</label>
+                        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
+                          {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                            <button key={p} type="button" onClick={() => setPromptPlatform(p)}
+                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p ? 'bg-white text-primary shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                }`}>
+                              {p}
                             </button>
-                          );
-                        })
-                      )}
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom prompt title */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên Prompt (tùy chọn)</label>
+                        <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
+                          placeholder="Đặt tên cho Prompt này..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {/* Textarea for prompt */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nội dung Prompt</label>
+                          <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
+                            className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 text-primary text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 cursor-pointer">
+                            <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
+                            Tạo Prompt thông minh
+                          </button>
+                        </div>
+                        <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
+                          placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    /* ─── TAB 2: SINH PROMPT BẰNG MẪU (Thư viện) ─── */
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3 bg-primary/5 border border-primary/15 rounded-2xl px-4 py-3">
+                        <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                          <Layers size={15} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-800">Thư viện Prompt mẫu</p>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Chọn một prompt để tự động điền vào Tab Editor</p>
+                        </div>
+                      </div>
+
+                      {/* Search */}
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
+                          placeholder="Tìm theo tên hoặc nội dung..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {/* Library Results as cards */}
+                      <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                        {loadingPrompts ? (
+                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
+                            <Loader2 size={16} className="animate-spin text-primary" /> Đang tải thư viện...
+                          </div>
+                        ) : filteredPromptsForModal.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 gap-2">
+                            <Layers size={24} className="text-slate-200" />
+                            <p className="text-xs text-slate-400 font-semibold">Không tìm thấy prompt nào</p>
+                          </div>
+                        ) : (
+                          filteredPromptsForModal.map((p) => {
+                            const isSel = selectedPrompt?.id === p.id;
+                            return (
+                              <button key={p.id} type="button"
+                                onClick={() => {
+                                  setCustomPromptTitle(p.name);
+                                  setActivePrompt(p.content);
+                                  setSelectedPrompt(p);
+                                  setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
+                                }}
+                                className={`text-left p-4 rounded-2xl border-2 transition-all flex flex-col gap-2 cursor-pointer ${isSel
+                                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+                                    : 'border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm'
+                                  }`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {isSel && <Check size={13} className="text-primary shrink-0" />}
+                                    <span className="text-sm font-extrabold text-slate-800 truncate max-w-[60%]">{p.name}</span>
+                                  </div>
+                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl uppercase ${p.platform === 'facebook' ? 'bg-blue-100 text-blue-700' :
+                                      p.platform === 'threads' ? 'bg-slate-100 text-slate-700' :
+                                        'bg-pink-100 text-pink-700'
+                                    }`}>{p.platform}</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
+                                {isSel && (
+                                  <div className="flex items-center gap-1.5 text-[9px] text-primary font-black uppercase tracking-wider">
+                                    <CheckCircle2 size={10} />
+                                    Đã điền vào Tab Editor
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* Dialog Footer */}
-              <div className="bg-slate-50/80 border-t border-slate-200 px-7 py-4 flex items-center justify-between shrink-0">
-                <button type="button" onClick={() => setIsAiPromptDialogOpen(false)}
-                  className="bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer">
-                  Đóng
-                </button>
-
-                {activeAiTab === 'editor' ? (
-                  <button type="button" onClick={() => {
-                    if (!activePrompt) return;
-                    const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
-                    const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                    setSelectedPrompt(newPrompt);
-                    generateVariants(postData, newPrompt);
-                    setIsAiPromptDialogOpen(false);
-                  }} disabled={!activePrompt}
-                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                    Lưu &amp; Sử dụng Prompt
+                {/* Dialog Footer */}
+                <div className="bg-slate-50/80 border-t border-slate-200 px-7 py-4 flex items-center justify-between shrink-0">
+                  <button type="button" onClick={() => setIsAiPromptDialogOpen(false)}
+                    className="bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer">
+                    Đóng
                   </button>
-                ) : (
-                  <button type="button" onClick={() => {
-                    if (selectedPrompt) {
-                      generateVariants(postData, selectedPrompt);
+
+                  {activeAiTab === 'editor' ? (
+                    <button type="button" onClick={() => {
+                      if (!activePrompt) return;
+                      const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                      const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                      setSelectedPrompt(newPrompt);
+                      generateVariants(postData, newPrompt);
                       setIsAiPromptDialogOpen(false);
-                    }
-                  }} disabled={!selectedPrompt}
-                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                    Dùng Prompt này &amp; Sinh bài
-                  </button>
-                )}
-              </div>
+                    }} disabled={!activePrompt}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
+                      Lưu &amp; Sử dụng Prompt
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => {
+                      if (selectedPrompt) {
+                        generateVariants(postData, selectedPrompt);
+                        setIsAiPromptDialogOpen(false);
+                      }
+                    }} disabled={!selectedPrompt}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
+                      Dùng Prompt này &amp; Sinh bài
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
-    </div>
+      </div>
+    </EditableTextContext.Provider>
   );
 }
 

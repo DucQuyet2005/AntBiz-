@@ -85,7 +85,7 @@ export async function login(formData: FormData) {
   cookieStore.delete('login_lockout')
 
   // Supabase sẽ tự động set JWT Token vào Cookie. Middleware sẽ đọc JWT này để xác thực.
-  redirect('/')
+  redirect('/overview')
 }
 
 export async function signup(formData: FormData) {
@@ -118,7 +118,7 @@ export async function signup(formData: FormData) {
   // Nếu cấu hình Supabase đã tắt "Confirm Email", nó sẽ trả về session đăng nhập ngay lập tức.
   // Chúng ta sẽ tự động chuyển hướng người dùng vào thẳng Dashboard.
   if (data?.session) {
-    redirect('/')
+    redirect('/overview')
   }
 
   return { success: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' }
