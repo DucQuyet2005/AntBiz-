@@ -501,12 +501,34 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const hour = date.getHours();
     return { dateStr, hour };
   };
-
-  const isCellOccupied = (dateStr: string, hour: number) => {
-    return existingPosts.some(p => {
+  const getCellPostCount = (dateStr: string, hour: number, excludePlatform?: string) => {
+    let count = existingPosts.filter(p => {
       const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
       return postDate === dateStr && postHour === hour;
-    });
+    }).length;
+
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (excludePlatform !== 'facebook' && targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'threads' && targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'instagram' && targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) count++;
+    }
+
+    return count;
+  };
+
+  const isCellOccupied = (dateStr: string, hour: number, excludePlatform?: string) => {
+    return getCellPostCount(dateStr, hour, excludePlatform) >= 3;
   };
 
   const getCellPosts = (dateStr: string, hour: number) => {
@@ -588,8 +610,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-    if (isCellOccupied(val, activeHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${facebookTime} on ${val}.`);
+    if (isCellOccupied(val, activeHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${facebookTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setFacebookError("");
       setFacebookDate(val);
@@ -608,8 +630,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(facebookDate, clampedHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${facebookDate}.`);
+    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${facebookDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setFacebookError("");
       setFacebookTime(finalTime);
@@ -618,8 +640,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-    if (isCellOccupied(val, activeHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${threadsTime} on ${val}.`);
+    if (isCellOccupied(val, activeHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${threadsTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setThreadsError("");
       setThreadsDate(val);
@@ -638,8 +660,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(threadsDate, clampedHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${threadsDate}.`);
+    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${threadsDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setThreadsError("");
       setThreadsTime(finalTime);
@@ -650,8 +672,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setFacebookError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
     );
     setTimeout(() => setFacebookError(""), 4500);
   };
@@ -660,8 +682,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setThreadsError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
     );
     setTimeout(() => setThreadsError(""), 4500);
   };
@@ -681,14 +703,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts AND threads active post AND instagram active post
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour) ||
-      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'facebook');
 
     if (isOccupied) {
       handleFacebookDragError(targetDate, targetHour);
@@ -717,14 +732,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts AND facebook active post AND instagram active post
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'threads');
 
     if (isOccupied) {
       handleThreadsDragError(targetDate, targetHour);
@@ -740,8 +748,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-    if (isCellOccupied(val, activeHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${instagramTime} on ${val}.`);
+    if (isCellOccupied(val, activeHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${instagramTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setInstagramError("");
       setInstagramDate(val);
@@ -760,8 +768,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(instagramDate, clampedHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${instagramDate}.`);
+    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${instagramDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setInstagramError("");
       setInstagramTime(finalTime);
@@ -772,8 +780,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setInstagramError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
     );
     setTimeout(() => setInstagramError(""), 4500);
   };
@@ -793,13 +801,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts, Facebook active post and Threads active post
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'instagram');
 
     if (isOccupied) {
       handleInstagramDragError(targetDate, targetHour);

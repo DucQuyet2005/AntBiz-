@@ -4,6 +4,23 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.2.8] - 2026-06-22
+
+### Changed
+- **Cho phép lên lịch tối đa 3 bài đăng trong cùng một khung giờ**:
+  - Phát triển hàm đếm số lượng bài đăng trong ô giờ `getCellPostCount` tại `components/views/AiCreatorView.tsx`, hợp nhất đếm cả bài viết đã lên lịch từ cơ sở dữ liệu và các bản nháp đang kéo thả của các kênh khác trong cùng chiến dịch.
+  - Cập nhật hàm kiểm tra `isCellOccupied` để trả về `true` khi số lượng bài viết đạt ngưỡng tối đa là 3 bài/giờ.
+  - Cập nhật các hàm thay đổi thời gian thủ công và sự kiện kết thúc kéo thả (`handleFbDragEnd`, `handleThreadsDragEnd`, `handleInstagramDragEnd`) để áp dụng giới hạn mới, tự động chặn và hiển thị thông báo lỗi thân thiện khi vượt quá 3 bài thay vì chặn tuyệt đối khi chỉ có 1 bài như trước.
+  - Loại bỏ các đoạn code kiểm tra trùng lặp thủ công và làm sạch hàm `handleInstagramDragEnd` bị dư thừa ở cuối tệp.
+
+### Fixed
+- **Sửa lỗi Footer đè lên nội dung cuối trang**:
+  - Thay thế thuộc tính `min-h-screen` bằng `flex-1` trên thẻ bọc nội dung chính của `DashboardLayout` (`app/(dashboard)/layout.tsx`), cho phép container chính co giãn tự nhiên theo chiều cao thực tế của nội dung trang và đẩy Footer xuống dưới cùng của trang một cách chuẩn xác.
+- **Sửa lỗi chật hẹp và tràn dòng của Header trên thiết bị di động**:
+  - Giới hạn chiều rộng tối đa (`max-w`) của ô tìm kiếm trong `components/Header.tsx` từ `max-w-[200px]` xuống `max-w-[120px]` ở các màn hình hẹp (dưới `sm`), giúp Header hiển thị đầy đủ menu, nút thêm bài, chuông thông báo và avatar mà không bị méo hay tràn.
+- **Sửa lỗi đè giao diện do cột Preview Sticky trên di động**:
+  - Chuyển đổi class `sticky top-6` của cột Shared Preview trong `components/views/AiCreatorView.tsx` thành `lg:sticky lg:top-6` để tắt chế độ sticky khi các cột chuyển sang dạng xếp chồng dọc trên màn hình di động/máy tính bảng, tránh việc cột preview trôi nổi đè lên vùng tùy chỉnh mục hiển thị.
+
 ## [1.2.7] - 2026-06-22
 
 ### Changed
