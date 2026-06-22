@@ -31,6 +31,7 @@ import {
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -43,6 +44,11 @@ export default function ContentCalendarView() {
   const { t, language } = useLanguage();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
+
+  const showPopup = (message: string, type: PopupType = 'info') => {
+    setPopup({ isOpen: true, message, type });
+  };
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // States for filters, dropdown, and active selections
@@ -145,11 +151,11 @@ export default function ContentCalendarView() {
         await fetchPosts();
       } else {
         const errJson = await res.json().catch(() => ({}));
-        alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+        showPopup(errJson.error || 'Lỗi khi hủy lịch đăng bài', 'error');
       }
     } catch (err) {
       console.error('Cancel error:', err);
-      alert('Lỗi kết nối khi hủy lịch đăng bài');
+      showPopup('Lỗi kết nối khi hủy lịch đăng bài', 'error');
     } finally {
       setActionLoadingId(null);
     }
@@ -1150,11 +1156,11 @@ export default function ContentCalendarView() {
                                     await fetchPosts();
                                   } else {
                                     const errJson = await res.json().catch(() => ({}));
-                                    alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+                                    showPopup(errJson.error || 'Lỗi khi hủy lịch đăng bài', 'error');
                                   }
                                 } catch (err) {
                                   console.error('Cancel error:', err);
-                                  alert('Lỗi kết nối khi hủy lịch đăng bài');
+                                  showPopup('Lỗi kết nối khi hủy lịch đăng bài', 'error');
                                 } finally {
                                   setActionLoadingId(null);
                                 }
@@ -1182,6 +1188,13 @@ export default function ContentCalendarView() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PopupDialog
+        isOpen={!!popup?.isOpen}
+        message={popup?.message || ''}
+        type={popup?.type || 'info'}
+        onClose={() => setPopup(null)}
+      />
 
     </div>
   );

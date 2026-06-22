@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 import {
   Facebook,
@@ -34,12 +35,17 @@ const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
 
 export default function ArchiveView() {
   const { t, language } = useLanguage();
+  const supabase = createClient();
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
+
+  const showPopup = (message: string, type: PopupType = 'info') => {
+    setPopup({ isOpen: true, message, type });
+  };
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [sortBy, setSortBy] = useState('Publish Date');
   const [activeTab, setActiveTab] = useState<'posts' | 'preview' | 'history'>('posts');
   const [captions, setCaptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
   const [userRole, setUserRole] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
@@ -179,15 +185,15 @@ export default function ArchiveView() {
       }
       const res = await fetch(`/api/captions/export?${params.toString()}`);
       if (res.ok) {
-        alert(language === 'vi' ? 'Đã tiếp nhận yêu cầu xuất dữ liệu! Vui lòng kiểm tra email hoặc tab Lịch sử.' : 'Export request received! Please check your email or History tab.');
+        showPopup(language === 'vi' ? 'Đã tiếp nhận yêu cầu xuất dữ liệu! Vui lòng kiểm tra email hoặc tab Lịch sử.' : 'Export request received! Please check your email or History tab.', 'success');
         fetchExportJobs();
       } else {
         const err = await res.json();
-        alert((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'));
+        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'), 'error');
       }
     } catch (err) {
       console.error('Export error:', err);
-      alert(language === 'vi' ? 'Có lỗi xảy ra khi xuất dữ liệu.' : 'An error occurred while exporting.');
+      showPopup(language === 'vi' ? 'Có lỗi xảy ra khi xuất dữ liệu.' : 'An error occurred while exporting.', 'error');
     } finally {
       setIsExporting(false);
     }
@@ -203,15 +209,15 @@ export default function ArchiveView() {
         body: JSON.stringify({ jobId }),
       });
       if (res.ok) {
-        alert(language === 'vi' ? 'Đã hoàn thành job xuất dữ liệu (Demo).' : 'Completed export job (Demo).');
+        showPopup(language === 'vi' ? 'Đã hoàn thành job xuất dữ liệu (Demo).' : 'Completed export job (Demo).', 'success');
         fetchExportJobs();
       } else {
         const err = await res.json();
-        alert((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'));
+        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'), 'error');
       }
     } catch (err) {
       console.error('Error completing job:', err);
-      alert(language === 'vi' ? 'Có lỗi xảy ra khi hoàn tất job.' : 'An error occurred while completing job.');
+      showPopup(language === 'vi' ? 'Có lỗi xảy ra khi hoàn tất job.' : 'An error occurred while completing job.', 'error');
     }
   };
 
@@ -739,6 +745,13 @@ export default function ArchiveView() {
           </div>
         </div>
       )}
+
+      <PopupDialog
+        isOpen={!!popup?.isOpen}
+        message={popup?.message || ''}
+        type={popup?.type || 'info'}
+        onClose={() => setPopup(null)}
+      />
 
     </div>
   );

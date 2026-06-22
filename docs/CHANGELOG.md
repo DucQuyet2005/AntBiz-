@@ -15,6 +15,10 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - **Thay thế logo thương hiệu bằng thiết kế 3D Glassmorphic mới**:
   - Cập nhật tệp ảnh logo thương hiệu tại [logo.png](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/public/images/logo.png) sang phiên bản logo 3D glassmorphic trong suốt chất lượng cao theo yêu cầu của người dùng.
   - Đồng bộ hóa hiển thị logo mới trên tất cả các trang bao gồm Sidebar (Taskbar), Landing Page và Footer toàn cục.
+- **Thay thế toàn bộ hộp thoại cảnh báo (browser alert) thành popup in-app hiện đại**:
+  - Tạo mới component [PopupDialog.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/PopupDialog.tsx) tái sử dụng được, hiển thị nhỏ gọn ở góc dưới cùng bên phải màn hình (Toast style) giúp người dùng theo dõi mà không làm mờ/gián đoạn việc tương tác với giao diện.
+  - Tích hợp hoạt ảnh mượt mà từ `framer-motion`, hệ thống icon trạng thái sinh động, cùng bộ đếm thời gian tự động đóng sau 5 giây.
+  - Loại bỏ hoàn toàn 13 vị trí sử dụng hàm `alert` mặc định của trình duyệt và thay thế bằng `PopupDialog` trong các chế độ xem: Lịch nội dung (`ContentCalendarView`), Lưu trữ bài viết (`ArchiveView`), và Trình tạo AI (`AiCreatorView`).
 
 ### Fixed
 - **Sửa lỗi Footer đè lên nội dung cuối trang**:

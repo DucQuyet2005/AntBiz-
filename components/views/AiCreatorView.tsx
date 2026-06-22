@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PromptSuggestionSection from '../PromptSuggestionSection';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 
 // Threads Custom SVG Logo
@@ -193,6 +194,11 @@ const EditableText = ({
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
+
+  const showPopup = (message: string, type: PopupType = 'info') => {
+    setPopup({ isOpen: true, message, type });
+  };
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
@@ -221,7 +227,7 @@ export default function AiCreatorView() {
 
   const handleProceedToABTest = async () => {
     if (!activePrompt) {
-      alert(language === 'vi' ? 'Vui lòng cấu hình prompt trước khi sinh bài viết.' : 'Please configure a prompt before generating.');
+      showPopup(language === 'vi' ? 'Vui lòng cấu hình prompt trước khi sinh bài viết.' : 'Please configure a prompt before generating.', 'warning');
       return;
     }
 
@@ -285,7 +291,7 @@ export default function AiCreatorView() {
       setStep(2);
     } catch (error) {
       console.error('Error generating A/B variants:', error);
-      alert(language === 'vi' ? 'Lỗi khi sinh nội dung AI. Vui lòng thử lại.' : 'Error generating AI content. Please retry.');
+      showPopup(language === 'vi' ? 'Lỗi khi sinh nội dung AI. Vui lòng thử lại.' : 'Error generating AI content. Please retry.', 'error');
     } finally {
       setIsGeneratingAB(false);
     }
@@ -1144,7 +1150,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     if (!url || !url.trim()) {
-      alert(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL');
+      showPopup(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL', 'warning');
       return;
     }
     setIsFetching(true);
@@ -3649,6 +3655,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PopupDialog
+        isOpen={!!popup?.isOpen}
+        message={popup?.message || ''}
+        type={popup?.type || 'info'}
+        onClose={() => setPopup(null)}
+      />
 
       </div>
     </EditableTextContext.Provider>
