@@ -12,6 +12,9 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Cập nhật hàm kiểm tra `isCellOccupied` để trả về `true` khi số lượng bài viết đạt ngưỡng tối đa là 3 bài/giờ.
   - Cập nhật các hàm thay đổi thời gian thủ công và sự kiện kết thúc kéo thả (`handleFbDragEnd`, `handleThreadsDragEnd`, `handleInstagramDragEnd`) để áp dụng giới hạn mới, tự động chặn và hiển thị thông báo lỗi thân thiện khi vượt quá 3 bài thay vì chặn tuyệt đối khi chỉ có 1 bài như trước.
   - Loại bỏ các đoạn code kiểm tra trùng lặp thủ công và làm sạch hàm `handleInstagramDragEnd` bị dư thừa ở cuối tệp.
+- **Thay thế logo thương hiệu bằng thiết kế 3D Glassmorphic mới**:
+  - Cập nhật tệp ảnh logo thương hiệu tại [logo.png](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/public/images/logo.png) sang phiên bản logo 3D glassmorphic trong suốt chất lượng cao theo yêu cầu của người dùng.
+  - Đồng bộ hóa hiển thị logo mới trên tất cả các trang bao gồm Sidebar (Taskbar), Landing Page và Footer toàn cục.
 
 ### Fixed
 - **Sửa lỗi Footer đè lên nội dung cuối trang**:
