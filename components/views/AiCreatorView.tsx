@@ -243,26 +243,9 @@ const EditableText = ({
       return () => window.removeEventListener('ai-creator-go-to-step-1', onGoStep1);
     }, []);
 
-    // Handle tab switch with unsaved changes warning
+    // Handle tab switch without unsaved changes warning
     const handleTabSwitch = (newTab: 'editor' | 'generator') => {
-      if (activeAiTab === newTab) {
-        setActiveAiTab(newTab);
-        return;
-      }
-
-      if (hasUnsavedChanges) {
-        const message = language === 'vi'
-          ? 'Bạn có thay đổi chưa được lưu. Nếu chuyển tab, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
-          : 'You have unsaved changes. If you switch tabs, your data will be lost. Do you want to continue?';
-
-        if (confirm(message)) {
-          setHasUnsavedChanges(false);
-          setActiveAiTab(newTab);
-          setPendingTabSwitch(null);
-        }
-      } else {
-        setActiveAiTab(newTab);
-      }
+      setActiveAiTab(newTab);
     };
     // AI Generation States
     const [articleId, setArticleId] = useState<string | null>(null);
@@ -421,36 +404,40 @@ const EditableText = ({
     };
 
     const handleSaveCurrentPrompt = async () => {
-      if (!activePrompt) return;
+      if (!activePrompt) return null;
       setIsSavingPrompt(true);
       setSaveSuccess(false);
       try {
+        const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
         const res = await fetch('/api/prompts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: `AI Generated - ${new Date().toLocaleDateString()}`,
+            name: finalTitle,
             content: activePrompt,
-            platform: selectedPlatform,
-            tags: ['AI Generated', selectedPlatform]
+            platform: promptPlatform,
+            tags: ['AI Generated', promptPlatform]
           }),
         });
         if (res.ok) {
+          const json = await res.json();
           setSaveSuccess(true);
           setHasUnsavedChanges(false);
           setTimeout(() => setSaveSuccess(false), 3000);
           // Refresh prompt list
           const listRes = await fetch('/api/prompts?pageSize=100');
           if (listRes.ok) {
-            const json = await listRes.json();
-            setPromptsList(json.data || []);
+            const listJson = await listRes.json();
+            setPromptsList(listJson.data || []);
           }
+          return json.data;
         }
       } catch (error) {
         console.error('Error saving prompt:', error);
       } finally {
         setIsSavingPrompt(false);
       }
+      return null;
     };
 
     const handleSaveAiResult = (variantId: string) => {
@@ -3947,17 +3934,33 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     </button>
 
                     {activeAiTab === 'editor' ? (
-                      <button type="button" onClick={() => {
-                        if (!activePrompt) return;
-                        const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
-                        const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                        setSelectedPrompt(newPrompt);
-                        generateVariants(postData, newPrompt);
-                        setIsAiPromptDialogOpen(false);
-                      }} disabled={!activePrompt}
-                        className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                        Lưu &amp; Sử dụng Prompt
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => {
+                          if (!activePrompt) return;
+                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                          const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          generateVariants(postData, newPrompt);
+                          setIsAiPromptDialogOpen(false);
+                        }} disabled={!activePrompt}
+                          className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none">
+                          Chỉ sử dụng
+                        </button>
+
+                        <button type="button" onClick={async () => {
+                          if (!activePrompt) return;
+                          const savedPrompt = await handleSaveCurrentPrompt();
+                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                          const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          generateVariants(postData, newPrompt);
+                          setIsAiPromptDialogOpen(false);
+                        }} disabled={!activePrompt || isSavingPrompt}
+                          className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2">
+                          {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
+                          Lưu &amp; Sử dụng Prompt
+                        </button>
+                      </div>
                     ) : (
                       <button type="button" onClick={() => {
                         if (selectedPrompt) {
