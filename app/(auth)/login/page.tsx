@@ -10,9 +10,27 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validations/auth";
 import { Toast, useToast } from "@/components/Toast";
 import { AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 export default function LoginPage() {
   const { toast, showToast, hideToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("logging_out");
+    }
+    const checkLoggedUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        router.replace('/overview');
+      }
+    };
+    checkLoggedUser();
+  }, [router]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [lockoutTime, setLockoutTime] = useState<number>(0);
 

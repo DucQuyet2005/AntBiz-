@@ -5,22 +5,24 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 
-import { 
-  Facebook, 
-  Instagram, 
-  Globe, 
-  TrendingUp, 
-  Heart, 
-  MessageSquare, 
-  Search, 
-  ChevronDown, 
+import {
+  Facebook,
+  Instagram,
+  Globe,
+  TrendingUp,
+  Heart,
+  MessageSquare,
+  Search,
+  ChevronDown,
   ArrowUpDown,
   Download,
   Loader2,
   FileText,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // Threads Custom SVG Logo
@@ -35,224 +37,290 @@ export default function ArchiveView() {
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [sortBy, setSortBy] = useState('Publish Date');
   const [activeTab, setActiveTab] = useState<'posts' | 'preview' | 'history'>('posts');
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportJobs, setExportJobs] = useState<any[]>([]);
-  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
-
+  const [captions, setCaptions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const [userRole, setUserRole] = useState<string>('');
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState<boolean>(false);
+  const [exportJobs, setExportJobs] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = new Set(expandedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setExpandedIds(next);
+  };
+
+  const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [platformFilter, sortBy, searchQuery]);
 
   useEffect(() => {
-    async function checkRole() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
-        setUserRole(data?.role || null);
+    async function fetchCaptions() {
+      try {
+        const { data, error } = await supabase
+          .from('captions')
+          .select(`
+            id,
+            platform,
+            ai_content,
+            edited_content,
+            status,
+            created_at,
+            article_id,
+            articles (
+              id,
+              title,
+              category,
+              description,
+              views,
+              images
+            )
+          `)
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          setCaptions(data);
+        }
+      } catch (err) {
+        console.error('Error fetching captions:', err);
+      } finally {
+        setLoading(false);
       }
     }
-    checkRole();
+    fetchCaptions();
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'history') {
-      fetchExportJobs();
-    } else if (activeTab === 'preview') {
-      fetchPreviewData();
+    async function fetchUserRole() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          if (profile) {
+            setUserRole(profile.role);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user role:', err);
+      }
     }
-  }, [activeTab, platformFilter]);
-
-  const fetchExportJobs = async () => {
-    setIsLoadingJobs(true);
-    try {
-      const res = await fetch('/api/export-jobs');
-      const json = await res.json();
-      if (json.data) setExportJobs(json.data);
-    } catch (error) {
-      console.error('Failed to fetch export jobs:', error);
-    } finally {
-      setIsLoadingJobs(false);
-    }
-  };
+    fetchUserRole();
+  }, []);
 
   const fetchPreviewData = async () => {
     setIsFetchingPreview(true);
     try {
-      const params = new URLSearchParams({
-        platform: platformFilter,
-        limit: '15'
-      });
-      // We can use a query to a general captions list or a specific preview endpoint
       const { data, error } = await supabase
         .from('captions')
-        .select(`
-          id,
-          platform,
-          ai_content,
-          status,
-          created_at,
-          articles (title, category)
-        `)
+        .select('id, platform, ai_content, status, created_at, articles (title)')
         .order('created_at', { ascending: false })
         .limit(15);
-      
-      if (data) setPreviewData(data);
-    } catch (error) {
-      console.error('Failed to fetch preview data:', error);
+      if (!error && data) {
+        setPreviewData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching preview data:', err);
     } finally {
       setIsFetchingPreview(false);
     }
   };
 
-  const handleExport = async () => {
-    if (userRole === 'viewer') {
-      alert(language === 'vi' ? 'Bạn không có quyền xuất dữ liệu.' : 'You do not have permission to export data.');
-      return;
+  const fetchExportJobs = async () => {
+    setIsLoadingJobs(true);
+    try {
+      const res = await fetch('/api/export-jobs');
+      if (res.ok) {
+        const json = await res.json();
+        setExportJobs(json.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching export jobs:', err);
+    } finally {
+      setIsLoadingJobs(false);
     }
+  };
 
+  useEffect(() => {
+    if (activeTab === 'preview') {
+      fetchPreviewData();
+    } else if (activeTab === 'history') {
+      fetchExportJobs();
+    }
+  }, [activeTab]);
+
+  const handleExport = async () => {
     setIsExporting(true);
     try {
-      const params = new URLSearchParams({
-        platform: platformFilter,
-        format: 'csv'
-      });
-      
-      const response = await fetch(`/api/captions/export?${params.toString()}`);
-      
-      if (response.status === 202) {
-        alert(language === 'vi' 
-          ? `Yêu cầu xuất CSV đã được tiếp nhận! Hệ thống đang xử lý và sẽ gửi file vào email của bạn trong ít phút.` 
-          : `Export request received! We are processing it and will send the CSV file to your email shortly.`);
-        setActiveTab('history');
-        // Cho hệ thống load lại job mới
-        setTimeout(() => fetchExportJobs(), 500);
-      } else {
-        const error = await response.json();
-        alert(`Export failed: ${error.error}`);
+      const params = new URLSearchParams();
+      if (platformFilter !== 'All Platforms') {
+        params.append('platform', platformFilter);
       }
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('An unexpected error occurred during export.');
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+      const res = await fetch(`/api/captions/export?${params.toString()}`);
+      if (res.ok) {
+        alert(language === 'vi' ? 'Đã tiếp nhận yêu cầu xuất dữ liệu! Vui lòng kiểm tra email hoặc tab Lịch sử.' : 'Export request received! Please check your email or History tab.');
+        fetchExportJobs();
+      } else {
+        const err = await res.json();
+        alert((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      alert(language === 'vi' ? 'Có lỗi xảy ra khi xuất dữ liệu.' : 'An error occurred while exporting.');
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleMockCompleteJob = async (jobId: string) => {
-    // This is for DEMO purposes to show the email/link flow
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const res = await fetch('/api/test/complete-job', {
+      const res = await fetch('/api/export-jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, userEmail: user?.email })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId }),
       });
       if (res.ok) {
-        alert('Demo: Job marked as complete. Check console for mock email.');
+        alert(language === 'vi' ? 'Đã hoàn thành job xuất dữ liệu (Demo).' : 'Completed export job (Demo).');
         fetchExportJobs();
+      } else {
+        const err = await res.json();
+        alert((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'));
       }
-    } catch (error) {
-      console.error('Mock error:', error);
-    }
-  };
-
-  const archiveItems = [
-    {
-      id: 1,
-      type: 'TỔ ẤM 4.0',
-      platform: 'blog',
-      image: 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80',
-      title: '10 năm mua vàng và hành trình thoát cảnh ở trọ',
-      description: 'Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.',
-      reach: '51.1k',
-      conversions: '3.2k',
-      likes: 1240,
-      comments: 185,
-      nodeType: 'Case Study',
-      link: '/archive/80861'
-    },
-    {
-      id: 2,
-      type: 'TÀI CHÍNH',
-      platform: 'facebook',
-      image: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&q=80',
-      title: 'Quy tắc 50/30/20: Cách phân bổ lương 15 triệu',
-      description: 'Bí quyết giúp người trẻ ở thành phố lớn không chỉ đủ sống mà còn có khoản tiết kiệm phòng thân với mức thu nhập cơ bản.',
-      reach: '120k',
-      conversions: '4.5k',
-      likes: 3400,
-      comments: 420,
-      nodeType: 'Guide',
-      link: '#'
-    },
-    {
-      id: 3,
-      type: 'BẤT ĐỘNG SẢN',
-      platform: 'instagram',
-      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-      title: 'Sốt ảo vùng ven: Dấu hiệu nhận biết và cách né',
-      description: 'Phân tích các dự án đất nền vùng ven đang bị đẩy giá lên cao bất thường. Đừng để dính bẫy tâm lý đám đông.',
-      reach: '85k',
-      conversions: '1.2k',
-      likes: 850,
-      comments: 95,
-      nodeType: 'Analysis',
-      link: '#'
-    },
-    {
-      id: 4,
-      type: 'THREAD',
-      platform: 'threads',
-      gradient: 'from-[#6366F1] via-[#D946EF] to-[#EC4899]',
-      title: 'Chuyện gen Z bỏ việc lương cao để... bán trà sữa',
-      description: 'Làm văn phòng thu nhập 30 triệu/tháng nhưng stress tột độ. Đánh đổi lấy sự tự do tài chính và tinh thần, liệu có đáng?',
-      reach: '450k',
-      conversions: '2.1k',
-      likes: 432,
-      comments: 37,
-      nodeType: 'Organic Content Node',
-      link: '#'
-    }
-  ];
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'pending': return t('archive.statusPending');
-      case 'processing': return t('archive.statusProcessing');
-      case 'completed': return t('archive.statusCompleted');
-      case 'failed': return t('archive.statusFailed');
-      default: return status;
+    } catch (err) {
+      console.error('Error completing job:', err);
+      alert(language === 'vi' ? 'Có lỗi xảy ra khi hoàn tất job.' : 'An error occurred while completing job.');
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock size={14} className="text-amber-500" />;
-      case 'processing': return <Loader2 size={14} className="text-blue-500 animate-spin" />;
-      case 'completed': return <CheckCircle2 size={14} className="text-emerald-500" />;
-      case 'failed': return <AlertCircle size={14} className="text-rose-500" />;
-      default: return null;
+      case 'pending':
+      case 'processing':
+        return <Loader2 size={16} className="animate-spin text-amber-500" />;
+      case 'completed':
+        return <CheckCircle2 size={16} className="text-emerald-500" />;
+      case 'failed':
+        return <AlertCircle size={16} className="text-rose-500" />;
+      default:
+        return null;
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    if (language === 'vi') {
+      switch (status) {
+        case 'pending':
+          return 'Chờ xử lý';
+        case 'processing':
+          return 'Đang xử lý';
+        case 'completed':
+          return 'Hoàn thành';
+        case 'failed':
+          return 'Thất bại';
+        default:
+          return status;
+      }
+    } else {
+      switch (status) {
+        case 'pending':
+          return 'Pending';
+        case 'processing':
+          return 'Processing';
+        case 'completed':
+          return 'Completed';
+        case 'failed':
+          return 'Failed';
+        default:
+          return status;
+      }
+    }
+  };
+
+  const archiveItems = captions.map(cap => {
+    const art = cap.articles || {};
+    const images = Array.isArray(art.images) ? art.images : [];
+    const mainImage = images.length > 0 ? images[0].url : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
+    return {
+      id: cap.id,
+      type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
+      platform: cap.platform || 'facebook',
+      image: mainImage,
+      title: art.title || 'Không có tiêu đề',
+      description: cap.edited_content || cap.ai_content || 'Không có mô tả',
+      reach: art.views || '0',
+      conversions: '0',
+      likes: 0,
+      comments: 0,
+      nodeType: 'Caption',
+      link: `/archive/${art.id || ''}`,
+      gradient: '',
+      created_at: cap.created_at
+    };
+  });
+
+  const filteredItems = archiveItems
+    .filter(item => {
+      const matchesPlatform = platformFilter === 'All Platforms' || item.platform.toLowerCase() === platformFilter.toLowerCase();
+      const matchesSearch = searchQuery === '' || 
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesPlatform && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'Publish Date') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      } else {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+    });
+
+  const ITEMS_PER_PAGE = 6;
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      
+
       {/* Page Title & Subtitle */}
       <div className="mt-2 flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('archive.title')}</h1>
           <p className="text-text-muted">{t('archive.subtitle')}</p>
         </div>
-        
+
         {/* Export Button (Only if not Viewer) */}
         {userRole !== 'viewer' && (
-          <button 
+          <button
             onClick={handleExport}
             disabled={isExporting}
             title={t('archive.exportTooltip')}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-extrabold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-70 disabled:pointer-events-none group"
+            className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl text-sm font-extrabold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-70 disabled:pointer-events-none group"
           >
             {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />}
             <span>{isExporting ? t('common.loading') : t('archive.exportCta')}</span>
@@ -262,21 +330,21 @@ export default function ArchiveView() {
 
       {/* Tabs Control */}
       <div className="flex border-b border-gray-200">
-        <button 
+        <button
           onClick={() => setActiveTab('posts')}
           className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPosts')}
           {activeTab === 'posts' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('preview')}
           className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPreview')}
           {activeTab === 'preview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('history')}
           className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
@@ -289,35 +357,75 @@ export default function ArchiveView() {
         <>
           {/* Search & Filters Controls Row */}
           <div className="flex justify-between items-center gap-4">
-            
+
             {/* Search */}
             <div className="relative flex-1 max-w-xl">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder={t('archive.searchPlaceholder')} 
+              <input
+                type="text"
+                placeholder={t('archive.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
               />
             </div>
 
             {/* Dropdowns */}
             <div className="flex items-center gap-3">
-              
+
               {/* Platform Filter */}
               <div className="relative">
-                <button className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none">
+                <button 
+                  onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                >
                   <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
+                {showPlatformDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
+                    {['All Platforms', 'facebook', 'instagram', 'blog', 'threads'].map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => {
+                          setPlatformFilter(p);
+                          setShowPlatformDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 capitalize font-medium ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
+                      >
+                        {p === 'All Platforms' ? t('archive.allPlatforms') : p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Sort By */}
               <div className="relative">
-                <button className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none">
+                <button 
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                >
                   <ArrowUpDown size={14} className="text-text-muted" />
                   <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
+                {showSortDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
+                    {['Publish Date', 'Oldest First'].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          setSortBy(s);
+                          setShowSortDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 font-medium ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
+                      >
+                        {s === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -326,21 +434,21 @@ export default function ArchiveView() {
 
           {/* 3-Column Grid Cards */}
           <div className="grid grid-cols-3 gap-6 mt-2">
-            {archiveItems.map((item) => (
-              <Link 
+            {paginatedItems.map((item) => (
+              <Link
                 href={item.link}
-                key={item.id} 
+                key={item.id}
                 className="bg-white border border-gray-200/60 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between"
               >
-                
+
                 {/* Top Visual Banner */}
                 <div className="h-44 w-full relative shrink-0 bg-gray-100">
-                  
+
                   {/* Image if available */}
                   {item.image ? (
-                    <img 
-                      src={item.image} 
-                      alt={item.title} 
+                    <img
+                      src={item.image}
+                      alt={item.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -349,7 +457,7 @@ export default function ArchiveView() {
                   )}
 
                   {/* Overlay Badges */}
-                  
+
                   {/* Type Badge (Left) */}
                   <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
                     {item.type}
@@ -367,19 +475,40 @@ export default function ArchiveView() {
 
                 {/* Card Content Area */}
                 <div className="p-6 flex-1 flex flex-col justify-between gap-6">
-                  
+
                   {/* Title & Desc */}
                   <div>
                     {item.nodeType && (
-                      <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest block mb-1">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
                         {item.nodeType}
                       </span>
                     )}
                     <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted leading-relaxed font-medium">
-                      {item.description}
+                    <p className="text-xs text-text-muted leading-relaxed font-medium whitespace-pre-wrap">
+                      {(() => {
+                        const isExpanded = expandedIds.has(item.id);
+                        const shouldTruncate = item.description.length > 150;
+                        const displayedText = shouldTruncate && !isExpanded 
+                          ? `${item.description.slice(0, 150)}...` 
+                          : item.description;
+                        return (
+                          <>
+                            {displayedText}
+                            {shouldTruncate && (
+                              <button
+                                onClick={(e) => toggleExpand(item.id, e)}
+                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block"
+                              >
+                                {isExpanded 
+                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Show less') 
+                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </p>
                   </div>
 
@@ -424,6 +553,49 @@ export default function ArchiveView() {
               </Link>
             ))}
           </div>
+
+          {/* Premium Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
+              <div className="text-xs text-text-muted font-bold">
+                {language === 'vi' 
+                  ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} trong tổng số ${filteredItems.length} bài đăng`
+                  : `Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} posts`
+                }
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                      currentPage === page
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : 'border border-gray-200/80 text-text hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : activeTab === 'preview' ? (
         /* Data Preview Tab */
@@ -433,8 +605,8 @@ export default function ArchiveView() {
               <FileText size={18} />
             </div>
             <p className="text-xs text-emerald-800 font-bold">
-              {language === 'vi' 
-                ? 'Đây là 15 bản ghi mới nhất sẽ có trong tệp CSV của bạn.' 
+              {language === 'vi'
+                ? 'Đây là 15 bản ghi mới nhất sẽ có trong tệp CSV của bạn.'
                 : 'These are the 15 latest records that will be in your CSV file.'}
             </p>
           </div>
@@ -525,7 +697,7 @@ export default function ArchiveView() {
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                         {job.status === 'pending' && (
-                          <button 
+                          <button
                             onClick={() => handleMockCompleteJob(job.id)}
                             className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 underline"
                           >
@@ -533,9 +705,9 @@ export default function ArchiveView() {
                           </button>
                         )}
                         {job.status === 'completed' && job.download_url ? (
-                          <a 
-                            href={job.download_url} 
-                            target="_blank" 
+                          <a
+                            href={job.download_url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl text-xs font-black transition-all"
                           >
@@ -554,14 +726,14 @@ export default function ArchiveView() {
               </tbody>
             </table>
           </div>
-          
+
           <div className="flex items-center gap-3 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
               <Clock size={20} />
             </div>
             <p className="text-xs text-blue-800 leading-relaxed font-medium">
-              {language === 'vi' 
-                ? 'Các yêu cầu xuất dữ liệu lớn (>1000 dòng) được xử lý dưới nền. Link tải sẽ được gửi qua email sau khi hoàn tất và tồn tại trong 24h.' 
+              {language === 'vi'
+                ? 'Các yêu cầu xuất dữ liệu lớn (>1000 dòng) được xử lý dưới nền. Link tải sẽ được gửi qua email sau khi hoàn tất và tồn tại trong 24h.'
                 : 'Large export requests (>1000 rows) are processed in the background. Download links will be sent via email once finished and expire after 24 hours.'}
             </p>
           </div>

@@ -33,6 +33,23 @@ export async function runSchedulerCycle() {
   console.log(`[Scheduler] Tìm thấy ${pendingPosts.length} bài đăng đến hạn cần xử lý.`);
 
   for (const post of pendingPosts) {
+    // Thử cập nhật trạng thái của post từ 'pending' sang 'posted' trước để chiếm khóa (claim)
+    const { data: claimedPost, error: claimError } = await supabase
+      .from('scheduled_posts')
+      .update({
+        status: 'posted',
+        posted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', post.id)
+      .eq('status', 'pending')
+      .select();
+
+    if (claimError || !claimedPost || claimedPost.length === 0) {
+      console.log(`[Scheduler] Bỏ qua bài đăng ID ${post.id} do đã được xử lý bởi một luồng khác.`);
+      continue;
+    }
+
     const caption = post.captions;
     const user = post.users;
     const article = caption?.articles;
@@ -50,12 +67,10 @@ export async function runSchedulerCycle() {
     if (publishResult.success && publishResult.postId) {
       console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài viết Facebook: ${publishResult.postId}`);
 
-      // 3. Cập nhật trạng thái scheduled_post sang 'posted'
+      // Cập nhật thêm thông tin fb_post_id và post_result cho post đã được đánh dấu là 'posted' trước đó
       await supabase
         .from('scheduled_posts')
         .update({
-          status: 'posted',
-          posted_at: new Date().toISOString(),
           fb_post_id: publishResult.postId,
           post_result: publishResult,
           updated_at: new Date().toISOString(),
@@ -82,11 +97,12 @@ export async function runSchedulerCycle() {
       const errorMsg = publishResult.error || 'Lỗi không xác định từ Facebook API';
       console.error(`[Scheduler] Đăng bài ID ${post.id} thất bại:`, errorMsg);
 
-      // 3. Cập nhật trạng thái scheduled_post sang 'failed'
+      // Cập nhật trạng thái sang 'failed' nếu đăng tải thất bại, đồng thời xóa posted_at đã ghi trước đó
       await supabase
         .from('scheduled_posts')
         .update({
           status: 'failed',
+          posted_at: null,
           failed_at: new Date().toISOString(),
           failure_reason: errorMsg,
           post_result: publishResult,
@@ -106,22 +122,26 @@ export async function runSchedulerCycle() {
   }
 }
 
-// Cờ lưu trong memory để tránh đăng ký lặp nhiều lần scheduler
-let isSchedulerInitialized = false;
-
 /**
  * Khởi tạo chu kỳ chạy ngầm kiểm tra lịch đăng bài (60 giây chạy một lần).
  */
 export function initScheduler() {
-  if (isSchedulerInitialized) return;
-  isSchedulerInitialized = true;
+  const globalRef = global as any;
+
+  // Clear any existing scheduler interval to avoid duplicate loops on hot-reload
+  if (globalRef.schedulerInterval) {
+    clearInterval(globalRef.schedulerInterval);
+  }
 
   console.log('[Scheduler] Khởi tạo trình chạy scheduler chạy ngầm (chu kỳ 60 giây)');
-  setInterval(async () => {
+  
+  globalRef.schedulerInterval = setInterval(async () => {
     try {
       await runSchedulerCycle();
     } catch (err: any) {
       console.error('[Scheduler] Lỗi xảy ra trong vòng lặp runSchedulerCycle:', err.message || err);
     }
   }, 60000);
+
+  globalRef.isSchedulerInitialized = true;
 }

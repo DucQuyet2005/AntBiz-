@@ -8,9 +8,13 @@ import {
   Image as ImageIcon,
   Globe,
   FileText,
-  GitBranch
+  GitBranch,
+  Check,
+  Sliders,
+  Sparkles
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 
 // API Plug / Connection icon custom SVG to match mockup
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
@@ -21,6 +25,7 @@ const PlugIcon = ({ size = 20 }: { size?: number }) => (
 
 export default function SettingsView() {
   const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
 
   // State for interactive inputs
   const [openaiConnected, setOpenaiConnected] = useState(true);
@@ -93,7 +98,7 @@ export default function SettingsView() {
                 </div>
                 <button 
                   onClick={() => setMidjourneyConnected(!midjourneyConnected)}
-                  className="text-xs font-bold text-[#3F51B5] hover:text-indigo-800 transition-colors px-3 py-1 cursor-pointer select-none"
+                  className="text-xs font-bold text-primary hover:opacity-80 transition-colors px-3 py-1 cursor-pointer select-none"
                 >
                   {midjourneyConnected ? t('settings.disconnect') : t('settings.connect')}
                 </button>
@@ -108,9 +113,9 @@ export default function SettingsView() {
         <div className="col-span-5 bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-8 flex flex-col gap-6 text-[#1E293B]">
           
           {/* Header Notifications */}
-          <div className="flex items-center gap-3 font-bold text-lg text-[#3F51B5]">
+          <div className="flex items-center gap-3 font-bold text-lg text-primary">
             <Bell size={20} />
-            <h2>{t('settings.notifications')}</h2>
+            <h2>{t('settings.apiIntegrations')}</h2>
           </div>
 
           {/* Configuration List */}
@@ -131,7 +136,9 @@ export default function SettingsView() {
                   onChange={() => setAiGenNotify(!aiGenNotify)}
                   className="sr-only peer" 
                 />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3F51B5]"></div>
+                <div className={`w-11 h-6 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                  aiGenNotify ? 'bg-primary' : 'bg-gray-200'
+                }`}></div>
               </label>
             </div>
 
@@ -150,7 +157,9 @@ export default function SettingsView() {
                   onChange={() => setWeeklyDigest(!weeklyDigest)}
                   className="sr-only peer" 
                 />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3F51B5]"></div>
+                <div className={`w-11 h-6 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                  weeklyDigest ? 'bg-primary' : 'bg-gray-200'
+                }`}></div>
               </label>
             </div>
 
@@ -158,7 +167,7 @@ export default function SettingsView() {
             <div className="border-t border-[#E4E6F8] pt-5 flex items-center justify-between gap-4">
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
-                  <Globe size={16} className="text-[#3F51B5]" />
+                  <Globe size={16} className="text-primary" />
                   {t('settings.languageTitle')}
                 </span>
                 <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
@@ -170,8 +179,8 @@ export default function SettingsView() {
                   onClick={() => setLanguage('vi')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                     language === 'vi' 
-                      ? 'bg-[#3F51B5] text-white shadow-md' 
-                      : 'text-text-muted hover:text-[#1E293B] hover:bg-gray-50'
+                      ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                      : 'text-text-muted hover:text-primary hover:bg-primary/5'
                   }`}
                 >
                   <span>🇻🇳</span>
@@ -181,12 +190,119 @@ export default function SettingsView() {
                   onClick={() => setLanguage('en')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                     language === 'en' 
-                      ? 'bg-[#3F51B5] text-white shadow-md' 
-                      : 'text-text-muted hover:text-[#1E293B] hover:bg-gray-50'
+                      ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                      : 'text-text-muted hover:text-primary hover:bg-primary/5'
                   }`}
                 >
                   <span>🇺🇸</span>
                   <span>{t('settings.langEn')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Theme Customizer Setting Block */}
+            <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
+                  <Sliders size={16} className="text-primary" />
+                  {language === 'vi' ? 'Màu sắc giao diện' : 'System Theme Color'}
+                </span>
+                <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                  {language === 'vi' 
+                    ? 'Tùy chọn tông màu chủ đạo cho toàn bộ không gian làm việc của bạn.'
+                    : 'Choose the main accent color for your entire workspace.'}
+                </span>
+              </div>
+
+              {/* Solids Group */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  {language === 'vi' ? 'Màu đơn sắc' : 'Solid Colors'}
+                </span>
+                <div className="flex flex-wrap gap-2.5">
+                  {[
+                    { id: 'solid-red', color: '#EF4444', labelVi: 'Đỏ', labelEn: 'Red' },
+                    { id: 'solid-orange', color: '#F97316', labelVi: 'Cam', labelEn: 'Orange' },
+                    { id: 'solid-yellow', color: '#F59E0B', labelVi: 'Vàng', labelEn: 'Yellow' },
+                    { id: 'solid-green', color: '#10B981', labelVi: 'Lục', labelEn: 'Green' },
+                    { id: 'solid-blue', color: '#5A5CDE', labelVi: 'Lam', labelEn: 'Blue' },
+                    { id: 'solid-indigo', color: '#6366F1', labelVi: 'Chàm', labelEn: 'Indigo' },
+                    { id: 'solid-purple', color: '#A855F7', labelVi: 'Tím', labelEn: 'Purple' },
+                  ].map((s) => {
+                    const isSelected = theme === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setTheme(s.id as Theme)}
+                        title={language === 'vi' ? s.labelVi : s.labelEn}
+                        className={`w-8 h-8 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative ${
+                          isSelected 
+                            ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
+                            : 'border-white hover:border-slate-300'
+                        }`}
+                        style={{ backgroundColor: s.color }}
+                      >
+                        {isSelected && <Check size={14} className="text-white drop-shadow stroke-[3.5]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Gradients Group */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  {language === 'vi' ? 'Màu Gradient' : 'Gradient Colors'}
+                </span>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: 'gradient-black-red', gradient: 'linear-gradient(135deg, #1A1A1A 0%, #EF4444 100%)', labelVi: 'Đen đỏ', labelEn: 'Black-Red' },
+                    { id: 'gradient-yellow-black', gradient: 'linear-gradient(135deg, #F59E0B 0%, #1A1A1A 100%)', labelVi: 'Vàng đen', labelEn: 'Yellow-Black' },
+                    { id: 'gradient-black-white', gradient: 'linear-gradient(135deg, #111827 0%, #E5E7EB 100%)', labelVi: 'Đen trắng', labelEn: 'Black-White' },
+                  ].map((g) => {
+                    const isSelected = theme === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => setTheme(g.id as Theme)}
+                        className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[38px] ${
+                          isSelected 
+                            ? 'border-slate-800 scale-[1.02] ring-2 ring-primary/30' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                        style={{ background: g.gradient }}
+                      >
+                        <span className="drop-shadow truncate">{language === 'vi' ? g.labelVi : g.labelEn}</span>
+                        {isSelected && <Check size={12} className="text-white drop-shadow stroke-[3.5] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* RGB Rainbow Group */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  {language === 'vi' ? 'Hiệu ứng RGB' : 'RGB Effects'}
+                </span>
+                <button
+                  onClick={() => setTheme('rgb')}
+                  className={`relative overflow-hidden w-full h-10 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm ${
+                    theme === 'rgb' ? 'border-slate-800 scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  style={{
+                    background: 'linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #00ffff, #0000ff, #8a00ff, #ff0000)',
+                    backgroundSize: '200% auto',
+                    animation: 'rgb-rainbow 5s linear infinite'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-black/15 flex items-center justify-center gap-1.5 hover:bg-black/5 transition-colors">
+                    <Sparkles size={13} className="text-white drop-shadow animate-pulse" />
+                    <span className="text-white drop-shadow font-extrabold text-[11px] tracking-wide">
+                      {language === 'vi' ? 'Cầu vồng 7 sắc chạy liên tục' : 'Continuous 7-Color Rainbow'}
+                    </span>
+                    {theme === 'rgb' && <Check size={13} className="text-white drop-shadow stroke-[3.5]" />}
+                  </div>
                 </button>
               </div>
             </div>

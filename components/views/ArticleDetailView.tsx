@@ -77,6 +77,9 @@ export default function ArticleDetailView() {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
   const [reverting, setReverting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [isFbExpanded, setIsFbExpanded] = useState(false);
+  const [isThreadsExpanded, setIsThreadsExpanded] = useState(false);
+  const [isBodyExpanded, setIsBodyExpanded] = useState(false);
 
   function loadMockData() {
     const fbText = "Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.\n\nSau 10 năm tích cóp mua vàng, hai vợ chồng cuối cùng cũng chạm tay vào ước mơ sở hữu căn hộ riêng tại Hà Nội. Đọc chi tiết hành trình đầy cảm hứng này tại AntBiz!";
@@ -86,6 +89,8 @@ export default function ArticleDetailView() {
       { id: 'mock-fb', platform: 'facebook', content: fbText },
       { id: 'mock-threads', platform: 'threads', content: threadsText }
     ]);
+
+    setActiveArticle(articleData);
 
     setCheckpoints([
       {
@@ -146,14 +151,30 @@ export default function ArticleDetailView() {
           return;
         }
 
+        // Derive full_text từ body blocks nếu full_text rỗng (bài cũ chưa re-crawl)
+        const bodyText = Array.isArray(art.body)
+          ? art.body
+              .filter((b: any) => b.type !== 'image' && b.text)
+              .map((b: any) => b.text)
+              .join('\n')
+          : '';
+
         const mappedArticle = {
           url: art.url || '',
           title: art.title || 'Không có tiêu đề',
-          category: art.category || '#Chưa phân loại',
+          // Đảm bảo category luôn có dấu # (bài cũ DB có thể lưu không có #)
+          category: art.category
+            ? (art.category.startsWith('#') ? art.category : `#${art.category}`)
+            : '#Chưa phân loại',
           description: art.description || '',
           author: art.author || 'Không rõ',
           published_at: art.published_at || 'Vừa xong',
+          // Giữ nguyên chuỗi views thô cào được (ví dụ: "1.0K lượt xem", "996 lượt xem")
           views: art.views || '0 lượt xem',
+          // Ưu tiên full_text từ DB, fallback derive từ body blocks
+          full_text: art.full_text || bodyText,
+          // body: JSONB array of blocks [{type:'image'|'text', url?, caption?, text?}]
+          body: Array.isArray(art.body) ? art.body : [],
           tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',').map((t: string) => t.trim()) : []),
           images: Array.isArray(art.images) ? art.images : [{ url: art.images || 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80', caption: 'Hình ảnh bài viết' }]
         };
@@ -236,10 +257,13 @@ export default function ArticleDetailView() {
     }
 
     const activeCap = captions.find(c => c.platform === selectedPlatform);
-    if (activeCap) return activeCap.content;
+    if (activeCap) {
+      return activeCap.edited_content || activeCap.ai_content || activeCap.content || '';
+    }
 
     if (captions.length > 0) {
-      return captions[0].content;
+      const firstCap = captions[0];
+      return firstCap.edited_content || firstCap.ai_content || firstCap.content || '';
     }
     return '';
   };
@@ -258,18 +282,18 @@ export default function ArticleDetailView() {
       try {
         const { error } = await supabase
           .from('captions')
-          .update({ content: textToRestore, updated_at: new Date().toISOString() })
+          .update({ edited_content: textToRestore, updated_at: new Date().toISOString() })
           .eq('id', selectedCheckpoint.caption_id);
 
         if (error) throw error;
 
-        setCaptions(prev => prev.map(c => c.id === selectedCheckpoint.caption_id ? { ...c, content: textToRestore } : c));
+        setCaptions(prev => prev.map(c => c.id === selectedCheckpoint.caption_id ? { ...c, edited_content: textToRestore, content: textToRestore } : c));
       } catch (err) {
         console.error("Database revert error:", err);
       }
     } else {
       // Mock mode rollback
-      setCaptions(prev => prev.map(c => c.platform === selectedPlatform ? { ...c, content: textToRestore } : c));
+      setCaptions(prev => prev.map(c => c.platform === selectedPlatform ? { ...c, content: textToRestore, edited_content: textToRestore } : c));
     }
 
     setSuccessMsg(language === 'vi' 
@@ -448,13 +472,77 @@ export default function ArticleDetailView() {
                     </div>
                   </div>
 
-                  <div className="px-4 pb-4 pt-1 text-xs text-text leading-relaxed whitespace-pre-wrap">
-                    {getDisplayContent()}
+                  <div className="px-4 pb-4 pt-1 text-xs text-text leading-relaxed flex flex-col gap-2">
+                    {/* Title & Category block */}
+                    <div className="font-extrabold text-[13px] text-text mb-0.5">
+                      🏠 [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                    </div>
+
+                    {/* Caption content */}
+                    <div className="whitespace-pre-wrap">
+                      {(() => {
+                        const content = getDisplayContent();
+                        const shouldTruncate = content.length > 200;
+                        const displayedText = shouldTruncate && !isFbExpanded 
+                          ? `${content.slice(0, 200)}...` 
+                          : content;
+                        return (
+                          <>
+                            {displayedText}
+                            {shouldTruncate && (
+                              <button
+                                onClick={() => setIsFbExpanded(!isFbExpanded)}
+                                className="text-blue-650 font-extrabold ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                              >
+                                {isFbExpanded 
+                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm') 
+                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Author & Tags footer */}
+                    {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
+                      <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1">
+                        {activeArticle.author && (
+                          <div className="flex items-center gap-1 font-semibold text-gray-500">
+                            <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                            <span>{activeArticle.author}</span>
+                          </div>
+                        )}
+                        {activeArticle.tags && activeArticle.tags.length > 0 && (
+                          <div className="text-blue-600 font-bold">
+                            {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
+                  {/* All images - Facebook style */}
                   {activeArticle.images && activeArticle.images.length > 0 && (
-                    <div className="aspect-[1.91/1] w-full bg-gray-50 relative overflow-hidden border-y border-gray-100">
-                      <img src={activeArticle.images[0].url} alt="FB Post asset" className="w-full h-full object-cover" />
+                    <div className={`w-full border-y border-gray-100 ${activeArticle.images.length === 1 ? '' : 'grid grid-cols-2 gap-0.5 bg-gray-100'}`}>
+                      {activeArticle.images.map((img: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className={`relative overflow-hidden bg-gray-50 ${activeArticle.images.length === 1 ? 'aspect-[1.91/1]' : 'aspect-square'}`}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.caption || `Ảnh ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          {img.caption && activeArticle.images.length === 1 && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                              <p className="text-white text-[9px] font-semibold line-clamp-1">{img.caption}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -472,34 +560,135 @@ export default function ArticleDetailView() {
                 </div>
               ) : (
                 /* Threads Preview Mockup */
-                <div className="bg-white p-5 flex gap-3.5 text-text">
-                  <div className="flex flex-col items-center shrink-0">
-                    <div className="w-9 h-9 rounded-full bg-[#1E293B] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
-                      T
+                <div className="bg-white p-5 flex flex-col gap-0 text-text">
+                  {/* Threads Post 1/2 */}
+                  <div className="flex gap-3.5 items-stretch">
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="relative w-9 h-9">
+                        <div className="w-9 h-9 rounded-full bg-[#1E293B] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                          T
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                          +
+                        </div>
+                      </div>
+                      <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-2.5 min-w-0 pb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-text select-none">antbiz_official</span>
+                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                      </div>
+
+                      <div className="text-xs text-text leading-relaxed flex flex-col gap-2">
+                        {/* Title & Category block */}
+                        <div className="font-extrabold text-[12px] text-text">
+                          🏠 [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                        </div>
+
+                        {/* Caption content */}
+                        <div className="whitespace-pre-wrap">
+                          {(() => {
+                            const content = getDisplayContent();
+                            const shouldTruncate = content.length > 200;
+                            const displayedText = shouldTruncate && !isThreadsExpanded 
+                              ? `${content.slice(0, 200)}...` 
+                              : content;
+                            return (
+                              <>
+                                {displayedText}
+                                {shouldTruncate && (
+                                  <button
+                                    onClick={() => setIsThreadsExpanded(!isThreadsExpanded)}
+                                    className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                                  >
+                                    {isThreadsExpanded 
+                                      ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm') 
+                                      : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                        </div>
+
+                        {/* Author & Tags footer */}
+                        {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
+                          <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1">
+                            {activeArticle.author && (
+                              <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                <span>{activeArticle.author}</span>
+                              </div>
+                            )}
+                            {activeArticle.tags && activeArticle.tags.length > 0 && (
+                              <div className="text-blue-600 font-bold">
+                                {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* All images - Threads stacked style */}
+                      {activeArticle.images && activeArticle.images.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-1">
+                          {activeArticle.images.map((img: any, idx: number) => (
+                            <div key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                              <img
+                                src={img.url}
+                                alt={img.caption || `Ảnh ${idx + 1}`}
+                                className="w-full object-cover"
+                                loading="lazy"
+                              />
+                              {img.caption && (
+                                <p className="text-[9px] text-text-muted font-semibold px-3 py-1.5 bg-gray-50 border-t border-gray-100">
+                                  {img.caption}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
+                        <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                        <MessageCircle size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                        <Share2 size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex-1 flex flex-col gap-2.5 overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-text select-none">antbiz_official</span>
-                      <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
-                    </div>
-
-                    <div className="text-xs text-text leading-relaxed whitespace-pre-wrap">
-                      {getDisplayContent()}
-                    </div>
-
-                    {activeArticle.images && activeArticle.images.length > 0 && (
-                      <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm mt-1">
-                        <img src={activeArticle.images[0].url} alt="Threads content" className="w-full h-full object-cover" />
+                  {/* Threads Post 2/2 */}
+                  <div className="flex gap-3.5 items-stretch">
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-[#1E293B] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                        T
                       </div>
-                    )}
+                    </div>
 
-                    <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
-                      <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                      <MessageCircle size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
-                      <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                      <Share2 size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                    <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-text select-none">antbiz_official</span>
+                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                      </div>
+
+                      <div className="text-xs text-text leading-relaxed mt-0.5">
+                        <span className="text-blue-500 hover:underline cursor-pointer font-medium break-all">
+                          &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {activeArticle.url}
+                        </span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
+                        <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                        <MessageCircle size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                        <Share2 size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -519,25 +708,134 @@ export default function ArticleDetailView() {
             </p>
           </div>
 
-          {/* Image Cards Row */}
-          <div className="grid grid-cols-2 gap-5">
-            {activeArticle.images.map((img: any, idx: number) => (
-              <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
-                <img 
-                  src={img.url} 
-                  alt={`Image ${idx}`} 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {img.caption && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
-                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
-                      {img.caption}
-                    </p>
-                  </div>
-                )}
+          {/* Nội dung bài viết đầy đủ (body blocks: text + ảnh xen kẽ) */}
+          {Array.isArray(activeArticle.body) && activeArticle.body.length > 0 ? (
+            <div className="bg-white border border-gray-200/80 rounded-[32px] p-8 shadow-sm flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg">
+                  <span className="text-2xl">📄</span>
+                  <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
+                </div>
               </div>
-            ))}
-          </div>
+              <div className="flex flex-col gap-4">
+                {(() => {
+                  const blocks = activeArticle.body;
+                  const shouldTruncate = blocks.length > 3;
+                  const displayedBlocks = shouldTruncate && !isBodyExpanded 
+                    ? blocks.slice(0, 3) 
+                    : blocks;
+
+                  return (
+                    <>
+                      {displayedBlocks.map((block: any, idx: number) => {
+                        if (block.type === 'image' && block.url) {
+                          return (
+                            <figure key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                              <img
+                                src={block.url}
+                                alt={block.caption || `Hình ảnh ${idx + 1}`}
+                                className="w-full object-cover"
+                                loading="lazy"
+                              />
+                              {block.caption && (
+                                <figcaption className="text-[11px] text-text-muted font-semibold text-center px-4 py-2 bg-gray-50 border-t border-gray-100">
+                                  {block.caption}
+                                </figcaption>
+                              )}
+                            </figure>
+                          );
+                        }
+                        if (block.text) {
+                          return (
+                            <p key={idx} className="text-[14px] text-text leading-[1.9] font-medium whitespace-pre-wrap">
+                              {block.text}
+                            </p>
+                          );
+                        }
+                        return null;
+                      })}
+
+                      {shouldTruncate && (
+                        <div className="flex justify-center pt-2">
+                          <button
+                            onClick={() => setIsBodyExpanded(!isBodyExpanded)}
+                            className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
+                          >
+                            {isBodyExpanded 
+                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung') 
+                              : (language === 'vi' ? 'Xem thêm nội dung' : 'Read more')}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : activeArticle.full_text ? (
+            /* Fallback: hiển thị full_text nếu không có body */
+            <div className="bg-white border border-gray-200/80 rounded-[32px] p-8 shadow-sm flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg border-b border-gray-100 pb-4">
+                <span className="text-2xl">📄</span>
+                <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
+              </div>
+              <div className="text-[14px] text-text leading-[1.9] whitespace-pre-wrap font-medium">
+                {(() => {
+                  const text = activeArticle.full_text;
+                  const shouldTruncate = text.length > 500;
+                  const displayedText = shouldTruncate && !isBodyExpanded 
+                    ? `${text.slice(0, 500)}...` 
+                    : text;
+                  return (
+                    <>
+                      {displayedText}
+                      {shouldTruncate && (
+                        <div className="flex justify-center pt-4">
+                          <button
+                            onClick={() => setIsBodyExpanded(!isBodyExpanded)}
+                            className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
+                          >
+                            {isBodyExpanded 
+                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung') 
+                              : (language === 'vi' ? 'Xem thêm nội dung' : 'Read more')}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Image Gallery */}
+          {activeArticle.images && activeArticle.images.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-[#1E293B] font-bold text-base">
+                <span className="text-xl">🖼️</span>
+                <h2>{language === 'vi' ? 'Hình ảnh bài viết' : 'Article Images'}</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                {activeArticle.images.map((img: any, idx: number) => (
+                  <div key={idx} className="relative rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+                    <img
+                      src={img.url}
+                      alt={img.caption || `Image ${idx + 1}`}
+                      className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    {img.caption && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
+                        <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
+                          {img.caption}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -556,7 +854,8 @@ export default function ArticleDetailView() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews')}</span>
-                <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views.replace(/[^0-9.]/g, '') || '51.1K'}</span>
+                {/* Lấy phần số từ chuỗi views thô (ví dụ: "1.0K lượt xem" → "1.0K", "996 lượt xem" → "996") */}
+                <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
               </div>
             </div>
             

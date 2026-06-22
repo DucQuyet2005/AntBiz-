@@ -69,6 +69,7 @@ export async function classifyArticle(
   content: string
 ): Promise<CategoryResult> {
   const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   if (!apiKey) {
     // Fallback: keyword-based (vẫn tốt hơn regex URL)
@@ -89,7 +90,7 @@ Trả về JSON với format chính xác (không có markdown):
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

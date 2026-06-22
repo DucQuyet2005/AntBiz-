@@ -58,7 +58,7 @@ const Footer = () => {
   const isVi = language === 'vi';
 
   return (
-    <footer className="mt-16 bg-[#E9EAF5] text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
+    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
       
       {/* Decorative top ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-md"></div>
@@ -70,9 +70,15 @@ const Footer = () => {
           <div className="flex flex-col gap-4">
             {/* Logo + Brand Name */}
             <div className="flex items-center gap-3">
-              <BrandLogo size={36} />
+              <div className="w-9 h-9 flex items-center justify-center">
+                <img
+                  src="/images/logo.png"
+                  alt="AntBiz Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <span className="font-extrabold text-2xl tracking-tight text-text">
-                Antbiz
+                AntBiz
               </span>
             </div>
             

@@ -15,10 +15,6 @@ export async function GET(request: NextRequest) {
     .select('*, captions(id, ai_content, edited_content, platform, articles(id, title, category, description))')
     .order('scheduled_at', { ascending: true });
 
-  if (role !== 'admin' && user) {
-    query = query.eq('created_by', user.id);
-  }
-
   const { data, error } = await query;
   if (error) {
     console.error('[GET /api/scheduled-posts] Supabase error:', error);
@@ -66,19 +62,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Không tìm thấy caption tương ứng' }, { status: 404 });
   }
 
-  // Thêm lịch đăng bài vào cơ sở dữ liệu
-  const { data: scheduledPost, error: dbError } = await supabase
+  // Kiểm tra xem caption này đã có lịch đăng chờ xử lý (pending) chưa
+  const { data: existingPending, error: checkError } = await supabase
     .from('scheduled_posts')
-    .insert({
-      caption_id: captionId,
-      created_by: user.id,
-      platform: caption.platform,
-      status: 'pending',
-      scheduled_at: scheduledTime.toISOString(),
-      image_urls: imageUrls || [],
-    })
-    .select()
-    .single();
+    .select('*')
+    .eq('caption_id', captionId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('[POST /api/scheduled-posts] Check error:', checkError);
+    return NextResponse.json({ error: 'Lỗi kiểm tra lịch đăng bài hiện tại' }, { status: 500 });
+  }
+
+  let scheduledPost: any;
+  let dbError: any;
+  let responseStatus = 201;
+
+  if (existingPending) {
+    // Cập nhật lại lịch đăng hiện tại thay vì tạo mới
+    const { data: updatedPost, error: updateError } = await supabase
+      .from('scheduled_posts')
+      .update({
+        scheduled_at: scheduledTime.toISOString(),
+        image_urls: imageUrls || [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingPending.id)
+      .select()
+      .single();
+
+    scheduledPost = updatedPost;
+    dbError = updateError;
+    responseStatus = 200; // OK for update
+  } else {
+    // Thêm lịch đăng bài mới vào cơ sở dữ liệu
+    const { data: insertedPost, error: insertError } = await supabase
+      .from('scheduled_posts')
+      .insert({
+        caption_id: captionId,
+        created_by: user.id,
+        platform: caption.platform,
+        status: 'pending',
+        scheduled_at: scheduledTime.toISOString(),
+        image_urls: imageUrls || [],
+      })
+      .select()
+      .single();
+
+    scheduledPost = insertedPost;
+    dbError = insertError;
+    responseStatus = 201; // Created for insert
+  }
 
   if (dbError) {
     console.error('[POST /api/scheduled-posts] Save error:', dbError);
@@ -91,5 +126,5 @@ export async function POST(request: NextRequest) {
     .update({ status: 'scheduled' })
     .eq('id', captionId);
 
-  return NextResponse.json({ data: scheduledPost }, { status: 201 });
+  return NextResponse.json({ data: scheduledPost }, { status: responseStatus });
 }

@@ -12,72 +12,77 @@ export interface CrawlResult {
   contentHtml: string;
   fullPageHtml: string;
   crawledAt: string;
+  metadata?: any;
 }
 
 /**
- * [ĐÃ COMMENT LẠI CÁCH CŨ (PLAYWRIGHT) ĐỂ DEPLOY VERCEL]
- * 
- * export async function crawlUrl(url: string): Promise<CrawlResult> {
- *   console.log(`\\n📥 [Crawler] Crawling: ${url}`);
- * 
- *   const browser = await chromium.launch({ headless: true });
- * 
- *   try {
- *     const page = await browser.newPage({
- *       userAgent:
- *         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
- *         'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
- *     });
- * 
- *     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
- *     await page.waitForTimeout(2000);
- * 
- *     // Scroll down to load dynamic/Spotlight content (lazy-loaded images and text elements)
- *     for (let i = 0; i < 15; i++) {
- *       await page.evaluate(() => window.scrollBy(0, 800));
- *       await page.waitForTimeout(150);
- *     }
- * 
- *     const title = await page.title();
- *     let contentHtml = '';
- * 
- *     // Try selectors in order of specificity (same as Python version)
- *     for (const selector of ['#html_content', 'article', 'main', "[class*='content']", 'body']) {
- *       const el = await page.$(selector);
- *       if (el) {
- *         const html = await el.innerHTML();
- *         if (html.trim()) {
- *           contentHtml = html;
- *           break;
- *         }
- *       }
- *     }
- * 
- *     const fullPageHtml = await page.content();
- * 
- *     if (!contentHtml.trim()) {
- *       throw new Error(`Không crawl được nội dung từ: ${url}`);
- *     }
- * 
- *     console.log(`   ✅ Crawl thành công — HTML dài ${contentHtml.length} ký tự`);
- * 
- *     return {
- *       url,
- *       title,
- *       contentHtml,
- *       fullPageHtml,
- *       crawledAt: new Date().toISOString(),
- *     };
- *   } finally {
- *     await browser.close();
- *   }
- * }
- */
-
-/**
- * CÁCH MỚI: Dùng Firecrawl API (Thân thiện với Vercel Serverless)
+ * Hybrid Crawler: Dùng Playwright khi chạy Local (để lấy DOM đầy đủ và bypass Cloudflare/chặn bot dễ dàng),
+ * tự động fallback sang Firecrawl API khi deploy lên Vercel Serverless.
  */
 export async function crawlUrl(url: string): Promise<CrawlResult> {
+  // Ưu tiên chạy Playwright trên cả local và deploy. Chỉ dùng Firecrawl khi FORCE_FIRECRAWL === 'true'
+  const usePlaywright = process.env.FORCE_FIRECRAWL !== 'true';
+
+  if (usePlaywright) {
+    try {
+      console.log(`\n📥 [Playwright] Crawling: ${url}`);
+      const { chromium } = await import('playwright');
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const page = await browser.newPage({
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        });
+
+        await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+        await page.waitForTimeout(2000);
+
+        // Cuộn trang xuống để load dynamic content / Spotlight content
+        for (let i = 0; i < 8; i++) {
+          await page.evaluate(() => window.scrollBy(0, 800));
+          await page.waitForTimeout(150);
+        }
+
+        const title = await page.title();
+        let contentHtml = '';
+
+        // Thử tìm theo độ ưu tiên của các selector
+        for (const selector of ['#html_content', 'article', 'main', "[class*='content']", 'body']) {
+          const el = await page.$(selector);
+          if (el) {
+            const html = await el.innerHTML();
+            if (html.trim()) {
+              contentHtml = html;
+              break;
+            }
+          }
+        }
+
+        const fullPageHtml = await page.content();
+
+        if (!contentHtml.trim()) {
+          throw new Error(`Không crawl được nội dung từ: ${url}`);
+        }
+
+        console.log(`   ✅ [Local Playwright] Crawl thành công — HTML dài ${contentHtml.length} ký tự`);
+
+        return {
+          url,
+          title,
+          contentHtml,
+          fullPageHtml,
+          crawledAt: new Date().toISOString(),
+        };
+      } finally {
+        await browser.close();
+      }
+    } catch (playwrightError: any) {
+      console.warn(`⚠️ [Local Playwright] Lỗi hoặc thiếu thư viện, tự động chuyển sang Firecrawl:`, playwrightError.message || playwrightError);
+    }
+  }
+
+  // Cách dự phòng hoặc chạy trên Vercel: Dùng Firecrawl API
   console.log(`\n📥 [Firecrawl API] Crawling: ${url}`);
 
   const apiKey = process.env.FIRECRAWL_API_KEY;
@@ -94,7 +99,11 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
       },
       body: JSON.stringify({
         url: url,
-        formats: ['html'], // Request HTML format to process with Cheerio
+        formats: ['html'], // Request HTML format
+        actions: [
+          { type: 'scroll', direction: 'down' },
+          { type: 'wait', milliseconds: 1500 }
+        ]
       }),
     });
 
@@ -112,7 +121,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
     const title = result.data.metadata?.title || 'Bài viết không tên';
     const html = result.data.html || '';
 
-    console.log(`   ✅ Crawl thành công qua Firecrawl — HTML dài ${html.length} ký tự`);
+    console.log(`   ✅ [Firecrawl API] Crawl thành công — HTML dài ${html.length} ký tự`);
 
     return {
       url,
@@ -120,6 +129,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
       contentHtml: html,
       fullPageHtml: html,
       crawledAt: new Date().toISOString(),
+      metadata: result.data.metadata,
     };
   } catch (error: any) {
     console.error(`[Firecrawl API] Lỗi cào dữ liệu từ ${url}:`, error.message || error);
