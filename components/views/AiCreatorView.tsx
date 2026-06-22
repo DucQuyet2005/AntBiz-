@@ -121,21 +121,7 @@ let _editState: any = null;
 let _setEditState: any = () => { };
 let _handleUpdateVariantField: any = () => { };
 
-interface SocialVariant {
-  id: string; // A, B, C...
-  facebook: string;
-  threads: string;
-  instagram: string;
-  originalFacebook?: string;
-  originalThreads?: string;
-  originalInstagram?: string;
-  facebookCaptionId?: string;
-  threadsCaptionId?: string;
-  instagramCaptionId?: string;
-  title: string;
-  author: string;
-  tags: string;
-}
+
 
 interface EditableTextContextProps {
   editState: { variantId: string; field: string } | null;
