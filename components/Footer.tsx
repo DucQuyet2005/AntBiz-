@@ -58,15 +58,15 @@ const Footer = () => {
   const isVi = language === 'vi';
 
   return (
-    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
+    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-4 sm:px-6 lg:px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
       
       {/* Decorative top ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-md"></div>
 
-      <div className="pt-14 pb-8 grid grid-cols-12 gap-8 border-b border-primary/10 relative z-10">
+      <div className="pt-14 pb-8 grid grid-cols-1 md:grid-cols-12 gap-8 border-b border-primary/10 relative z-10">
         
         {/* Left Column - About (Flat, non-card static column to prevent scrolling issues) */}
-        <div className="col-span-6 pr-8">
+        <div className="col-span-12 md:col-span-6 pr-0 md:pr-8">
           <div className="flex flex-col gap-4">
             {/* Logo + Brand Name */}
             <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ const Footer = () => {
         </div>
 
         {/* Middle Column - Menu */}
-        <div className="col-span-3 flex flex-col pl-4">
+        <div className="col-span-12 sm:col-span-6 md:col-span-3 flex flex-col pl-0 sm:pl-4">
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
             {t('footer.tableOfContents')}
           </h3>
@@ -113,7 +113,7 @@ const Footer = () => {
         </div>
 
         {/* Right Column - Support */}
-        <div className="col-span-3 flex flex-col">
+        <div className="col-span-12 sm:col-span-6 md:col-span-3 flex flex-col">
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
             {t('footer.support')}
           </h3>

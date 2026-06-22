@@ -215,7 +215,7 @@ export default function OverviewView() {
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
       
       {/* Dynamic Greeting Hero Banner - White Theme */}
-      <div className="relative overflow-hidden bg-white border border-slate-200/60 rounded-[32px] p-8 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="relative overflow-hidden bg-white border border-slate-200/60 rounded-[32px] p-6 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         {/* Background neon ambient graphic */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-indigo-500/5 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-emerald-500/5 to-transparent blur-2xl pointer-events-none" />
@@ -490,7 +490,7 @@ export default function OverviewView() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {stats.recentPosts.map((post) => {
               let platIcon = <Globe size={13} />;
               let platBg = 'bg-slate-100 text-slate-700';

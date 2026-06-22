@@ -126,10 +126,10 @@ export default function FaqView() {
       </div>
 
       {/* 2-Column Grid Content Layout */}
-      <div className="grid grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column: Categories List & Accordions */}
-        <div className="col-span-8 flex flex-col gap-6">
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           {filteredCategories.length === 0 ? (
             <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-12 flex flex-col items-center text-center gap-2">
               <p className="font-bold text-slate-700">
@@ -192,7 +192,7 @@ export default function FaqView() {
         </div>
 
         {/* Right Column: Tips & Support Sidebar */}
-        <div className="col-span-4 flex flex-col gap-6">
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
           
           {/* Pro Tips Section (Emerald theme matching app) */}
           <div className="bg-gradient-to-br from-[#4E7164] to-[#3A564C] border border-emerald-800/25 rounded-3xl p-6 text-white flex flex-col gap-4 shadow-sm relative overflow-hidden shrink-0">

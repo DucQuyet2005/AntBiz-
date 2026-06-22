@@ -497,395 +497,397 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
 
     const [facebookSlot] = useState(() => getFutureScheduleSlot(1));
-    const [threadsSlot] = useState(() => getFutureScheduleSlot(2));
-    const [instagramSlot] = useState(() => getFutureScheduleSlot(3));
-    const [facebookDate, setFacebookDate] = useState<string>(facebookSlot.date);
-    const [facebookTime, setFacebookTime] = useState<string>(facebookSlot.time);
-    const [threadsDate, setThreadsDate] = useState<string>(threadsSlot.date);
-    const [threadsTime, setThreadsTime] = useState<string>(threadsSlot.time);
-    const [instagramDate, setInstagramDate] = useState<string>(instagramSlot.date);
-    const [instagramTime, setInstagramTime] = useState<string>(instagramSlot.time);
-    const [facebookError, setFacebookError] = useState<string>("");
-    const [threadsError, setThreadsError] = useState<string>("");
-    const [instagramError, setInstagramError] = useState<string>("");
-    const [isScheduled, setIsScheduled] = useState(false);
-    const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
-    const [fbResetTrigger, setFbResetTrigger] = useState(0);
-    const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
-    const [instagramResetTrigger, setInstagramResetTrigger] = useState(0);
-    const [isSchedulingLoading, setIsSchedulingLoading] = useState(false);
-    const [schedulingError, setSchedulingError] = useState<string | null>(null);
+  const [threadsSlot] = useState(() => getFutureScheduleSlot(2));
+  const [instagramSlot] = useState(() => getFutureScheduleSlot(3));
+  const [facebookDate, setFacebookDate] = useState<string>(facebookSlot.date);
+  const [facebookTime, setFacebookTime] = useState<string>(facebookSlot.time);
+  const [threadsDate, setThreadsDate] = useState<string>(threadsSlot.date);
+  const [threadsTime, setThreadsTime] = useState<string>(threadsSlot.time);
+  const [instagramDate, setInstagramDate] = useState<string>(instagramSlot.date);
+  const [instagramTime, setInstagramTime] = useState<string>(instagramSlot.time);
+  const [facebookError, setFacebookError] = useState<string>("");
+  const [threadsError, setThreadsError] = useState<string>("");
+  const [instagramError, setInstagramError] = useState<string>("");
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [activeWeek, setActiveWeek] = useState<0 | 1 | 2>(0);
+  const [fbResetTrigger, setFbResetTrigger] = useState(0);
+  const [threadsResetTrigger, setThreadsResetTrigger] = useState(0);
+  const [instagramResetTrigger, setInstagramResetTrigger] = useState(0);
+  const [isSchedulingLoading, setIsSchedulingLoading] = useState(false);
+  const [schedulingError, setSchedulingError] = useState<string | null>(null);
 
 
 
-    const [existingPosts, setExistingPosts] = useState<any[]>([]);
-    const [selectedCell, setSelectedCell] = useState<{ dateStr: string; hour: number; posts: any[] } | null>(null);
+  const [existingPosts, setExistingPosts] = useState<any[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{ dateStr: string; hour: number; posts: any[] } | null>(null);
 
-    useEffect(() => {
-      async function loadExistingPosts() {
-        try {
-          const res = await fetch('/api/scheduled-posts');
-          if (res.ok) {
-            const json = await res.json();
-            if (json.data) {
-              setExistingPosts(json.data);
-            }
+  useEffect(() => {
+    async function loadExistingPosts() {
+      try {
+        const res = await fetch('/api/scheduled-posts');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) {
+            setExistingPosts(json.data);
           }
-        } catch (err) {
-          console.error('Failed to load existing scheduled posts:', err);
         }
+      } catch (err) {
+        console.error('Failed to load existing scheduled posts:', err);
       }
-      loadExistingPosts();
-    }, [step]);
+    }
+    loadExistingPosts();
+  }, [step]);
 
-    const getPostDateAndHour = (scheduledAtStr: string) => {
-      const date = new Date(scheduledAtStr);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      const hour = date.getHours();
-      return { dateStr, hour };
-    };
+  const getPostDateAndHour = (scheduledAtStr: string) => {
+    const date = new Date(scheduledAtStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const hour = date.getHours();
+    return { dateStr, hour };
+  };
+  const getCellPostCount = (dateStr: string, hour: number, excludePlatform?: string) => {
+    let count = existingPosts.filter(p => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
+      return postDate === dateStr && postHour === hour;
+    }).length;
 
-    const isCellOccupied = (dateStr: string, hour: number) => {
-      return existingPosts.some(p => {
-        const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
-        return postDate === dateStr && postHour === hour;
-      });
-    };
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
 
-    const getCellPosts = (dateStr: string, hour: number) => {
-      const list: any[] = [];
-      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    if (excludePlatform !== 'facebook' && targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) count++;
+    }
 
-      if (targetPlatforms.includes('facebook') && facebookDate === dateStr) {
-        const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
-        if (fbHr === hour) {
-          list.push({
-            type: 'draft',
-            platform: 'facebook',
-            timeStr: facebookTime,
-            title: language === 'vi' ? 'Facebook (Bản nháp)' : 'Facebook (Draft)',
-            time: facebookTime,
-          });
-        }
+    if (excludePlatform !== 'threads' && targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'instagram' && targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) count++;
+    }
+
+    return count;
+  };
+
+  const isCellOccupied = (dateStr: string, hour: number, excludePlatform?: string) => {
+    return getCellPostCount(dateStr, hour, excludePlatform) >= 3;
+  };
+
+  const getCellPosts = (dateStr: string, hour: number) => {
+    const list: any[] = [];
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'facebook',
+          timeStr: facebookTime,
+          title: language === 'vi' ? 'Facebook (Bản nháp)' : 'Facebook (Draft)',
+          time: facebookTime,
+        });
       }
+    }
 
-      if (targetPlatforms.includes('threads') && threadsDate === dateStr) {
-        const trHr = parseInt(threadsTime.split(':')[0]) || 0;
-        if (trHr === hour) {
-          list.push({
-            type: 'draft',
-            platform: 'threads',
-            timeStr: threadsTime,
-            title: language === 'vi' ? 'Threads (Bản nháp)' : 'Threads (Draft)',
-            time: threadsTime,
-          });
-        }
+    if (targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'threads',
+          timeStr: threadsTime,
+          title: language === 'vi' ? 'Threads (Bản nháp)' : 'Threads (Draft)',
+          time: threadsTime,
+        });
       }
+    }
 
-      if (targetPlatforms.includes('instagram') && instagramDate === dateStr) {
-        const igHr = parseInt(instagramTime.split(':')[0]) || 0;
-        if (igHr === hour) {
-          list.push({
-            type: 'draft',
-            platform: 'instagram',
-            timeStr: instagramTime,
-            title: language === 'vi' ? 'Instagram (Bản nháp)' : 'Instagram (Draft)',
-            time: instagramTime,
-          });
-        }
+    if (targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) {
+        list.push({
+          type: 'draft',
+          platform: 'instagram',
+          timeStr: instagramTime,
+          title: language === 'vi' ? 'Instagram (Bản nháp)' : 'Instagram (Draft)',
+          time: instagramTime,
+        });
       }
+    }
 
-      existingPosts.forEach((post) => {
-        const { dateStr: postDate, hour: postHour } = getPostDateAndHour(post.scheduled_at);
-        if (postDate === dateStr && postHour === hour) {
-          const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...' || (language === 'vi' ? 'Bài viết không tên' : 'Untitled Post');
-          const date = new Date(post.scheduled_at);
-          const mins = String(date.getMinutes()).padStart(2, '0');
-          const timeStr = `${String(postHour).padStart(2, '0')}:${mins}`;
-          list.push({
-            type: 'existing',
-            platform: post.platform,
-            timeStr: timeStr,
-            title: title,
-            status: post.status,
-            id: post.id
-          });
-        }
-      });
-
-      return list.sort((a, b) => a.timeStr.localeCompare(b.timeStr));
-    };
-
-    const weekDays = Array.from({ length: 21 }, (_, index) => {
-      const start = getWeekStartDate();
-      start.setDate(start.getDate() + index);
-      const dateStr = toDateInputValue(start);
-
-      const daysNameMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const name = daysNameMap[start.getDay()];
-      const label = start.getDate().toString();
-      const isToday = dateStr === toDateInputValue(new Date());
-
-      return { name, date: dateStr, label, isToday };
+    existingPosts.forEach((post) => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(post.scheduled_at);
+      if (postDate === dateStr && postHour === hour) {
+        const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...' || (language === 'vi' ? 'Bài viết không tên' : 'Untitled Post');
+        const date = new Date(post.scheduled_at);
+        const mins = String(date.getMinutes()).padStart(2, '0');
+        const timeStr = `${String(postHour).padStart(2, '0')}:${mins}`;
+        list.push({
+          type: 'existing',
+          platform: post.platform,
+          timeStr: timeStr,
+          title: title,
+          status: post.status,
+          id: post.id
+        });
+      }
     });
 
-    const handleFacebookDateChange = (val: string) => {
-      const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-      if (isCellOccupied(val, activeHour)) {
-        setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${facebookTime} on ${val}.`);
-      } else {
-        setFacebookError("");
-        setFacebookDate(val);
-        // Auto-update activeWeek tab
-        const dayIdx = weekDays.findIndex(d => d.date === val);
-        if (dayIdx >= 0) {
-          const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
-          setActiveWeek(weekIdx);
-        }
+    return list.sort((a, b) => a.timeStr.localeCompare(b.timeStr));
+  };
+
+  const weekDays = Array.from({ length: 21 }, (_, index) => {
+    const start = getWeekStartDate();
+    start.setDate(start.getDate() + index);
+    const dateStr = toDateInputValue(start);
+
+    const daysNameMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const name = daysNameMap[start.getDay()];
+    const label = start.getDate().toString();
+    const isToday = dateStr === toDateInputValue(new Date());
+
+    return { name, date: dateStr, label, isToday };
+  });
+
+  const handleFacebookDateChange = (val: string) => {
+    const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
+    if (isCellOccupied(val, activeHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${facebookTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setFacebookError("");
+      setFacebookDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
       }
-    };
+    }
+  };
 
-    const handleFacebookTimeChange = (val: string) => {
-      const [h, m] = val.split(':').map(Number);
-      const clampedHour = Math.max(0, Math.min(23, h));
-      const clampedMinute = Math.max(0, Math.min(59, m || 0));
-      const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
+  const handleFacebookTimeChange = (val: string) => {
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-      if (isCellOccupied(facebookDate, clampedHour)) {
-        setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${facebookDate}.`);
-      } else {
-        setFacebookError("");
-        setFacebookTime(finalTime);
+    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${facebookDate} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setFacebookError("");
+      setFacebookTime(finalTime);
+    }
+  };
+
+  const handleThreadsDateChange = (val: string) => {
+    const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
+    if (isCellOccupied(val, activeHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${threadsTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setThreadsError("");
+      setThreadsDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
       }
-    };
+    }
+  };
 
-    const handleThreadsDateChange = (val: string) => {
-      const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-      if (isCellOccupied(val, activeHour)) {
-        setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${threadsTime} on ${val}.`);
-      } else {
-        setThreadsError("");
-        setThreadsDate(val);
-        // Auto-update activeWeek tab
-        const dayIdx = weekDays.findIndex(d => d.date === val);
-        if (dayIdx >= 0) {
-          const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
-          setActiveWeek(weekIdx);
-        }
+  const handleThreadsTimeChange = (val: string) => {
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
+
+    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${threadsDate} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setThreadsError("");
+      setThreadsTime(finalTime);
+    }
+  };
+
+  const handleFacebookDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setFacebookError(
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+    );
+    setTimeout(() => setFacebookError(""), 4500);
+  };
+
+  const handleThreadsDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setThreadsError(
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+    );
+    setTimeout(() => setThreadsError(""), 4500);
+  };
+
+  const handleFbDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 24));
+
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(23, row));
+
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = clampedRow;
+
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'facebook');
+
+    if (isOccupied) {
+      handleFacebookDragError(targetDate, targetHour);
+      setFbResetTrigger(prev => prev + 1);
+    } else {
+      setFacebookError("");
+      setFacebookDate(targetDate);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = facebookTime.split(':')[1] || "00";
+      setFacebookTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
+    }
+  };
+
+  const handleThreadsDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 24));
+
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(23, row));
+
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = clampedRow;
+
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'threads');
+
+    if (isOccupied) {
+      handleThreadsDragError(targetDate, targetHour);
+      setThreadsResetTrigger(prev => prev + 1);
+    } else {
+      setThreadsError("");
+      setThreadsDate(targetDate);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = threadsTime.split(':')[1] || "00";
+      setThreadsTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
+    }
+  };
+
+  const handleInstagramDateChange = (val: string) => {
+    const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
+    if (isCellOccupied(val, activeHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${instagramTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setInstagramError("");
+      setInstagramDate(val);
+      // Auto-update activeWeek tab
+      const dayIdx = weekDays.findIndex(d => d.date === val);
+      if (dayIdx >= 0) {
+        const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
+        setActiveWeek(weekIdx);
       }
-    };
+    }
+  };
 
-    const handleThreadsTimeChange = (val: string) => {
-      const [h, m] = val.split(':').map(Number);
-      const clampedHour = Math.max(0, Math.min(23, h));
-      const clampedMinute = Math.max(0, Math.min(59, m || 0));
-      const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
+  const handleInstagramTimeChange = (val: string) => {
+    const [h, m] = val.split(':').map(Number);
+    const clampedHour = Math.max(0, Math.min(23, h));
+    const clampedMinute = Math.max(0, Math.min(59, m || 0));
+    const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-      if (isCellOccupied(threadsDate, clampedHour)) {
-        setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${threadsDate}.`);
-      } else {
-        setThreadsError("");
-        setThreadsTime(finalTime);
+    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${instagramDate} has reached maximum capacity (max 3 posts/hour).`);
+    } else {
+      setInstagramError("");
+      setInstagramTime(finalTime);
+    }
+  };
+
+  const handleInstagramDragError = (blockedDate: string, hour: number) => {
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    setInstagramError(
+      language === 'vi'
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+    );
+    setTimeout(() => setInstagramError(""), 4500);
+  };
+
+  const handleInstagramDragEnd = (event: any, info: any) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = info.point.x - rect.left;
+    const y = info.point.y - rect.top;
+
+    const col = Math.floor(x / (rect.width / 7));
+    const row = Math.floor(y / (rect.height / 24));
+
+    const clampedCol = Math.max(0, Math.min(6, col));
+    const clampedRow = Math.max(0, Math.min(23, row));
+
+    const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
+    const targetHour = clampedRow;
+
+    const isOccupied = isCellOccupied(targetDate, targetHour, 'instagram');
+
+    if (isOccupied) {
+      handleInstagramDragError(targetDate, targetHour);
+      setInstagramResetTrigger(prev => prev + 1);
+    } else {
+      setInstagramError("");
+      setInstagramDate(targetDate);
+      // Keep existing minutes when dragging to a new hour
+      const existingMinutes = instagramTime.split(':')[1] || "00";
+      setInstagramTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
+    }
+  };
+
+  const getDayLabel = (dayName: string) => {
+    if (language === 'vi') {
+      switch (dayName) {
+        case 'Mon': return 'Thứ hai';
+        case 'Tue': return 'Thứ ba';
+        case 'Wed': return 'Thứ tư';
+        case 'Thu': return 'Thứ năm';
+        case 'Fri': return 'Thứ sáu';
+        case 'Sat': return 'Thứ bảy';
+        case 'Sun': return 'Chủ nhật';
+        default: return dayName;
       }
-    };
-
-    const handleFacebookDragError = (blockedDate: string, hour: number) => {
-      const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-      setFacebookError(
-        language === 'vi'
-          ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-          : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
-      );
-      setTimeout(() => setFacebookError(""), 4500);
-    };
-
-    const handleThreadsDragError = (blockedDate: string, hour: number) => {
-      const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-      setThreadsError(
-        language === 'vi'
-          ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-          : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
-      );
-      setTimeout(() => setThreadsError(""), 4500);
-    };
-
-    const handleFbDragEnd = (event: any, info: any) => {
-      if (!boardRef.current) return;
-      const rect = boardRef.current.getBoundingClientRect();
-      const x = info.point.x - rect.left;
-      const y = info.point.y - rect.top;
-
-      const col = Math.floor(x / (rect.width / 7));
-      const row = Math.floor(y / (rect.height / 24));
-
-      const clampedCol = Math.max(0, Math.min(6, col));
-      const clampedRow = Math.max(0, Math.min(23, row));
-
-      const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-      const targetHour = clampedRow;
-
-      // Check occupancy against existing posts AND threads active post AND instagram active post
-      const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-      const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-      const isOccupied = isCellOccupied(targetDate, targetHour) ||
-        (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour) ||
-        (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
-
-      if (isOccupied) {
-        handleFacebookDragError(targetDate, targetHour);
-        setFbResetTrigger(prev => prev + 1);
-      } else {
-        setFacebookError("");
-        setFacebookDate(targetDate);
-        // Keep existing minutes when dragging to a new hour
-        const existingMinutes = facebookTime.split(':')[1] || "00";
-        setFacebookTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
+    } else {
+      switch (dayName) {
+        case 'Mon': return 'Monday';
+        case 'Tue': return 'Tuesday';
+        case 'Wed': return 'Wednesday';
+        case 'Thu': return 'Thursday';
+        case 'Fri': return 'Friday';
+        case 'Sat': return 'Saturday';
+        case 'Sun': return 'Sunday';
+        default: return dayName;
       }
-    };
+    }
+  };
 
-    const handleThreadsDragEnd = (event: any, info: any) => {
-      if (!boardRef.current) return;
-      const rect = boardRef.current.getBoundingClientRect();
-      const x = info.point.x - rect.left;
-      const y = info.point.y - rect.top;
-
-      const col = Math.floor(x / (rect.width / 7));
-      const row = Math.floor(y / (rect.height / 24));
-
-      const clampedCol = Math.max(0, Math.min(6, col));
-      const clampedRow = Math.max(0, Math.min(23, row));
-
-      const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-      const targetHour = clampedRow;
-
-      // Check occupancy against existing posts AND facebook active post AND instagram active post
-      const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-      const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-      const isOccupied = isCellOccupied(targetDate, targetHour) ||
-        (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-        (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
-
-      if (isOccupied) {
-        handleThreadsDragError(targetDate, targetHour);
-        setThreadsResetTrigger(prev => prev + 1);
-      } else {
-        setThreadsError("");
-        setThreadsDate(targetDate);
-        // Keep existing minutes when dragging to a new hour
-        const existingMinutes = threadsTime.split(':')[1] || "00";
-        setThreadsTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
-      }
-    };
-
-    const handleInstagramDateChange = (val: string) => {
-      const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-      if (isCellOccupied(val, activeHour)) {
-        setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${instagramTime} on ${val}.`);
-      } else {
-        setInstagramError("");
-        setInstagramDate(val);
-        // Auto-update activeWeek tab
-        const dayIdx = weekDays.findIndex(d => d.date === val);
-        if (dayIdx >= 0) {
-          const weekIdx = Math.floor(dayIdx / 7) as 0 | 1 | 2;
-          setActiveWeek(weekIdx);
-        }
-      }
-    };
-
-    const handleInstagramTimeChange = (val: string) => {
-      const [h, m] = val.split(':').map(Number);
-      const clampedHour = Math.max(0, Math.min(23, h));
-      const clampedMinute = Math.max(0, Math.min(59, m || 0));
-      const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
-
-      if (isCellOccupied(instagramDate, clampedHour)) {
-        setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${instagramDate}.`);
-      } else {
-        setInstagramError("");
-        setInstagramTime(finalTime);
-      }
-    };
-
-    const handleInstagramDragError = (blockedDate: string, hour: number) => {
-      const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-      setInstagramError(
-        language === 'vi'
-          ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-          : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
-      );
-      setTimeout(() => setInstagramError(""), 4500);
-    };
-
-    const handleInstagramDragEnd = (event: any, info: any) => {
-      if (!boardRef.current) return;
-      const rect = boardRef.current.getBoundingClientRect();
-      const x = info.point.x - rect.left;
-      const y = info.point.y - rect.top;
-
-      const col = Math.floor(x / (rect.width / 7));
-      const row = Math.floor(y / (rect.height / 24));
-
-      const clampedCol = Math.max(0, Math.min(6, col));
-      const clampedRow = Math.max(0, Math.min(23, row));
-
-      const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
-      const targetHour = clampedRow;
-
-      // Check occupancy against existing posts, Facebook active post and Threads active post
-      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-      const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-      const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-      const isOccupied = isCellOccupied(targetDate, targetHour) ||
-        (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-        (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
-
-      if (isOccupied) {
-        handleInstagramDragError(targetDate, targetHour);
-        setInstagramResetTrigger(prev => prev + 1);
-      } else {
-        setInstagramError("");
-        setInstagramDate(targetDate);
-        // Keep existing minutes when dragging to a new hour
-        const existingMinutes = instagramTime.split(':')[1] || "00";
-        setInstagramTime(`${targetHour.toString().padStart(2, '0')}:${existingMinutes}`);
-      }
-    };
-
-    const getDayLabel = (dayName: string) => {
-      if (language === 'vi') {
-        switch (dayName) {
-          case 'Mon': return 'Thứ hai';
-          case 'Tue': return 'Thứ ba';
-          case 'Wed': return 'Thứ tư';
-          case 'Thu': return 'Thứ năm';
-          case 'Fri': return 'Thứ sáu';
-          case 'Sat': return 'Thứ bảy';
-          case 'Sun': return 'Chủ nhật';
-          default: return dayName;
-        }
-      } else {
-        switch (dayName) {
-          case 'Mon': return 'Monday';
-          case 'Tue': return 'Tuesday';
-          case 'Wed': return 'Wednesday';
-          case 'Thu': return 'Thursday';
-          case 'Fri': return 'Friday';
-          case 'Sat': return 'Saturday';
-          case 'Sun': return 'Sunday';
-          default: return dayName;
-        }
-      }
-    };
-
-    const [url, setUrl] = useState('');
+  const [url, setUrl] = useState('');
     const [isFetching, setIsFetching] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
 
