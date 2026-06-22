@@ -12,6 +12,7 @@ const hoisted = vi.hoisted(() => {
   const mockGetUser = vi.fn();
 
   class MockQueryBuilder {
+    private filters: { type: string; column: string; value: any }[] = [];
     constructor(private table: string) {}
 
     select(columns?: string, options?: any) {
@@ -19,15 +20,58 @@ const hoisted = vi.hoisted(() => {
     }
 
     eq(column: string, value: any) {
+      this.filters.push({ type: 'eq', column, value });
       return this;
     }
 
     lte(column: string, value: any) {
+      this.filters.push({ type: 'lte', column, value });
+      return this;
+    }
+
+    gt(column: string, value: any) {
+      this.filters.push({ type: 'gt', column, value });
+      return this;
+    }
+
+    lt(column: string, value: any) {
+      this.filters.push({ type: 'lt', column, value });
+      return this;
+    }
+
+    in(column: string, value: any) {
+      this.filters.push({ type: 'in', column, value });
+      return this;
+    }
+
+    neq(column: string, value: any) {
+      this.filters.push({ type: 'neq', column, value });
       return this;
     }
 
     order(column: string, options?: any) {
       return this;
+    }
+
+    private getFilteredPosts() {
+      let filtered = [...mockScheduledPostsDb];
+      for (const f of this.filters) {
+        if (f.type === 'eq') {
+          filtered = filtered.filter(item => item[f.column] === f.value);
+        } else if (f.type === 'neq') {
+          filtered = filtered.filter(item => item[f.column] !== f.value);
+        } else if (f.type === 'lte') {
+          filtered = filtered.filter(item => new Date(item[f.column]) <= new Date(f.value));
+        } else if (f.type === 'gt') {
+          filtered = filtered.filter(item => new Date(item[f.column]) > new Date(f.value));
+        } else if (f.type === 'lt') {
+          filtered = filtered.filter(item => new Date(item[f.column]) < new Date(f.value));
+        } else if (f.type === 'in') {
+          const valuesArray = Array.isArray(f.value) ? f.value : [f.value];
+          filtered = filtered.filter(item => valuesArray.includes(item[f.column]));
+        }
+      }
+      return filtered;
     }
 
     maybeSingle() {
@@ -42,8 +86,8 @@ const hoisted = vi.hoisted(() => {
         return Promise.resolve({ data: caption || null, error: null });
       }
       if (this.table === 'scheduled_posts') {
-        const post = mockScheduledPostsDb[0];
-        return Promise.resolve({ data: post || null, error: null });
+        const filtered = this.getFilteredPosts();
+        return Promise.resolve({ data: filtered[0] || null, error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }
@@ -56,8 +100,8 @@ const hoisted = vi.hoisted(() => {
         return Promise.resolve({ data: { role: currentRole, email: 'user@test.com' }, error: null });
       }
       if (this.table === 'scheduled_posts') {
-        const post = mockScheduledPostsDb[0];
-        return Promise.resolve({ data: post || null, error: null });
+        const filtered = this.getFilteredPosts();
+        return Promise.resolve({ data: filtered[0] || null, error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }
@@ -75,12 +119,24 @@ const hoisted = vi.hoisted(() => {
       return this;
     }
 
+    private updatedData: any = null;
+
     update(data: any) {
       if (mockError || (mockCancelError && this.table === 'scheduled_posts')) {
         return this;
       }
       if (this.table === 'scheduled_posts') {
-        mockScheduledPostsDb = mockScheduledPostsDb.map((p: any) => ({ ...p, ...data }));
+        const matchingIds = this.getFilteredPosts().map(p => p.id);
+        this.updatedData = mockScheduledPostsDb
+          .filter(p => matchingIds.includes(p.id))
+          .map(p => ({ ...p, ...data }));
+
+        mockScheduledPostsDb = mockScheduledPostsDb.map((p: any) => {
+          if (matchingIds.includes(p.id)) {
+            return { ...p, ...data };
+          }
+          return p;
+        });
       } else if (this.table === 'captions') {
         mockCaptionsDb = mockCaptionsDb.map((c: any) => ({ ...c, ...data }));
       }
@@ -94,7 +150,7 @@ const hoisted = vi.hoisted(() => {
       } else if (this.table === 'users') {
         result = { data: { role: currentRole, email: 'user@test.com' }, error: null };
       } else if (this.table === 'scheduled_posts') {
-        result = { data: mockScheduledPostsDb, error: null };
+        result = { data: this.updatedData || this.getFilteredPosts(), error: null };
       } else if (this.table === 'captions') {
         result = { data: mockCaptionsDb, error: null };
       }
@@ -210,6 +266,31 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     expect(json.data.caption_id).toBe('c1');
     expect(hoisted.getState().mockCaptionsDb[0].status).toBe('scheduled');
   });
+
+  it('POST updates existing scheduled post instead of creating duplicate if status is pending', async () => {
+    const state = hoisted.getState();
+    const existingDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+    state.mockScheduledPostsDb = [{ id: 'sp1', caption_id: 'c1', platform: 'facebook', status: 'pending', scheduled_at: existingDate, image_urls: [] }];
+    
+    const newFutureDate = new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString(); // 2 hours in future
+    const req = new NextRequest('http://localhost/api/scheduled-posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        captionId: 'c1',
+        scheduledAt: newFutureDate,
+        imageUrls: ['http://test.com/new-img.jpg'],
+      }),
+    });
+    
+    const res = await createScheduledPost(req);
+    expect(res.status).toBe(200); // 200 OK for update
+    const json = await res.json();
+    expect(json.data.id).toBe('sp1');
+    expect(state.mockScheduledPostsDb.length).toBe(1); // Should update, not insert duplicate
+    expect(state.mockScheduledPostsDb[0].scheduled_at).toBe(newFutureDate);
+    expect(state.mockScheduledPostsDb[0].image_urls).toEqual(['http://test.com/new-img.jpg']);
+  });
+
 
   it('POST returns 400 for past scheduled dates', async () => {
     const pastDate = new Date(Date.now() - 1000 * 60 * 60).toISOString(); // 1 hour in past
