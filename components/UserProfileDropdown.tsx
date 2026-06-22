@@ -461,6 +461,14 @@ export default function UserProfileDropdown() {
     }
   };
 
+  const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('logging_out', 'true');
+    }
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   useEffect(() => {
     loadUserData();
   }, []);
@@ -573,15 +581,13 @@ export default function UserProfileDropdown() {
                     <span>{t('sidebar.settings')}</span>
                   </Link>
 
-                  <form action={signout} className="m-0">
-                    <button
-                      type="submit"
-                      className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <LogOut size={12} />
-                      <span>{t('sidebar.logout')}</span>
-                    </button>
-                  </form>
+                  <button
+                    onClick={handleLogout}
+                    className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-0 p-0"
+                  >
+                    <LogOut size={12} />
+                    <span>{t('sidebar.logout')}</span>
+                  </button>
                 </div>
               </div>
             )}
