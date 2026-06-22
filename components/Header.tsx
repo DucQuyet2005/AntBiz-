@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import UserProfileDropdown from '@/components/UserProfileDropdown';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const { t } = useLanguage();
   const router = useRouter();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin');
 
   return (
     <header className="flex items-center justify-between py-6 gap-3 sm:gap-6">
@@ -32,16 +34,18 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-        <button 
-          onClick={() => {
-            router.push('/ai-creator');
-            window.dispatchEvent(new CustomEvent('ai-creator-go-to-step-1'));
-          }}
-          className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer"
-        >
-          <Plus size={18} />
-          <span className="hidden sm:inline">{t('header.addPost')}</span>
-        </button>
+        {!isAdminRoute && (
+          <button 
+            onClick={() => {
+              router.push('/ai-creator');
+              window.dispatchEvent(new CustomEvent('ai-creator-go-to-step-1'));
+            }}
+            className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">{t('header.addPost')}</span>
+          </button>
+        )}
         
         <button className="relative text-primary hover:bg-sidebar p-2 rounded-full transition-colors">
           <Bell size={24} />

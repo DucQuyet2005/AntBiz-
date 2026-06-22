@@ -31,12 +31,30 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
     window.location.href = "/";
   };
 
+  const [userRole, setUserRole] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    fetchRole();
+  }, [supabase]);
+
   const navItems = [
     { href: "/overview", label: t("sidebar.overview"), icon: LayoutDashboard },
-    { href: "/ai-creator", label: t("sidebar.aiCreator"), icon: Wand2 },
-    { href: "/prompts", label: "Prompts", icon: FileText },
-    { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
-    { href: "/archive", label: t("sidebar.archive"), icon: Archive },
+    ...(userRole !== 'admin' ? [
+      { href: "/ai-creator", label: t("sidebar.aiCreator"), icon: Wand2 },
+      { href: "/prompts", label: "Prompts", icon: FileText },
+      { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
+      { href: "/archive", label: t("sidebar.archive"), icon: Archive },
+    ] : []),
+    ...(userRole === 'admin' ? [{ href: "/admin/users", label: t("sidebar.adminPanel"), icon: Compass }] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
   ];

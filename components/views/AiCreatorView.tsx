@@ -797,7 +797,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-    if (isCellOccupied(val, activeHour, 'facebook')) {
+    if (isCellOccupied(val, activeHour)) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${facebookTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setFacebookError("");
@@ -817,7 +817,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
+    if (isCellOccupied(facebookDate, clampedHour)) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${facebookDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setFacebookError("");
@@ -827,7 +827,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-    if (isCellOccupied(val, activeHour, 'threads')) {
+    if (isCellOccupied(val, activeHour)) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${threadsTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setThreadsError("");
@@ -847,7 +847,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
+    if (isCellOccupied(threadsDate, clampedHour)) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${threadsDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setThreadsError("");
@@ -937,7 +937,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-    if (isCellOccupied(val, activeHour, 'instagram')) {
+    if (isCellOccupied(val, activeHour)) {
       setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${instagramTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setInstagramError("");
@@ -957,7 +957,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
+    if (isCellOccupied(instagramDate, clampedHour)) {
       setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${instagramDate} has reached maximum capacity (max 3 posts/hour).`);
     } else {
       setInstagramError("");
