@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 function createServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  
+
   console.log('[Scrape API - Supabase Client Init]:', {
     hasUrl: !!supabaseUrl,
     hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -62,22 +62,27 @@ export async function GET(request: NextRequest) {
 
     if (existingArticle && existingArticle.title) {
       console.log(`[Scrape API] Found cached article in DB: ${existingArticle.url}`);
-      
+
       let imageUrl = '';
       if (Array.isArray(existingArticle.images)) {
         imageUrl = existingArticle.images.map((img: any) => img.url).join('\n');
       } else if (existingArticle.images && typeof existingArticle.images === 'object') {
         imageUrl = (existingArticle.images as any).url || '';
       }
+      
+      const tagsString = Array.isArray(existingArticle.tags)
+        ? existingArticle.tags.join(', ')
+        : '';
 
       return NextResponse.json({
         id: existingArticle.id,
         title: existingArticle.title,
         description: existingArticle.description || '',
+        full_text: existingArticle.full_text || existingArticle.description || '',
         imageUrl: imageUrl,
         author: existingArticle.author || '',
-        category: `#${existingArticle.category || 'Chung'}`,
-        tags: existingArticle.tags?.join(', ') || '',
+        category: existingArticle.category ? (existingArticle.category.startsWith('#') ? existingArticle.category : `#${existingArticle.category}`) : '#Chung',
+        tags: tagsString,
         published_at: existingArticle.published_at || '',
         views: existingArticle.views || '',
         url: existingArticle.url
@@ -85,7 +90,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Nếu chưa có trong DB, tiến hành cào mới
-    console.log(`[Scrape API] Scraping article: ${targetUrl}`);
+    console.log(`[Scrape API] Cache MISS for: ${targetUrl}. Starting crawl...`);
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
 
@@ -95,11 +100,12 @@ export async function GET(request: NextRequest) {
 
     // T-1.19.1: Phân loại category bằng AI từ title + description
     const { category: aiCategory, confidence } = await classifyArticle(title, description);
-    const category = `#${aiCategory}`;
-    const tags = '#Tiết kiệm tài chính, #Đầu tư, #Mua nhà';
+    const category = aiCategory.startsWith('#') ? aiCategory : `#${aiCategory}`;
+
     const imageUrl = cleanData.images.length > 0
       ? cleanData.images.map(img => img.url).join('\n')
       : '';
+    // Dùng tags từ HTML crawl, không hardcode
     const tagsString = cleanData.tags.join(', ');
 
     // Lưu bài viết mới vào database bằng admin client
@@ -117,7 +123,7 @@ export async function GET(request: NextRequest) {
         full_text: cleanData.full_text || description,
         category: aiCategory,
         category_confidence: confidence,
-        tags: cleanData.tags.length > 0 ? cleanData.tags : tags.split(',').map(t => t.trim()),
+        tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
         crawled_at: new Date().toISOString(),
       }, { onConflict: 'url' })
       .select('id')
@@ -131,10 +137,11 @@ export async function GET(request: NextRequest) {
       id: article?.id,
       title,
       description,
+      full_text: cleanData.full_text || description,
       imageUrl,
       author,
       category,
-      tags: tagsString || tags,
+      tags: tagsString,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
       url: targetUrl

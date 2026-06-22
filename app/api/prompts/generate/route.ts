@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     // Sử dụng model 2.5-flash mới nhất với system instruction để loại bỏ hoàn toàn lời dẫn giải
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
       systemInstruction: "Bạn là một chuyên gia Content Marketing. Bạn CHỈ trả về nội dung bài viết được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là bài viết'. Chỉ trả về duy nhất nội dung bài đăng mạng xã hội.",
     });
 

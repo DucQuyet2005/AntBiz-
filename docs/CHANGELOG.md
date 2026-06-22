@@ -19,6 +19,27 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 ---
 
+## [1.2.3] - 2026-06-19
+
+### Added
+- **Redesign & Cập nhật nội dung FAQ (Câu hỏi thường gặp)**:
+  - Thiết kế lại toàn bộ giao diện FaqView sử dụng cấu trúc lưới 2 cột và các thẻ panel glassmorphism đồng bộ với phong cách giao diện chung.
+  - Cập nhật 8 câu hỏi và câu trả lời thực tế bám sát các tính năng của AntBiz (công cụ cào dữ liệu từ gocnhinmoi, trình duyệt Live Explorer, sinh nội dung A/B bằng Gemini API, thư viện Prompts, cơ chế phân lịch và ngăn ngừa va chạm lịch biểu 2D, checkpoints khôi phục lịch sử, và hàng đợi xuất CSV chạy dưới nền).
+  - Tích hợp bộ lọc tìm kiếm thời gian thực (real-time query filter) tự động mở rộng (auto-expand) các câu trả lời trùng khớp để tối ưu hóa trải nghiệm người dùng.
+  - Bổ sung thẻ mẹo viết Prompt hữu ích (Pro Tips) và thẻ Liên hệ hỗ trợ trực tuyến.
+
+## [1.2.2] - 2026-06-19
+
+### Added
+- **Phân trang trong ArchiveView (Lưu trữ)**:
+  - Giới hạn số lượng bài đăng hiển thị tối đa là 6 bài viết trên mỗi trang (`ITEMS_PER_PAGE = 6`).
+  - Tự động đặt lại trang hiện tại về 1 khi thay đổi điều kiện tìm kiếm, chọn lọc nền tảng hoặc thứ tự sắp xếp bài viết.
+  - Thiết kế và tích hợp bộ điều khiển phân trang cao cấp (Premium Pagination UI) hỗ trợ hiển thị khoảng vị trí bài viết hiện tại (ví dụ: "Hiển thị 1 - 6 trong tổng số 12 bài đăng"), các nút chọn số trang trực tiếp và biểu tượng điều hướng Chevron (`ChevronLeft` / `ChevronRight`).
+- **Việt hóa & Bản địa hóa giao diện Prompts & Nút Lên lịch**:
+  - Di chuyển nút "Lên lịch biến thể {variant}" trong `AiCreatorView.tsx` sang sử dụng key dịch thuật động `aiCreator.scheduleVariant` thay vì viết cứng tiếng Việt.
+  - Xây dựng từ điển dịch thuật `prompts` cho cả hai ngôn ngữ (tiếng Việt và tiếng Anh) chứa tất cả nhãn, hộp thoại xác nhận xóa, ô tìm kiếm và biểu mẫu tạo/sửa.
+  - Tích hợp `useLanguage` và chuyển đổi toàn bộ giao diện Prompts (`PromptsView.tsx`) sang dạng đa ngôn ngữ hoàn toàn, tự động chuyển đổi giao diện theo ngôn ngữ hệ thống đang chọn.
+
 ## [1.2.1] - 2026-06-18
 
 ### Changed
