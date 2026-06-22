@@ -280,7 +280,7 @@ export default function ArchiveView() {
     <div className="flex flex-col gap-6">
 
       {/* Page Title & Subtitle */}
-      <div className="mt-2 flex justify-between items-end">
+      <div className="mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('archive.title')}</h1>
           <p className="text-text-muted">{t('archive.subtitle')}</p>
@@ -301,7 +301,7 @@ export default function ArchiveView() {
       </div>
 
       {/* Tabs Control */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('posts')}
           className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
@@ -328,10 +328,10 @@ export default function ArchiveView() {
       {activeTab === 'posts' ? (
         <>
           {/* Search & Filters Controls Row */}
-          <div className="flex justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
 
             {/* Search */}
-            <div className="relative flex-1 max-w-xl">
+            <div className="relative w-full md:flex-1 md:max-w-xl">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
               <input
                 type="text"
@@ -343,7 +343,7 @@ export default function ArchiveView() {
             </div>
 
             {/* Dropdowns */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
 
               {/* Platform Filter */}
               <div className="relative">
@@ -405,7 +405,7 @@ export default function ArchiveView() {
           </div>
 
           {/* 3-Column Grid Cards */}
-          <div className="grid grid-cols-3 gap-6 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
             {paginatedItems.map((item) => (
               <Link
                 href={item.link}
@@ -607,8 +607,8 @@ export default function ArchiveView() {
       ) : (
         /* Export History Tab */
         <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm border-collapse">
+          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 font-extrabold text-text-muted uppercase text-[10px] tracking-wider">{t('archive.jobId')}</th>

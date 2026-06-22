@@ -1923,7 +1923,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           <motion.div
             layout
             transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
+            className={`lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
           >
             {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
             {step === 2 && (

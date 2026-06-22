@@ -310,7 +310,7 @@ export default function ArticleDetailView() {
     <div className="flex flex-col gap-6 font-sans">
       
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2 text-text-muted">
           <Link href="/archive" className="hover:text-text transition-colors p-1 -ml-1">
             <ArrowLeft size={20} />
@@ -324,7 +324,7 @@ export default function ArticleDetailView() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 justify-end">
           <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
             <Share2 size={18} />
           </button>
@@ -354,10 +354,10 @@ export default function ArticleDetailView() {
       )}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column (Main Article Details & Mockups) */}
-        <div className="col-span-8 flex flex-col gap-6">
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           
           {/* Title & Author Card */}
           <div className="bg-[#F8F9FE] rounded-[32px] p-8 flex flex-col gap-5 border border-[#E4E6F8]">
@@ -550,7 +550,7 @@ export default function ArticleDetailView() {
           )}
 
           {/* Image Cards Row */}
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {activeArticle.images.map((img: any, idx: number) => (
               <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
                 <img 
@@ -572,7 +572,7 @@ export default function ArticleDetailView() {
         </div>
 
         {/* Right Column (Sidebar metrics, checkpoints, tags) */}
-        <div className="col-span-4 flex flex-col gap-6">
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
           
           {/* Performance Metrics Card */}
           <div className="bg-[#FCF9F2] border border-[#F2E8D5] rounded-[32px] p-7 shadow-sm">

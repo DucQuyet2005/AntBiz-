@@ -44,10 +44,10 @@ export default function SettingsView() {
       </div>
 
       {/* Two Column Grid */}
-      <div className="grid grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column: API Integrations (Dark Green Card) */}
-        <div className="col-span-7 bg-[#4E7164] border border-[#3E5C50] rounded-[32px] p-8 flex flex-col gap-6 text-white justify-between">
+        <div className="col-span-12 lg:col-span-7 bg-[#4E7164] border border-[#3E5C50] rounded-[32px] p-8 flex flex-col gap-6 text-white justify-between">
           
           <div>
             {/* Header */}
@@ -110,7 +110,7 @@ export default function SettingsView() {
         </div>
 
         {/* Right Column: Notifications & Language (Light Lavender Card) */}
-        <div className="col-span-5 bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-8 flex flex-col gap-6 text-[#1E293B]">
+        <div className="col-span-12 lg:col-span-5 bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-8 flex flex-col gap-6 text-[#1E293B]">
           
           {/* Header Notifications */}
           <div className="flex items-center gap-3 font-bold text-lg text-primary">
