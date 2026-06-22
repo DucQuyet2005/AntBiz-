@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function POST(
   request: Request,
-  { params }: { params: { historyId: string } }
+  { params }: { params: Promise<{ historyId: string }> }
 ) {
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -25,7 +25,7 @@ export async function POST(
   }
 
   try {
-    const historyId = params.historyId;
+    const { historyId } = await params;
     if (!historyId) {
       return NextResponse.json({ error: 'Missing history ID' }, { status: 400 });
     }

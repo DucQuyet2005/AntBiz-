@@ -510,7 +510,13 @@ export const translations = {
       saveFail: "Lưu nháp thất bại",
       publishSuccess: "Publish thành công! Trang chủ đã được cập nhật.",
       publishFail: "Publish thất bại",
-      publishError: "Có lỗi xảy ra khi Publish"
+      publishError: "Có lỗi xảy ra khi Publish",
+      confirmRestore: "Bạn có chắc chắn muốn khôi phục phiên bản này? Hành động này sẽ ghi đè lên bản nháp hiện tại.",
+      restoreSuccess: "Khôi phục phiên bản thành công!",
+      restoreFail: "Khôi phục phiên bản thất bại.",
+      restoreError: "Có lỗi xảy ra khi khôi phục.",
+      slidePrev: "Slide trước",
+      slideNext: "Slide sau"
     }
   },
   en: {
@@ -1024,7 +1030,13 @@ export const translations = {
       saveFail: "Failed to save draft",
       publishSuccess: "Published successfully! The homepage is updated.",
       publishFail: "Publish failed",
-      publishError: "An error occurred during publish"
+      publishError: "An error occurred during publish",
+      confirmRestore: "Are you sure you want to restore this version? This will overwrite the current draft.",
+      restoreSuccess: "Version restored successfully!",
+      restoreFail: "Failed to restore version.",
+      restoreError: "Error during rollback.",
+      slidePrev: "Previous Slide",
+      slideNext: "Next Slide"
     }
   }
 };

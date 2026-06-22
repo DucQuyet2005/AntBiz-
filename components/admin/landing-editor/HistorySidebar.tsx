@@ -45,19 +45,19 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
   };
 
   const handleRollback = async (id: string, snapshot: any) => {
-    if (!confirm('Are you sure you want to restore this version? This will overwrite the current draft.')) return;
+    if (!confirm(t.confirmRestore)) return;
     try {
       const res = await fetch(`/api/admin/landing-config/rollback/${id}`, {
         method: 'POST'
       });
       if (res.ok) {
         onRestore(snapshot);
-        alert('Version restored successfully!');
+        alert(t.restoreSuccess);
       } else {
-        alert('Failed to restore version.');
+        alert(t.restoreFail);
       }
     } catch (e) {
-      alert('Error during rollback.');
+      alert(t.restoreError);
     }
   };
 

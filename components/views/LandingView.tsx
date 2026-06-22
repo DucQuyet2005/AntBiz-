@@ -150,6 +150,13 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
 
   const setConfig = setRawConfig;
 
+  const getSlidesArray = (slides: any): any[] => {
+    if (!slides) return [];
+    if (Array.isArray(slides)) return slides;
+    if (slides && typeof slides === 'object' && Array.isArray(slides.data)) return slides.data;
+    return [];
+  };
+
   // Localize values dynamically based on selected language
   const translateDefault = (section: string, field: string, value: any) => {
     if (language !== 'vi') return value;
@@ -165,7 +172,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
     return value;
   };
 
-  const localizedSlides = (rawConfig.heroSlides || []).map((slide: any, idx: number) => {
+  const localizedSlides = getSlidesArray(rawConfig.heroSlides).map((slide: any, idx: number) => {
     if (language !== 'vi') return slide;
     const defaultSlide = DEFAULT_CONFIG.heroSlides[idx];
     if (defaultSlide && slide.tagline === defaultSlide.tagline) {
@@ -400,14 +407,14 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             <button 
               onClick={handlePrevSlide}
               className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all"
-              title="Slide trước"
+              title={language === 'vi' ? 'Slide trước' : 'Previous Slide'}
             >
               <ChevronLeft size={24} />
             </button>
             <button 
               onClick={handleNextSlide}
               className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all"
-              title="Slide sau"
+              title={language === 'vi' ? 'Slide sau' : 'Next Slide'}
             >
               <ChevronRight size={24} />
             </button>
@@ -421,7 +428,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditClick?.('heroSlides', 'slideConfig'); }}
               className="bg-white hover:bg-slate-50 text-[#5A5CDE] px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-[#5A5CDE]"
             >
-              <Edit2 size={16} /> Chỉnh sửa Banners
+              <Edit2 size={16} /> {language === 'vi' ? 'Chỉnh sửa Banners' : 'Edit Banners'}
             </button>
           </div>
         )}
@@ -508,11 +515,17 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
       </section>
 
       {/* 11. FOOTER */}
-      <footer className="bg-slate-950 text-slate-500 py-12 text-center text-xs border-t border-slate-900">
-        <EditableField section="sections" field="footerText">
-          <p>{config.sections.footerText}</p>
-        </EditableField>
-        {!isEditor && !isPreview && <Footer />}
+      <footer className="mt-auto flex flex-col w-full">
+        <div className="bg-slate-950 text-slate-500 py-12 text-center text-xs border-t border-slate-900">
+          <EditableField section="sections" field="footerText">
+            <p>{config.sections.footerText}</p>
+          </EditableField>
+        </div>
+        {!isEditor && !isPreview && (
+          <div className="w-full text-left text-base [&>footer]:mt-0 [&>footer]:rounded-none">
+            <Footer />
+          </div>
+        )}
       </footer>
 
     </div>
