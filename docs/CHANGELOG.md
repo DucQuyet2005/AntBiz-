@@ -130,6 +130,20 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Chuyển đổi logic Đăng xuất từ Server Action form sang nút bấm xử lý Client-side thực hiện `signOut` và điều hướng cứng bằng `window.location.href = '/'`.
   - Tích hợp cờ `logging_out` trong `sessionStorage` để thông báo cho `DashboardLayout` không tự động chuyển hướng về `/login` khi phiên đăng nhập bị hủy trong lúc thoát, đảm bảo người dùng về thẳng Landing Page thành công.
 
+## [1.3.0] - 2026-06-19
+
+### Added
+- **Endpoint API Scheduler cho Vercel Cron (`app/api/cron/run-scheduler/route.ts`)**: Tạo endpoint API mới để Vercel Cron Job ping kích hoạt chu kỳ kiểm tra và tự động đăng bài viết lên Facebook Page.
+- **Tập tin cấu hình Vercel Cron (`vercel.json`)**: Định nghĩa lịch trình chạy Cron Job tự động kích hoạt endpoint scheduler mỗi 10 phút.
+- **Tài liệu Hướng dẫn Triển khai Vercel (`docs/DEPLOYMENT_VERCEL.md`)**: Hướng dẫn chi tiết từng bước deploy nhánh tùy chỉnh (custom branch) lên Vercel, cấu hình biến môi trường và redirect URL trên Supabase cho Google OAuth.
+
+### Changed
+- **Chuyển đổi Scraper sang Firecrawl API (`lib/crawler/index.ts`)**: Tránh lỗi giới hạn Chromium trên Vercel Serverless bằng cách chuyển đổi Playwright Chromium cũ sang sử dụng Firecrawl Cloud Scraper API (code cũ được comment lại bảo lưu).
+- **Vô hiệu hóa Scheduler nội bộ (`app/api/scheduled-posts/route.ts`)**: Comment lại lệnh khởi tạo scheduler trong bộ nhớ (`initScheduler()`) để tránh treo serverless container trên Vercel.
+- **Cập nhật cấu hình Biến môi trường (`.env.local`)**: Thêm các biến cấu hình `FIRECRAWL_API_KEY` và `CRON_SECRET` phục vụ cho cào dữ liệu và bảo mật Cron Job.
+
+---
+
 ## [1.2.3] - 2026-06-19
 
 ### Added

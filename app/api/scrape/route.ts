@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { classifyArticle } from '@/lib/services/articleClassifier';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
+import { createClient } from '@supabase/supabase-js';
+
+// Khởi tạo client Supabase quyền Admin (Service Role) để bypass RLS trên bảng articles
+function createServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  console.log('[Scrape API - Supabase Client Init]:', {
+    hasUrl: !!supabaseUrl,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    fallbackToAnonKey: !process.env.SUPABASE_SERVICE_ROLE_KEY && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  });
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -19,23 +39,37 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // T-1.19.1: Check if URL already exists in database first
-    const { createAdminClient } = await import('@/utils/supabase/admin');
-    const supabase = createAdminClient();
+    const supabase = createServiceClient();
 
-    console.log(`[Scrape API] Checking cache for: ${targetUrl}`);
-    const { data: existingArticle, error: fetchError } = await supabase
+    // 1. Kiểm tra xem URL này đã có trong database chưa (tìm khớp chính xác)
+    let { data: existingArticle, error: findError } = await supabase
       .from('articles')
       .select('*')
       .eq('url', targetUrl)
-      .single();
+      .maybeSingle();
 
-    if (existingArticle && !fetchError) {
-      console.log(`[Scrape API] Cache HIT for: ${targetUrl}`);
-      // Return cached data immediately
-      const imageUrl = Array.isArray(existingArticle.images) 
-        ? existingArticle.images.map((img: any) => img.url).join('\n')
-        : '';
+    // 2. Nếu không khớp chính xác, thử tìm khớp theo tiền tố (đề phòng người dùng nhập URL thiếu ID ở đuôi)
+    if (!existingArticle) {
+      const { data: prefixMatch } = await supabase
+        .from('articles')
+        .select('*')
+        .ilike('url', `${targetUrl}%`)
+        .order('crawled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      existingArticle = prefixMatch;
+    }
+
+    if (existingArticle && existingArticle.title) {
+      console.log(`[Scrape API] Found cached article in DB: ${existingArticle.url}`);
+
+      let imageUrl = '';
+      if (Array.isArray(existingArticle.images)) {
+        imageUrl = existingArticle.images.map((img: any) => img.url).join('\n');
+      } else if (existingArticle.images && typeof existingArticle.images === 'object') {
+        imageUrl = (existingArticle.images as any).url || '';
+      }
+      
       const tagsString = Array.isArray(existingArticle.tags)
         ? existingArticle.tags.join(', ')
         : '';
@@ -43,11 +77,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         id: existingArticle.id,
         title: existingArticle.title,
-        description: existingArticle.description,
+        description: existingArticle.description || '',
         full_text: existingArticle.full_text || existingArticle.description || '',
-        imageUrl,
-        author: existingArticle.author,
-        category: existingArticle.category,
+        imageUrl: imageUrl,
+        author: existingArticle.author || '',
+        category: existingArticle.category ? (existingArticle.category.startsWith('#') ? existingArticle.category : `#${existingArticle.category}`) : '#Chung',
         tags: tagsString,
         published_at: existingArticle.published_at || '',
         views: existingArticle.views || '',
@@ -55,6 +89,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 3. Nếu chưa có trong DB, tiến hành cào mới
     console.log(`[Scrape API] Cache MISS for: ${targetUrl}. Starting crawl...`);
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
@@ -63,11 +98,9 @@ export async function GET(request: NextRequest) {
     const description = cleanData.description || '';
     const author = cleanData.author || '';
 
-    // Ưu tiên danh mục từ HTML crawl (ví dụ: "#Xã hội số").
-    // T-1.19.1: Chỉ dùng danh mục từ HTML crawl, không fallback AI để tránh sai lệch dữ liệu.
-    const crawledCategory = cleanData.category || '';
-    let savedCategory = crawledCategory; // đã có dấu # từ crawler hoặc chuỗi rỗng
-    let confidence = crawledCategory ? 1.0 : 0.0;
+    // T-1.19.1: Phân loại category bằng AI từ title + description
+    const { category: aiCategory, confidence } = await classifyArticle(title, description);
+    const category = aiCategory.startsWith('#') ? aiCategory : `#${aiCategory}`;
 
     const imageUrl = cleanData.images.length > 0
       ? cleanData.images.map(img => img.url).join('\n')
@@ -75,7 +108,7 @@ export async function GET(request: NextRequest) {
     // Dùng tags từ HTML crawl, không hardcode
     const tagsString = cleanData.tags.join(', ');
 
-    // T-1.19.1: Cache result in articles table
+    // Lưu bài viết mới vào database bằng admin client
     const { data: article, error: dbError } = await supabase
       .from('articles')
       .upsert({
@@ -83,16 +116,14 @@ export async function GET(request: NextRequest) {
         title,
         description,
         author,
-        // Lưu category với dấu # (ví dụ: "#Xã hội số" hoặc "#Kinh doanh")
-        category: savedCategory,
-        category_confidence: confidence,
-        // Dùng tags từ HTML, không hardcode
-        tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
-        images: cleanData.images || [],
-        body: cleanData.body || [],
-        full_text: cleanData.full_text || '',
         published_at: cleanData.published_at || '',
         views: cleanData.views || '',
+        images: cleanData.images || [],
+        body: cleanData.body || [],
+        full_text: cleanData.full_text || description,
+        category: aiCategory,
+        category_confidence: confidence,
+        tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
         crawled_at: new Date().toISOString(),
       }, { onConflict: 'url' })
       .select('id')
@@ -103,13 +134,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      id: article?.id, // T-1.19.3: Trả về ID để dùng cho prompt suggestions
+      id: article?.id,
       title,
       description,
-      full_text: cleanData.full_text || '', // Trả về nội dung đầy đủ
+      full_text: cleanData.full_text || description,
       imageUrl,
       author,
-      category: savedCategory,
+      category,
       tags: tagsString,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',

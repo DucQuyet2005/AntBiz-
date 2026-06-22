@@ -12,7 +12,7 @@ let mockCaptionsDb: any[] = [];
 let mockScheduledPostsDb: any[] = [];
 
 class MockQueryBuilder {
-  constructor(private table: string) {}
+  constructor(private table: string) { }
 
   select(columns?: string, options?: any) {
     return this;
@@ -113,7 +113,7 @@ vi.mock('@/utils/supabase/server', () => ({
 vi.mock('next/headers', () => ({
   cookies: () => ({
     getAll: () => [],
-    setAll: () => {},
+    setAll: () => { },
   }),
 }));
 
@@ -261,9 +261,9 @@ describe('Prompts API Endpoints', () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       currentRole = 'marketer_content';
       mockPromptsDb = [{ id: 'p1' }];
-      
+
       const originalMaybeSingle = MockQueryBuilder.prototype.maybeSingle;
-      MockQueryBuilder.prototype.maybeSingle = async function() {
+      MockQueryBuilder.prototype.maybeSingle = async function () {
         if (mockPromptsDb.length === 1 && mockPromptsDb[0].id === 'p1') {
           mockPromptsDb = [];
           return { data: { id: 'p1' }, error: null };
@@ -279,7 +279,7 @@ describe('Prompts API Endpoints', () => {
         params: Promise.resolve({ id: 'p1' }),
       });
       expect(res.status).toBe(403);
-      
+
       MockQueryBuilder.prototype.maybeSingle = originalMaybeSingle;
     });
 
@@ -323,7 +323,7 @@ describe('Prompts API Endpoints', () => {
       mockPromptsDb = [{ id: 'p1' }];
 
       const originalMaybeSingle = MockQueryBuilder.prototype.maybeSingle;
-      MockQueryBuilder.prototype.maybeSingle = async function() {
+      MockQueryBuilder.prototype.maybeSingle = async function () {
         if (mockPromptsDb.length === 1 && mockPromptsDb[0].id === 'p1') {
           mockPromptsDb = [];
           return { data: { id: 'p1' }, error: null };
