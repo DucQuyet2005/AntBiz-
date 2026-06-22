@@ -537,7 +537,7 @@ function EffectPickerDialog({
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 px-7 pt-5 pb-2">
+            <div className="flex flex-wrap sm:flex-nowrap gap-1.5 px-4 sm:px-7 pt-5 pb-2">
               {[
                 { key: 'effects', label: '🌦️ Hiệu ứng thời tiết', count: EFFECTS.length - 1 },
                 { key: 'bases',   label: '🏺 Bệ đỡ chân avatar',  count: BASES.length - 1  },
@@ -562,7 +562,7 @@ function EffectPickerDialog({
             {/* Grid Content */}
             <div className="flex-1 overflow-y-auto px-7 pb-6">
               {tab === 'effects' && (
-                <div className="grid grid-cols-3 gap-3 pt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3">
                   {EFFECTS.map(({ key, label, icon, desc }) => {
                     const active = avatarEffect === key;
                     return (
@@ -582,7 +582,7 @@ function EffectPickerDialog({
                 </div>
               )}
               {tab === 'bases' && (
-                <div className="grid grid-cols-3 gap-3 pt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3">
                   {BASES.map(({ key, label, icon, desc }) => {
                     const active = avatarBase === key;
                     return (

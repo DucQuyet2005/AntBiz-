@@ -388,10 +388,10 @@ export default function ContentCalendarView() {
       </div>
 
       {/* Main Split Grid (Sidebar & Calendar Grid) */}
-      <div className="grid grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: Sidebar (Create, Mini Calendar, Platform Toggles) */}
-        <div className="col-span-3 bg-white border border-slate-100 rounded-[32px] p-5 flex flex-col gap-6 shadow-sm shadow-slate-100/40">
+        <div className="col-span-12 lg:col-span-3 bg-white border border-slate-100 rounded-[32px] p-5 flex flex-col gap-6 shadow-sm shadow-slate-100/40">
           
           {/* Create Button with menu slide transitions */}
           <div className="relative w-full">
@@ -573,10 +573,11 @@ export default function ContentCalendarView() {
         </div>
 
         {/* RIGHT COLUMN: Google-Calendar-style Hourly Grid */}
-        <div className="col-span-9 bg-white border border-slate-100 rounded-[32px] p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-visible">
-          
-          {/* Main Grid Header Rows for Days */}
-          <div className="grid grid-cols-[80px_1fr] items-stretch pr-2">
+        <div className="col-span-12 lg:col-span-9 bg-white border border-slate-100 rounded-[32px] p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-x-auto">
+          <div className="min-w-[750px] flex flex-col gap-4">
+            
+            {/* Main Grid Header Rows for Days */}
+            <div className="grid grid-cols-[80px_1fr] items-stretch pr-2">
             <div className="flex flex-col justify-end text-[10px] text-slate-400 font-extrabold pb-3 border-b border-slate-100 text-right pr-4 tracking-wider select-none">
               GMT+07
             </div>
@@ -1019,6 +1020,7 @@ export default function ContentCalendarView() {
               </div>
             </div>
           )}
+          </div>
 
         </div>
 

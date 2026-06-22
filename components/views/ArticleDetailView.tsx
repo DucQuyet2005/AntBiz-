@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, 
-  Share2, 
-  Link as LinkIcon, 
-  Edit3, 
-  Eye, 
-  Quote, 
-  Tag, 
-  Calendar, 
+import {
+  ArrowLeft,
+  Share2,
+  Link as LinkIcon,
+  Edit3,
+  Eye,
+  Quote,
+  Tag,
+  Calendar,
   User,
   ThumbsUp,
   MessageSquare,
@@ -154,9 +154,9 @@ export default function ArticleDetailView() {
         // Derive full_text từ body blocks nếu full_text rỗng (bài cũ chưa re-crawl)
         const bodyText = Array.isArray(art.body)
           ? art.body
-              .filter((b: any) => b.type !== 'image' && b.text)
-              .map((b: any) => b.text)
-              .join('\n')
+            .filter((b: any) => b.type !== 'image' && b.text)
+            .map((b: any) => b.text)
+            .join('\n')
           : '';
 
         const mappedArticle = {
@@ -185,7 +185,7 @@ export default function ArticleDetailView() {
           .from('ab_tests')
           .select('platform')
           .eq('article_id', id);
-        
+
         let dbPlatform: 'facebook' | 'threads' = 'facebook';
         if (abTests && abTests.length > 0) {
           const plat = abTests[0].platform;
@@ -203,7 +203,7 @@ export default function ArticleDetailView() {
 
         if (dbCaptions && dbCaptions.length > 0) {
           setCaptions(dbCaptions);
-          
+
           // 4. Fetch caption_versions for the first caption
           const mainCaption = dbCaptions[0];
           const { data: dbVersions } = await supabase
@@ -296,10 +296,10 @@ export default function ArticleDetailView() {
       setCaptions(prev => prev.map(c => c.platform === selectedPlatform ? { ...c, content: textToRestore, edited_content: textToRestore } : c));
     }
 
-    setSuccessMsg(language === 'vi' 
-      ? `Đã khôi phục thành công về bản lưu ${selectedCheckpoint.version}!` 
+    setSuccessMsg(language === 'vi'
+      ? `Đã khôi phục thành công về bản lưu ${selectedCheckpoint.version}!`
       : `Reverted successfully to version ${selectedCheckpoint.version}!`);
-    
+
     setSelectedCheckpoint(null);
     setReverting(false);
 
@@ -316,9 +316,9 @@ export default function ArticleDetailView() {
 
   return (
     <div className="flex flex-col gap-6 font-sans">
-      
+
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2 text-text-muted">
           <Link href="/archive" className="hover:text-text transition-colors p-1 -ml-1">
             <ArrowLeft size={20} />
@@ -331,8 +331,8 @@ export default function ArticleDetailView() {
             </span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-3 justify-end">
           <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
             <Share2 size={18} />
           </button>
@@ -348,7 +348,7 @@ export default function ArticleDetailView() {
 
       {/* Success Notification Toast */}
       {successMsg && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
@@ -362,22 +362,22 @@ export default function ArticleDetailView() {
       )}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-12 gap-6 items-start">
-        
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
         {/* Left Column (Main Article Details & Mockups) */}
-        <div className="col-span-8 flex flex-col gap-6">
-          
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+
           {/* Title & Author Card */}
           <div className="bg-[#F8F9FE] rounded-[32px] p-8 flex flex-col gap-5 border border-[#E4E6F8]">
             <div className="flex items-center gap-2 text-xs font-bold text-[#3F51B5] bg-white px-4 py-1.5 rounded-full w-fit shadow-sm border border-[#E4E6F8]">
               <span>🏠</span>
               {activeArticle.category}
             </div>
-            
+
             <h1 className="text-4xl font-extrabold text-[#1E293B] leading-[1.15] tracking-tight pr-10">
               {activeArticle.title}
             </h1>
-            
+
             <div className="flex items-center gap-6 mt-3 pt-6 border-t border-[#E4E6F8]">
               <div className="flex items-center gap-2 text-text-muted text-sm font-semibold">
                 <div className="w-6 h-6 rounded-full bg-[#E9EAF5] text-[#3F51B5] flex items-center justify-center">
@@ -399,26 +399,24 @@ export default function ArticleDetailView() {
                 <Sparkles size={16} className="text-[#3F51B5]" />
                 {language === 'vi' ? 'Bản xem trước mạng xã hội' : 'Social Media Preview'}
               </h3>
-              
+
               <div className="flex bg-[#F8F9FE] rounded-full p-1 border border-[#E4E6F8]">
-                <button 
+                <button
                   onClick={() => setSelectedPlatform('facebook')}
-                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${
-                    selectedPlatform === 'facebook' 
-                      ? 'bg-blue-600 text-white shadow-sm' 
+                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-text-muted hover:text-text'
-                  }`}
+                    }`}
                 >
                   <ThumbsUp size={11} className={selectedPlatform === 'facebook' ? 'fill-white' : ''} />
                   Facebook
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedPlatform('threads')}
-                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${
-                    selectedPlatform === 'threads' 
-                      ? 'bg-black text-white shadow-sm' 
+                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'threads'
+                      ? 'bg-black text-white shadow-sm'
                       : 'text-text-muted hover:text-text'
-                  }`}
+                    }`}
                 >
                   <ThreadsIcon size={11} />
                   Threads
@@ -432,12 +430,12 @@ export default function ArticleDetailView() {
                 <div className="flex items-center gap-2">
                   <span className="text-base">⚠️</span>
                   <span>
-                    {language === 'vi' 
+                    {language === 'vi'
                       ? `Bạn đang xem bản lưu cũ (${selectedCheckpoint.version}) tạo lúc ${selectedCheckpoint.created_at}`
                       : `Viewing historical checkpoint (${selectedCheckpoint.version}) from ${selectedCheckpoint.created_at}`}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={handleRevert}
                   disabled={reverting}
                   className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-[11px] font-extrabold shrink-0 disabled:opacity-50 cursor-pointer border-0"
@@ -483,8 +481,8 @@ export default function ArticleDetailView() {
                       {(() => {
                         const content = getDisplayContent();
                         const shouldTruncate = content.length > 200;
-                        const displayedText = shouldTruncate && !isFbExpanded 
-                          ? `${content.slice(0, 200)}...` 
+                        const displayedText = shouldTruncate && !isFbExpanded
+                          ? `${content.slice(0, 200)}...`
                           : content;
                         return (
                           <>
@@ -494,8 +492,8 @@ export default function ArticleDetailView() {
                                 onClick={() => setIsFbExpanded(!isFbExpanded)}
                                 className="text-blue-650 font-extrabold ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
                               >
-                                {isFbExpanded 
-                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm') 
+                                {isFbExpanded
+                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
                                   : (language === 'vi' ? 'Xem thêm' : 'Read more')}
                               </button>
                             )}
@@ -592,8 +590,8 @@ export default function ArticleDetailView() {
                           {(() => {
                             const content = getDisplayContent();
                             const shouldTruncate = content.length > 200;
-                            const displayedText = shouldTruncate && !isThreadsExpanded 
-                              ? `${content.slice(0, 200)}...` 
+                            const displayedText = shouldTruncate && !isThreadsExpanded
+                              ? `${content.slice(0, 200)}...`
                               : content;
                             return (
                               <>
@@ -603,8 +601,8 @@ export default function ArticleDetailView() {
                                     onClick={() => setIsThreadsExpanded(!isThreadsExpanded)}
                                     className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
                                   >
-                                    {isThreadsExpanded 
-                                      ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm') 
+                                    {isThreadsExpanded
+                                      ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
                                       : (language === 'vi' ? 'Xem thêm' : 'Read more')}
                                   </button>
                                 )}
@@ -721,8 +719,8 @@ export default function ArticleDetailView() {
                 {(() => {
                   const blocks = activeArticle.body;
                   const shouldTruncate = blocks.length > 3;
-                  const displayedBlocks = shouldTruncate && !isBodyExpanded 
-                    ? blocks.slice(0, 3) 
+                  const displayedBlocks = shouldTruncate && !isBodyExpanded
+                    ? blocks.slice(0, 3)
                     : blocks;
 
                   return (
@@ -761,8 +759,8 @@ export default function ArticleDetailView() {
                             onClick={() => setIsBodyExpanded(!isBodyExpanded)}
                             className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
                           >
-                            {isBodyExpanded 
-                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung') 
+                            {isBodyExpanded
+                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung')
                               : (language === 'vi' ? 'Xem thêm nội dung' : 'Read more')}
                           </button>
                         </div>
@@ -783,8 +781,8 @@ export default function ArticleDetailView() {
                 {(() => {
                   const text = activeArticle.full_text;
                   const shouldTruncate = text.length > 500;
-                  const displayedText = shouldTruncate && !isBodyExpanded 
-                    ? `${text.slice(0, 500)}...` 
+                  const displayedText = shouldTruncate && !isBodyExpanded
+                    ? `${text.slice(0, 500)}...`
                     : text;
                   return (
                     <>
@@ -795,8 +793,8 @@ export default function ArticleDetailView() {
                             onClick={() => setIsBodyExpanded(!isBodyExpanded)}
                             className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
                           >
-                            {isBodyExpanded 
-                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung') 
+                            {isBodyExpanded
+                              ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung')
                               : (language === 'vi' ? 'Xem thêm nội dung' : 'Read more')}
                           </button>
                         </div>
@@ -837,17 +835,37 @@ export default function ArticleDetailView() {
             </div>
           )}
 
+          {/* Image Cards Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {activeArticle.images.map((img: any, idx: number) => (
+              <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+                <img
+                  src={img.url}
+                  alt={`Image ${idx}`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {img.caption && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
+                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
+                      {img.caption}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
         </div>
 
         {/* Right Column (Sidebar metrics, checkpoints, tags) */}
-        <div className="col-span-4 flex flex-col gap-6">
-          
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+
           {/* Performance Metrics Card */}
           <div className="bg-[#FCF9F2] border border-[#F2E8D5] rounded-[32px] p-7 shadow-sm">
             <h3 className="text-[11px] font-bold tracking-[0.1em] text-amber-800/50 uppercase mb-5">
               {t('articleDetail.performanceMetrics')}
             </h3>
-            
+
             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-[#F2E8D5] flex items-center justify-between mb-6">
               <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Eye size={24} />
@@ -858,7 +876,7 @@ export default function ArticleDetailView() {
                 <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-2">
               <div className="w-full bg-gray-200/50 h-2 rounded-full overflow-hidden">
                 <div className="bg-amber-800/70 w-[85%] h-full rounded-full"></div>
@@ -883,7 +901,7 @@ export default function ArticleDetailView() {
                   const isActive = !selectedCheckpoint && cp.version === `v${checkpoints.length}`;
 
                   return (
-                    <button 
+                    <button
                       key={cp.id}
                       onClick={() => {
                         if (isViewing) {
@@ -892,11 +910,10 @@ export default function ArticleDetailView() {
                           setSelectedCheckpoint(cp);
                         }
                       }}
-                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent ${
-                        isViewing 
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent ${isViewing
                           ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
                           : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
-                      }`}
+                        }`}
                     >
                       {isActive && (
                         <div className="absolute top-0 right-0 bg-[#3F51B5] text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-bl select-none">
@@ -912,9 +929,9 @@ export default function ArticleDetailView() {
                           {cp.created_at.split(' ')[0]}
                         </span>
                       </div>
-                      
+
                       <p className="text-[10px] text-text-muted truncate leading-relaxed">
-                        {typeof cp.content === 'object' 
+                        {typeof cp.content === 'object'
                           ? (cp.content[selectedPlatform] || cp.content['facebook'] || '')
                           : cp.content
                         }
@@ -940,11 +957,11 @@ export default function ArticleDetailView() {
               <Tag size={18} className="text-text-muted" />
               <h3>{t('articleDetail.metadataTags')}</h3>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               {activeArticle.tags.map((tag: string, idx: number) => (
-                <span 
-                  key={idx} 
+                <span
+                  key={idx}
                   className="bg-[#F3F4FD] text-[#3F51B5] px-4 py-2 rounded-full text-[13px] font-bold"
                 >
                   {tag}

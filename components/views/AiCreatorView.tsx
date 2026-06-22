@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
 
 
@@ -193,6 +194,18 @@ const EditableText = ({
 
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
+
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  useUnsavedChanges(
+    hasUnsavedChanges,
+    language === 'vi'
+      ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+      : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
+  );
+
+  const handleTabSwitch = (newTab: 'editor' | 'generator') => {
+    setActiveAiTab(newTab);
+  };
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
@@ -707,9 +720,34 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return { dateStr, hour };
   };
 
-  const isCellOccupied = (dateStr: string, hour: number) => {
-    // Luôn cho phép lên lịch nhiều bài đăng trong cùng một khung giờ
-    return false;
+  const getCellPostCount = (dateStr: string, hour: number, excludePlatform?: string) => {
+    let count = existingPosts.filter(p => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
+      return postDate === dateStr && postHour === hour;
+    }).length;
+
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (excludePlatform !== 'facebook' && targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'threads' && targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'instagram' && targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) count++;
+    }
+
+    return count;
+  };
+
+  const isCellOccupied = (dateStr: string, hour: number, excludePlatform?: string) => {
+    return getCellPostCount(dateStr, hour, excludePlatform) >= 3;
   };
 
   const getCellPosts = (dateStr: string, hour: number) => {
@@ -791,7 +829,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-    if (isCellOccupied(val, activeHour)) {
+    if (isCellOccupied(val, activeHour, 'facebook')) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${facebookTime} on ${val}.`);
     } else {
       setFacebookError("");
@@ -811,7 +849,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(facebookDate, clampedHour)) {
+    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
       setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${facebookDate}.`);
     } else {
       setFacebookError("");
@@ -821,7 +859,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-    if (isCellOccupied(val, activeHour)) {
+    if (isCellOccupied(val, activeHour, 'threads')) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${threadsTime} on ${val}.`);
     } else {
       setThreadsError("");
@@ -841,7 +879,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(threadsDate, clampedHour)) {
+    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
       setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${threadsDate}.`);
     } else {
       setThreadsError("");
@@ -931,7 +969,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-    if (isCellOccupied(val, activeHour)) {
+    if (isCellOccupied(val, activeHour, 'instagram')) {
       setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${instagramTime} on ${val}.`);
     } else {
       setInstagramError("");
@@ -951,7 +989,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(instagramDate, clampedHour)) {
+    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
       setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${instagramDate}.`);
     } else {
       setInstagramError("");
@@ -2269,7 +2307,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             <motion.div
               layout
               transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-              className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
+              className={`lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
             >
               {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
               {step === 2 && (

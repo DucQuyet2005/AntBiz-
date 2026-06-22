@@ -13,13 +13,14 @@ import {
   Globe,
   FileText,
   Compass,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
   const supabase = createClient();
@@ -41,24 +42,32 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50">
+    <aside className={`w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div>
-        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-[32px] flex items-center gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
-          <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-inner">
-            <img
-              src="/images/logo.png"
-              alt="AntBiz Logo"
-              className="w-full h-full object-contain"
-            />
+        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-[32px] flex items-center justify-between gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-inner">
+              <img
+                src="/images/logo.png"
+                alt="AntBiz Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <h1 className="font-black text-base tracking-tight leading-none text-white truncate">
+                {t("sidebar.title")}
+              </h1>
+              <p className="text-[10px] text-white/80 leading-none mt-1 truncate">
+                {t("sidebar.subtitle")}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col min-w-0">
-            <h1 className="font-black text-base tracking-tight leading-none text-white truncate">
-              {t("sidebar.title")}
-            </h1>
-            <p className="text-[10px] text-white/80 leading-none mt-1 truncate">
-              {t("sidebar.subtitle")}
-            </p>
-          </div>
+          <button 
+            onClick={onClose} 
+            className="lg:hidden text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex flex-col gap-2 pr-6">

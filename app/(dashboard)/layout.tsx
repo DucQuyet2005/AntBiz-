@@ -33,6 +33,13 @@ export default function DashboardLayout({
     checkUser();
   }, [router, supabase]);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Close sidebar on pathname change (navigation)
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#F4F5F9]">
@@ -45,11 +52,25 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 ml-[280px] overflow-y-auto flex flex-col">
-        <div className="max-w-[1200px] w-full mx-auto px-10 flex flex-col pb-12 min-h-screen shrink-0">
-          <Header />
+    <div className="flex h-screen w-screen overflow-hidden relative">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
+      {/* Backdrop for mobile */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden cursor-pointer"
+          />
+        )}
+      </AnimatePresence>
+
+      <main className="flex-1 lg:ml-[280px] ml-0 overflow-y-auto flex flex-col min-w-0">
+        <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-10 flex flex-col pb-12 flex-1">
+          <Header onMenuClick={() => setIsSidebarOpen(true)} />
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 12 }}
