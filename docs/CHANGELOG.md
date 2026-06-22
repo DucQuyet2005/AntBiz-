@@ -4,6 +4,16 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.2.8] - 2026-06-22
+
+### Changed
+- **Cải tiến tự động hóa Changelog (AI Skill)**: Nâng cấp kỹ năng `write-changelog` để AI tự động đánh giá và chỉ ghi nhận các thay đổi quan trọng vào file CHANGELOG.md mỗi khi hoàn thành tác vụ, bỏ qua các sửa đổi nhỏ lẻ.
+- **Tương thích Playwright trên Serverless / VPS**: Tích hợp `@sparticuz/chromium` và `playwright-core` vào `lib/crawler/index.ts` để cho phép chạy Playwright headless ổn định trên cả môi trường Local và Vercel/VPS, thiết lập làm trình duyệt cào dữ liệu ưu tiên mặc định.
+
+### Fixed
+- **Sửa lỗi chuyển hướng Google OAuth trên VPS**: Bổ sung hỗ trợ ưu tiên đọc biến môi trường `NEXT_PUBLIC_SITE_URL` trong `app/(auth)/actions.ts` và `app/api/auth/callback/route.ts` để sửa lỗi redirect nhầm về `http://localhost:3000` khi Nginx reverse proxy không forward cấu hình header chuyển tiếp một cách hợp lệ.
+
+---
 ## [1.2.7] - 2026-06-22
 
 ### Changed

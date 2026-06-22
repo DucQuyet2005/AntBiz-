@@ -49,12 +49,15 @@ Mỗi phiên bản/lần cập nhật cần phân chia các thay đổi vào cá
 
 ---
 
-## 4. Quy trình ghi chép Changelog khi hoàn thành tác vụ
-Mỗi khi bạn (hoặc AI) hoàn thành một tính năng, hãy thực hiện các bước sau để cập nhật changelog:
+## 4. Quy trình ghi chép Changelog tự động (Dành cho AI)
+Mỗi khi bạn (AI) hoàn thành một loạt các tác vụ hoặc chuẩn bị commit, hãy tuân thủ quy tắc sau:
 
-1. **Thu thập thông tin thay đổi**: Chạy lệnh `git status` hoặc `git diff` để kiểm tra các file đã chỉnh sửa.
-2. **Xác định loại tác vụ**: Phân chia các file đã chỉnh sửa vào các nhóm tương ứng (`Added`, `Changed`, `Fixed`...).
-3. **Cập nhật tài liệu**:
-   - Mở tệp Changelog mục tiêu (Ví dụ: `docs/CHANGELOG.md` hoặc `changelog.md` ở gốc).
-   - Thêm phần ghi chép mới dưới ngày hiện tại ở phía trên cùng của tài liệu.
-4. **Viết nội dung rõ ràng**: Sử dụng tiếng Việt (hoặc tiếng Anh theo ngữ cảnh dự án) ngắn gọn, súc tích.
+1. **Đánh giá mức độ quan trọng của thay đổi (Tự động lọc):**
+   - **Thay đổi quan trọng (BẮT BUỘC ghi Changelog):** Thêm tính năng mới, sửa lỗi nghiêm trọng (crash, bảo mật, UI vỡ), thay đổi luồng nghiệp vụ lớn, tái cấu trúc hệ thống, hoặc thêm màn hình/chức năng mới.
+   - **Thay đổi nhỏ (BỎ QUA, không ghi Changelog):** Sửa lỗi typo, thay đổi màu sắc nhỏ, refactor code không ảnh hưởng logic, cập nhật thư viện (trừ khi có breaking change).
+2. **Thu thập thông tin thay đổi**: Chạy lệnh `git status` hoặc `git diff` để kiểm tra các file đã chỉnh sửa.
+3. **Xác định loại tác vụ**: Phân chia các file đã chỉnh sửa vào các nhóm tương ứng (`Added`, `Changed`, `Fixed`...).
+4. **Cập nhật tài liệu tự động**:
+   - Mở tệp Changelog mục tiêu (`docs/CHANGELOG.md`).
+   - Thêm phần ghi chép mới dưới ngày hiện tại (`YYYY-MM-DD`) ở phía trên cùng của tài liệu. Nếu ngày hiện tại chưa có, hãy tạo một section ngày mới.
+5. **Viết nội dung rõ ràng**: Sử dụng tiếng Việt ngắn gọn, súc tích, tập trung vào giá trị mang lại cho người dùng/dự án.
