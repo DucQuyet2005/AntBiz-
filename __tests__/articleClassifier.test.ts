@@ -134,4 +134,49 @@ describe('classifyArticle – AI path (GEMINI_API_KEY set)', () => {
     const result = await classifyArticle('AI và tương lai', 'Trí tuệ nhân tạo thay đổi mọi thứ');
     expect(result.confidence).toBeLessThanOrEqual(1);
   });
+
+  // T-1.19.6: Edge cases
+  it('handles mixed Vietnamese and English articles', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: '{"category":"Công nghệ","confidence":0.75}' }],
+            },
+          },
+        ],
+      }),
+    });
+
+    const result = await classifyArticle(
+      'Technology trends 2024 - Xu hướng công nghệ',
+      'AI, machine learning, digital transformation là những yếu tố quan trọng'
+    );
+    expect(result.category).toBeTruthy();
+    expect(result.confidence).toBeGreaterThan(0);
+  });
+
+  it('handles long article content (truncation)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: '{"category":"Bất động sản","confidence":0.88}' }],
+            },
+          },
+        ],
+      }),
+    });
+
+    const longContent = 'Bất động sản là một lĩnh vực quan trọng. '.repeat(100);
+    const result = await classifyArticle(
+      'Bất động sản 2024',
+      longContent
+    );
+    expect(result.category).toBe('Bất động sản');
+  });
 });
