@@ -38,16 +38,22 @@ const CaptionEditor = ({
   const originalRef = useRef(originalAiContent);
   const prevCaptionId = useRef(captionId);
 
-  // If captionId changes (e.g. new article or saved to DB), reset the original reference
-  if (prevCaptionId.current !== captionId) {
-    prevCaptionId.current = captionId;
-    originalRef.current = originalAiContent;
-    setContent(initialContent);
-    setLastSavedContent(initialContent);
-  }
-
   const charLimit = PLATFORM_MAX_LENGTH[platform] || 2000;
   const isOverLimit = content.length > charLimit;
+  const hasUnsavedChanges = content !== lastSavedContent;
+
+  useEffect(() => {
+    originalRef.current = originalAiContent;
+  }, [originalAiContent]);
+
+  useEffect(() => {
+    if (prevCaptionId.current !== captionId) {
+      prevCaptionId.current = captionId;
+      setContent(initialContent);
+      setLastSavedContent(initialContent);
+      setSaveStatus('idle');
+    }
+  }, [captionId, initialContent]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -83,20 +89,38 @@ const CaptionEditor = ({
     }
   }, [captionId, lastSavedContent, onSave]);
 
-  // Autosave with debounce (2 seconds as per plan)
+  // Autosave with debounce (3 seconds)
   useEffect(() => {
     if (content !== lastSavedContent && captionId) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         handleSave(content);
-      }, 2000);
+      }, 3000);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [content, lastSavedContent, captionId, handleSave]);
 
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   const handleRestore = () => {
+    if (content === originalRef.current) {
+      setIsEditing(false);
+      return;
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current);
     if (window.confirm('Bạn có chắc chắn muốn quay về bản gốc của AI? Tất cả thay đổi hiện tại sẽ mất.')) {
       setContent(originalRef.current);
       setIsEditing(false);
@@ -146,10 +170,10 @@ const CaptionEditor = ({
         <button 
           onClick={handleRestore}
           className="text-[10px] text-primary hover:text-primary-hover font-bold flex items-center gap-1 transition-colors"
-          title="Hoàn tác về bản gốc AI"
+          title="Ve ban goc AI"
         >
           <RotateCcw size={10} />
-          Hoàn tác bản gốc
+          Ve ban goc AI
         </button>
       </div>
 

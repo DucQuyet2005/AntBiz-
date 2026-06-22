@@ -32,11 +32,13 @@ import {
   X,
   FileText,
   Save,
-  Wand2
+  Wand2,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PromptSuggestionSection from '../PromptSuggestionSection';
+import CaptionEditor from '../CaptionEditor';
 
 
 // Threads Custom SVG Logo
@@ -51,6 +53,12 @@ interface SocialVariant {
   facebook: string;
   threads: string;
   instagram: string;
+  originalFacebook?: string;
+  originalThreads?: string;
+  originalInstagram?: string;
+  facebookCaptionId?: string;
+  threadsCaptionId?: string;
+  instagramCaptionId?: string;
   title: string;
   author: string;
   tags: string;
@@ -95,12 +103,115 @@ const createEmptyVariant = (id: string): SocialVariant => ({
   facebook: '',
   threads: '',
   instagram: '',
+  originalFacebook: '',
+  originalThreads: '',
+  originalInstagram: '',
+  facebookCaptionId: '',
+  threadsCaptionId: '',
+  instagramCaptionId: '',
   title: '',
   author: '',
   tags: '',
 });
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
+
+// Module-level variables to share state/handlers with EditableText without unmounting it
+let _editState: any = null;
+let _setEditState: any = () => {};
+let _handleUpdateVariantField: any = () => {};
+
+interface SocialVariant {
+  id: string; // A, B, C...
+  facebook: string;
+  threads: string;
+  instagram: string;
+  originalFacebook?: string;
+  originalThreads?: string;
+  originalInstagram?: string;
+  facebookCaptionId?: string;
+  threadsCaptionId?: string;
+  instagramCaptionId?: string;
+  title: string;
+  author: string;
+  tags: string;
+}
+
+const EditableText = ({
+  variantId,
+  field,
+  value,
+  textarea = false,
+  className = ""
+}: {
+  variantId: string;
+  field: keyof SocialVariant;
+  value: string;
+  textarea?: boolean;
+  className?: string;
+}) => {
+  const isEditing = _editState?.variantId === variantId && _editState?.field === field;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      if (textarea && textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    }
+  }, [isEditing, value, textarea]);
+
+  if (isEditing) {
+    return (
+      <div className="w-full relative">
+        {textarea ? (
+          <textarea
+            ref={textareaRef}
+            autoFocus
+            value={value}
+            onChange={(e) => {
+              _handleUpdateVariantField(variantId, field, e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onBlur={() => _setEditState(null)}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            autoFocus
+            type="text"
+            value={value}
+            onChange={(e) => _handleUpdateVariantField(variantId, field, e.target.value)}
+            onBlur={() => _setEditState(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') _setEditState(null);
+            }}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        _setEditState({ variantId, field });
+      }}
+      className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+    >
+      <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+      <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+        <Edit2 size={10} className="text-primary" />
+      </span>
+    </div>
+  );
+};
 
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
@@ -117,6 +228,8 @@ export default function AiCreatorView() {
     window.addEventListener('ai-creator-go-to-step-1', onGoStep1);
     return () => window.removeEventListener('ai-creator-go-to-step-1', onGoStep1);
   }, []);
+
+
   
   // AI Generation States
   const [articleId, setArticleId] = useState<string | null>(null);
@@ -128,6 +241,7 @@ export default function AiCreatorView() {
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
+  const [savedHistory, setSavedHistory] = useState<SocialVariant[][]>([]);
 
   // ... (existing code)
 
@@ -178,6 +292,9 @@ export default function AiCreatorView() {
           facebook: targetPlatforms.includes('facebook') ? contentA : "",
           threads: targetPlatforms.includes('threads') ? contentA : "",
           instagram: targetPlatforms.includes('instagram') ? contentA : "",
+          originalFacebook: targetPlatforms.includes('facebook') ? contentA : "",
+          originalThreads: targetPlatforms.includes('threads') ? contentA : "",
+          originalInstagram: targetPlatforms.includes('instagram') ? contentA : "",
           title: postData.title,
           author: postData.author,
           tags: tagsStr
@@ -187,6 +304,9 @@ export default function AiCreatorView() {
           facebook: targetPlatforms.includes('facebook') ? contentB : "",
           threads: targetPlatforms.includes('threads') ? contentB : "",
           instagram: targetPlatforms.includes('instagram') ? contentB : "",
+          originalFacebook: targetPlatforms.includes('facebook') ? contentB : "",
+          originalThreads: targetPlatforms.includes('threads') ? contentB : "",
+          originalInstagram: targetPlatforms.includes('instagram') ? contentB : "",
           title: postData.title,
           author: postData.author,
           tags: tagsStr
@@ -194,6 +314,7 @@ export default function AiCreatorView() {
       ];
 
       setVariants(newVariants);
+      setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
       setStep(2);
     } catch (error) {
       console.error('Error generating A/B variants:', error);
@@ -762,6 +883,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
   const [captionId, setCaptionId] = useState<string>('');
   const [streamedCaption, setStreamedCaption] = useState('');
+  const [originalAiCaption, setOriginalAiCaption] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateDone, setGenerateDone] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -785,6 +907,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
     setGenerateError(null);
     setStreamedCaption('');
+    setOriginalAiCaption('');
     setCaptionId('');
     setGenerateDone(false);
     setIsGenerating(true);
@@ -820,10 +943,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             const data = line.slice(6).trim();
             if (data === '[DONE]') {
               setGenerateDone(true);
-              // Auto-fill Variant A facebook field with the generated caption
+              setOriginalAiCaption(accumulated);
+              // Auto-fill Variant A facebook field with the generated caption and original backups
               setVariants((prev) =>
                 prev.map((v) =>
-                  v.id === 'A' ? { ...v, facebook: accumulated, threads: accumulated } : v
+                  v.id === 'A' ? {
+                    ...v,
+                    facebook: accumulated,
+                    threads: accumulated,
+                    originalFacebook: accumulated,
+                    originalThreads: accumulated,
+                    originalInstagram: v.instagram || accumulated,
+                  } : v
                 )
               );
               continue;
@@ -834,8 +965,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 accumulated += parsed.text;
                 setStreamedCaption(accumulated);
               }
-              if (parsed.done && parsed.captionId) {
-                setCaptionId(parsed.captionId);
+              if (parsed.done && parsed.versionId) {
+                // versionId is stored in caption_versions table, we don't save to captions table yet.
               }
               if (parsed.done && parsed.articleId) {
                 setArticleId(parsed.articleId);
@@ -905,10 +1036,88 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     createEmptyVariant('B'),
   ]);
 
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Prevent leaving the page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsavedChanges = variants.some(v => {
+        return (v.facebook && v.facebook !== v.originalFacebook) ||
+               (v.threads && v.threads !== v.originalThreads) ||
+               (v.instagram && v.instagram !== v.originalInstagram);
+      });
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [variants]);
+
+  // Auto-save debounced logic – 3 seconds after user stops typing (T-1.13.5)
+  useEffect(() => {
+    if (step !== 2) return;
+
+    const timer = setTimeout(async () => {
+      const modifiedVariants = variants.filter(v => {
+        const fbChanged = !!(v.originalFacebook) && v.facebook !== v.originalFacebook;
+        const trChanged = !!(v.originalThreads) && v.threads !== v.originalThreads;
+        const igChanged = !!(v.originalInstagram) && v.instagram !== v.originalInstagram;
+        return fbChanged || trChanged || igChanged;
+      });
+
+      if (modifiedVariants.length === 0) return;
+
+      setAutoSaveStatus('saving');
+      try {
+        const resolvedArticleId = articleId || await ensureArticleForCaption();
+
+        for (const v of modifiedVariants) {
+          const platformsToSave: ('facebook' | 'threads' | 'instagram')[] = [];
+          if (v.originalFacebook && v.facebook !== v.originalFacebook) platformsToSave.push('facebook');
+          if (v.originalThreads && v.threads !== v.originalThreads) platformsToSave.push('threads');
+          if (v.originalInstagram && v.instagram !== v.originalInstagram) platformsToSave.push('instagram');
+
+          for (const plat of platformsToSave) {
+            const content = v[plat];
+
+            await fetch('/api/captions/versions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                article_id: resolvedArticleId,
+                platform: toDatabasePlatform(plat),
+                content: content,
+                source: 'human'
+              }),
+            });
+          }
+        }
+        setAutoSaveStatus('saved');
+        setSavedHistory(prev => {
+          const currentStr = JSON.stringify(variants);
+          const lastHistory = prev[prev.length - 1];
+          const lastStr = lastHistory ? JSON.stringify(lastHistory) : '';
+          if (currentStr !== lastStr) {
+            return [...prev, JSON.parse(currentStr)];
+          }
+          return prev;
+        });
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      } catch (err) {
+        console.error('Auto-save error:', err);
+        setAutoSaveStatus('error');
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variants, step]);
+
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
 
-  // Helper to extract targeted platforms from prompt
   const getPromptTargetPlatforms = (prompt: any): ('facebook' | 'threads' | 'instagram')[] => {
     if (!prompt) return ['facebook', 'threads', 'instagram'];
 
@@ -1002,6 +1211,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1012,6 +1224,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1019,6 +1234,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     ];
 
     setVariants(newVariants);
+    setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
 
     // Auto-select the first available platform tab
     if (targetPlatforms.length > 0) {
@@ -1117,6 +1333,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setVariants(prev => prev.map(v => v.id === variantId ? { ...v, [field]: value } : v));
   };
 
+  // Sync state values to module-level refs for EditableText
+  _editState = editState;
+  _setEditState = setEditState;
+  _handleUpdateVariantField = handleUpdateVariantField;
+
   // Import from Live Explorer
   const handleImportFromExplorer = async () => {
     setIsScraping(true);
@@ -1162,88 +1383,45 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  // Inline editable wrapper component that prevents layout shifts
-  const EditableText = ({
-    variantId,
-    field,
-    value,
-    textarea = false,
-    className = ""
-  }: {
-    variantId: string;
-    field: keyof SocialVariant;
-    value: string;
-    textarea?: boolean;
-    className?: string;
-  }) => {
-    const isEditing = editState?.variantId === variantId && editState?.field === field;
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      if (isEditing) {
-        if (textarea && textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-      }
-    }, [isEditing, value, textarea]);
-
-    if (isEditing) {
-      return (
-        <div className="w-full relative">
-          {textarea ? (
-            <textarea
-              ref={textareaRef}
-              autoFocus
-              value={value}
-              onChange={(e) => {
-                handleUpdateVariantField(variantId, field, e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-            />
-          ) : (
-            <input
-              ref={inputRef}
-              autoFocus
-              type="text"
-              value={value}
-              onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
-              onBlur={() => setEditState(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditState(null);
-              }}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditState({ variantId, field });
-        }}
-        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
-      >
-        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
-        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-          <Edit2 size={10} className="text-primary" />
-        </span>
-      </div>
-    );
-  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
     if (!selectedVariant) return '';
     return (selectedVariant[selectedPlatform] || '').trim();
   };
+
+  const handleRevertToSaved = () => {
+    if (savedHistory.length === 0) return;
+
+    const currentStr = JSON.stringify(variants);
+    const latestSavedStr = JSON.stringify(savedHistory[savedHistory.length - 1]);
+
+    if (currentStr !== latestSavedStr) {
+      // Discard current unsaved edits, restore the last saved version
+      setVariants(JSON.parse(latestSavedStr));
+    } else if (savedHistory.length > 1) {
+      // Pop the current saved state, revert to the previous saved state
+      const newHistory = [...savedHistory];
+      newHistory.pop();
+      const previousSaved = newHistory[newHistory.length - 1];
+      setVariants(JSON.parse(JSON.stringify(previousSaved)));
+      setSavedHistory(newHistory);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (step === 2) {
+          e.preventDefault();
+          handleRevertToSaved();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [savedHistory, step, variants]);
 
   const ensureArticleForCaption = async () => {
     if (articleId) return articleId;
@@ -1272,7 +1450,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const ensureCaptionDraft = async () => {
-    if (captionId) return captionId;
+    const activeVariant = variants.find((variant) => variant.id === selectedVariantId);
+    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
+                    selectedPlatform === 'threads' ? 'threadsCaptionId' :
+                    'instagramCaptionId';
+    const existingCapId = activeVariant ? activeVariant[platKey] : captionId;
+    if (existingCapId) return existingCapId;
 
     const selectedContent = getSelectedVariantCaption();
     if (!selectedContent) {
@@ -1284,13 +1467,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
+    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                           selectedPlatform === 'threads' ? 'originalThreads' :
+                           'originalInstagram';
+    const originalAiText = activeVariant ? activeVariant[originalField] || selectedContent : selectedContent;
+
     const res = await fetch('/api/captions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
         platform: toDatabasePlatform(selectedPlatform),
-        ai_content: selectedContent,
+        ai_content: originalAiText,
+        edited_content: selectedContent,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
           ? { prompt_id: selectedPrompt.id }
           : {}),
@@ -1307,8 +1496,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       );
     }
 
-    setCaptionId(data.data.id);
-    return data.data.id as string;
+    const newCapId = data.data.id;
+    setCaptionId(newCapId);
+    if (activeVariant) {
+      setVariants((prev) =>
+        prev.map((v) => (v.id === selectedVariantId ? { ...v, [platKey]: newCapId } : v))
+      );
+    }
+    return newCapId as string;
   };
 
   const handleConfirmSchedule = async () => {
@@ -1781,12 +1976,29 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-text leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
-                      {streamedCaption}
-                      {isGenerating && (
-                        <span className="inline-block w-0.5 h-3.5 bg-primary align-middle ml-0.5 animate-[blink_0.8s_step-end_infinite]" />
-                      )}
-                    </p>
+                    {generateDone && captionId ? (
+                      <CaptionEditor
+                        captionId={captionId}
+                        initialContent={streamedCaption}
+                        originalAiContent={originalAiCaption || streamedCaption}
+                        platform={selectedPlatform === 'threads' ? 'thread' : selectedPlatform}
+                        onSave={(content) => {
+                          setStreamedCaption(content);
+                          setVariants((prev) =>
+                            prev.map((v) =>
+                              v.id === 'A' ? { ...v, facebook: content, threads: content } : v
+                            )
+                          );
+                        }}
+                      />
+                    ) : (
+                      <p className="text-xs text-text leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
+                        {streamedCaption}
+                        {isGenerating && (
+                          <span className="inline-block w-0.5 h-3.5 bg-primary align-middle ml-0.5 animate-[blink_0.8s_step-end_infinite]" />
+                        )}
+                      </p>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -2099,28 +2311,71 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
                 <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
+                {autoSaveStatus !== 'idle' && (
+                  <span className={`text-[10px] px-2.5 py-1 rounded-xl font-bold ml-2 transition-all flex items-center gap-1 ${
+                    autoSaveStatus === 'saving' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                    autoSaveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                    'bg-rose-50 text-rose-600 border border-rose-200'
+                  }`}>
+                    {autoSaveStatus === 'saving' && (
+                      <>
+                        <Loader2 size={10} className="animate-spin" />
+                        {language === 'vi' ? 'Đang lưu tự động...' : 'Auto-saving...'}
+                      </>
+                    )}
+                    {autoSaveStatus === 'saved' && (
+                      <>
+                        <Check size={10} />
+                        {language === 'vi' ? 'Đã lưu tự động' : 'Auto-saved'}
+                      </>
+                    )}
+                    {autoSaveStatus === 'error' && (
+                      <>
+                        <X size={10} />
+                        {language === 'vi' ? 'Lỗi lưu tự động' : 'Auto-save error'}
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
 
-              <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                {(['facebook', 'threads', 'instagram'] as const)
-                  .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
-                  .map((platform) => {
-                    const isActive = selectedPlatform === platform;
-                    return (
-                      <button
-                        key={platform}
-                        onClick={() => setSelectedPlatform(platform)}
-                        className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-text-muted hover:text-text'
-                          }`}
-                      >
-                        {platform === 'facebook' && t('aiCreator.fbLabel')}
-                        {platform === 'threads' && t('aiCreator.threadsLabel')}
-                        {platform === 'instagram' && 'Instagram'}
-                      </button>
-                    );
-                  })}
+              <div className="flex items-center gap-3">
+                <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
+                  {(['facebook', 'threads', 'instagram'] as const)
+                    .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
+                    .map((platform) => {
+                      const isActive = selectedPlatform === platform;
+                      return (
+                        <button
+                          key={platform}
+                          onClick={() => setSelectedPlatform(platform)}
+                          className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-text-muted hover:text-text'
+                            }`}
+                        >
+                          {platform === 'facebook' && t('aiCreator.fbLabel')}
+                          {platform === 'threads' && t('aiCreator.threadsLabel')}
+                          {platform === 'instagram' && 'Instagram'}
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {/* Revert to Last Saved Button */}
+                <button
+                  type="button"
+                  onClick={handleRevertToSaved}
+                  disabled={
+                    savedHistory.length === 0 ||
+                    (savedHistory.length === 1 && JSON.stringify(variants) === JSON.stringify(savedHistory[0]))
+                  }
+                  className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 border border-slate-200 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer select-none text-slate-700 h-9"
+                  title="Ctrl + Z"
+                >
+                  <RotateCcw size={12} />
+                  {language === 'vi' ? 'Bản vừa lưu' : 'Last Saved'}
+                </button>
               </div>
             </div>
 
@@ -2143,6 +2398,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                   const previewTimestamp = postData.published_at || toDateInputValue(new Date());
                   const isCardSelected = selectedVariantId === v.id;
+                  const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                                         selectedPlatform === 'threads' ? 'originalThreads' :
+                                         'originalInstagram';
+                  const currentVal = v[selectedPlatform] || '';
+                  const originalVal = v[originalField] || '';
+                  const hasChanged = !!(originalVal && currentVal !== originalVal);
+
                   return (
                     <motion.div
                       key={v.id}
@@ -2170,6 +2432,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          {hasChanged && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const confirmMsg = language === 'vi'
+                                  ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                                  : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                                if (window.confirm(confirmMsg)) {
+                                  handleUpdateVariantField(v.id, selectedPlatform, originalVal);
+                                }
+                              }}
+                              className="flex items-center gap-1 text-[10px] font-black text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 px-2.5 py-1 rounded-xl transition-all cursor-pointer select-none"
+                              title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                            >
+                              <RefreshCw size={10} />
+                              {language === 'vi' ? 'Về bản gốc' : 'Revert'}
+                            </button>
+                          )}
                           {isCardSelected && (
                             <motion.span
                               initial={{ scale: 0, opacity: 0 }}

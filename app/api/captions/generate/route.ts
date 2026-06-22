@@ -274,31 +274,29 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
             }
           }
 
-          // Ingest completed caption into DB as draft
-          const { data: savedCaption, error: saveError } = await userSupabase
-            .from('captions')
+          // Ingest completed caption into DB as version 1 in caption_versions (NOT in captions table)
+          const { data: savedVersion, error: saveError } = await userSupabase
+            .from('caption_versions')
             .insert({
               article_id: article.id,
-              prompt_id: promptRecord.id,
-              created_by: user.id,
               platform: promptRecord.platform,
-              ai_content: generatedText,
-              status: 'draft',
+              version_number: 1,
+              content: generatedText,
+              source: 'ai',
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
             })
             .select()
             .single();
 
-          let captionId = '';
+          let versionId = '';
           if (saveError) {
-            console.error('[Generate API] Error saving generated caption to DB:', saveError);
-          } else if (savedCaption) {
-            captionId = savedCaption.id;
+            console.error('[Generate API] Error saving generated version to DB:', saveError);
+          } else if (savedVersion) {
+            versionId = savedVersion.id;
           }
 
           // Send signal that stream is complete with metadata
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId, articleId: article.id })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, versionId, articleId: article.id })}\n\n`));
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (err) {

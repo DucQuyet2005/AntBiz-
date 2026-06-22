@@ -176,11 +176,11 @@ describe('Autosave – debounce and content diff check', () => {
     vi.useFakeTimers();
     const saveFn = vi.fn();
 
-    // Simulate debounce 2s
+    // Simulate debounce 3s
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedSave = (val: string) => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => saveFn(val), 2000);
+      debounceTimer = setTimeout(() => saveFn(val), 3000);
     };
 
     // Rapid calls
@@ -191,8 +191,8 @@ describe('Autosave – debounce and content diff check', () => {
 
     expect(saveFn).not.toHaveBeenCalled();
 
-    // Advance timer past 2s
-    vi.advanceTimersByTime(2001);
+    // Advance timer past 3s
+    vi.advanceTimersByTime(3001);
     expect(saveFn).toHaveBeenCalledTimes(1);
     expect(saveFn).toHaveBeenCalledWith('final');
 

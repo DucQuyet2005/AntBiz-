@@ -8,6 +8,7 @@ const createCaptionSchema = z.object({
     .enum(['facebook', 'thread', 'threads', 'instagram'])
     .transform((platform) => (platform === 'threads' ? 'thread' : platform)),
   ai_content: z.string().min(1, 'ai_content không được rỗng'),
+  edited_content: z.string().optional(),
   prompt_id: z.string().uuid().optional(),
   utm_config_id: z.string().uuid().optional(),
 });
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { article_id, platform, ai_content, prompt_id, utm_config_id } = parsed.data;
+  const { article_id, platform, ai_content, edited_content, prompt_id, utm_config_id } = parsed.data;
 
   const { data, error } = await supabase
     .from('captions')
@@ -50,11 +51,11 @@ export async function POST(request: NextRequest) {
       article_id,
       platform,
       ai_content,         // bản AI gốc – không bao giờ ghi đè
-      edited_content: null,
+      edited_content: edited_content || null,
       created_by: user.id,
       ...(prompt_id && { prompt_id }),
       ...(utm_config_id && { utm_config_id }),
-      status: 'draft',
+      status: edited_content ? 'edited' : 'draft',
     })
     .select()
     .single();
@@ -62,6 +63,18 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[POST /api/captions] supabase error:', error);
     return NextResponse.json({ error: 'Không thể tạo caption' }, { status: 500 });
+  }
+
+  // Cập nhật tất cả các phiên bản nháp trước đó sang caption_id mới tạo
+  const { error: updateVersionsError } = await supabase
+    .from('caption_versions')
+    .update({ caption_id: data.id })
+    .eq('article_id', article_id)
+    .eq('platform', platform)
+    .is('caption_id', null);
+
+  if (updateVersionsError) {
+    console.warn('[POST /api/captions] update versions reference error:', updateVersionsError);
   }
 
   return NextResponse.json({ data }, { status: 201 });
