@@ -12,123 +12,78 @@ import {
   LogOut,
   Globe,
   FileText,
+  Compass,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signout } from "@/app/(dashboard)/actions";
+import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Sidebar = () => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
+  const supabase = createClient();
+
+  const handleLogout = async () => {
+    sessionStorage.setItem('logging_out', 'true');
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
+  const navItems = [
+    { href: "/overview", label: t("sidebar.overview"), icon: LayoutDashboard },
+    { href: "/ai-creator", label: t("sidebar.aiCreator"), icon: Wand2 },
+    { href: "/prompts", label: "Prompts", icon: FileText },
+    { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
+    { href: "/archive", label: t("sidebar.archive"), icon: Archive },
+    { href: "/settings", label: t("sidebar.settings"), icon: Settings },
+    { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
+  ];
 
   return (
-    <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between py-8 px-6 rounded-r-[32px] fixed left-0 top-0 overflow-y-auto z-50">
+    <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50">
       <div>
-        <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-10 h-10 flex items-center justify-center">
+        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-[32px] flex items-center gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
+          <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-inner">
             <img
               src="/images/logo.png"
               alt="AntBiz Logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <div>
-            <h1 className="font-bold text-lg text-primary">
+          <div className="flex flex-col min-w-0">
+            <h1 className="font-black text-base tracking-tight leading-none text-white truncate">
               {t("sidebar.title")}
             </h1>
-            <p className="text-xs text-text-muted">{t("sidebar.subtitle")}</p>
+            <p className="text-[10px] text-white/80 leading-none mt-1 truncate">
+              {t("sidebar.subtitle")}
+            </p>
           </div>
         </div>
 
-        <nav className="flex flex-col gap-2">
-          <Link
-            href="/"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <LayoutDashboard size={20} />
-            {t("sidebar.overview")}
-          </Link>
-
-          <Link
-            href="/ai-creator"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/ai-creator"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <Wand2 size={20} />
-            {t("sidebar.aiCreator")}
-          </Link>
-
-          <Link
-            href="/prompts"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/prompts"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <FileText size={20} />
-            Prompts
-          </Link>
-
-          <Link
-            href="/content-calendar"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/content-calendar"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <CalendarDays size={20} />
-            {t("sidebar.contentCalendar")}
-          </Link>
-
-          <Link
-            href="/archive"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/archive"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <Archive size={20} />
-            {t("sidebar.archive")}
-          </Link>
-
-          <Link
-            href="/settings"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/settings"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <Settings size={20} />
-            {t("sidebar.settings")}
-          </Link>
-
-          <Link
-            href="/faq"
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors ${
-              pathname === "/faq"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-text-muted hover:bg-white/50 hover:text-text"
-            }`}
-          >
-            <HelpCircle size={20} />
-            {t("sidebar.faq")}
-          </Link>
+        <nav className="flex flex-col gap-2 pr-6">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-4 py-3 transition-all relative ${
+                  isActive
+                    ? "bg-primary/8 text-primary border-l-4 border-primary pl-5 pr-4 rounded-r-xl rounded-l-none font-extrabold shadow-sm shadow-primary/5"
+                    : "text-text-muted hover:bg-white/50 hover:text-text pl-5 pr-4 border-l-4 border-transparent rounded-r-xl rounded-l-none"
+                }`}
+              >
+                <Icon size={20} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
-      <div className="flex flex-col gap-2 mt-auto pt-8">
+      <div className="flex flex-col gap-2 mt-auto pt-8 pl-6 pr-6">
         <div className="flex items-center justify-between px-4 py-2 mb-2 bg-white/30 rounded-2xl border border-white/10 text-xs select-none">
           <span className="font-semibold text-text-muted flex items-center gap-1.5">
             <Globe size={14} className="text-primary/70" />
@@ -165,15 +120,13 @@ const Sidebar = () => {
           {t("sidebar.support")}
         </button>
 
-        <form action={signout} className="w-full">
-          <button
-            type="submit"
-            className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full"
-          >
-            <LogOut size={20} />
-            {t("sidebar.logout")}
-          </button>
-        </form>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full text-left bg-transparent border-0 cursor-pointer"
+        >
+          <LogOut size={20} />
+          {t("sidebar.logout")}
+        </button>
       </div>
     </aside>
   );

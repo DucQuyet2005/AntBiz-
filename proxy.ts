@@ -45,6 +45,7 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone()
 
   const isPublicRoute = 
+    url.pathname === '/' ||
     url.pathname === '/login' || 
     url.pathname === '/register' || 
     url.pathname === '/forgot-password' || 
@@ -94,13 +95,13 @@ export async function proxy(request: NextRequest) {
 
   // 1. Nếu người dùng ĐÃ ĐĂNG NHẬP và hợp lệ (có profile và không khóa) mà cố tình truy cập trang login/register
   if (user && profileExists && !isLocked && (url.pathname === '/login' || url.pathname === '/register')) {
-    url.pathname = '/'
+    url.pathname = '/overview'
     return NextResponse.redirect(url)
   }
 
   // 2. Nếu người dùng CHƯA ĐĂNG NHẬP hoặc không có profile hợp lệ mà cố tình truy cập các trang được bảo vệ (tất cả trừ public)
   if (!user && !isPublicRoute) {
-    url.pathname = '/login'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 

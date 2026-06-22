@@ -55,6 +55,34 @@ export default function ContentCalendarView() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedCell, setSelectedCell] = useState<{ date: Date; hour: number; posts: any[] } | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  const [highlightedDate, setHighlightedDate] = useState<Date | null>(() => new Date());
+
+  const getMiniCalendarDate = (d: { day: number; isCurrentMonth: boolean }) => {
+    if (d.isCurrentMonth) {
+      return new Date(2026, 5, d.day); // June is month index 5
+    } else if (d.day === 31) {
+      return new Date(2026, 4, 31); // May is month index 4
+    } else {
+      return new Date(2026, 6, d.day); // July is month index 6
+    }
+  };
+
+  const isDateMatch = (d1: Date | null, d2: Date) => {
+    if (!d1) return false;
+    return d1.getDate() === d2.getDate() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getFullYear() === d2.getFullYear();
+  };
+
+  const handleSelectDay = (targetDate: Date) => {
+    const day = targetDate.getDay();
+    const diff = targetDate.getDate() - day; // Sunday is 0
+    const sunday = new Date(targetDate);
+    sunday.setDate(diff);
+    sunday.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(sunday);
+    setHighlightedDate(targetDate);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -91,6 +119,13 @@ export default function ContentCalendarView() {
 
   useEffect(() => {
     fetchPosts();
+    // Tự động chuyển đến tuần chứa ngày hôm nay khi trang được tải
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day; // Sunday is 0
+    const sunday = new Date(today.setDate(diff));
+    sunday.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(sunday);
   }, []);
 
   useEffect(() => {
@@ -151,12 +186,13 @@ export default function ContentCalendarView() {
   };
 
   const handleToday = () => {
-    const baseDate = new Date('2026-06-19T09:09:00+07:00');
-    const day = baseDate.getDay();
-    const diff = baseDate.getDate() - day;
-    const sunday = new Date(baseDate.setDate(diff));
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day;
+    const sunday = new Date(today.setDate(diff));
     sunday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(sunday);
+    setHighlightedDate(new Date());
   };
 
   const getDayAndPosition = (scheduledAtStr: string, weekStart: Date) => {
@@ -243,6 +279,23 @@ export default function ContentCalendarView() {
     { day: 4, isCurrentMonth: false },
   ];
 
+  const getHeaderTitle = () => {
+    const midWeek = new Date(currentWeekStart);
+    midWeek.setDate(currentWeekStart.getDate() + 3);
+    const month = midWeek.getMonth() + 1;
+    const year = midWeek.getFullYear();
+    
+    if (language === 'vi') {
+      return `Tháng ${month}, ${year}`;
+    } else {
+      const monthsEN = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return `${monthsEN[midWeek.getMonth()]} ${year}`;
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 font-sans relative pb-10">
       
@@ -294,7 +347,7 @@ export default function ContentCalendarView() {
       <div className="flex justify-between items-center premium-glass rounded-[28px] p-5 shadow-sm">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-[20px] bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-12 h-12 rounded-[20px] bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
               <Calendar size={22} className="stroke-[2.5]" />
             </div>
             <div className="flex flex-col">
@@ -302,7 +355,7 @@ export default function ContentCalendarView() {
                 {language === 'vi' ? 'Lên lịch đăng bài' : 'Editorial Calendar'}
               </span>
               <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none">
-                {language === 'vi' ? 'Tháng 6, 2026' : 'June 2026'}
+                {getHeaderTitle()}
               </h1>
             </div>
           </div>
@@ -331,23 +384,7 @@ export default function ContentCalendarView() {
           </div>
         </div>
 
-        {/* Global Module Navigation Buttons */}
-        <div className="flex items-center gap-3">
-          <Link 
-            href="/ai-creator" 
-            className="flex items-center gap-2 bg-[#F1F3F9] hover:bg-indigo-50 border border-slate-200/50 px-4 py-2.5 rounded-xl text-xs font-black text-slate-700 hover:text-indigo-600 transition-all cursor-pointer decoration-none active:scale-95"
-          >
-            <Sparkles size={14} className="text-indigo-500" />
-            <span>{language === 'vi' ? 'Trình tạo AI' : 'AICreator'}</span>
-          </Link>
-          <Link 
-            href="/archive" 
-            className="flex items-center gap-2 bg-[#F1F3F9] hover:bg-emerald-50 border border-slate-200/50 px-4 py-2.5 rounded-xl text-xs font-black text-slate-700 hover:text-emerald-700 transition-all cursor-pointer decoration-none active:scale-95"
-          >
-            <Globe size={14} className="text-emerald-500" />
-            <span>{language === 'vi' ? 'Kho lưu trữ' : 'Archive'}</span>
-          </Link>
-        </div>
+
       </div>
 
       {/* Main Split Grid (Sidebar & Calendar Grid) */}
@@ -360,7 +397,7 @@ export default function ContentCalendarView() {
           <div className="relative w-full">
             <button 
               onClick={() => setShowCreateMenu(!showCreateMenu)}
-              className="flex items-center justify-between bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-3.5 rounded-[22px] text-sm font-black shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/35 transition-all active:scale-95 cursor-pointer w-full select-none border-0"
+              className="flex items-center justify-between bg-primary hover:bg-primary-hover text-white px-5 py-3.5 rounded-[22px] text-sm font-black shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95 cursor-pointer w-full select-none border-0"
             >
               <div className="flex items-center gap-3">
                 <Plus size={18} className="stroke-[3.5]" />
@@ -374,9 +411,9 @@ export default function ContentCalendarView() {
                 <Link 
                   href="/ai-creator" 
                   onClick={() => setShowCreateMenu(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors w-full cursor-pointer decoration-none border-0"
+                  className="flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-primary/5 hover:text-primary transition-colors w-full cursor-pointer decoration-none border-0"
                 >
-                  <Sparkles size={14} className="text-indigo-500" />
+                  <Sparkles size={14} className="text-primary" />
                   <span>{language === 'vi' ? 'Trình tạo bài viết AI' : 'Create with AI'}</span>
                 </Link>
                 <Link 
@@ -414,13 +451,21 @@ export default function ContentCalendarView() {
                                 d.day === today.getDate() && 
                                 today.getMonth() === 5 && 
                                 today.getFullYear() === 2026;
+                const cellDate = getMiniCalendarDate(d);
+                const isSelected = highlightedDate && isDateMatch(highlightedDate, cellDate);
+                
                 return (
                   <div 
                     key={idx} 
-                    className={`py-1.5 flex items-center justify-center rounded-xl text-[10px] font-black select-none cursor-pointer transition-all hover:bg-slate-200/50 ${
+                    onClick={() => handleSelectDay(cellDate)}
+                    className={`py-1.5 flex items-center justify-center rounded-xl text-[10px] font-black select-none cursor-pointer transition-all active:scale-90 ${
                       !d.isCurrentMonth ? 'text-slate-300' : 'text-slate-700'
                     } ${
-                      isToday ? 'bg-indigo-600 text-white hover:bg-indigo-700 font-black shadow-md shadow-indigo-600/20' : ''
+                      isToday 
+                        ? 'bg-primary text-white hover:bg-primary-hover font-black shadow-md shadow-primary/20' 
+                        : isSelected 
+                          ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm'
+                          : 'hover:bg-slate-200/50'
                     }`}
                   >
                     {d.day}
@@ -436,7 +481,7 @@ export default function ContentCalendarView() {
             <input 
               type="text" 
               placeholder={language === 'vi' ? 'Tìm người, sự kiện...' : 'Search people...'}
-              className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl py-3 pl-10 pr-3.5 text-xs font-bold text-slate-700 placeholder:text-slate-400/80 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-inner"
+              className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl py-3 pl-10 pr-3.5 text-xs font-bold text-slate-700 placeholder:text-slate-400/80 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all shadow-inner"
             />
           </div>
 
@@ -539,25 +584,36 @@ export default function ContentCalendarView() {
             <div className="grid grid-cols-7 border-b border-slate-100 pb-3 gap-x-3 text-center">
               {weekDates.map((date, idx) => {
                 const isTodayDate = isToday(date);
+                const isSelected = highlightedDate && isDateMatch(highlightedDate, date);
                 const dayNum = date.getDate();
                 const dayLabel = getDayLabel(date);
                 
                 return (
-                  <div key={idx} className="flex flex-col items-center select-none relative">
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${
-                      isTodayDate ? 'text-indigo-600 font-black' : 'text-slate-400'
+                  <div 
+                    key={idx} 
+                    onClick={() => handleSelectDay(date)}
+                    className="flex flex-col items-center select-none relative cursor-pointer group"
+                  >
+                    <span className={`text-[10px] font-black uppercase tracking-wider transition-colors duration-300 ${
+                      isTodayDate 
+                        ? 'text-primary font-black' 
+                        : isSelected 
+                          ? 'text-primary font-black' 
+                          : 'text-slate-400 group-hover:text-slate-600'
                     }`}>
                       {dayLabel}
                     </span>
                     <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black mt-1 transition-all duration-300 ${
                       isTodayDate 
-                        ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-600/20' 
-                        : 'text-slate-800 hover:bg-slate-100'
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : isSelected
+                          ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm scale-105'
+                          : 'text-slate-800 hover:bg-slate-100'
                     }`}>
                       {dayNum}
                     </span>
                     {isTodayDate && (
-                      <div className="absolute bottom-[-13px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-600 rounded-full" />
+                      <div className="absolute bottom-[-13px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full" />
                     )}
                   </div>
                 );
@@ -569,7 +625,7 @@ export default function ContentCalendarView() {
           {loading ? (
             <div className="h-[600px] flex items-center justify-center border border-slate-100 rounded-[24px]">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="animate-spin text-indigo-500" size={32} />
+                <Loader2 className="animate-spin text-primary" size={32} />
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{t('common.loading')}</span>
               </div>
             </div>
@@ -581,9 +637,9 @@ export default function ContentCalendarView() {
               <div className="grid grid-cols-[80px_1fr] relative h-[1440px] overflow-x-visible">
                 
                 {/* Hours Left Column */}
-                <div className="border-r border-slate-100 bg-slate-50/30 pt-2 flex flex-col z-20">
+                <div className="border-r border-slate-100 bg-slate-50/30 flex flex-col z-20">
                   {hoursArray.map(hour => (
-                    <div key={hour} className="h-[60px] text-right pr-4 text-[10px] text-slate-400 font-bold relative -top-[6px] select-none">
+                    <div key={hour} className="h-[60px] flex items-center justify-end pr-4 text-[10px] text-slate-400 font-bold select-none">
                       {hour > 0 ? formatHour(hour) : ''}
                     </div>
                   ))}
@@ -599,11 +655,19 @@ export default function ContentCalendarView() {
                     ))}
                   </div>
 
-                  {/* Vertical Column Borders */}
+                  {/* Vertical Column Borders and Highlights */}
                   <div className="absolute inset-0 grid grid-cols-7 pointer-events-none z-0">
-                    {weekDates.map((_, i) => (
-                      <div key={i} className="border-r border-slate-100/70 h-full last:border-r-0"></div>
-                    ))}
+                    {weekDates.map((date, i) => {
+                      const isHighlighted = highlightedDate && isDateMatch(highlightedDate, date);
+                      return (
+                        <div 
+                          key={i} 
+                          className={`border-r border-slate-100/70 h-full last:border-r-0 transition-all duration-300 ${
+                            isHighlighted ? 'bg-primary/[0.04]' : ''
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
 
                   {/* Dynamic Time Line with Radar Pulse Indicator */}
@@ -617,24 +681,24 @@ export default function ContentCalendarView() {
                       <div className="relative w-full h-full">
                         {/* Pulse indicator at the left border of the current day column */}
                         <div 
-                          className="absolute w-2.5 h-2.5 bg-rose-500 rounded-full -top-[4.5px] z-40 shadow-sm shadow-rose-500/30"
+                          className="absolute w-2.5 h-2.5 bg-primary rounded-full -top-[4.5px] z-40 shadow-sm shadow-primary/30"
                           style={{
                             left: `${(todayIndex / 7) * 100}%`,
                             transform: 'translateX(-50%)'
                           }}
                         >
-                          <span className="absolute -inset-1.5 rounded-full bg-rose-500/30 animate-ping pointer-events-none" />
+                          <span className="absolute -inset-1.5 rounded-full bg-primary/30 animate-ping pointer-events-none" />
                         </div>
                         {/* High-contrast solid line for the active day column */}
                         <div 
-                          className="absolute h-[1.5px] bg-rose-500 z-30"
+                          className="absolute h-[1.5px] bg-primary z-30"
                           style={{
                             left: `${(todayIndex / 7) * 100}%`,
                             width: `${100 / 7}%`
                           }}
                         />
                         {/* Low-contrast timeline extending across the rest of the week */}
-                        <div className="absolute left-0 right-0 h-[1px] bg-rose-400/25 z-10" />
+                        <div className="absolute left-0 right-0 h-[1px] bg-primary/25 z-10" />
                       </div>
                     </div>
                   )}
@@ -746,10 +810,10 @@ export default function ContentCalendarView() {
                               
                               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-5 h-5 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                  <div className="w-5 h-5 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
                                     <Sparkles size={11} className="animate-pulse" />
                                   </div>
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-primary">
                                     {language === 'vi' ? 'Bản mo phỏng A/B' : 'A/B Mock Preview'}
                                   </span>
                                 </div>
@@ -886,45 +950,66 @@ export default function ContentCalendarView() {
                         const topOffset = hours * 60;
                         const cardHeight = 54;
                         const dateOfPost = new Date(firstPost.scheduled_at);
+                        const uniquePlatforms = Array.from(new Set(groupPosts.map(gp => gp.platform?.toLowerCase())));
 
                         return (
-                          <div
-                            key={`multiple-${dayIndex}-${hours}`}
-                            onClick={() => {
-                              setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
-                            }}
-                            style={{
-                              gridColumnStart: dayIndex + 1,
-                              gridColumnEnd: dayIndex + 2,
-                              top: `${topOffset}px`,
-                              height: `${cardHeight}px`
-                            }}
-                            className="absolute left-1 right-1 rounded-2xl p-2.5 bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
-                          >
-                            <div className="flex items-center justify-between gap-1 select-none">
-                              <span className="text-[8px] font-black text-indigo-750 bg-indigo-200/60 px-2 py-0.5 rounded-lg">
-                                {count} {language === 'vi' ? 'bài đăng' : 'posts'}
-                              </span>
-                              <div className="flex gap-0.5 items-center">
-                                {groupPosts.map((gp, idx) => {
-                                  const plat = gp.platform?.toLowerCase();
-                                  if (plat === 'facebook') {
-                                    return <Facebook key={idx} size={8} className="text-[#1877F2] fill-[#1877F2]" />;
-                                  } else if (plat === 'threads' || plat === 'thread') {
-                                    return <ThreadsIcon key={idx} size={8} className="text-black" />;
-                                  } else if (plat === 'instagram') {
-                                    return <Instagram key={idx} size={8} className="text-pink-650" />;
-                                  } else if (plat === 'blog') {
-                                    return <Globe key={idx} size={8} className="text-emerald-700" />;
-                                  }
-                                  return null;
-                                })}
+                          <React.Fragment key={`multiple-${dayIndex}-${hours}`}>
+                            {/* Render helper layers underneath to show stacked deck of cards (only extending upwards) */}
+                            {Array.from({ length: Math.min(count - 1, 3) }).map((_, i) => {
+                              const layerIndex = i + 1;
+                              return (
+                                <div
+                                  key={`layer-${dayIndex}-${hours}-${layerIndex}`}
+                                  style={{
+                                    gridColumnStart: dayIndex + 1,
+                                    gridColumnEnd: dayIndex + 2,
+                                    top: `${topOffset - layerIndex * 3.5}px`,
+                                    height: `${cardHeight}px`,
+                                    zIndex: 20 - layerIndex,
+                                  }}
+                                  className="absolute left-1 right-1 rounded-2xl bg-[#E8EAF6] border border-[#C5CAE9] shadow-sm pointer-events-none"
+                                />
+                              );
+                            })}
+                            
+                            {/* Main Card (Fully solid/opaque background) */}
+                            <div
+                              onClick={() => {
+                                setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
+                              }}
+                              style={{
+                                gridColumnStart: dayIndex + 1,
+                                gridColumnEnd: dayIndex + 2,
+                                top: `${topOffset}px`,
+                                height: `${cardHeight}px`,
+                                zIndex: 20
+                              }}
+                              className="absolute left-1 right-1 rounded-2xl p-2 bg-primary/8 border border-primary/20 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-primary/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all group"
+                            >
+                              <div className="flex items-center justify-between gap-1 select-none">
+                                <span className="whitespace-nowrap text-[8px] font-black text-primary bg-primary/20 px-1.5 py-0.5 rounded-md">
+                                  {count} {language === 'vi' ? 'bài' : 'posts'}
+                                </span>
+                                <div className="flex gap-1 items-center">
+                                  {uniquePlatforms.map((plat, idx) => {
+                                    if (plat === 'facebook') {
+                                      return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2]" />;
+                                    } else if (plat === 'threads' || plat === 'thread') {
+                                      return <ThreadsIcon key={idx} size={10} className="text-black" />;
+                                    } else if (plat === 'instagram') {
+                                      return <Instagram key={idx} size={10} className="text-pink-650" />;
+                                    } else if (plat === 'blog') {
+                                      return <Globe key={idx} size={10} className="text-emerald-700" />;
+                                    }
+                                    return null;
+                                  })}
+                                </div>
                               </div>
+                              <span className="text-[7.5px] text-primary font-extrabold tracking-wide uppercase select-none group-hover:text-primary-hover truncate">
+                                {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
+                              </span>
                             </div>
-                            <span className="text-[7.5px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
-                              {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
-                            </span>
-                          </div>
+                          </React.Fragment>
                         );
                       }
                     });
@@ -1016,7 +1101,7 @@ export default function ContentCalendarView() {
                               {platIcon}
                               <span>{platLabel}</span>
                             </span>
-                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100/40 font-mono">
+                            <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10 font-mono">
                               {timeStr}
                             </span>
                           </div>
@@ -1025,7 +1110,7 @@ export default function ContentCalendarView() {
                             post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
                             post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
                             post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
-                            'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                            'bg-primary/5 text-primary border-primary/20'
                           }`}>
                             {language === 'vi' 
                               ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')

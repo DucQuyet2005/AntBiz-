@@ -102,6 +102,94 @@ const createEmptyVariant = (id: string): SocialVariant => ({
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
 
+interface EditableTextContextProps {
+  editState: { variantId: string; field: string } | null;
+  setEditState: (state: { variantId: string; field: keyof SocialVariant } | null) => void;
+  handleUpdateVariantField: (variantId: string, field: keyof SocialVariant, value: string) => void;
+}
+
+const EditableTextContext = React.createContext<EditableTextContextProps | null>(null);
+
+const EditableText = ({
+  variantId,
+  field,
+  value,
+  textarea = false,
+  className = ""
+}: {
+  variantId: string;
+  field: keyof SocialVariant;
+  value: string;
+  textarea?: boolean;
+  className?: string;
+}) => {
+  const context = React.useContext(EditableTextContext);
+  if (!context) return null;
+
+  const { editState, setEditState, handleUpdateVariantField } = context;
+  const isEditing = editState?.variantId === variantId && editState?.field === field;
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (isEditing) {
+      if (textarea && textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    }
+  }, [isEditing, value, textarea]);
+
+  if (isEditing) {
+    return (
+      <div className="w-full relative">
+        {textarea ? (
+          <textarea
+            ref={textareaRef}
+            autoFocus
+            value={value}
+            onChange={(e) => {
+              handleUpdateVariantField(variantId, field, e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onBlur={() => setEditState(null)}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            autoFocus
+            type="text"
+            value={value}
+            onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
+            onBlur={() => setEditState(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setEditState(null);
+            }}
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditState({ variantId, field });
+      }}
+      className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+    >
+      <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+      <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+        <Edit2 size={10} className="text-primary" />
+      </span>
+    </div>
+  );
+};
+
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -1162,82 +1250,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  // Inline editable wrapper component that prevents layout shifts
-  const EditableText = ({
-    variantId,
-    field,
-    value,
-    textarea = false,
-    className = ""
-  }: {
-    variantId: string;
-    field: keyof SocialVariant;
-    value: string;
-    textarea?: boolean;
-    className?: string;
-  }) => {
-    const isEditing = editState?.variantId === variantId && editState?.field === field;
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      if (isEditing) {
-        if (textarea && textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-      }
-    }, [isEditing, value, textarea]);
-
-    if (isEditing) {
-      return (
-        <div className="w-full relative">
-          {textarea ? (
-            <textarea
-              ref={textareaRef}
-              autoFocus
-              value={value}
-              onChange={(e) => {
-                handleUpdateVariantField(variantId, field, e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-            />
-          ) : (
-            <input
-              ref={inputRef}
-              autoFocus
-              type="text"
-              value={value}
-              onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
-              onBlur={() => setEditState(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditState(null);
-              }}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditState({ variantId, field });
-        }}
-        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
-      >
-        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
-        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-          <Edit2 size={10} className="text-primary" />
-        </span>
-      </div>
-    );
-  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
@@ -1365,7 +1378,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full font-sans">
+    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField }}>
+      <div className="flex flex-col gap-6 w-full font-sans">
 
       {/* Top Header Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
@@ -1896,7 +1910,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     value={postData.full_text}
                     onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
                     rows={10}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
+                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
                   />
                 </div>
               </div>
@@ -1909,10 +1923,85 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           <motion.div
             layout
             transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'
-              }`}
+            className={`lg:col-span-4 flex flex-col gap-6 sticky top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
           >
-            {/* Article Live Preview Card */}
+            {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
+            {step === 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
+              >
+                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
+                  <Layers size={16} className="text-primary" />
+                  {t('aiCreator.customDisplay')}
+                </h3>
+
+                <div className="flex flex-col gap-3">
+                  {Object.entries({
+                    showTitle: t('aiCreator.showTitle'),
+                    showAuthor: t('aiCreator.showAuthor'),
+                    showDescription: t('aiCreator.showDescription'),
+                    showTags: t('aiCreator.showTags'),
+                    showImage: t('aiCreator.showImage')
+                  }).map(([key, label]) => {
+                    const isChecked = toggles[key as keyof typeof toggles];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleToggle(key as keyof typeof toggles)}
+                        className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
+                      >
+                        <span>{label}</span>
+                        <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'}`}>
+                          <motion.div
+                            layout
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            className="bg-white w-4 h-4 rounded-full shadow-md"
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {/* 2. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 2 (as a standalone card) */}
+            {step === 2 && (
+              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4 font-sans">
+                <div className="flex items-center justify-between font-sans">
+                  <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                    📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAiPromptDialogOpen(true)}
+                    className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
+                  >
+                    {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
+                  </button>
+                </div>
+                {selectedPrompt ? (
+                  <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                    <div className="flex items-center justify-between font-sans">
+                      <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
+                      <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                      "{selectedPrompt.content}"
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                    {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. Article Live Preview Card (Bài viết gốc) */}
             <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
@@ -1924,6 +2013,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </span>
               </div>
 
+              {/* Preview Content */}
               <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
                 <div className="h-44 bg-gray-100 relative">
                   {postData.imageUrl ? (
@@ -1933,7 +2023,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
+                    <div className="w-full h-full bg-gradient-to-tr from-indigo-550 to-purple-550"></div>
                   )}
                   {postData.category && (
                     <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -1983,38 +2073,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
               </div>
 
-              {/* Prompt Selector Section */}
-              <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 mt-1 font-sans">
-                <div className="flex items-center justify-between font-sans">
-                  <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                    📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsAiPromptDialogOpen(true)}
-                    className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
-                  >
-                    {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
-                  </button>
-                </div>
-                {selectedPrompt ? (
-                  <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
-                    <div className="flex items-center justify-between font-sans">
-                      <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
-                      <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+              {/* 4. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 1 (inside Article Preview Card) */}
+              {step === 1 && (
+                <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 mt-1 font-sans">
+                  <div className="flex items-center justify-between font-sans">
+                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                      📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAiPromptDialogOpen(true)}
+                      className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans"
+                    >
+                      {selectedPrompt ? (language === 'vi' ? 'Thay đổi' : 'Change') : (language === 'vi' ? 'Chọn Prompt' : 'Select Prompt')}
+                    </button>
+                  </div>
+                  {selectedPrompt ? (
+                    <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                      <div className="flex items-center justify-between font-sans">
+                        <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
+                        <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
+                      </div>
+                      <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                        "{selectedPrompt.content}"
+                      </p>
                     </div>
-                    <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
-                      "{selectedPrompt.content}"
-                    </p>
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
-                    {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                      {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* Next step button */}
+              {/* Next step button - ONLY in Step 1 */}
               {step === 1 && (
                 <motion.button
                   layout
@@ -2036,50 +2128,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </motion.button>
               )}
             </div>
-
-            {/* Toggles Customizer */}
-            {step === 2 && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
-                className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
-              >
-                <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
-                  <Layers size={16} className="text-primary" />
-                  {t('aiCreator.customDisplay')}
-                </h3>
-
-                <div className="flex flex-col gap-3">
-                  {Object.entries({
-                    showTitle: t('aiCreator.showTitle'),
-                    showAuthor: t('aiCreator.showAuthor'),
-                    showDescription: t('aiCreator.showDescription'),
-                    showTags: t('aiCreator.showTags'),
-                    showImage: t('aiCreator.showImage')
-                  }).map(([key, label]) => {
-                    const isChecked = toggles[key as keyof typeof toggles];
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => handleToggle(key as keyof typeof toggles)}
-                        className="flex items-center justify-between py-1.5 text-left text-xs font-semibold text-text hover:bg-gray-50/50 rounded-lg px-1 transition-all"
-                      >
-                        <span>{label}</span>
-                        <div className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isChecked ? 'bg-primary justify-end' : 'bg-gray-200 justify-start'
-                          }`}>
-                          <motion.div
-                            layout
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="bg-white w-4 h-4 rounded-full shadow-md"
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
           </motion.div>
         )}
 
@@ -2170,16 +2218,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {isCardSelected && (
-                            <motion.span
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                            >
-                              <Check size={9} />
-                              Đã chọn
-                            </motion.span>
-                          )}
                           <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${
                             isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                           }`}>
@@ -2562,14 +2600,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                        >
-                          <Check size={9} />
-                          Đã chọn
-                        </motion.span>
                         <span className="text-xs font-black px-3 py-1 rounded-full border bg-primary text-white border-primary select-none">
                           {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
                         </span>
@@ -3618,7 +3648,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         )}
       </AnimatePresence>
 
-    </div>
+      </div>
+    </EditableTextContext.Provider>
   );
 }
 
