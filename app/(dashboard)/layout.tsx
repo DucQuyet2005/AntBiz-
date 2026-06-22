@@ -93,7 +93,7 @@ export default function DashboardLayout({
       </AnimatePresence>
 
       <main className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}>
-        <div className={`max-w-[1200px] w-full mx-auto ${isLandingEditor ? 'px-0' : 'px-4 sm:px-6 lg:px-10'} flex flex-col pb-12 flex-1`}>
+        <div className={`max-w-[1200px] w-full mx-auto ${isLandingEditor ? 'px-0' : 'px-4 sm:px-6 lg:px-10'} flex flex-col pb-12 grow shrink-0 min-h-screen`}>
           {!isLandingEditor && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
           <motion.div
             key={pathname}
