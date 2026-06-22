@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Link2,
   Globe,
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 
@@ -214,11 +216,24 @@ const EditableText = ({
 
   export default function AiCreatorView() {
     const { t, language } = useLanguage();
+    const router = useRouter();
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [selectedVariantId, setSelectedVariantId] = useState<string>('');
     const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
     const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
     const [customPromptTitle, setCustomPromptTitle] = useState('');
+
+    // Track unsaved changes
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [pendingTabSwitch, setPendingTabSwitch] = useState<'editor' | 'generator' | null>(null);
+
+    // Use global unsaved changes hook
+    useUnsavedChanges(
+      hasUnsavedChanges,
+      language === 'vi'
+        ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+        : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
+    );
 
     const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
 
@@ -228,8 +243,27 @@ const EditableText = ({
       return () => window.removeEventListener('ai-creator-go-to-step-1', onGoStep1);
     }, []);
 
+    // Handle tab switch with unsaved changes warning
+    const handleTabSwitch = (newTab: 'editor' | 'generator') => {
+      if (activeAiTab === newTab) {
+        setActiveAiTab(newTab);
+        return;
+      }
 
+      if (hasUnsavedChanges) {
+        const message = language === 'vi'
+          ? 'Bạn có thay đổi chưa được lưu. Nếu chuyển tab, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+          : 'You have unsaved changes. If you switch tabs, your data will be lost. Do you want to continue?';
 
+        if (confirm(message)) {
+          setHasUnsavedChanges(false);
+          setActiveAiTab(newTab);
+          setPendingTabSwitch(null);
+        }
+      } else {
+        setActiveAiTab(newTab);
+      }
+    };
     // AI Generation States
     const [articleId, setArticleId] = useState<string | null>(null);
     const [promptPlatform, setPromptPlatform] = useState<'facebook' | 'thread' | 'instagram' | 'threads'>('facebook');
@@ -403,6 +437,7 @@ const EditableText = ({
         });
         if (res.ok) {
           setSaveSuccess(true);
+          setHasUnsavedChanges(false);
           setTimeout(() => setSaveSuccess(false), 3000);
           // Refresh prompt list
           const listRes = await fetch('/api/prompts?pageSize=100');
@@ -1303,6 +1338,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             setActivePrompt(defaultPrompt);
             generateVariants(updatedPostData, selectedPrompt);
             setIsFetching(false);
+            setHasUnsavedChanges(true);
             return;
           }
         }
@@ -1337,6 +1373,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     // Update variant field state on inline edit
     const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
       setVariants(prev => prev.map(v => v.id === variantId ? { ...v, [field]: value } : v));
+      setHasUnsavedChanges(true);
     };
 
     // Sync state values to module-level refs for EditableText
@@ -1369,6 +1406,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             setUrl(explorerUrl);
             generateVariants(updatedPostData, selectedPrompt);
             setIsExplorerOpen(false);
+            setHasUnsavedChanges(true);
           }
         }
       } catch (e) {
@@ -1558,6 +1596,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         }
 
         setIsScheduled(true);
+        setHasUnsavedChanges(false);
       } catch (err: any) {
         setSchedulingError(err.message || 'Lỗi xảy ra trong quá trình lên lịch bài đăng');
       } finally {
@@ -3767,7 +3806,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <button
                         key={key}
                         type="button"
-                        onClick={() => setActiveAiTab(key)}
+                        onClick={() => handleTabSwitch(key)}
                         className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeAiTab === key ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'
                           }`}
                       >
@@ -3798,7 +3837,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         {/* Custom prompt title */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên Prompt (tùy chọn)</label>
-                          <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
+                          <input type="text" value={customPromptTitle} onChange={(e) => {
+                            setCustomPromptTitle(e.target.value);
+                            setHasUnsavedChanges(true);
+                          }}
                             placeholder="Đặt tên cho Prompt này..."
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
                           />
@@ -3814,7 +3856,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               Tạo Prompt thông minh
                             </button>
                           </div>
-                          <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
+                          <textarea value={activePrompt} onChange={(e) => {
+                            setActivePrompt(e.target.value);
+                            setHasUnsavedChanges(true);
+                          }}
                             placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
                           />
