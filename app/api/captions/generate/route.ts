@@ -55,14 +55,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
     }
 
-    const { url, articleId, promptId } = body;
+    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex } = body;
 
-    if (!promptId) {
+    if (!promptId && !customPrompt) {
       return NextResponse.json({ error: 'Thiếu promptId' }, { status: 400 });
+    }
+
+    if (customPrompt && !platform) {
+      return NextResponse.json({ error: 'Thiếu platform khi sử dụng customPrompt' }, { status: 400 });
     }
 
     if (!url && !articleId) {
       return NextResponse.json({ error: 'Thiếu url hoặc articleId' }, { status: 400 });
+    }
+
+    // Validate variantIndex (0=A, 1=B, 2=C)
+    const resolvedVariantIndex: number = typeof variantIndex === 'number' ? variantIndex : 0;
+    if (resolvedVariantIndex < 0 || resolvedVariantIndex > 2) {
+      return NextResponse.json({ error: 'variantIndex phải nằm trong khoảng 0–2' }, { status: 400 });
     }
 
     const supabaseService = createServiceClient();
@@ -144,20 +154,32 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Fetch Prompt
-    const { data: promptRecord, error: promptError } = await userSupabase
-      .from('prompts')
-      .select('*')
-      .eq('id', promptId)
-      .eq('is_deleted', false)
-      .maybeSingle();
+    let promptContent = '';
+    let dbPromptId: string | null = null;
+    let targetPlatform = platform;
 
-    if (promptError) {
-      console.error('[Generate API] error fetching prompt:', promptError);
-      return NextResponse.json({ error: 'Không thể tải prompt' }, { status: 500 });
-    }
+    if (promptId) {
+      const { data: promptRecord, error: promptError } = await userSupabase
+        .from('prompts')
+        .select('*')
+        .eq('id', promptId)
+        .eq('is_deleted', false)
+        .maybeSingle();
 
-    if (!promptRecord) {
-      return NextResponse.json({ error: 'Không tìm thấy prompt hợp lệ' }, { status: 404 });
+      if (promptError) {
+        console.error('[Generate API] error fetching prompt:', promptError);
+        return NextResponse.json({ error: 'Không thể tải prompt' }, { status: 500 });
+      }
+
+      if (!promptRecord) {
+        return NextResponse.json({ error: 'Không tìm thấy prompt hợp lệ' }, { status: 404 });
+      }
+
+      promptContent = promptRecord.content;
+      dbPromptId = promptRecord.id;
+      targetPlatform = promptRecord.platform;
+    } else {
+      promptContent = customPrompt;
     }
 
     // 4. Connect to Gemini API for Streaming
@@ -175,7 +197,7 @@ export async function POST(request: NextRequest) {
     }
 
     const promptText = `
-${promptRecord.content}
+${promptContent}
 
 ---
 Original Article (Full Preprocessed Data):
@@ -194,6 +216,8 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
 `;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${geminiKey}`;
+    // Use higher temperature for variant B/C (index >= 1) to increase caption diversity
+    const temperature = resolvedVariantIndex >= 1 ? 1.0 : 0.7;
     const response = await fetchGeminiWithRetry(geminiUrl, {
       method: 'POST',
       headers: {
@@ -209,6 +233,9 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
             ],
           },
         ],
+        generationConfig: {
+          temperature,
+        },
       }),
     });
 
@@ -275,18 +302,25 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
           }
 
           // Ingest completed caption into DB as draft
+          const insertPayload: Record<string, unknown> = {
+            article_id: article.id,
+            prompt_id: dbPromptId,
+            created_by: user.id,
+            platform: targetPlatform === 'threads' ? 'thread' : targetPlatform,
+            ai_content: generatedText,
+            status: 'draft',
+            variant_index: resolvedVariantIndex,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          // Only set variant_group_id when grouping multiple variants together
+          if (variantGroupId) {
+            insertPayload.variant_group_id = variantGroupId;
+          }
+
           const { data: savedCaption, error: saveError } = await userSupabase
             .from('captions')
-            .insert({
-              article_id: article.id,
-              prompt_id: promptRecord.id,
-              created_by: user.id,
-              platform: promptRecord.platform,
-              ai_content: generatedText,
-              status: 'draft',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
+            .insert(insertPayload)
             .select()
             .single();
 
@@ -298,7 +332,7 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
           }
 
           // Send signal that stream is complete with metadata
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId, articleId: article.id })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId, articleId: article.id, variantGroupId: variantGroupId || null })}\n\n`));
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (err) {
