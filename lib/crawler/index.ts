@@ -20,11 +20,12 @@ export interface CrawlResult {
  * tự động fallback sang Firecrawl API khi deploy lên Vercel Serverless.
  */
 export async function crawlUrl(url: string): Promise<CrawlResult> {
-  const isLocal = (process.env.NODE_ENV === 'development' || !process.env.VERCEL) && process.env.FORCE_FIRECRAWL !== 'true';
+  // Ưu tiên chạy Playwright trên cả local và deploy. Chỉ dùng Firecrawl khi FORCE_FIRECRAWL === 'true'
+  const usePlaywright = process.env.FORCE_FIRECRAWL !== 'true';
 
-  if (isLocal) {
+  if (usePlaywright) {
     try {
-      console.log(`\n📥 [Local Playwright] Crawling: ${url}`);
+      console.log(`\n📥 [Playwright] Crawling: ${url}`);
       const { chromium } = await import('playwright');
       const browser = await chromium.launch({ headless: true });
       try {
