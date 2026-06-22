@@ -1082,6 +1082,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
             for (const plat of platformsToSave) {
               const content = v[plat];
+              const platKey = plat === 'facebook' ? 'facebookCaptionId' :
+                plat === 'threads' ? 'threadsCaptionId' :
+                  'instagramCaptionId';
+              const dbCaptionId = v[platKey] || captionId;
 
               await fetch('/api/captions/versions', {
                 method: 'POST',
@@ -1090,7 +1094,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   article_id: resolvedArticleId,
                   platform: toDatabasePlatform(plat),
                   content: content,
-                  source: 'human'
+                  source: 'human',
+                  caption_id: dbCaptionId || null
                 }),
               });
             }

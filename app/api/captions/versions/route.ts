@@ -9,6 +9,7 @@ const createVersionSchema = z.object({
     .transform((platform) => (platform === 'threads' ? 'thread' : platform)),
   content: z.string().min(1, 'content không được rỗng'),
   source: z.enum(['ai', 'human']),
+  caption_id: z.string().uuid('caption_id phải là UUID hợp lệ').optional().nullable(),
 });
 
 /**
@@ -39,15 +40,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { article_id, platform, content, source } = parsed.data;
+  const { article_id, platform, content, source, caption_id } = parsed.data;
 
-  // Tìm version_number lớn nhất hiện tại cho article + platform này (nơi caption_id IS NULL)
+  // Tìm version_number lớn nhất hiện tại cho article + platform này
   const { data: existingVersions, error: readError } = await supabase
     .from('caption_versions')
     .select('version_number')
     .eq('article_id', article_id)
     .eq('platform', platform)
-    .is('caption_id', null)
     .order('version_number', { ascending: false })
     .limit(1);
 
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       version_number: nextVersionNumber,
       content,
       source,
+      caption_id: caption_id || null,
       created_at: new Date().toISOString(),
     })
     .select()
