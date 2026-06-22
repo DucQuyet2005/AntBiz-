@@ -41,25 +41,27 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between py-8 pr-6 pl-0 rounded-r-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50">
+    <aside className="w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50">
       <div>
-        <div className="flex items-center gap-3 mb-10 pl-6 pr-2">
-          <div className="w-10 h-10 flex items-center justify-center">
+        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-[32px] flex items-center gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
+          <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-inner">
             <img
               src="/images/logo.png"
               alt="AntBiz Logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <div>
-            <h1 className="font-bold text-lg text-primary">
+          <div className="flex flex-col min-w-0">
+            <h1 className="font-black text-base tracking-tight leading-none text-white truncate">
               {t("sidebar.title")}
             </h1>
-            <p className="text-xs text-text-muted">{t("sidebar.subtitle")}</p>
+            <p className="text-[10px] text-white/80 leading-none mt-1 truncate">
+              {t("sidebar.subtitle")}
+            </p>
           </div>
         </div>
 
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-2 pr-6">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -81,7 +83,7 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      <div className="flex flex-col gap-2 mt-auto pt-8 pl-6">
+      <div className="flex flex-col gap-2 mt-auto pt-8 pl-6 pr-6">
         <div className="flex items-center justify-between px-4 py-2 mb-2 bg-white/30 rounded-2xl border border-white/10 text-xs select-none">
           <span className="font-semibold text-text-muted flex items-center gap-1.5">
             <Globe size={14} className="text-primary/70" />

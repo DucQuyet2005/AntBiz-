@@ -4,6 +4,29 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.2.7] - 2026-06-22
+
+### Changed
+- **Đồng nhất màu sắc giao diện Landing Page**:
+  - Chuyển đổi toàn bộ tông màu đỏ cũ (`#E31A1A` và `#C21515` cho hover) trên Landing Page sang tông màu xanh/indigo chủ đạo của ứng dụng (`#5A5CDE` và `#4A4CBF` cho hover).
+  - Cập nhật màu sắc cho thanh top border của Header, nút bấm chuyển đổi ngôn ngữ (VN/EN), nút đăng ký, nút kêu gọi hành động (CTA) trên Slide, các chấm tròn trượt ảnh, dải viền bên cạnh tiêu đề các khối nội dung "Chúng tôi làm gì", và liên kết "Xem thêm".
+  - Tinh chỉnh các hiệu ứng đổ bóng (box shadow) và màu nền hiệu ứng phát sáng mờ từ tông đỏ sang tông màu xanh đồng bộ.
+- **Tự động chuyển đến tuần hiện tại trên Lịch nội dung (ContentCalendarView)**:
+  - Sửa lỗi hardcode ngày bắt đầu tuần `2026-06-19T09:09:00+07:00` khiến trang lịch luôn hiển thị tuần cũ khi mới tải trang hoặc khi bấm nút "Hôm nay".
+  - Tự động xác định và chuyển sang ngày bắt đầu của tuần chứa thời gian hiện tại (`new Date()`) trên client khi component được mount.
+  - Cập nhật nút "Hôm nay" (Today) để sử dụng thời gian thực tế.
+  - Chuyển đổi tiêu đề tháng/năm ở đầu lịch sang dạng hiển thị động theo tuần đang xem (`currentWeekStart`) thay vì chuỗi tĩnh "Tháng 6, 2026".
+- **Đẩy Footer xuống dưới trang và sửa lỗi đè nội dung**:
+  - Thêm thuộc tính `min-h-screen` và `shrink-0` vào thẻ bọc nội dung chính của `DashboardLayout` in `app/(dashboard)/layout.tsx`.
+  - Đảm bảo tất cả các trang quản trị (Overview, AI Creator, Prompts, Archive, Lịch nội dung, Settings, Profile...) luôn chiếm ít nhất 1 màn hình trước khi hiển thị Footer và không bị Flexbox nén nhỏ (squish) gây đè/trùng lấp nội dung (như biểu đồ, thông tin) lên Footer.
+- **Bổ sung tính năng thay đổi màu sắc giao diện (Theme Customization)**:
+  - Thiết lập `ThemeContext` và `ThemeProvider` để quản lý trạng thái theme màu chủ đạo toàn cục, hỗ trợ lưu trữ tuỳ chọn người dùng vào `localStorage`.
+  - Tích hợp 11 tùy chọn màu giao diện đa dạng tại trang Cài đặt (Settings): 7 màu đơn sắc (Xanh, Đỏ, Tím, Vàng, Lục, Lam, Chàm), 3 màu Gradient (Đen đỏ, Vàng đen, Đen trắng) và hiệu ứng chuyển màu 7 sắc cầu vồng RGB chạy liên tục (*Continuous RGB Rainbow*).
+  - Tùy biến lại quy tắc `.bg-primary` trong `globals.css` để hỗ trợ hiển thị mượt mà cả màu đơn sắc, màu gradient và CSS keyframe animations.
+  - Thiết kế lại phần Logo trên Sidebar: Phủ nguyên độ rộng (`w-full px-6 py-6`) của Taskbar (Sidebar) với góc trên bên phải được bo mềm mại (`rounded-tr-[32px]`), khoảng cách dưới được kéo gần sát phía trên mục "Tổng quan" (`mb-6`). Chữ tên thương hiệu đổi thành màu trắng, logo đặt trong một khung nền trắng bo góc nhỏ cao cấp.
+  - Đồng bộ màu nền Taskbar (Sidebar) và Footer (`bg-sidebar`) thay đổi tự động theo tông màu giao diện được chọn với sắc độ/cường độ thấp hơn (màu nhạt cho theme sáng, màu tối cho theme tối).
+  - Tích hợp các bộ quy tắc ghi đè (overrides) trong CSS để đảm bảo khả năng tương phản chữ và các liên kết trong Sidebar/Footer luôn rõ nét trên cả nền tối và sáng.
+
 ## [1.2.6] - 2026-06-19
 
 ### Changed

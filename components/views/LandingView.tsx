@@ -72,10 +72,10 @@ export default function LandingView() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans flex flex-col antialiased selection:bg-red-500/20">
+    <div className="min-h-screen bg-white text-slate-800 font-sans flex flex-col antialiased selection:bg-[#5A5CDE]/20">
 
-      {/* 1. STANDALONE HEADER (Garena inspired dark navbar with top red bar) */}
-      <header className="sticky top-0 z-50 bg-[#E9EAF5] text-slate-800 border-b border-slate-200/60 shadow-sm before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[#E31A1A] transition-all">
+      {/* 1. STANDALONE HEADER (Garena inspired dark navbar with top blue bar) */}
+      <header className="sticky top-0 z-50 bg-[#E9EAF5] text-slate-800 border-b border-slate-200/60 shadow-sm before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[#5A5CDE] transition-all">
         <div className="max-w-7xl mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 flex items-center justify-center">
@@ -114,7 +114,7 @@ export default function LandingView() {
               <button
                 onClick={() => setLanguage("vi")}
                 className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 ${language === "vi"
-                    ? "bg-[#E31A1A] text-white shadow-sm"
+                    ? "bg-[#5A5CDE] text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-800 bg-transparent"
                   }`}
               >
@@ -123,7 +123,7 @@ export default function LandingView() {
               <button
                 onClick={() => setLanguage("en")}
                 className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 ${language === "en"
-                    ? "bg-[#E31A1A] text-white shadow-sm"
+                    ? "bg-[#5A5CDE] text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-800 bg-transparent"
                   }`}
               >
@@ -141,7 +141,7 @@ export default function LandingView() {
               </Link>
               <Link
                 href="/register"
-                className="bg-[#E31A1A] hover:bg-[#C21515] text-white px-4 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0"
+                className="bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white px-4 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0"
               >
                 {language === 'vi' ? 'Đăng ký' : 'Register'}
               </Link>
@@ -180,7 +180,7 @@ export default function LandingView() {
 
               <Link
                 href={slides[currentSlide].link}
-                className="bg-[#E31A1A] hover:bg-[#C21515] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg shadow-red-600/30 transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 decoration-none"
+                className="bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg shadow-[#5A5CDE]/30 transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 decoration-none"
               >
                 <span>{slides[currentSlide].cta}</span>
                 <ArrowRight size={14} />
@@ -209,7 +209,7 @@ export default function LandingView() {
             <button
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`w-2.5 h-2.5 rounded-full border-0 transition-all cursor-pointer ${idx === currentSlide ? 'bg-[#E31A1A] w-6' : 'bg-white/50 hover:bg-white'
+              className={`w-2.5 h-2.5 rounded-full border-0 transition-all cursor-pointer ${idx === currentSlide ? 'bg-[#5A5CDE] w-6' : 'bg-white/50 hover:bg-white'
                 }`}
             />
           ))}
@@ -255,7 +255,7 @@ export default function LandingView() {
                 />
               </div>
               <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                <div className="border-l-4 border-[#E31A1A] pl-4">
+                <div className="border-l-4 border-[#5A5CDE] pl-4">
                   <h3 className="text-lg font-extrabold text-slate-800 uppercase tracking-wide">
                     {language === 'vi' ? 'Sáng tạo Caption AI' : 'AI Copywriting'}
                   </h3>
@@ -278,7 +278,7 @@ export default function LandingView() {
                 />
               </div>
               <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                <div className="border-l-4 border-[#E31A1A] pl-4">
+                <div className="border-l-4 border-[#5A5CDE] pl-4">
                   <h3 className="text-lg font-extrabold text-slate-800 uppercase tracking-wide">
                     {language === 'vi' ? 'Biểu đồ Lịch Gantt 2D' : '2D Gantt Calendar'}
                   </h3>
@@ -301,7 +301,7 @@ export default function LandingView() {
                 />
               </div>
               <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                <div className="border-l-4 border-[#E31A1A] pl-4">
+                <div className="border-l-4 border-[#5A5CDE] pl-4">
                   <h3 className="text-lg font-extrabold text-slate-800 uppercase tracking-wide">
                     {language === 'vi' ? 'Lưu trữ & Checkpoints' : 'Archive & Checkpoints'}
                   </h3>
@@ -345,7 +345,7 @@ export default function LandingView() {
               </p>
               <Link
                 href="/login"
-                className="text-[#E31A1A] hover:text-[#C21515] font-extrabold text-sm transition-colors decoration-none flex items-center gap-1 cursor-pointer w-fit mt-2"
+                className="text-[#5A5CDE] hover:text-[#4A4CBF] font-extrabold text-sm transition-colors decoration-none flex items-center gap-1 cursor-pointer w-fit mt-2"
               >
                 <span>{language === 'vi' ? 'Xem thêm' : 'Learn More'}</span>
                 <ArrowRight size={14} />
@@ -372,7 +372,7 @@ export default function LandingView() {
             </p>
             <Link
               href="/login"
-              className="bg-[#E31A1A] hover:bg-[#C21515] text-white px-8 py-3.5 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg shadow-red-600/20 transition-all active:scale-95 cursor-pointer decoration-none border-0"
+              className="bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white px-8 py-3.5 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg shadow-[#5A5CDE]/20 transition-all active:scale-95 cursor-pointer decoration-none border-0"
             >
               {language === 'vi' ? 'Trải nghiệm ngay' : 'Get Started Now'}
             </Link>
@@ -381,17 +381,17 @@ export default function LandingView() {
           {/* Right Column (Typographic values visual card matching Garena style) */}
           <div className="w-full md:w-1/2 flex justify-center md:justify-end">
             <div className="relative bg-slate-950 border border-slate-800 p-8 rounded-2xl w-full max-w-sm flex flex-col gap-2 select-none shadow-xl">
-              <span className="text-xs text-[#E31A1A] font-bold tracking-widest uppercase mb-4">Core Workflow</span>
+              <span className="text-xs text-[#5A5CDE] font-bold tracking-widest uppercase mb-4">Core Workflow</span>
 
               <div className="flex flex-col font-black text-2xl md:text-3xl tracking-tight text-slate-700 leading-none">
                 <span className="hover:text-white transition-colors duration-300">INGEST</span>
                 <span className="text-slate-600 hover:text-white transition-colors duration-300 mt-1">CREATE</span>
                 <span className="text-slate-500 hover:text-white transition-colors duration-300 mt-1">SCHEDULE</span>
-                <span className="text-[#E31A1A] hover:text-white transition-colors duration-300 mt-1">PUBLISH</span>
+                <span className="text-[#5A5CDE] hover:text-white transition-colors duration-300 mt-1">PUBLISH</span>
                 <span className="text-slate-450 hover:text-white transition-colors duration-300 mt-1">MEASURE</span>
               </div>
 
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-red-600/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-[#5A5CDE]/10 rounded-full blur-2xl pointer-events-none" />
             </div>
           </div>
         </div>

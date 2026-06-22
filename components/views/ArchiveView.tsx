@@ -292,7 +292,7 @@ export default function ArchiveView() {
             onClick={handleExport}
             disabled={isExporting}
             title={t('archive.exportTooltip')}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-extrabold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-70 disabled:pointer-events-none group"
+            className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl text-sm font-extrabold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-70 disabled:pointer-events-none group"
           >
             {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />}
             <span>{isExporting ? t('common.loading') : t('archive.exportCta')}</span>
@@ -451,7 +451,7 @@ export default function ArchiveView() {
                   {/* Title & Desc */}
                   <div>
                     {item.nodeType && (
-                      <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest block mb-1">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
                         {item.nodeType}
                       </span>
                     )}

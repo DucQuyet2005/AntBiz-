@@ -17,6 +17,426 @@
   --color-peach: #EED7C8;
 }
 
+/* ══════════════════════════════════
+   DYNAMIC THEMES / INTERFACE COLORS
+   ══════════════════════════════════ */
+
+.theme-solid-blue, :root:not([class*="theme-"]) {
+  --color-primary: #5A5CDE;
+  --color-primary-hover: #4A4CBF;
+  --primary-bg: #5A5CDE;
+  --primary-bg-hover: #4A4CBF;
+  --color-sidebar: #ECEEFE;
+}
+
+.theme-solid-red {
+  --color-primary: #EF4444;
+  --color-primary-hover: #DC2626;
+  --primary-bg: #EF4444;
+  --primary-bg-hover: #DC2626;
+  --color-sidebar: #FEE2E2;
+}
+
+.theme-solid-purple {
+  --color-primary: #A855F7;
+  --color-primary-hover: #9333EA;
+  --primary-bg: #A855F7;
+  --primary-bg-hover: #9333EA;
+  --color-sidebar: #F3E8FF;
+}
+
+.theme-solid-yellow {
+  --color-primary: #F59E0B;
+  --color-primary-hover: #D97706;
+  --primary-bg: #F59E0B;
+  --primary-bg-hover: #D97706;
+  --color-sidebar: #FEF3C7;
+}
+
+.theme-solid-green {
+  --color-primary: #10B981;
+  --color-primary-hover: #059669;
+  --primary-bg: #10B981;
+  --primary-bg-hover: #059669;
+  --color-sidebar: #D1FAE5;
+}
+
+.theme-solid-orange {
+  --color-primary: #F97316;
+  --color-primary-hover: #EA580C;
+  --primary-bg: #F97316;
+  --primary-bg-hover: #EA580C;
+  --color-sidebar: #FFEDD5;
+}
+
+.theme-solid-indigo {
+  --color-primary: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --primary-bg: #6366F1;
+  --primary-bg-hover: #4F46E5;
+  --color-sidebar: #E0E7FF;
+}
+
+/* Gradients */
+.theme-gradient-black-red {
+  --color-primary: #EF4444;
+  --color-primary-hover: #DC2626;
+  --primary-bg: linear-gradient(135deg, #1A1A1A 0%, #EF4444 100%);
+  --primary-bg-hover: linear-gradient(135deg, #000000 0%, #DC2626 100%);
+  --color-sidebar: #1F1515;
+}
+
+.theme-gradient-yellow-black {
+  --color-primary: #F59E0B;
+  --color-primary-hover: #D97706;
+  --primary-bg: linear-gradient(135deg, #F59E0B 0%, #1A1A1A 100%);
+  --primary-bg-hover: linear-gradient(135deg, #D97706 0%, #000000 100%);
+  --color-sidebar: #1F1B12;
+}
+
+.theme-gradient-black-white {
+  --color-primary: #374151;
+  --color-primary-hover: #1F2937;
+  --primary-bg: linear-gradient(135deg, #111827 0%, #E5E7EB 100%);
+  --primary-bg-hover: linear-gradient(135deg, #030712 0%, #D1D5DB 100%);
+  --color-sidebar: #E5E7EB;
+}
+
+/* RGB Rainbow */
+.theme-rgb {
+  --color-primary: #8B5CF6;
+  --color-primary-hover: #7C3AED;
+  --color-sidebar: #F3E8FF;
+}
+
+/* Sidebar and Footer Text Overrides for Dark Sidebar/Footer Themes */
+.theme-gradient-black-red aside,
+.theme-gradient-yellow-black aside {
+  color: #FFFFFF !important;
+}
+.theme-gradient-black-red aside .text-text-muted,
+.theme-gradient-yellow-black aside .text-text-muted {
+  color: #9CA3AF !important;
+}
+.theme-gradient-black-red aside a:not(.bg-primary\/8),
+.theme-gradient-yellow-black aside a:not(.bg-primary\/8) {
+  color: #9CA3AF !important;
+}
+.theme-gradient-black-red aside a:not(.bg-primary\/8):hover,
+.theme-gradient-yellow-black aside a:not(.bg-primary\/8):hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.theme-gradient-black-red aside .hover\:text-text:hover,
+.theme-gradient-yellow-black aside .hover\:text-text:hover {
+  color: #FFFFFF !important;
+}
+
+/* Footer overrides under dark themes */
+.theme-gradient-black-red footer,
+.theme-gradient-yellow-black footer {
+  color: #FFFFFF !important;
+}
+.theme-gradient-black-red footer .text-text,
+.theme-gradient-yellow-black footer .text-text {
+  color: #FFFFFF !important;
+}
+.theme-gradient-black-red footer .text-text-muted,
+.theme-gradient-yellow-black footer .text-text-muted {
+  color: #9CA3AF !important;
+}
+.theme-gradient-black-red footer a,
+.theme-gradient-yellow-black footer a {
+  color: #9CA3AF !important;
+}
+.theme-gradient-black-red footer a:hover,
+.theme-gradient-yellow-black footer a:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+.theme-gradient-black-red footer button,
+.theme-gradient-yellow-black footer button {
+  color: #1C1E2A !important;
+}
+.theme-gradient-black-red footer button.bg-white\/50,
+.theme-gradient-yellow-black footer button.bg-white\/50 {
+  color: #FFFFFF !important;
+}
+
+/* Overriding Tailwind .bg-primary and other utilities for Gradients & Animations */
+.bg-primary {
+  background-image: var(--primary-bg, none) !important;
+  background-color: var(--color-primary) !important;
+}
+
+.bg-sidebar {
+  background-color: var(--color-sidebar) !important;
+}
+
+.bg-sidebar\/50 {
+  background-color: color-mix(in srgb, var(--color-sidebar) 50%, transparent) !important;
+}
+
+.hover\:bg-primary-hover:hover {
+  background-image: var(--primary-bg-hover, none) !important;
+  background-color: var(--color-primary-hover) !important;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+.bg-primary\/8 {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.bg-primary\/10 {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.bg-primary\/20 {
+  background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.border-primary\/10 {
+  border-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.border-primary\/20 {
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.shadow-primary\/5 {
+  box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.shadow-primary\/15 {
+  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--color-primary) 15%, transparent), 
+              0 2px 4px -2px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.shadow-primary\/20 {
+  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--color-primary) 20%, transparent), 
+              0 2px 4px -2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.ring-primary\/15 {
+  --tw-ring-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.focus\:ring-primary\/10:focus {
+  --tw-ring-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.focus\:ring-primary\/20:focus {
+  --tw-ring-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.hover\:bg-primary\/5:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.hover\:border-primary\/25:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.hover\:border-primary\/30:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.hover\:text-primary:hover {
+  color: var(--color-primary);
+}
+
+/* Custom styles for RGB theme animation */
+@keyframes rgb-rainbow {
+  0% { background-position: 0% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes text-rainbow {
+  0% { color: #ff0000; }
+  14% { color: #ff7700; }
+  28% { color: #ffff00; }
+  42% { color: #00ff00; }
+  57% { color: #00ffff; }
+  71% { color: #0000ff; }
+  85% { color: #8a00ff; }
+  100% { color: #ff0000; }
+}
+
+@keyframes border-rainbow {
+  0% { border-color: #ff0000; }
+  14% { border-color: #ff7700; }
+  28% { border-color: #ffff00; }
+  42% { border-color: #00ff00; }
+  57% { border-color: #00ffff; }
+  71% { border-color: #0000ff; }
+  85% { border-color: #8a00ff; }
+  100% { border-color: #ff0000; }
+}
+
+.theme-rgb .bg-primary {
+  background-image: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #00ffff, #0000ff, #8a00ff, #ff0000) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .hover\:bg-primary-hover:hover {
+  background-image: linear-gradient(90deg, #cc0000, #cc5500, #cccc00, #00cc00, #00cccc, #0000cc, #6600cc, #cc0000) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .text-primary {
+  animation: text-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .border-primary {
+  animation: border-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .hover\:text-primary:hover {
+  animation: text-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .bg-primary\/8 {
+  background-image: linear-gradient(90deg, 
+    rgba(255, 0, 0, 0.08), 
+    rgba(255, 119, 0, 0.08), 
+    rgba(255, 255, 0, 0.08), 
+    rgba(0, 255, 0, 0.08), 
+    rgba(0, 255, 255, 0.08), 
+    rgba(0, 0, 255, 0.08), 
+    rgba(138, 0, 255, 0.08), 
+    rgba(255, 0, 0, 0.08)
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .bg-primary\/10 {
+  background-image: linear-gradient(90deg, 
+    rgba(255, 0, 0, 0.1), 
+    rgba(255, 119, 0, 0.1), 
+    rgba(255, 255, 0, 0.1), 
+    rgba(0, 255, 0, 0.1), 
+    rgba(0, 255, 255, 0.1), 
+    rgba(0, 0, 255, 0.1), 
+    rgba(138, 0, 255, 0.1), 
+    rgba(255, 0, 0, 0.1)
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .bg-primary\/20 {
+  background-image: linear-gradient(90deg, 
+    rgba(255, 0, 0, 0.2), 
+    rgba(255, 119, 0, 0.2), 
+    rgba(255, 255, 0, 0.2), 
+    rgba(0, 255, 0, 0.2), 
+    rgba(0, 255, 255, 0.2), 
+    rgba(0, 0, 255, 0.2), 
+    rgba(138, 0, 255, 0.2), 
+    rgba(255, 0, 0, 0.2)
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .hover\:bg-primary\/5:hover {
+  background-image: linear-gradient(90deg, 
+    rgba(255, 0, 0, 0.05), 
+    rgba(255, 119, 0, 0.05), 
+    rgba(255, 255, 0, 0.05), 
+    rgba(0, 255, 0, 0.05), 
+    rgba(0, 255, 255, 0.05), 
+    rgba(0, 0, 255, 0.05), 
+    rgba(138, 0, 255, 0.05), 
+    rgba(255, 0, 0, 0.05)
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: rgb-rainbow 5s linear infinite !important;
+  transition: none !important;
+}
+
+.theme-rgb .bg-sidebar {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, 
+    rgba(255, 0, 0, 0.05), 
+    rgba(255, 119, 0, 0.05), 
+    rgba(255, 255, 0, 0.05), 
+    rgba(0, 255, 0, 0.05), 
+    rgba(0, 255, 255, 0.05), 
+    rgba(0, 0, 255, 0.05), 
+    rgba(138, 0, 255, 0.05), 
+    rgba(255, 0, 0, 0.05)
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: bg-rainbow-sidebar 15s linear infinite !important;
+  transition: none !important;
+}
+
+/* Translucent gradient backgrounds for gradient themes */
+.theme-gradient-black-red .bg-primary\/8 {
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%) !important;
+}
+.theme-gradient-black-red .bg-primary\/10 {
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%) !important;
+}
+.theme-gradient-black-red .bg-primary\/20 {
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%) !important;
+}
+.theme-gradient-black-red .hover\:bg-primary\/5:hover {
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.05) 0%, rgba(239, 68, 68, 0.05) 100%) !important;
+}
+
+.theme-gradient-yellow-black .bg-primary\/8 {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(26, 26, 26, 0.08) 100%) !important;
+}
+.theme-gradient-yellow-black .bg-primary\/10 {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(26, 26, 26, 0.1) 100%) !important;
+}
+.theme-gradient-yellow-black .bg-primary\/20 {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(26, 26, 26, 0.2) 100%) !important;
+}
+.theme-gradient-yellow-black .hover\:bg-primary\/5:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(26, 26, 26, 0.05) 100%) !important;
+}
+
+.theme-gradient-black-white .bg-primary\/8 {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.08) 0%, rgba(229, 231, 235, 0.08) 100%) !important;
+}
+.theme-gradient-black-white .bg-primary\/10 {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.1) 0%, rgba(229, 231, 235, 0.1) 100%) !important;
+}
+.theme-gradient-black-white .bg-primary\/20 {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.2) 0%, rgba(229, 231, 235, 0.2) 100%) !important;
+}
+.theme-gradient-black-white .hover\:bg-primary\/5:hover {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.05) 0%, rgba(229, 231, 235, 0.05) 100%) !important;
+}
+
 body {
   color: var(--color-text);
 }
