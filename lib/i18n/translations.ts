@@ -25,6 +25,8 @@ export const translations = {
       logout: "Đăng xuất",
       landing: "Giới thiệu",
       adminPanel: "Bảng điều khiển Admin",
+      prompts: "Prompts",
+      landingEditor: "Chỉnh sửa Landing",
     },
     header: {
       searchPlaceholder: "Tìm kiếm...",
@@ -537,6 +539,8 @@ export const translations = {
       logout: "Log Out",
       landing: "Welcome Tour",
       adminPanel: "Admin Panel",
+      prompts: "Prompts",
+      landingEditor: "Landing Editor",
     },
     header: {
       searchPlaceholder: "Search...",

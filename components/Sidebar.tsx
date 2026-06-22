@@ -52,14 +52,14 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
     { href: "/overview", label: t("sidebar.overview"), icon: LayoutDashboard },
     ...(userRole !== 'admin' ? [
       { href: "/ai-creator", label: t("sidebar.aiCreator"), icon: Wand2 },
-      { href: "/prompts", label: "Prompts", icon: FileText },
+      { href: "/prompts", label: t("sidebar.prompts"), icon: FileText },
       { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
       { href: "/archive", label: t("sidebar.archive"), icon: Archive },
     ] : []),
     ...(userRole === 'admin' ? [
       { href: "/admin/users", label: t("admin.userManagement"), icon: Users },
       { href: "/admin/audit-logs", label: t("admin.auditLogs"), icon: History },
-      { href: "/admin/landing-editor", label: "Landing Editor", icon: Globe },
+      { href: "/admin/landing-editor", label: t("sidebar.landingEditor"), icon: Globe },
     ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
