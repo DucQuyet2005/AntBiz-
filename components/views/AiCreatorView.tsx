@@ -830,7 +830,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
     if (isCellOccupied(val, activeHour, 'facebook')) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${facebookTime} on ${val}.`);
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${facebookTime} on ${val}.`);
     } else {
       setFacebookError("");
       setFacebookDate(val);
@@ -850,7 +850,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${facebookDate}.`);
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${facebookDate}.`);
     } else {
       setFacebookError("");
       setFacebookTime(finalTime);
@@ -860,7 +860,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
     if (isCellOccupied(val, activeHour, 'threads')) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${threadsTime} on ${val}.`);
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${threadsTime} on ${val}.`);
     } else {
       setThreadsError("");
       setThreadsDate(val);
@@ -880,7 +880,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${threadsDate}.`);
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${threadsDate}.`);
     } else {
       setThreadsError("");
       setThreadsTime(finalTime);
@@ -891,8 +891,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setFacebookError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setFacebookError(""), 4500);
   };
@@ -901,8 +901,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setThreadsError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setThreadsError(""), 4500);
   };
@@ -970,7 +970,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
     if (isCellOccupied(val, activeHour, 'instagram')) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã có bài.` : `Slot blocked! A post is already scheduled at ${instagramTime} on ${val}.`);
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${instagramTime} on ${val}.`);
     } else {
       setInstagramError("");
       setInstagramDate(val);
@@ -990,7 +990,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
     if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã có bài.` : `Slot blocked! A post is already scheduled at ${finalTime} on ${instagramDate}.`);
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${instagramDate}.`);
     } else {
       setInstagramError("");
       setInstagramTime(finalTime);
@@ -1001,8 +1001,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     setInstagramError(
       language === 'vi'
-        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã có bài.`
-        : `Slot blocked! A post is already scheduled at ${timeStr} on ${blockedDate}.`
+        ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setInstagramError(""), 4500);
   };

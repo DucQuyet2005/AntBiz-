@@ -6,14 +6,37 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ---
 ## [1.2.8] - 2026-06-22
 
+### Added
+- **Triển khai Bảng điều khiển Admin và Quản lý Người dùng (Admin Panel)**:
+  - Tạo mới các trang quản trị `/admin/users` và `/admin/audit-logs` để quản lý phân quyền và kiểm soát bảo mật hệ thống.
+  - Xây dựng API endpoints `GET/POST /api/admin/users` và `GET /api/admin/audit-logs` hỗ trợ truy xuất, phân trang, lọc dữ liệu dành riêng cho vai trò Admin.
+  - Thêm trang xử lý từ chối quyền truy cập `AdminAccessDenied.tsx` và cấu hình phân quyền trong Layout của trang Admin.
+
 ### Changed
 - **Cải tiến tự động hóa Changelog (AI Skill)**: Nâng cấp kỹ năng `write-changelog` để AI tự động đánh giá và chỉ ghi nhận các thay đổi quan trọng vào file CHANGELOG.md mỗi khi hoàn thành tác vụ, bỏ qua các sửa đổi nhỏ lẻ.
 - **Tương thích Playwright trên Serverless / VPS**: Tích hợp `@sparticuz/chromium` và `playwright-core` vào `lib/crawler/index.ts` để cho phép chạy Playwright headless ổn định trên cả môi trường Local và Vercel/VPS, thiết lập làm trình duyệt cào dữ liệu ưu tiên mặc định.
+- **Ẩn nút "Add Post" trên giao diện Admin**:
+  - Cập nhật `components/Header.tsx` sử dụng hook `usePathname` để nhận diện các đường dẫn bắt đầu bằng `/admin` và tự động ẩn nút thêm bài viết ("Add Post").
+- **Điều chỉnh hiển thị Sidebar theo phân quyền Admin**:
+  - Cập nhật `components/Sidebar.tsx` để truy vấn vai trò của người dùng hiện tại; tự động ẩn các liên kết "AI Creator", "Prompts", "Lịch nội dung", "Lưu trữ" khi đăng nhập bằng tài khoản Admin.
+  - Tách Bảng điều khiển Admin thành hai mục riêng biệt trên Taskbar (Sidebar): **Quản lý người dùng** (sử dụng icon `Users`) và **Nhật ký hệ thống** (sử dụng icon `History`).
+- **Loại bỏ thanh Tab Sub-navigation trùng lặp ở trang Admin**:
+  - Cập nhật [AdminHeaderTabs.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/app/(dashboard)/admin/AdminHeaderTabs.tsx) để loại bỏ hoàn toàn các liên kết Tab Navigation (tránh trùng lặp do đã có trên Sidebar).
+  - Tự động thay đổi tiêu đề và mô tả đầu trang tương ứng với trang đang truy cập (Quản lý người dùng hoặc Nhật ký hệ thống).
+- **Bổ sung từ điển dịch thuật đa ngôn ngữ (i18n) cho Admin**:
+  - Cập nhật [translations.ts](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/lib/i18n/translations.ts) bổ sung toàn bộ các khóa dịch Việt/Anh (`admin.*`) phục vụ trang quản trị, hộp thoại khóa tài khoản, phân trang, và nhật ký bảo mật.
 - **Cho phép lên lịch tối đa 3 bài đăng trong cùng một khung giờ**:
   - Phát triển hàm đếm số lượng bài đăng trong ô giờ `getCellPostCount` tại `components/views/AiCreatorView.tsx`, hợp nhất đếm cả bài viết đã lên lịch từ cơ sở dữ liệu và các bản nháp đang kéo thả của các kênh khác trong cùng chiến dịch.
   - Cập nhật hàm kiểm tra `isCellOccupied` để trả về `true` khi số lượng bài viết đạt ngưỡng tối đa là 3 bài/giờ.
   - Cập nhật các hàm thay đổi thời gian thủ công và sự kiện kết thúc kéo thả (`handleFbDragEnd`, `handleThreadsDragEnd`, `handleInstagramDragEnd`) để áp dụng giới hạn mới, tự động chặn và hiển thị thông báo lỗi thân thiện khi vượt quá 3 bài thay vì chặn tuyệt đối khi chỉ có 1 bài như trước.
   - Loại bỏ các đoạn code kiểm tra trùng lặp thủ công và làm sạch hàm `handleInstagramDragEnd` bị dư thừa ở cuối tệp.
+- **Thay thế logo thương hiệu bằng thiết kế 3D Glassmorphic mới**:
+  - Cập nhật tệp ảnh logo thương hiệu tại [logo.png](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/public/images/logo.png) sang phiên bản logo 3D glassmorphic trong suốt chất lượng cao theo yêu cầu của người dùng.
+  - Đồng bộ hóa hiển thị logo mới trên tất cả các trang bao gồm Sidebar (Taskbar), Landing Page và Footer toàn cục.
+- **Thay thế toàn bộ hộp thoại cảnh báo (browser alert) thành popup in-app hiện đại**:
+  - Tạo mới component [PopupDialog.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/PopupDialog.tsx) tái sử dụng được, hiển thị nhỏ gọn ở góc dưới cùng bên phải màn hình (Toast style) giúp người dùng theo dõi mà không làm mờ/gián đoạn việc tương tác với giao diện.
+  - Tích hợp hoạt ảnh mượt mà từ `framer-motion`, hệ thống icon trạng thái sinh động, cùng bộ đếm thời gian tự động đóng sau 5 giây.
+  - Loại bỏ hoàn toàn 13 vị trí sử dụng hàm `alert` mặc định của trình duyệt và thay thế bằng `PopupDialog` trong các chế độ xem: Lịch nội dung (`ContentCalendarView`), Lưu trữ bài viết (`ArchiveView`), và Trình tạo AI (`AiCreatorView`).
 
 ### Fixed
 - **Sửa lỗi chuyển hướng Google OAuth trên VPS**: Bổ sung hỗ trợ ưu tiên đọc biến môi trường `NEXT_PUBLIC_SITE_URL` trong `app/(auth)/actions.ts` và `app/api/auth/callback/route.ts` để sửa lỗi redirect nhầm về `http://localhost:3000` khi Nginx reverse proxy không forward cấu hình header chuyển tiếp một cách hợp lệ.
