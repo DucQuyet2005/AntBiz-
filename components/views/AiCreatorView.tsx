@@ -54,6 +54,7 @@ interface SocialVariant {
   title: string;
   author: string;
   tags: string;
+  captionId?: string;
 }
 
 type SocialPlatform = 'facebook' | 'threads' | 'instagram';
@@ -128,6 +129,10 @@ export default function AiCreatorView() {
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
+  // T-1.18: Multi-variant state
+  const [variantCount, setVariantCount] = useState<2 | 3>(2);
+  const [variantGroupId, setVariantGroupId] = useState<string | null>(null);
+  const [regeneratingVariantId, setRegeneratingVariantId] = useState<string | null>(null);
 
   // ... (existing code)
 
@@ -137,69 +142,235 @@ export default function AiCreatorView() {
       return;
     }
 
+    if (!url.trim() && !articleId) {
+      alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
+      return;
+    }
+
     setIsGeneratingAB(true);
-    try {
-      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-      const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+    const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
 
-      // Request Variant A
-      const reqA = fetch('/api/prompts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: postData.title,
-          content: postData.full_text || postData.description,
-          platform: selectedPlatform,
-          customPrompt: activePrompt
-        }),
-      }).then(r => r.json());
+    // T-1.18: Build N variants (A, B, C) based on variantCount
+    const variantIds = ['A', 'B', 'C'].slice(0, variantCount);
+    const newVariants: SocialVariant[] = variantIds.map((id) => ({
+      id,
+      facebook: '',
+      threads: '',
+      instagram: '',
+      title: postData.title,
+      author: postData.author,
+      tags: tagsStr,
+    }));
 
-      // Request Variant B (Engaging style)
-      const promptB = `${activePrompt}\n\nLưu ý cho phiên bản này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
-      const reqB = fetch('/api/prompts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: postData.title,
-          content: postData.full_text || postData.description,
-          platform: selectedPlatform,
-          customPrompt: promptB
-        }),
-      }).then(r => r.json());
+    setVariants(newVariants);
+    setStep(2);
 
-      const [resA, resB] = await Promise.all([reqA, reqB]);
+    // T-1.18: Generate a new variantGroupId for this batch
+    const newGroupId = crypto.randomUUID();
+    setVariantGroupId(newGroupId);
 
-      const contentA = resA.content || '';
-      const contentB = resB.content || '';
+    abortControllerRef.current = new AbortController();
 
-      const newVariants: SocialVariant[] = [
-        {
-          id: 'A',
-          facebook: targetPlatforms.includes('facebook') ? contentA : "",
-          threads: targetPlatforms.includes('threads') ? contentA : "",
-          instagram: targetPlatforms.includes('instagram') ? contentA : "",
-          title: postData.title,
-          author: postData.author,
-          tags: tagsStr
-        },
-        {
-          id: 'B',
-          facebook: targetPlatforms.includes('facebook') ? contentB : "",
-          threads: targetPlatforms.includes('threads') ? contentB : "",
-          instagram: targetPlatforms.includes('instagram') ? contentB : "",
-          title: postData.title,
-          author: postData.author,
-          tags: tagsStr
+    // T-1.18: Build prompt for each variant index to maximize diversity
+    const buildVariantPrompt = (index: number, basePrompt: string): string => {
+      if (index === 0) return basePrompt; // Variant A: prompt gốc
+      if (index === 1) {
+        // Variant B: Thân thiện, có emoji, câu hỏi gợi mở
+        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác. Mở đầu bằng một câu ấn tượng tạo sự tò mò. CTA rõ ràng ở cuối.`;
+      }
+      // Variant C: Ngắn gọn, facts-driven, không emoji
+      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, tập trung vào dữ liệu và sự kiện quan trọng. Không sử dụng emoji. Phong cách báo chí chuyên nghiệp, đúng trọng tâm. Hashtag ngắn gọn, hiệu quả.`;
+    };
+
+    const streamVariant = async (variantId: string, variantIndex: number, groupId: string) => {
+      const abortSignal = abortControllerRef.current?.signal;
+      const customPromptText = buildVariantPrompt(variantIndex, activePrompt);
+      try {
+        const res = await fetch('/api/captions/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: url.trim() || undefined,
+            articleId: articleId || undefined,
+            customPrompt: customPromptText,
+            platform: selectedPlatform,
+            variantGroupId: groupId,
+            variantIndex,
+            ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+              ? { promptId: selectedPrompt.id }
+              : {}),
+          }),
+          signal: abortSignal,
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(errJson?.error || `HTTP ${res.status}`);
         }
-      ];
 
-      setVariants(newVariants);
-      setStep(2);
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+
+        if (!reader) throw new Error('No response body');
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') {
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  accumulated += parsed.text;
+                  setVariants((prev) =>
+                    prev.map((v) =>
+                      v.id === variantId
+                        ? {
+                            ...v,
+                            [selectedPlatform]: accumulated,
+                          }
+                        : v
+                    )
+                  );
+                }
+                if (parsed.done && parsed.captionId) {
+                  setVariants((prev) =>
+                    prev.map((v) =>
+                      v.id === variantId ? { ...v, captionId: parsed.captionId } : v
+                    )
+                  );
+                }
+                if (parsed.done && parsed.articleId && !articleId) {
+                  setArticleId(parsed.articleId);
+                }
+              } catch (e) {
+                // Ignore partial line JSON errors
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        console.error(`Error streaming variant ${variantId}:`, err);
+        setVariants((prev) =>
+          prev.map((v) =>
+            v.id === variantId
+              ? {
+                  ...v,
+                  [selectedPlatform]:
+                    language === 'vi'
+                      ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
+                      : 'Error generating AI content for this variant.',
+                }
+              : v
+          )
+        );
+      }
+    };
+
+    try {
+      // T-1.18: Stream all N variants in parallel
+      await Promise.all(
+        variantIds.map((id, index) => streamVariant(id, index, newGroupId))
+      );
     } catch (error) {
-      console.error('Error generating A/B variants:', error);
-      alert(language === 'vi' ? 'Lỗi khi sinh nội dung AI. Vui lòng thử lại.' : 'Error generating AI content. Please retry.');
+      console.error('Error generating variants:', error);
     } finally {
       setIsGeneratingAB(false);
+    }
+  };
+
+  // T-1.18: Regenerate a single variant without resetting the others
+  const handleRegenerateVariant = async (variantId: string) => {
+    if (!activePrompt || (!url.trim() && !articleId)) return;
+    const variantIndex = ['A', 'B', 'C'].indexOf(variantId);
+    if (variantIndex === -1) return;
+
+    setRegeneratingVariantId(variantId);
+
+    // Clear the current content for this variant
+    setVariants((prev) =>
+      prev.map((v) => (v.id === variantId ? { ...v, [selectedPlatform]: '', captionId: undefined } : v))
+    );
+
+    const buildVariantPrompt = (index: number, basePrompt: string): string => {
+      if (index === 0) return basePrompt;
+      if (index === 1) {
+        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
+      }
+      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, facts-driven, không emoji, phong cách báo chí chuyên nghiệp.`;
+    };
+
+    const groupId = variantGroupId || crypto.randomUUID();
+    if (!variantGroupId) setVariantGroupId(groupId);
+
+    const customPromptText = buildVariantPrompt(variantIndex, activePrompt);
+
+    try {
+      const res = await fetch('/api/captions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url.trim() || undefined,
+          articleId: articleId || undefined,
+          customPrompt: customPromptText,
+          platform: selectedPlatform,
+          variantGroupId: groupId,
+          variantIndex,
+          ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+            ? { promptId: selectedPrompt.id }
+            : {}),
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              accumulated += parsed.text;
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
+                )
+              );
+            }
+            if (parsed.done && parsed.captionId) {
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, captionId: parsed.captionId } : v
+                )
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error regenerating variant:', err);
+    } finally {
+      setRegeneratingVariantId(null);
     }
   };
 
@@ -386,6 +557,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const [existingPosts, setExistingPosts] = useState<any[]>([]);
   const [selectedCell, setSelectedCell] = useState<{ dateStr: string; hour: number; posts: any[] } | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const handleCancel = async (postId: string) => {
+    setActionLoadingId(postId);
+    try {
+      const res = await fetch(`/api/scheduled-posts/${postId}/cancel`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        if (selectedCell) {
+          const updatedPosts = selectedCell.posts.map((p: any) => 
+            p.id === postId ? { ...p, status: 'cancelled' } : p
+          );
+          setSelectedCell({ ...selectedCell, posts: updatedPosts });
+        }
+        // Refresh existing posts
+        const loadRes = await fetch('/api/scheduled-posts');
+        if (loadRes.ok) {
+          const json = await loadRes.json();
+          if (json.data) {
+            setExistingPosts(json.data);
+          }
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+      }
+    } catch (err) {
+      console.error('Cancel error:', err);
+      alert('Lỗi kết nối khi hủy lịch đăng bài');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     async function loadExistingPosts() {
@@ -415,10 +620,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   const isCellOccupied = (dateStr: string, hour: number) => {
-    return existingPosts.some(p => {
-      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
-      return postDate === dateStr && postHour === hour;
-    });
+    // Luôn cho phép lên lịch nhiều bài đăng trong cùng một khung giờ
+    return false;
   };
 
   const getCellPosts = (dateStr: string, hour: number) => {
@@ -593,14 +796,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts AND threads active post AND instagram active post
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour) ||
-      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+    // Cho phép chồng chéo tự do
+    const isOccupied = false;
 
     if (isOccupied) {
       handleFacebookDragError(targetDate, targetHour);
@@ -629,14 +826,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts AND facebook active post AND instagram active post
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-    const instagramHour = parseInt(instagramTime.split(':')[0]) || 11;
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-      (targetPlatforms.includes('instagram') && targetDate === instagramDate && targetHour === instagramHour);
+    // Cho phép chồng chéo tự do
+    const isOccupied = false;
 
     if (isOccupied) {
       handleThreadsDragError(targetDate, targetHour);
@@ -705,13 +896,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const targetDate = weekDays[activeWeek * 7 + clampedCol].date;
     const targetHour = clampedRow;
 
-    // Check occupancy against existing posts, Facebook active post and Threads active post
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-    const facebookHour = parseInt(facebookTime.split(':')[0]) || 9;
-    const threadsHour = parseInt(threadsTime.split(':')[0]) || 10;
-    const isOccupied = isCellOccupied(targetDate, targetHour) ||
-      (targetPlatforms.includes('facebook') && targetDate === facebookDate && targetHour === facebookHour) ||
-      (targetPlatforms.includes('threads') && targetDate === threadsDate && targetHour === threadsHour);
+    // Cho phép chồng chéo tự do
+    const isOccupied = false;
 
     if (isOccupied) {
       handleInstagramDragError(targetDate, targetHour);
@@ -835,7 +1021,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 setStreamedCaption(accumulated);
               }
               if (parsed.done && parsed.captionId) {
-                setCaptionId(parsed.captionId);
+                const newCaptionId = parsed.captionId;
+                setCaptionId(newCaptionId);
+                setVariants((prev) =>
+                  prev.map((v) =>
+                    v.id === 'A' ? { ...v, captionId: newCaptionId } : v
+                  )
+                );
               }
               if (parsed.done && parsed.articleId) {
                 setArticleId(parsed.articleId);
@@ -861,6 +1053,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const handleCancelGenerate = () => {
     abortControllerRef.current?.abort();
     setIsGenerating(false);
+    setIsGeneratingAB(false);
   };
 
   // Gocnhinmoi Explorer Modal State
@@ -1231,7 +1424,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         }}
         className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
       >
-        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+        <span className="whitespace-pre-wrap">
+          {value ? (
+            value
+          ) : isGeneratingAB ? (
+            <span className="text-gray-400 italic flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
+            </span>
+          ) : (
+            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
+          )}
+        </span>
         <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
           <Edit2 size={10} className="text-primary" />
         </span>
@@ -1271,8 +1475,84 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return scrapeData.id as string;
   };
 
+  const compileFinalMessage = (variant: SocialVariant) => {
+    const parts: string[] = [];
+
+    if (toggles.showTitle && variant.title) {
+      const categoryClean = postData.category.replace('#', '').trim();
+      const titleLine = categoryClean 
+        ? `🏠 [${categoryClean}] ${variant.title}` 
+        : `🏠 ${variant.title}`;
+      parts.push(titleLine);
+    }
+
+    if (toggles.showDescription) {
+      const descVal = variant[selectedPlatform] || '';
+      if (descVal.trim()) {
+        parts.push(descVal.trim());
+      }
+    }
+
+    const metaParts: string[] = [];
+    if (toggles.showAuthor && variant.author) {
+      const authorPrefix = `🎥 ${language === 'vi' ? 'Tác giả:' : 'Author:'} `;
+      metaParts.push(`${authorPrefix}${variant.author.trim()}`);
+    }
+    if (toggles.showTags && variant.tags) {
+      metaParts.push(variant.tags.trim());
+    }
+
+    if (metaParts.length > 0) {
+      parts.push(metaParts.join('\n'));
+    }
+
+    return parts.join('\n\n');
+  };
+
   const ensureCaptionDraft = async () => {
-    if (captionId) return captionId;
+    const selectedVariant = variants.find((v) => v.id === selectedVariantId);
+    if (!selectedVariant) {
+      throw new Error(
+        language === 'vi'
+          ? 'Vui lòng chọn biến thể trước khi lên lịch.'
+          : 'Please select a variant before scheduling.'
+      );
+    }
+
+    const finalCompiledContent = compileFinalMessage(selectedVariant);
+    const activeCaptionId = selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+
+    if (activeCaptionId) {
+      // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
+      const res = await fetch(`/api/captions/${activeCaptionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          edited_content: finalCompiledContent,
+          status: 'draft',
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'Không thể cập nhật caption nháp.');
+      }
+
+      // Đảm bảo lưu captionId vào variant nếu nó chưa có
+      if (!selectedVariant.captionId) {
+        setVariants((prev) =>
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId } : v))
+        );
+      }
+      return activeCaptionId;
+    }
+
+    const getSelectedVariantCaption = () => {
+      if (selectedPlatform === 'facebook') return selectedVariant.facebook;
+      if (selectedPlatform === 'threads') return selectedVariant.threads;
+      if (selectedPlatform === 'instagram') return selectedVariant.instagram;
+      return '';
+    };
 
     const selectedContent = getSelectedVariantCaption();
     if (!selectedContent) {
@@ -1291,6 +1571,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         article_id: resolvedArticleId,
         platform: toDatabasePlatform(selectedPlatform),
         ai_content: selectedContent,
+        edited_content: finalCompiledContent,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
           ? { prompt_id: selectedPrompt.id }
           : {}),
@@ -1307,13 +1588,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       );
     }
 
-    setCaptionId(data.data.id);
-    return data.data.id as string;
+    const newCaptionId = data.data.id;
+    setCaptionId(newCaptionId);
+    setVariants((prev) =>
+      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId } : v))
+    );
+    return newCaptionId as string;
   };
 
   const handleConfirmSchedule = async () => {
-    // Không thực hiện lên lịch nếu có lỗi xảy ra đối với ngày/giờ Facebook hoặc Threads
+    // Không thực hiện lên lịch nếu có lỗi xảy ra hoặc đang xử lý yêu cầu trước đó
     if (facebookError || threadsError || instagramError) return;
+    if (isSchedulingLoading) return;
 
     const scheduleByPlatform = {
       facebook: { date: facebookDate, time: facebookTime },
@@ -1332,8 +1618,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setIsSchedulingLoading(true);
     setSchedulingError(null);
 
-    // Tách các đường dẫn hình ảnh theo từng dòng
-    const imageUrls = postData.imageUrl
+    // Tách các đường dẫn hình ảnh theo từng dòng nếu bật hiển thị hình ảnh
+    const imageUrls = toggles.showImage && postData.imageUrl
       ? postData.imageUrl.split('\n').map(line => line.trim()).filter(Boolean)
       : [];
 
@@ -2014,26 +2300,51 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 )}
               </div>
 
-              {/* Next step button */}
+              {/* T-1.18: Variant count selector + Next step button */}
               {step === 1 && (
-                <motion.button
-                  layout
-                  onClick={handleProceedToABTest}
-                  disabled={isGeneratingAB || isFetching}
-                  className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
-                >
-                  {isGeneratingAB ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      {language === 'vi' ? 'Đang dùng AI sinh 2 bản A/B...' : 'AI Generating A/B variants...'}
-                    </>
-                  ) : (
-                    <>
-                      {t('aiCreator.proceedToAb')}
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </motion.button>
+                <div className="flex flex-col gap-2">
+                  {/* Variant count segmented control */}
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-text-muted">
+                      {language === 'vi' ? 'Số biến thể' : 'Variant count'}
+                    </span>
+                    <div className="flex bg-sidebar rounded-full p-0.5 border border-gray-200 shadow-inner">
+                      {([2, 3] as const).map((count) => (
+                        <button
+                          key={count}
+                          onClick={() => setVariantCount(count)}
+                          className={`text-xs font-extrabold px-4 py-1.5 rounded-full transition-all duration-200 ${
+                            variantCount === count
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'text-text-muted hover:text-text'
+                          }`}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <motion.button
+                    layout
+                    onClick={handleProceedToABTest}
+                    disabled={isGeneratingAB || isFetching}
+                    className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                  >
+                    {isGeneratingAB ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        {language === 'vi'
+                          ? `Đang sinh ${variantCount} biến thể...`
+                          : `AI generating ${variantCount} variants...`}
+                      </>
+                    ) : (
+                      <>
+                        {t('aiCreator.proceedToAb')}
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </motion.button>
+                </div>
               )}
             </div>
 
@@ -2180,6 +2491,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               Đã chọn
                             </motion.span>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRegenerateVariant(v.id);
+                            }}
+                            disabled={regeneratingVariantId === v.id}
+                            className={`p-1.5 rounded-full hover:bg-gray-100 border border-gray-200 transition-colors ${
+                              regeneratingVariantId === v.id ? 'opacity-50 pointer-events-none' : ''
+                            }`}
+                            title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
+                          >
+                            {regeneratingVariantId === v.id ? (
+                              <Loader2 size={13} className="animate-spin text-primary" />
+                            ) : (
+                              <RefreshCw size={13} className="text-gray-500" />
+                            )}
+                          </button>
                           <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${
                             isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                           }`}>
@@ -3301,6 +3629,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <p className="text-xs text-slate-700 font-bold leading-normal line-clamp-3">
                         {post.title}
                       </p>
+
+                      {post.type === 'existing' && post.status === 'pending' && (
+                        <div className="flex justify-end mt-1">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              handleCancel(post.id);
+                            }}
+                            disabled={actionLoadingId === post.id}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
+                          >
+                            {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                            <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

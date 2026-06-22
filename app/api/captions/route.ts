@@ -8,6 +8,7 @@ const createCaptionSchema = z.object({
     .enum(['facebook', 'thread', 'threads', 'instagram'])
     .transform((platform) => (platform === 'threads' ? 'thread' : platform)),
   ai_content: z.string().min(1, 'ai_content không được rỗng'),
+  edited_content: z.string().optional().nullable(),
   prompt_id: z.string().uuid().optional(),
   utm_config_id: z.string().uuid().optional(),
 });
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { article_id, platform, ai_content, prompt_id, utm_config_id } = parsed.data;
+  const { article_id, platform, ai_content, edited_content, prompt_id, utm_config_id } = parsed.data;
 
   const { data, error } = await supabase
     .from('captions')
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       article_id,
       platform,
       ai_content,         // bản AI gốc – không bao giờ ghi đè
-      edited_content: null,
+      edited_content: edited_content || null,
       created_by: user.id,
       ...(prompt_id && { prompt_id }),
       ...(utm_config_id && { utm_config_id }),
