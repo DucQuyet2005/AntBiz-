@@ -58,43 +58,28 @@ export async function GET(request: NextRequest) {
   try {
     const adminSupabase = createAdminClient();
 
-    // 2. Luôn tạo Job (Dù ít hay nhiều dòng) - Dùng adminSupabase để bypass RLS của audit_logs
+    // 2. Tạo Job ở trạng thái pending
     const job = await createExportJob(adminSupabase, user.id, { platform, search, startDate, endDate });
     
-    // 3. Xử lý nền (Background Worker giả lập)
-    // Không await để API phản hồi ngay lập tức
-    (async () => {
-      try {
-        // Giả lập thời gian xử lý (để thấy trạng thái Pending chuyển sang Completed)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Lấy dữ liệu và tạo CSV
-        const limit = rowCount > 0 ? rowCount : 1000;
-        const data = await getCaptionsForExport(adminSupabase, { platform, search, startDate, endDate }, limit);
-        
-        // Tạo URL dẫn đến endpoint download thật (bắt trình duyệt tải file)
-        const origin = request.nextUrl.origin;
-        const actualDownloadUrl = `${origin}/api/test/download-csv?jobId=${job.id}`;
-        
-        // Hoàn tất job và tự động GỬI EMAIL tới user
-        await completeExportJob(adminSupabase, job.id, actualDownloadUrl, data.length, user.email);
-        
-        console.log(`[Export Worker] Đã xử lý job ${job.id} và gửi email tới ${user.email}`);
-      } catch (err) {
-        console.error(`[Export Worker] Lỗi xử lý job ${job.id}:`, err);
-        const { data: existingJob } = await adminSupabase.from('audit_logs').select('after_value').eq('id', job.id).single();
-        await adminSupabase.from('audit_logs').update({ 
-          after_value: { ...(existingJob?.after_value || {}), status: 'failed', error_message: String(err) }
-        }).eq('id', job.id);
-      }
-    })();
+    // 3. Xử lý đồng bộ ngay lập tức để đảm bảo khi deploy vẫn hoạt động tin cậy 100%
+    const limit = rowCount > 0 ? rowCount : 1000;
+    const data = await getCaptionsForExport(adminSupabase, { platform, search, startDate, endDate }, limit);
+    
+    // Tạo URL dẫn đến endpoint download thật
+    const origin = request.nextUrl.origin;
+    const actualDownloadUrl = `${origin}/api/captions/export/download?jobId=${job.id}`;
+    
+    // Hoàn tất job và tự động GỬI EMAIL tới user
+    await completeExportJob(adminSupabase, job.id, actualDownloadUrl, data.length, user.email);
+    
+    console.log(`[Export Service] Đã xử lý job ${job.id} thành công và gửi email tới ${user.email}`);
     
     return NextResponse.json({ 
-      message: 'Đã tiếp nhận yêu cầu xuất dữ liệu. File CSV sẽ được gửi qua email của bạn.',
+      message: 'Đã hoàn thành xuất dữ liệu và gửi email.',
       job_id: job.id,
-      status: 'pending',
-      rowCount
-    }, { status: 202 }); // Accepted
+      status: 'completed',
+      rowCount: data.length
+    }, { status: 200 });
 
   } catch (err: any) {
     console.error('CREATE EXPORT JOB ERROR:', err);

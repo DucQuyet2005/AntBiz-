@@ -54,7 +54,7 @@ describe('GET /api/captions/export', () => {
     expect(res.status).toBe(403);
   });
 
-  it('should always create a background job regardless of dataset size', async () => {
+  it('should process the job synchronously and return 200', async () => {
     (requireUserWithRole as any).mockResolvedValue({
       user: mockUser,
       supabase: mockSupabase,
@@ -62,14 +62,16 @@ describe('GET /api/captions/export', () => {
     });
 
     (exportService.createExportJob as any).mockResolvedValue({ id: 'job-abc' });
+    (exportService.getCaptionsForExport as any).mockResolvedValue([{ id: 1 }]);
 
     const req = new NextRequest('http://localhost/api/captions/export');
     const res = await GET(req);
 
-    expect(res.status).toBe(202);
+    expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.job_id).toBe('job-abc');
-    expect(json.message).toContain('Đã tiếp nhận yêu cầu');
+    expect(json.message).toContain('Đã hoàn thành xuất dữ liệu');
     expect(exportService.createExportJob).toHaveBeenCalled();
+    expect(exportService.completeExportJob).toHaveBeenCalled();
   });
 });

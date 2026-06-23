@@ -471,6 +471,8 @@ export const translations = {
       actionChangeRole: "Thay đổi quyền",
       actionLock: "Khóa tài khoản",
       actionUnlock: "Mở khóa",
+      actionPublishPostSuccess: "Đăng bài thành công",
+      actionPublishPostFailed: "Đăng bài thất bại",
       noLogs: "Không có nhật ký nào phù hợp.",
       target: "Đối tượng: ",
       by: "Bởi: ",
@@ -638,6 +640,17 @@ export const translations = {
       lockedWarning: "Bạn sẽ được đăng xuất tự động sau vài giây. Vui lòng liên hệ quản trị viên để được hỗ trợ.",
       logoutBtn: "Đã hiểu, đăng xuất ngay",
       defaultReason: "Vi phạm chính sách sử dụng."
+    },
+    notifications: {
+      infoTitle: "Thông báo",
+      markAllRead: "Đánh dấu tất cả đã đọc",
+      noNotifications: "Không có thông báo nào.",
+      newBadge: "Mới",
+      showingInfo: "Hiển thị {from} - {to} trong tổng số {total} thông báo",
+      timeJustNow: "Vừa xong",
+      timeMinsAgo: "{mins} phút trước",
+      timeHoursAgo: "{hours} giờ trước",
+      timeDaysAgo: "{days} ngày trước"
     }
   },
   en: {
@@ -1112,6 +1125,8 @@ export const translations = {
       actionChangeRole: "Change Role",
       actionLock: "Lock Account",
       actionUnlock: "Unlock Account",
+      actionPublishPostSuccess: "Publish Post Success",
+      actionPublishPostFailed: "Publish Post Failed",
       noLogs: "No matching logs found.",
       target: "Target: ",
       by: "By: ",
@@ -1279,6 +1294,17 @@ export const translations = {
       lockedWarning: "You will be automatically logged out in a few seconds. Please contact the administrator for support.",
       logoutBtn: "Got it, log out now",
       defaultReason: "Violation of terms of use."
+    },
+    notifications: {
+      infoTitle: "Notifications",
+      markAllRead: "Mark all as read",
+      noNotifications: "No notifications yet.",
+      newBadge: "New",
+      showingInfo: "Showing {from} - {to} of {total} notifications",
+      timeJustNow: "Just now",
+      timeMinsAgo: "{mins} mins ago",
+      timeHoursAgo: "{hours} hours ago",
+      timeDaysAgo: "{days} days ago"
     }
   }
 };

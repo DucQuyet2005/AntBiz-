@@ -90,7 +90,13 @@ export default function DashboardLayout({
             }
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.warn(`Supabase Realtime subscription status for user-status-${user.id}:`, status, err);
+          } else {
+            console.log(`Supabase Realtime subscription active for user-status-${user.id}`);
+          }
+        });
     };
 
     initAuth();

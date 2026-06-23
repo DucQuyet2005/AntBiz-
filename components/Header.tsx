@@ -58,6 +58,20 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const supabase = createClient();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    fetchRole();
+  }, [supabase]);
 
   // Debounce API calls when search query changes
   useEffect(() => {
@@ -130,25 +144,26 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const [listRes, countRes] = await Promise.all([
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+      ]);
 
-      if (!error && data) {
-        setNotifications(data);
+      if (!listRes.error && listRes.data) {
+        setNotifications(listRes.data);
       }
 
-      const { count, error: countError } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (!countError) {
-        setUnreadCount(count || 0);
+      if (!countRes.error) {
+        setUnreadCount(countRes.count || 0);
       }
     } catch (err) {
       console.error('Error fetching notifications in Header:', err);
@@ -159,8 +174,47 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   useEffect(() => {
     fetchNotifications();
+
+    let realtimeChannel: any = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      realtimeChannel = supabase
+        .channel(`user-notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Realtime notification update received in Header:', payload);
+            fetchNotifications();
+          }
+        )
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.warn(`Supabase Realtime notification channel status for user-notifications-${user.id}:`, status, err);
+          } else {
+            console.log(`Supabase Realtime notification channel active for user-notifications-${user.id}`);
+          }
+        });
+    };
+
+    setupRealtime();
+
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string, isRead: boolean) => {
@@ -244,10 +298,25 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return t('notifications.timeJustNow') || (language === 'vi' ? 'Vừa xong' : 'Just now');
-    if (diffMins < 60) return (t('notifications.timeMinsAgo') || '{mins} phút trước').replace('{mins}', String(diffMins));
-    if (diffHours < 24) return (t('notifications.timeHoursAgo') || '{hours} giờ trước').replace('{hours}', String(diffHours));
-    return (t('notifications.timeDaysAgo') || '{days} ngày trước').replace('{days}', String(diffDays));
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    let relativeStr = '';
+    if (diffMins < 1) {
+      relativeStr = language === 'vi' ? 'Vừa xong' : 'Just now';
+    } else if (diffMins < 60) {
+      relativeStr = language === 'vi' ? `${diffMins} phút trước` : `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      relativeStr = language === 'vi' ? `${diffHours} giờ trước` : `${diffHours}h ago`;
+    } else {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      relativeStr = language === 'vi' ? `${diffDays} ngày trước` : `${diffDays}d ago`;
+      return `${timeStr} ${day}/${month} - ${relativeStr}`;
+    }
+
+    return `${timeStr} - ${relativeStr}`;
   };
 
   return (
@@ -422,7 +491,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-        {!isAdminRoute && (
+        {!isAdminRoute && userRole !== 'admin' && (
           <button
             onClick={() => {
               router.push('/ai-creator');
