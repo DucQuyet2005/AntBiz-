@@ -7,6 +7,9 @@ export async function GET(request: Request) {
   // query param "next" để điều hướng sau khi xác thực thành công
   const next = searchParams.get('next') ?? '/overview'
 
+  // Sử dụng biến môi trường NEXT_PUBLIC_SITE_URL nếu có, nếu không thì fallback về origin (cho local)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
+
   if (code) {
     const supabase = createClient()
     // Đổi code lấy JWT Session và tự động lưu vào Cookies
@@ -32,13 +35,13 @@ export async function GET(request: Request) {
           })
       } else if (profile.status === 'locked') {
         await supabase.auth.signOut()
-        return NextResponse.redirect(`${origin}/login?error=locked`)
+        return NextResponse.redirect(`${siteUrl}/login?error=locked`)
       }
 
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`${siteUrl}${next}`)
     }
   }
 
   // Trả về trang lỗi nếu xác thực thất bại
-  return NextResponse.redirect(`${origin}/login?error=Could not authenticate user`)
+  return NextResponse.redirect(`${siteUrl}/login?error=Could not authenticate user`)
 }
