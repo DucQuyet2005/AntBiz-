@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -17,25 +18,34 @@ export async function GET(request: Request) {
     // vì sẽ thiếu code_verifier cho PKCE flow. Nên redirect trực tiếp về trang reset-password.
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data?.user) {
+      // Sử dụng admin client để bypass RLS trên bảng users khi đồng bộ và update last_login_at
+      const adminSupabase = createAdminClient()
+
       // Tự động kiểm tra và tạo/đồng bộ profile nếu bị thiếu
-      const { data: profile } = await supabase
+      const { data: profile } = await adminSupabase
         .from('users')
         .select('status')
         .eq('id', data.user.id)
         .maybeSingle()
 
       if (!profile) {
-        await supabase
+        await adminSupabase
           .from('users')
           .insert({
             id: data.user.id,
             email: data.user.email || '',
             role: 'marketer_content',
-            status: 'active'
+            status: 'active',
+            last_login_at: new Date().toISOString()
           })
       } else if (profile.status === 'locked') {
         await supabase.auth.signOut()
         return NextResponse.redirect(`${siteUrl}/login?error=locked`)
+      } else {
+        await adminSupabase
+          .from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', data.user.id)
       }
 
       return NextResponse.redirect(`${siteUrl}${next}`)

@@ -43,7 +43,9 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(search)}&role=${roleFilter}&status=${statusFilter}&page=${page}&limit=10`);
+      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(search)}&role=${roleFilter}&status=${statusFilter}&page=${page}&limit=10`, {
+        cache: 'no-store'
+      });
       if (!res.ok) throw new Error('Failed to fetch users');
       const json = await res.json();
       setUsers(json.data || []);
@@ -77,6 +79,11 @@ export default function AdminUsersPage() {
     // Tắt modal lập tức
     setRoleModal({ isOpen: false, user: null, newRole: '' });
 
+    const originalUsers = [...users];
+
+    // Optimistic UI: Cập nhật quyền lập tức trên giao diện
+    setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, role: targetRole } : u));
+
     try {
       const res = await fetch(`/api/admin/users/${targetUser.id}/role`, {
         method: 'PUT',
@@ -90,6 +97,7 @@ export default function AdminUsersPage() {
       setToast({ isOpen: true, message: `Đã đổi quyền cho ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
+      setUsers(originalUsers);
       setToast({ isOpen: true, message: err.message, type: 'error' });
     }
   };
@@ -113,6 +121,11 @@ export default function AdminUsersPage() {
     // Tắt modal lập tức
     setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' });
 
+    const originalUsers = [...users];
+
+    // Optimistic UI: Cập nhật trạng thái lập tức trên giao diện
+    setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, status: targetStatus } : u));
+
     try {
       const res = await fetch(`/api/admin/users/${targetUser.id}/status`, {
         method: 'PUT',
@@ -126,6 +139,7 @@ export default function AdminUsersPage() {
       setToast({ isOpen: true, message: `Đã ${targetStatus === 'locked' ? 'khóa' : 'mở khóa'} tài khoản ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
+      setUsers(originalUsers);
       setToast({ isOpen: true, message: err.message, type: 'error' });
     }
   };
@@ -146,6 +160,18 @@ export default function AdminUsersPage() {
       case 'pending': return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-bold border border-amber-200">Pending</span>;
       default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-bold">{status}</span>;
     }
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return t('admin.neverLoggedIn');
+    const d = new Date(dateStr);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${hh}:${mm}:${ss} ${dd}/${mo}/${yyyy}`;
   };
 
   return (
@@ -271,7 +297,7 @@ export default function AdminUsersPage() {
                         {new Date(user.created_at).toLocaleDateString('vi-VN')}
                       </td>
                       <td className="p-5 text-sm text-slate-500 font-medium">
-                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : t('admin.neverLoggedIn')}
+                        {formatDateTime(user.last_login_at)}
                       </td>
                       <td className="p-5 pr-6 text-right">
                         <button 

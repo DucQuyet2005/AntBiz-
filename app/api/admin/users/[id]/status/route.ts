@@ -171,8 +171,8 @@ export async function PUT(
     })()
   );
 
-  // Chờ tất cả hoàn tất song song
-  await Promise.all(bgPromises);
+  // Thực hiện các tác vụ phụ ở background (không await để trả phản hồi ngay lập tức cho client)
+  Promise.all(bgPromises);
 
   return NextResponse.json({ success: true, message: 'Status updated successfully' });
 }
