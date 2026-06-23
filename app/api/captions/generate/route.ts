@@ -99,7 +99,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'URL không hợp lệ' }, { status: 400 });
       }
 
-      // Check if URL already exists in DB
+      // Always crawl URL to get the fresh data
+      console.log(`[Generate API] Crawling URL with TypeScript Playwright: ${url}`);
+      let cleanData: ReturnType<typeof preprocessArticle>;
+      try {
+        const rawData = await crawlUrl(url);
+        cleanData = preprocessArticle(rawData);
+      } catch (e: any) {
+        console.error('[Generate API] Crawler failed:', e);
+        return NextResponse.json({ error: 'Không thể cào và tiền xử lý dữ liệu bài viết' }, { status: 500 });
+      }
+
+      // Check if URL already exists in DB to decide insert vs update
       const { data: existingArticle } = await userSupabase
         .from('articles')
         .select('*')
@@ -107,19 +118,33 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingArticle) {
-        article = existingArticle;
-      } else {
-        // ── TypeScript Playwright crawler (no Python needed) ──────────────────
-        console.log(`[Generate API] Crawling URL with TypeScript Playwright: ${url}`);
-        let cleanData: ReturnType<typeof preprocessArticle>;
-        try {
-          const rawData = await crawlUrl(url);
-          cleanData = preprocessArticle(rawData);
-        } catch (e: any) {
-          console.error('[Generate API] Crawler failed:', e);
-          return NextResponse.json({ error: 'Không thể cào và tiền xử lý dữ liệu bài viết' }, { status: 500 });
+        // Update existing article with fresh data
+        const { data: updatedArticle, error: dbError } = await supabaseService
+          .from('articles')
+          .update({
+            title: cleanData.title || '',
+            category: cleanData.category || '',
+            description: cleanData.description || '',
+            author: cleanData.author || '',
+            published_at: cleanData.published_at || '',
+            views: cleanData.views || '',
+            images: cleanData.images || [],
+            body: cleanData.body || [],
+            full_text: cleanData.full_text || '',
+            tags: cleanData.tags || [],
+            crawled_at: new Date().toISOString(),
+          })
+          .eq('id', existingArticle.id)
+          .select()
+          .single();
+
+        if (dbError) {
+          console.error('[Generate API] Error updating crawled article in database:', dbError);
+          return NextResponse.json({ error: 'Không thể cập nhật bài viết vào database' }, { status: 500 });
         }
 
+        article = updatedArticle;
+      } else {
         // Save preprocessed article into DB using service role to bypass RLS if needed
         const { data: newArticle, error: dbError } = await supabaseService
           .from('articles')
@@ -301,8 +326,33 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
             }
           }
 
+          // Save generated caption to database
+          let captionId = '';
+          if (generatedText) {
+            const { data: savedCaption, error: saveError } = await userSupabase
+              .from('captions')
+              .insert({
+                article_id: article.id,
+                prompt_id: dbPromptId || null,
+                created_by: user.id,
+                platform: targetPlatform,
+                ai_content: generatedText,
+                status: 'draft',
+                variant_group_id: variantGroupId || null,
+                variant_index: resolvedVariantIndex,
+              })
+              .select()
+              .single();
+
+            if (saveError) {
+              console.error('[Generate API] Lỗi khi tự động lưu caption sau khi sinh:', saveError);
+            } else if (savedCaption) {
+              captionId = savedCaption.id;
+            }
+          }
+
           // Send signal that stream is complete with metadata
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId: '', versionId: '', articleId: article.id, variantGroupId: variantGroupId || null })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId: captionId, versionId: '', articleId: article.id, variantGroupId: variantGroupId || null })}\n\n`));
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (err) {

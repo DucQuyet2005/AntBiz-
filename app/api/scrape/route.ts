@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { classifyArticle } from '@/lib/services/articleClassifier';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
 import { createClient } from '@supabase/supabase-js';
@@ -41,6 +40,25 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient();
 
+    // Luôn tiến hành cào mới
+    console.log(`[Scrape API] Bypassing cache, starting crawl for: ${targetUrl}...`);
+    const rawData = await crawlUrl(targetUrl);
+    const cleanData = preprocessArticle(rawData);
+
+    const title = cleanData.title || '';
+    const description = cleanData.description || '';
+    const author = cleanData.author || '';
+
+    // Gán category trực tiếp bằng cleanData.category (đảm bảo có dấu # nếu không rỗng)
+    const category = cleanData.category
+      ? (cleanData.category.startsWith('#') ? cleanData.category : `#${cleanData.category}`)
+      : '';
+
+    const imageUrl = cleanData.images.length > 0
+      ? cleanData.images.map(img => img.url).join('\n')
+      : '';
+    const tagsString = cleanData.tags.join(', ');
+
     // 1. Kiểm tra xem URL này đã có trong database chưa (tìm khớp chính xác)
     let { data: existingArticle, error: findError } = await supabase
       .from('articles')
@@ -60,81 +78,64 @@ export async function GET(request: NextRequest) {
       existingArticle = prefixMatch;
     }
 
-    if (existingArticle && existingArticle.title) {
-      console.log(`[Scrape API] Found cached article in DB: ${existingArticle.url}`);
+    let articleId = '';
 
-      let imageUrl = '';
-      if (Array.isArray(existingArticle.images)) {
-        imageUrl = existingArticle.images.map((img: any) => img.url).join('\n');
-      } else if (existingArticle.images && typeof existingArticle.images === 'object') {
-        imageUrl = (existingArticle.images as any).url || '';
+    if (existingArticle) {
+      // Cập nhật bài viết hiện tại bằng dữ liệu mới cào
+      console.log(`[Scrape API] Article already exists. Updating ID: ${existingArticle.id}`);
+      const { data: updatedArticle, error: dbError } = await supabase
+        .from('articles')
+        .update({
+          title,
+          description,
+          author,
+          published_at: cleanData.published_at || '',
+          views: cleanData.views || '',
+          images: cleanData.images || [],
+          body: cleanData.body || [],
+          full_text: cleanData.full_text || description,
+          category,
+          tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
+          crawled_at: new Date().toISOString(),
+        })
+        .eq('id', existingArticle.id)
+        .select('id')
+        .single();
+
+      if (dbError) {
+        console.error('[Scrape API] DB Update Error:', dbError);
       }
-      
-      const tagsString = Array.isArray(existingArticle.tags)
-        ? existingArticle.tags.join(', ')
-        : '';
+      articleId = updatedArticle?.id || existingArticle.id;
+    } else {
+      // Tạo mới bài viết trong database
+      console.log(`[Scrape API] Article does not exist. Inserting new record...`);
+      const { data: insertedArticle, error: dbError } = await supabase
+        .from('articles')
+        .insert({
+          url: targetUrl,
+          title,
+          description,
+          author,
+          published_at: cleanData.published_at || '',
+          views: cleanData.views || '',
+          images: cleanData.images || [],
+          body: cleanData.body || [],
+          full_text: cleanData.full_text || description,
+          category,
+          tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
+          crawled_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
 
-      return NextResponse.json({
-        id: existingArticle.id,
-        title: existingArticle.title,
-        description: existingArticle.description || '',
-        full_text: existingArticle.full_text || existingArticle.description || '',
-        imageUrl: imageUrl,
-        author: existingArticle.author || '',
-        category: existingArticle.category ? (existingArticle.category.startsWith('#') ? existingArticle.category : `#${existingArticle.category}`) : '#Chung',
-        tags: tagsString,
-        published_at: existingArticle.published_at || '',
-        views: existingArticle.views || '',
-        url: existingArticle.url
-      });
-    }
-
-    // 3. Nếu chưa có trong DB, tiến hành cào mới
-    console.log(`[Scrape API] Cache MISS for: ${targetUrl}. Starting crawl...`);
-    const rawData = await crawlUrl(targetUrl);
-    const cleanData = preprocessArticle(rawData);
-
-    const title = cleanData.title || '';
-    const description = cleanData.description || '';
-    const author = cleanData.author || '';
-
-    // T-1.19.1: Phân loại category bằng AI từ title + description
-    const { category: aiCategory, confidence } = await classifyArticle(title, description);
-    const category = aiCategory.startsWith('#') ? aiCategory : `#${aiCategory}`;
-
-    const imageUrl = cleanData.images.length > 0
-      ? cleanData.images.map(img => img.url).join('\n')
-      : '';
-    // Dùng tags từ HTML crawl, không hardcode
-    const tagsString = cleanData.tags.join(', ');
-
-    // Lưu bài viết mới vào database bằng admin client
-    const { data: article, error: dbError } = await supabase
-      .from('articles')
-      .upsert({
-        url: targetUrl,
-        title,
-        description,
-        author,
-        published_at: cleanData.published_at || '',
-        views: cleanData.views || '',
-        images: cleanData.images || [],
-        body: cleanData.body || [],
-        full_text: cleanData.full_text || description,
-        category: aiCategory,
-        category_confidence: confidence,
-        tags: cleanData.tags && cleanData.tags.length > 0 ? cleanData.tags : [],
-        crawled_at: new Date().toISOString(),
-      }, { onConflict: 'url' })
-      .select('id')
-      .single();
-
-    if (dbError) {
-      console.error('[scrape API] DB Error:', dbError);
+      if (dbError) {
+        console.error('[Scrape API] DB Insert Error:', dbError);
+      }
+      articleId = insertedArticle?.id || '';
     }
 
     return NextResponse.json({
-      id: article?.id,
+      id: articleId,
       title,
       description,
       full_text: cleanData.full_text || description,

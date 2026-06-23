@@ -36,7 +36,14 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         });
 
         await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-        await page.waitForTimeout(2000);
+        
+        // Chờ skeleton loading (nếu có) biến mất trước khi bắt đầu cào dữ liệu
+        try {
+          await page.waitForSelector('.animate-pulse', { state: 'detached', timeout: 10000 });
+        } catch (e) {
+          // Bỏ qua nếu không có hoặc bị quá hạn chờ
+        }
+        await page.waitForTimeout(1000);
 
         // Cuộn trang xuống để load dynamic content / Spotlight content
         for (let i = 0; i < 8; i++) {

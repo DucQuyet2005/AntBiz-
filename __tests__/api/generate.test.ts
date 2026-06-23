@@ -64,6 +64,13 @@ class MockQueryBuilder {
     return this;
   }
 
+  update(data: any) {
+    if (this.table === 'articles') {
+      mockArticlesDb = [{ id: 'a1', ...data }];
+    }
+    return this;
+  }
+
   then(onfulfilled: any) {
     let result: any = { data: null, error: null };
     if (mockError) {

@@ -2827,34 +2827,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            {hasChanged && (
+                            {regeneratingVariantId === v.id ? (
+                              <Loader2 size={12} className="animate-spin text-primary" />
+                            ) : (
                               <button
                                 type="button"
+                                disabled={isGeneratingAB || !!regeneratingVariantId}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const confirmMsg = language === 'vi'
-                                    ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
-                                    : 'Are you sure you want to discard your edits and revert to the original AI content?';
-                                  if (window.confirm(confirmMsg)) {
-                                    handleUpdateVariantField(v.id, selectedPlatform, originalVal);
-                                  }
+                                  handleRegenerateVariant(v.id);
                                 }}
-                                className="flex items-center gap-1 text-[10px] font-black text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 px-2.5 py-1 rounded-xl transition-all cursor-pointer select-none"
-                                title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                                className="p-1.5 rounded-xl hover:bg-primary/10 text-primary transition-all cursor-pointer disabled:opacity-50 border-0 bg-transparent flex items-center justify-center"
+                                title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
                               >
-                                <RefreshCw size={10} />
-                                {language === 'vi' ? 'Về bản gốc' : 'Revert'}
+                                <RefreshCw size={12} />
                               </button>
-                            )}
-                            {isCardSelected && (
-                              <motion.span
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                              >
-                                <Check size={9} />
-                                {language === 'vi' ? 'Đã chọn' : 'Selected'}
-                              </motion.span>
                             )}
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
@@ -4061,7 +4048,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           type="button"
                           onClick={() => {
                             setSelectedPrompt(p);
-                            generateVariants(postData, p);
                             setIsPromptModalOpen(false);
                           }}
                           className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
@@ -4225,34 +4211,27 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           filteredPromptsForModal.map((p) => {
                             const isSel = selectedPrompt?.id === p.id;
                             return (
-                              <button key={p.id} type="button"
+                              <button
+                                key={p.id}
+                                type="button"
                                 onClick={() => {
                                   setCustomPromptTitle(p.name);
                                   setActivePrompt(p.content);
                                   setSelectedPrompt(p);
                                   setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
                                 }}
-                                className={`text-left p-4 rounded-2xl border-2 transition-all flex flex-col gap-2 cursor-pointer ${isSel
-                                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-                                    : 'border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm'
-                                  }`}>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    {isSel && <Check size={13} className="text-primary shrink-0" />}
-                                    <span className="text-sm font-extrabold text-slate-800 truncate max-w-[60%]">{p.name}</span>
-                                  </div>
-                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl uppercase ${p.platform === 'facebook' ? 'bg-blue-100 text-blue-700' :
-                                      p.platform === 'threads' ? 'bg-slate-100 text-slate-700' :
-                                        'bg-pink-100 text-pink-700'
-                                    }`}>{p.platform}</span>
+                                className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSel
+                                  ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
+                                  : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between w-full font-sans">
+                                  <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
+                                  <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
                                 </div>
-                                <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
-                                {isSel && (
-                                  <div className="flex items-center gap-1.5 text-[9px] text-primary font-black uppercase tracking-wider">
-                                    <CheckCircle2 size={10} />
-                                    Đã điền vào Tab Editor
-                                  </div>
-                                )}
+                                <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                                  "{p.content}"
+                                </p>
                               </button>
                             );
                           })
@@ -4263,49 +4242,53 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="bg-slate-50/80 border-t border-slate-200 px-7 py-4 flex items-center justify-between shrink-0">
-                  <button type="button" onClick={() => setIsAiPromptDialogOpen(false)}
-                    className="bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer">
-                    Đóng
-                  </button>
-
+                <div className="border-t border-gray-100 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => {
-                        if (!activePrompt) return;
-                        const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
-                        const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                        setSelectedPrompt(newPrompt);
-                        generateVariants(postData, newPrompt);
-                        setIsAiPromptDialogOpen(false);
-                      }} disabled={!activePrompt}
-                        className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none">
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!activePrompt) return;
+                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                          const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          setIsAiPromptDialogOpen(false);
+                        }}
+                        disabled={!activePrompt}
+                        className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                      >
                         Chỉ sử dụng
                       </button>
 
-                      <button type="button" onClick={async () => {
-                        if (!activePrompt) return;
-                        const savedPrompt = await handleSaveCurrentPrompt();
-                        const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
-                        const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                        setSelectedPrompt(newPrompt);
-                        generateVariants(postData, newPrompt);
-                        setIsAiPromptDialogOpen(false);
-                      }} disabled={!activePrompt || isSavingPrompt}
-                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!activePrompt) return;
+                          const savedPrompt = await handleSaveCurrentPrompt();
+                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                          const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          setIsAiPromptDialogOpen(false);
+                        }}
+                        disabled={!activePrompt || isSavingPrompt}
+                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
+                      >
                         {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
                         Lưu &amp; Sử dụng Prompt
                       </button>
-                    </div>
+                    </>
                   ) : (
-                    <button type="button" onClick={() => {
-                      if (selectedPrompt) {
-                        generateVariants(postData, selectedPrompt);
-                        setIsAiPromptDialogOpen(false);
-                      }
-                    }} disabled={!selectedPrompt}
-                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                      Dùng Prompt này &amp; Sinh bài
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedPrompt) {
+                          setIsAiPromptDialogOpen(false);
+                        }
+                      }}
+                      disabled={!selectedPrompt}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
+                    >
+                      Sử dụng Prompt này
                     </button>
                   )}
                 </div>

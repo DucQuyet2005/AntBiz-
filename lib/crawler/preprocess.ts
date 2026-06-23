@@ -80,6 +80,73 @@ function findArticleScope($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
  * Parse crawled HTML into structured article data.
  * Equivalent to preprocess() in auto_post_pipeline.py
  */
+function cleanCaption(alt: string | undefined): string {
+  if (!alt) return '';
+  const cleaned = cleanText(alt);
+  // If it's a JSON path or key like sections.0.sectionContents.0.images.0.url
+  if (/^sections\.\d+/i.test(cleaned) || /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_.-]+$/i.test(cleaned)) {
+    return '';
+  }
+  return cleaned;
+}
+
+function formatDateVN(date: Date): string {
+  const tzOffset = 7 * 60 * 60 * 1000; // Vietnam +7
+  const vnTime = new Date(date.getTime() + (date.getTimezoneOffset() * 60000) + tzOffset);
+  const day = String(vnTime.getDate()).padStart(2, '0');
+  const month = String(vnTime.getMonth() + 1).padStart(2, '0');
+  const year = vnTime.getFullYear();
+  const hours = String(vnTime.getHours()).padStart(2, '0');
+  const minutes = String(vnTime.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+function parsePublishedAt(rawStr: string): string {
+  const clean = rawStr.trim();
+  if (!clean) {
+    return formatDateVN(new Date());
+  }
+
+  // Check if already in DD/MM/YYYY HH:mm format
+  if (/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(clean)) {
+    return clean;
+  }
+
+  const now = new Date();
+
+  // Relative minutes: e.g. "54 phút trước", "54 phut"
+  const minMatch = clean.match(/(\d+)\s*phút/i) || clean.match(/(\d+)\s*phut/i);
+  if (minMatch) {
+    const mins = parseInt(minMatch[1], 10);
+    const date = new Date(now.getTime() - mins * 60 * 1000);
+    return formatDateVN(date);
+  }
+
+  // Relative hours: e.g. "2 tiếng trước", "1 giờ"
+  const hourMatch = clean.match(/(\d+)\s*(tiếng|giờ)/i) || clean.match(/(\d+)\s*(tieng|gio)/i);
+  if (hourMatch) {
+    const hours = parseInt(hourMatch[1], 10);
+    const date = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    return formatDateVN(date);
+  }
+
+  // Relative days: e.g. "1 ngày trước"
+  const dayMatch = clean.match(/(\d+)\s*ngày/i) || clean.match(/(\d+)\s*ngay/i);
+  if (dayMatch) {
+    const days = parseInt(dayMatch[1], 10);
+    const date = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    return formatDateVN(date);
+  }
+
+  // Try standard parsing
+  const parsedTimestamp = Date.parse(clean);
+  if (!isNaN(parsedTimestamp)) {
+    return formatDateVN(new Date(parsedTimestamp));
+  }
+
+  return formatDateVN(now);
+}
+
 export function preprocessArticle(raw: CrawlResult): ArticleData {
   console.log('\n🔧 [Preprocess] Đang tiền xử lý dữ liệu...');
 
@@ -88,75 +155,152 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
   const scope = findArticleScope($);
 
+  // ── JSON-LD Schema Extraction ─────────────────────────
+  let jsonLdCategory = '';
+  let jsonLdTitle = '';
+  let jsonLdDescription = '';
+  let jsonLdAuthor = '';
+  let jsonLdPublishedAt = '';
+
+  try {
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const text = $(el).text();
+        const json = JSON.parse(text);
+        const findArticle = (obj: any): any => {
+          if (!obj) return null;
+          const type = obj['@type'];
+          if (type === 'NewsArticle' || type === 'Article' || type === 'BlogPosting') {
+            return obj;
+          }
+          if (obj['@graph'] && Array.isArray(obj['@graph'])) {
+            for (const item of obj['@graph']) {
+              const res = findArticle(item);
+              if (res) return res;
+            }
+          }
+          return null;
+        };
+        const articleObj = findArticle(json);
+        if (articleObj) {
+          if (articleObj.articleSection) {
+            const sec = cleanText(articleObj.articleSection);
+            if (sec) jsonLdCategory = sec.startsWith('#') ? sec : `#${sec}`;
+          }
+          if (articleObj.headline) {
+            jsonLdTitle = cleanText(articleObj.headline);
+          }
+          if (articleObj.description) {
+            jsonLdDescription = cleanText(articleObj.description);
+          }
+          if (articleObj.author) {
+            if (typeof articleObj.author === 'string') {
+              jsonLdAuthor = cleanText(articleObj.author);
+            } else if (Array.isArray(articleObj.author)) {
+              jsonLdAuthor = cleanText(articleObj.author[0]?.name || '');
+            } else if (articleObj.author.name) {
+              jsonLdAuthor = cleanText(articleObj.author.name);
+            }
+          }
+          if (articleObj.datePublished) {
+            jsonLdPublishedAt = cleanText(articleObj.datePublished);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
+
   // ── Category ──────────────────────
-  let category = '';
-  // Try to find category in metadata-like areas first
-  const potentialCategoryLinks = scope.find('a[href*="/category/"], a[href*="/the-loai/"], a[href^="/hashtag/"]');
-
-  potentialCategoryLinks.each((_, el) => {
-    const text = cleanText($(el).text());
-    if (text && (text.startsWith('#') || $(el).attr('href')?.includes('/category/') || $(el).attr('href')?.includes('/the-loai/'))) {
-      category = text.startsWith('#') ? text : `#${text}`; // Ensure # prefix
-      return false; // Found first one, break loop
-    }
-  });
-
+  let category = jsonLdCategory;
   if (!category) {
-    // Fallback: Check for category-like text in common metadata locations
-    const metaCategory = scope.find('.article-category, .post-category, .news-category').first();
-    if (metaCategory.length) {
-      const text = cleanText(metaCategory.text());
-      if (text) category = text.startsWith('#') ? text : `#${text}`;
+    // Narrow scope: only check elements before the first H1, or within a specific category tag at the top of the article.
+    const h1 = $('h1').first();
+    const preTitleArea = h1.length ? h1.prevAll() : null;
+    
+    // Find category links in elements preceding the h1
+    if (preTitleArea && preTitleArea.length) {
+      const links = preTitleArea.find('a[href*="/category/"], a[href*="/the-loai/"], a[href*="/hashtag/"]');
+      links.each((_, el) => {
+        const text = cleanText($(el).text());
+        if (text && (text.startsWith('#') || $(el).attr('href')?.includes('/category/') || $(el).attr('href')?.includes('/the-loai/'))) {
+          category = text.startsWith('#') ? text : `#${text}`;
+          return false;
+        }
+      });
     }
-  }
 
-  // Fallback to older method if still no category (might be present in broader scope)
-  if (!category) {
-    const categoryEl = scope.find("a[href^='/hashtag/']").first();
-    if (categoryEl.length) {
-      const text = cleanText(categoryEl.text());
-      if (text) category = text.startsWith('#') ? text : `#${text}`;
+    // Fallback: check elements that are inside a meta category class, but only within the article header area
+    if (!category) {
+      const metaCategory = $('.article-category, .post-category, .news-category').first();
+      if (metaCategory.length) {
+        const text = cleanText(metaCategory.text());
+        if (text) category = text.startsWith('#') ? text : `#${text}`;
+      }
     }
+    
+    // NOTE: No global search on scope.find("a[href^='/hashtag/']") or tags! 
+    // If not found in the immediate top area, category remains empty to prevent random grabs from sidebar/footer.
   }
-
 
   // ── Title ──────────────────────────────────────────────────────────────
-  let title = '';
-  $('h1').each((_, el) => {
-    const text = cleanText($(el).text());
-    if (text && text.toLowerCase() !== 'spotlight' && text.toLowerCase() !== 'góc nhìn mới') {
-      title = text;
-      return false; // Break loop
-    }
-  });
+  let title = jsonLdTitle;
+  if (!title) {
+    $('h1').each((_, el) => {
+      const text = cleanText($(el).text());
+      if (text && text.toLowerCase() !== 'spotlight' && text.toLowerCase() !== 'góc nhìn mới') {
+        title = text;
+        return false; // Break loop
+      }
+    });
+  }
 
   if (!title) {
     title = cleanText(raw.title || $('title').text().replace(/ - Góc Nhìn Mới.*/i, ''));
   }
 
   // ── Description / sapo ────────────────────────────────────────────────
-  let description = cleanText(scope.find('p.mb-5').first().text()) ||
-    cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+  let description = jsonLdDescription;
+  if (!description) {
+    // Try h4 (often used as sapo in Spotlight layouts)
+    const h4Text = cleanText($('h4').first().text());
+    description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
+      cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+  }
 
   if (!description && raw.metadata?.description) {
     description = cleanText(raw.metadata.description);
   }
 
   // ── Author ────────────────────────────────────────────────────────────
-  const author = cleanText(
-    scope.find('span.font-bold.text-gray-900').first().text() ||
-    scope.find('a[href^="/authors/"] p').first().text() ||
-    $('span.font-bold.text-gray-900').first().text() ||
-    $('a[href^="/authors/"] p').first().text() || ''
-  );
+  let author = jsonLdAuthor;
+  if (!author) {
+    // For Spotlight style: look for a parent with class space-x-3 or gap-3 containing date and author text
+    const authorP = $('.flex-row, .space-x-3').find('p.text-body-sm, span.font-semibold').first();
+    
+    author = cleanText(
+      authorP.text() ||
+      scope.find('span.font-bold.text-gray-900').first().text() ||
+      scope.find('a[href^="/authors/"] p').first().text() ||
+      $('span.font-bold.text-gray-900').first().text() ||
+      $('a[href^="/authors/"] p').first().text() || ''
+    );
+  }
 
   // ── Published date ────────────────────────────────────────────────────
-  const published_at = cleanText(
-    scope.find('p.text-gray-400').first().text() ||
-    scope.find('span.text-gray-500').first().text() ||
-    $('p.text-gray-400').first().text() ||
-    $('span.text-gray-500').first().text() || ''
-  );
+  let rawPublishedAt = jsonLdPublishedAt;
+  if (!rawPublishedAt) {
+    rawPublishedAt = cleanText(
+      scope.find('p.text-gray-400').first().text() ||
+      scope.find('span.text-gray-500').first().text() ||
+      $('p.text-gray-400').first().text() ||
+      $('span.text-gray-500').first().text() || ''
+    );
+  }
+  const published_at = parsePublishedAt(rawPublishedAt);
 
   // ── Views (element next to lucide-eye svg) ────────────────────────────
   let views = '';
@@ -188,7 +332,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
       } else if (btype === 'image') {
         const imgUrl = block.attr('data-url') || '';
-        const caption = cleanText(block.attr('data-caption') || '');
+        const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
         if (imgUrl) {
           images.push({ url: imgUrl, caption });
           bodyBlocks.push({ type: 'image', url: imgUrl, caption });
@@ -204,6 +348,11 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
       const tagName = (el as any).tagName || el.name;
       const cheerioEl = $(el);
 
+      // Avoid matching parent elements whose children will be parsed individually to prevent duplicate text blocks
+      if (tagName !== 'img' && cheerioEl.find('p, h2, h3').length > 0) {
+        return;
+      }
+
       if (tagName === 'img') {
         const src = cheerioEl.attr('src') || '';
         if (
@@ -218,8 +367,9 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         }
         if (!seenImageUrls.has(src)) {
           seenImageUrls.add(src);
-          images.push({ url: src, caption: cheerioEl.attr('alt') || '' }); // Use alt text as caption
-          bodyBlocks.push({ type: 'image', url: src, caption: cheerioEl.attr('alt') || '' });
+          const caption = cleanCaption(cheerioEl.attr('alt'));
+          images.push({ url: src, caption });
+          bodyBlocks.push({ type: 'image', url: src, caption });
         }
       } else {
         const text = cleanText(cheerioEl.text());
