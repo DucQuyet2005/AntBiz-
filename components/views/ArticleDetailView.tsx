@@ -25,7 +25,8 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toast, useToast } from '@/components/Toast';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -70,6 +71,7 @@ export default function ArticleDetailView() {
   const searchParams = useSearchParams();
   const captionIdParam = searchParams?.get('captionId');
   const supabase = createClient();
+  const { toast, showToast, hideToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -293,6 +295,20 @@ export default function ArticleDetailView() {
     return '';
   };
 
+  const isPublished = captions.some(c => c.status === 'posted');
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isPublished) {
+      showToast(
+        language === 'vi'
+          ? 'Không thể chỉnh sửa bài viết đã được đăng lên mạng xã hội.'
+          : 'Cannot edit a post that has already been published.',
+        'error'
+      );
+    }
+  };
+
   const handleRevert = async () => {
     if (!selectedCheckpoint) return;
     setReverting(true);
@@ -384,7 +400,14 @@ export default function ArticleDetailView() {
           <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
             <LinkIcon size={18} />
           </button>
-          <button className="bg-[#3F51B5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-md shadow-[#3F51B5]/20 flex items-center gap-2">
+          <button
+            onClick={handleEditClick}
+            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent ${
+              isPublished
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                : 'bg-[#3F51B5] hover:bg-indigo-700 text-white shadow-md shadow-[#3F51B5]/20 cursor-pointer'
+            }`}
+          >
             <Edit3 size={16} />
             {t('articleDetail.editPost')}
           </button>
@@ -1019,6 +1042,15 @@ export default function ArticleDetailView() {
 
       </div>
 
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
