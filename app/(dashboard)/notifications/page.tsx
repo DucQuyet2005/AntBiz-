@@ -46,7 +46,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterType, setFilterType] = useState<string>('all');
+  const filterType = 'all';
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filterType, supabase]);
+  }, [currentPage, supabase]);
 
   useEffect(() => {
     fetchNotifications();
@@ -139,11 +139,7 @@ export default function NotificationsPage() {
     };
   }, [fetchNotifications, supabase]);
 
-  // Reset về trang 1 khi đổi bộ lọc
-  const handleFilterChange = (type: string) => {
-    setFilterType(type);
-    setCurrentPage(1);
-  };
+
 
   // Đánh dấu đã đọc một thông báo
   const handleMarkAsRead = async (id: string, isRead: boolean) => {
@@ -255,16 +251,7 @@ export default function NotificationsPage() {
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  // Danh sách các tab bộ lọc
-  const filterTabs = [
-    { type: 'all', label: t('notifications.filterAll') },
-    ...(userRole !== 'admin' ? [
-      { type: 'post_success', label: t('notifications.filterSuccess') },
-      { type: 'post_failed', label: t('notifications.filterFailed') },
-      { type: 'ab_test_complete', label: t('notifications.filterAb') },
-    ] : []),
-    { type: 'info', label: t('notifications.filterInfo') },
-  ];
+
 
   return (
     <div className="flex flex-col gap-6 font-sans">
@@ -290,22 +277,7 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 gap-2 no-scrollbar">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.type}
-            onClick={() => handleFilterChange(tab.type)}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer select-none border border-transparent ${
-              filterType === tab.type
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white border-gray-200 text-text-muted hover:bg-gray-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+
 
       {/* Main List */}
       <div className="bg-white border border-gray-200/80 rounded-[32px] p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
