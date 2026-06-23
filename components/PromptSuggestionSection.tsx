@@ -57,6 +57,19 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
   const { prompt, relevanceScore, matchedTags } = suggestion;
   const [isSaving, setIsSaving] = useState(false);
 
+  const handleUsePrompt = async () => {
+    // T-1.19.1: Increment usage_count khi user chọn dùng prompt
+    try {
+      await fetch(`/api/prompts/${prompt.id}/use`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      console.error('[PromptCard] Failed to increment usage_count:', err);
+    }
+    // Gọi callback dù API có lỗi hay không
+    onUse(prompt.content);
+  };
+
   return (
     <div className="border border-gray-100 hover:border-primary/30 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:shadow-sm transition-all duration-200 group">
       {/* Header */}
@@ -100,7 +113,7 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
       {/* Buttons */}
       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
         <button
-          onClick={() => onUse(prompt.content)}
+          onClick={handleUsePrompt}
           className="w-full bg-primary text-white text-[10px] font-extrabold py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
         >
           Dùng prompt này
@@ -211,10 +224,21 @@ export default function PromptSuggestionSection({
           </div>
           <div>
             <h3 className="text-sm font-extrabold text-text">Gợi ý cho bài này</h3>
-            {data && data.isFallback && (
-              <p className="text-[10px] text-text-muted">
-                <span className="text-amber-500 font-bold">(hiện đang hiển thị các prompt phổ biến nhất)</span>
-              </p>
+            {data && (
+              <div className="flex items-center gap-2 mt-1">
+                {/* T-1.19.2: Category badge */}
+                {data.articleCategory && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    {data.articleCategory}
+                  </span>
+                )}
+                {/* Fallback badge */}
+                {data.isFallback && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    📌 Phổ biến nhất
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

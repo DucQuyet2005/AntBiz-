@@ -69,14 +69,15 @@ export async function PUT(
 
   // 1. Ghi audit log
   bgPromises.push(
-    supabase.from('audit_logs').insert({
-      actor_id: user.id,
-      target_user_id: id,
-      action: 'change_role',
-      before_value: { role: oldRole },
-      after_value: { role: role },
-    })
-    .catch((err) => console.error('[Role API] Lỗi khi ghi audit log:', err.message))
+    Promise.resolve(
+      supabase.from('audit_logs').insert({
+        actor_id: user.id,
+        target_user_id: id,
+        action: 'change_role',
+        before_value: { role: oldRole },
+        after_value: { role: role },
+      })
+    ).catch((err: any) => console.error('[Role API] Lỗi khi ghi audit log:', err.message))
   );
 
   // 2. Gửi thông báo in-app tới toàn bộ Admin (sử dụng bulk insert)

@@ -22,7 +22,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
@@ -67,6 +67,8 @@ export default function ArticleDetailView() {
   const { t, language } = useLanguage();
   const params = useParams();
   const id = params?.id as string;
+  const searchParams = useSearchParams();
+  const captionIdParam = searchParams?.get('captionId');
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,22 @@ export default function ArticleDetailView() {
   const [isFbExpanded, setIsFbExpanded] = useState(false);
   const [isThreadsExpanded, setIsThreadsExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+
+  // Automatically toggle platform and highlight mockup if captionId query param is provided
+  useEffect(() => {
+    if (captionIdParam && captions.length > 0) {
+      const matchingCap = captions.find(c => c.id === captionIdParam);
+      if (matchingCap) {
+        if (matchingCap.platform === 'facebook' || matchingCap.platform === 'threads') {
+          setSelectedPlatform(matchingCap.platform);
+        }
+        setIsHighlighted(true);
+        const timer = setTimeout(() => setIsHighlighted(false), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [captionIdParam, captions]);
 
   function loadMockData() {
     const fbText = "Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.\n\nSau 10 năm tích cóp mua vàng, hai vợ chồng cuối cùng cũng chạm tay vào ước mơ sở hữu căn hộ riêng tại Hà Nội. Đọc chi tiết hành trình đầy cảm hứng này tại AntBiz!";
@@ -431,8 +449,8 @@ export default function ArticleDetailView() {
                 <button
                   onClick={() => setSelectedPlatform('facebook')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-text-muted hover:text-text'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-text-muted hover:text-text'
                     }`}
                 >
                   <ThumbsUp size={11} className={selectedPlatform === 'facebook' ? 'fill-white' : ''} />
@@ -441,8 +459,8 @@ export default function ArticleDetailView() {
                 <button
                   onClick={() => setSelectedPlatform('threads')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'threads'
-                      ? 'bg-black text-white shadow-sm'
-                      : 'text-text-muted hover:text-text'
+                    ? 'bg-black text-white shadow-sm'
+                    : 'text-text-muted hover:text-text'
                     }`}
                 >
                   <ThreadsIcon size={11} />
@@ -478,7 +496,7 @@ export default function ArticleDetailView() {
             )}
 
             {/* Post Layout Display */}
-            <div className="border border-gray-100 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5">
+            <div className={`border border-gray-100 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5 transition-all duration-500 ${isHighlighted ? 'ring-4 ring-primary/40 border-primary bg-primary/5 animate-pulse' : ''}`}>
               {selectedPlatform === 'facebook' ? (
                 /* Facebook Preview Mockup */
                 <div className="flex flex-col bg-white">
@@ -862,6 +880,26 @@ export default function ArticleDetailView() {
             </div>
           )}
 
+          {/* Image Cards Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {activeArticle.images.map((img: any, idx: number) => (
+              <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+                <img
+                  src={img.url}
+                  alt={`Image ${idx}`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {img.caption && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
+                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
+                      {img.caption}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
         </div>
 
         {/* Right Column (Sidebar metrics, checkpoints, tags) */}
@@ -918,8 +956,8 @@ export default function ArticleDetailView() {
                         }
                       }}
                       className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent ${isViewing
-                          ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
-                          : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
+                        ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
+                        : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
                         }`}
                     >
                       {isActive && (

@@ -32,11 +32,15 @@ import {
   X,
   FileText,
   Save,
-  Wand2
+  Wand2,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRouter } from 'next/navigation';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
+import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 
@@ -52,6 +56,12 @@ interface SocialVariant {
   facebook: string;
   threads: string;
   instagram: string;
+  originalFacebook?: string;
+  originalThreads?: string;
+  originalInstagram?: string;
+  facebookCaptionId?: string;
+  threadsCaptionId?: string;
+  instagramCaptionId?: string;
   title: string;
   author: string;
   tags: string;
@@ -97,6 +107,12 @@ const createEmptyVariant = (id: string): SocialVariant => ({
   facebook: '',
   threads: '',
   instagram: '',
+  originalFacebook: '',
+  originalThreads: '',
+  originalInstagram: '',
+  facebookCaptionId: '',
+  threadsCaptionId: '',
+  instagramCaptionId: '',
   title: '',
   author: '',
   tags: '',
@@ -104,10 +120,17 @@ const createEmptyVariant = (id: string): SocialVariant => ({
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
 
+// Module-level variables to share state/handlers with EditableText without unmounting it
+let _editState: any = null;
+let _setEditState: any = () => {};
+let _handleUpdateVariantField: any = () => {};
+let _isGeneratingAB: boolean = false;
+
 interface EditableTextContextProps {
   editState: { variantId: string; field: string } | null;
   setEditState: (state: { variantId: string; field: keyof SocialVariant } | null) => void;
   handleUpdateVariantField: (variantId: string, field: keyof SocialVariant, value: string) => void;
+  isGeneratingAB?: boolean;
 }
 
 const EditableTextContext = React.createContext<EditableTextContextProps | null>(null);
@@ -116,22 +139,35 @@ const EditableText = ({
   variantId,
   field,
   value,
+  originalValue,
   textarea = false,
   className = ""
 }: {
   variantId: string;
   field: keyof SocialVariant;
   value: string;
+  originalValue?: string;
   textarea?: boolean;
   className?: string;
 }) => {
+  const { language } = useLanguage();
   const context = React.useContext(EditableTextContext);
-  if (!context) return null;
-
-  const { editState, setEditState, handleUpdateVariantField } = context;
+  const editState = context?.editState ?? _editState;
+  const setEditState = context?.setEditState ?? _setEditState;
+  const handleUpdateVariantField = context?.handleUpdateVariantField ?? _handleUpdateVariantField;
+  const isGeneratingAB = context?.isGeneratingAB ?? _isGeneratingAB;
   const isEditing = editState?.variantId === variantId && editState?.field === field;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
+  const captionLimits = {
+    facebook: 63206,
+    threads: 5000,
+    instagram: 2200
+  };
+  const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
+  const hasChanged = originalValue !== undefined && originalValue !== "" && value !== originalValue;
 
   React.useEffect(() => {
     if (isEditing) {
@@ -146,18 +182,57 @@ const EditableText = ({
     return (
       <div className="w-full relative">
         {textarea ? (
-          <textarea
-            ref={textareaRef}
-            autoFocus
-            value={value}
-            onChange={(e) => {
-              handleUpdateVariantField(variantId, field, e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onBlur={() => setEditState(null)}
-            className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-          />
+          <div className="flex flex-col w-full">
+            <textarea
+              ref={textareaRef}
+              autoFocus
+              value={value}
+              onChange={(e) => {
+                handleUpdateVariantField(variantId, field, e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onBlur={() => setEditState(null)}
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+            />
+            {isCaptionField && charLimit && (
+              <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 pt-1">
+                <div className="flex items-center justify-between mt-1">
+                  <div>
+                    {hasChanged && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const confirmMsg = language === 'vi'
+                            ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                            : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                          if (window.confirm(confirmMsg)) {
+                            handleUpdateVariantField(variantId, field, originalValue || '');
+                          }
+                        }}
+                        className="flex items-center gap-1 text-[9px] font-extrabold text-rose-600 hover:text-rose-700 transition-colors select-none cursor-pointer border-none bg-transparent p-0"
+                        title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                      >
+                        <RotateCcw size={10} />
+                        {language === 'vi' ? 'Về bản gốc AI' : 'Revert to original AI'}
+                      </button>
+                    )}
+                  </div>
+                  <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                  </div>
+                </div>
+                {value.length > charLimit && (
+                  <div className="text-[8px] text-rose-600 font-extrabold text-right">
+                    {language === 'vi' 
+                      ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
+                      : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <input
             ref={inputRef}
@@ -184,7 +259,57 @@ const EditableText = ({
       }}
       className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
     >
-      <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+      <div className="flex flex-col w-full">
+        <span className="whitespace-pre-wrap">
+          {value ? (
+            value
+          ) : isGeneratingAB ? (
+            <span className="text-gray-400 italic flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
+            </span>
+          ) : (
+            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
+          )}
+        </span>
+        {isCaptionField && charLimit && value && (
+          <div className="flex flex-col gap-0.5 mt-1.5 border-t border-dashed border-gray-150 pt-1">
+            <div className="flex items-center justify-between mt-1">
+              <div>
+                {hasChanged && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const confirmMsg = language === 'vi'
+                        ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                        : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                      if (window.confirm(confirmMsg)) {
+                        handleUpdateVariantField(variantId, field, originalValue || '');
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[9px] font-extrabold text-rose-600 hover:text-rose-700 transition-colors select-none cursor-pointer border-none bg-transparent p-0"
+                    title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                  >
+                    <RotateCcw size={10} />
+                    {language === 'vi' ? 'Về bản gốc AI' : 'Revert to original AI'}
+                  </button>
+                )}
+              </div>
+              <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+                {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+              </div>
+            </div>
+            {value.length > charLimit && (
+              <div className="text-[8px] text-rose-600 font-extrabold text-right">
+                {language === 'vi' 
+                  ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
+                  : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
         <Edit2 size={10} className="text-primary" />
       </span>
@@ -194,16 +319,39 @@ const EditableText = ({
 
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
-
-  const showPopup = (message: string, type: PopupType = 'info') => {
-    setPopup({ isOpen: true, message, type });
-  };
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+
+  // State for Social Media Variants (A/B Test copies)
+  const [variants, setVariants] = useState<SocialVariant[]>([
+    createEmptyVariant('A'),
+    createEmptyVariant('B'),
+  ]);
+
+  // Track unsaved changes (T-1.13.5)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<'editor' | 'generator' | null>(null);
+
+  // Undo history state (T-1.13.5)
+  const [savedHistory, setSavedHistory] = useState<SocialVariant[][]>([]);
+
+  // Use unsaved changes warning hook
+  useUnsavedChanges(
+    hasUnsavedChanges,
+    language === 'vi'
+      ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+      : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
+  );
+
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
   const [customPromptTitle, setCustomPromptTitle] = useState('');
+
+  const handleTabSwitch = (newTab: 'editor' | 'generator') => {
+    setActiveAiTab(newTab);
+  };
 
   const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
 
@@ -350,6 +498,22 @@ export default function AiCreatorView() {
             }
           }
         }
+
+        // Stream finished successfully, save the original text
+        setVariants((prev) =>
+          prev.map((v) => {
+            if (v.id === variantId) {
+              const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                selectedPlatform === 'threads' ? 'originalThreads' :
+                  'originalInstagram';
+              return {
+                ...v,
+                [originalField]: accumulated,
+              };
+            }
+            return v;
+          })
+        );
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
         console.error(`Error streaming variant ${variantId}:`, err);
@@ -461,6 +625,22 @@ export default function AiCreatorView() {
           }
         }
       }
+
+      // Stream finished successfully, save the original text
+      setVariants((prev) =>
+        prev.map((v) => {
+          if (v.id === variantId) {
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
+            return {
+              ...v,
+              [originalField]: accumulated,
+            };
+          }
+          return v;
+        })
+      );
     } catch (err) {
       console.error('Error regenerating variant:', err);
     } finally {
@@ -532,35 +712,40 @@ export default function AiCreatorView() {
   };
 
   const handleSaveCurrentPrompt = async () => {
-    if (!activePrompt) return;
+    if (!activePrompt) return null;
     setIsSavingPrompt(true);
     setSaveSuccess(false);
     try {
+      const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
       const res = await fetch('/api/prompts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `AI Generated - ${new Date().toLocaleDateString()}`,
+          name: finalTitle,
           content: activePrompt,
-          platform: selectedPlatform,
-          tags: ['AI Generated', selectedPlatform]
+          platform: promptPlatform,
+          tags: ['AI Generated', promptPlatform]
         }),
       });
       if (res.ok) {
+        const json = await res.json();
         setSaveSuccess(true);
+        setHasUnsavedChanges(false);
         setTimeout(() => setSaveSuccess(false), 3000);
         // Refresh prompt list
         const listRes = await fetch('/api/prompts?pageSize=100');
         if (listRes.ok) {
-          const json = await listRes.json();
-          setPromptsList(json.data || []);
+          const listJson = await listRes.json();
+          setPromptsList(listJson.data || []);
         }
+        return json.data;
       }
     } catch (error) {
       console.error('Error saving prompt:', error);
     } finally {
       setIsSavingPrompt(false);
     }
+    return null;
   };
 
   const handleSaveAiResult = (variantId: string) => {
@@ -713,9 +898,34 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return { dateStr, hour };
   };
 
-  const isCellOccupied = (dateStr: string, hour: number) => {
-    // Luôn cho phép lên lịch nhiều bài đăng trong cùng một khung giờ
-    return false;
+  const getCellPostCount = (dateStr: string, hour: number, excludePlatform?: string) => {
+    let count = existingPosts.filter(p => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
+      return postDate === dateStr && postHour === hour;
+    }).length;
+
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (excludePlatform !== 'facebook' && targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'threads' && targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'instagram' && targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) count++;
+    }
+
+    return count;
+  };
+
+  const isCellOccupied = (dateStr: string, hour: number, excludePlatform?: string) => {
+    return getCellPostCount(dateStr, hour, excludePlatform) >= 3;
   };
 
   const getCellPosts = (dateStr: string, hour: number) => {
@@ -797,8 +1007,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-    if (isCellOccupied(val, activeHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${facebookTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${facebookTime} on ${val}.`);
     } else {
       setFacebookError("");
       setFacebookDate(val);
@@ -817,8 +1027,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(facebookDate, clampedHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${facebookDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${facebookDate}.`);
     } else {
       setFacebookError("");
       setFacebookTime(finalTime);
@@ -827,8 +1037,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-    if (isCellOccupied(val, activeHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${threadsTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${threadsTime} on ${val}.`);
     } else {
       setThreadsError("");
       setThreadsDate(val);
@@ -847,8 +1057,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(threadsDate, clampedHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${threadsDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${threadsDate}.`);
     } else {
       setThreadsError("");
       setThreadsTime(finalTime);
@@ -860,7 +1070,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setFacebookError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setFacebookError(""), 4500);
   };
@@ -870,7 +1080,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setThreadsError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setThreadsError(""), 4500);
   };
@@ -937,8 +1147,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-    if (isCellOccupied(val, activeHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${instagramTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${instagramTime} on ${val}.`);
     } else {
       setInstagramError("");
       setInstagramDate(val);
@@ -957,8 +1167,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(instagramDate, clampedHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${instagramDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${instagramDate}.`);
     } else {
       setInstagramError("");
       setInstagramTime(finalTime);
@@ -970,7 +1180,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setInstagramError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setInstagramError(""), 4500);
   };
@@ -1057,6 +1267,72 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       .catch(() => { })
       .finally(() => setPromptsLoading(false));
   }, []);
+
+  // Prevent leaving the page with unsaved changes (T-1.13.5)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsavedChanges = variants.some(v => {
+        return (v.facebook && v.facebook !== v.originalFacebook) ||
+          (v.threads && v.threads !== v.originalThreads) ||
+          (v.instagram && v.instagram !== v.originalInstagram);
+      });
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [variants]);
+
+  // Local history tracking for Ctrl+Z Undo – 1 second after user stops typing
+  useEffect(() => {
+    if (step !== 2) return;
+
+    const timer = setTimeout(() => {
+      setSavedHistory(prev => {
+        const currentStr = JSON.stringify(variants);
+        const lastHistory = prev[prev.length - 1];
+        const lastStr = lastHistory ? JSON.stringify(lastHistory) : '';
+        if (currentStr !== lastStr) {
+          return [...prev, JSON.parse(currentStr)];
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [variants, step]);
+
+  const handleRevertToSaved = () => {
+    if (savedHistory.length === 0) return;
+
+    const currentStr = JSON.stringify(variants);
+    const latestSavedStr = JSON.stringify(savedHistory[savedHistory.length - 1]);
+
+    if (currentStr !== latestSavedStr) {
+      setVariants(JSON.parse(latestSavedStr));
+    } else if (savedHistory.length > 1) {
+      const newHistory = [...savedHistory];
+      newHistory.pop();
+      const previousSaved = newHistory[newHistory.length - 1];
+      setVariants(JSON.parse(JSON.stringify(previousSaved)));
+      setSavedHistory(newHistory);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (step === 2) {
+          e.preventDefault();
+          handleRevertToSaved();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [savedHistory, step, variants]);
 
   const handleGenerate = async () => {
     if (!selectedPromptId) {
@@ -1186,12 +1462,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     showImage: true
   });
 
-  // State for Social Media Variants (A/B Test copies)
-  const [variants, setVariants] = useState<SocialVariant[]>([
-    createEmptyVariant('A'),
-    createEmptyVariant('B'),
-  ]);
-
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
 
@@ -1289,6 +1559,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1299,6 +1572,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1306,6 +1582,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     ];
 
     setVariants(newVariants);
+    setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
 
     // Auto-select the first available platform tab
     if (targetPlatforms.length > 0) {
@@ -1341,7 +1618,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     if (!url || !url.trim()) {
-      showPopup(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL', 'warning');
+      alert(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL');
       return;
     }
     setIsFetching(true);
@@ -1368,6 +1645,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setActivePrompt(defaultPrompt);
           generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
+          setHasUnsavedChanges(true);
           return;
         }
       }
@@ -1402,7 +1680,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Update variant field state on inline edit
   const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
     setVariants(prev => prev.map(v => v.id === variantId ? { ...v, [field]: value } : v));
+    setHasUnsavedChanges(true);
   };
+
+  // Sync state values to module-level refs for EditableText
+  _editState = editState;
+  _setEditState = setEditState;
+  _handleUpdateVariantField = handleUpdateVariantField;
+  _isGeneratingAB = isGeneratingAB;
 
   // Import from Live Explorer
   const handleImportFromExplorer = async () => {
@@ -1429,6 +1714,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setUrl(explorerUrl);
           generateVariants(updatedPostData, selectedPrompt);
           setIsExplorerOpen(false);
+          setHasUnsavedChanges(true);
         }
       }
     } catch (e) {
@@ -1449,93 +1735,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  // Inline editable wrapper component that prevents layout shifts
-  const EditableText = ({
-    variantId,
-    field,
-    value,
-    textarea = false,
-    className = ""
-  }: {
-    variantId: string;
-    field: keyof SocialVariant;
-    value: string;
-    textarea?: boolean;
-    className?: string;
-  }) => {
-    const isEditing = editState?.variantId === variantId && editState?.field === field;
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      if (isEditing) {
-        if (textarea && textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-      }
-    }, [isEditing, value, textarea]);
-
-    if (isEditing) {
-      return (
-        <div className="w-full relative">
-          {textarea ? (
-            <textarea
-              ref={textareaRef}
-              autoFocus
-              value={value}
-              onChange={(e) => {
-                handleUpdateVariantField(variantId, field, e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-            />
-          ) : (
-            <input
-              ref={inputRef}
-              autoFocus
-              type="text"
-              value={value}
-              onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
-              onBlur={() => setEditState(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditState(null);
-              }}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditState({ variantId, field });
-        }}
-        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
-      >
-        <span className="whitespace-pre-wrap">
-          {value ? (
-            value
-          ) : isGeneratingAB ? (
-            <span className="text-gray-400 italic flex items-center gap-1.5">
-              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
-            </span>
-          ) : (
-            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
-          )}
-        </span>
-        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-          <Edit2 size={10} className="text-primary" />
-        </span>
-      </div>
-    );
-  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
@@ -1614,7 +1814,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const finalCompiledContent = compileFinalMessage(selectedVariant);
-    const activeCaptionId = selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+    
+    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
+      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+        'instagramCaptionId';
+    
+    // Platform-specific caption ID fallback
+    const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
 
     if (activeCaptionId) {
       // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
@@ -1633,9 +1839,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId) {
+      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId } : v))
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
         );
       }
       return activeCaptionId;
@@ -1658,14 +1864,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
+    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+      selectedPlatform === 'threads' ? 'originalThreads' :
+        'originalInstagram';
+    const originalAiText = selectedVariant[originalField] || selectedContent;
+
+    // Check if the user has edited the caption compared to the original AI content
+    const isEdited = selectedVariant[selectedPlatform] !== originalAiText;
+    const editedContentPayload = isEdited ? finalCompiledContent : null;
+
     const res = await fetch('/api/captions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
         platform: toDatabasePlatform(selectedPlatform),
-        ai_content: selectedContent,
-        edited_content: finalCompiledContent,
+        ai_content: originalAiText,
+        edited_content: editedContentPayload,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
           ? { prompt_id: selectedPrompt.id }
           : {}),
@@ -1685,7 +1900,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const newCaptionId = data.data.id;
     setCaptionId(newCaptionId);
     setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId } : v))
+      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId, [platKey]: newCaptionId } : v))
     );
     return newCaptionId as string;
   };
@@ -1737,6 +1952,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       setIsScheduled(true);
+      setHasUnsavedChanges(false);
     } catch (err: any) {
       setSchedulingError(err.message || 'Lỗi xảy ra trong quá trình lên lịch bài đăng');
     } finally {
@@ -1745,7 +1961,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   return (
-    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField }}>
+    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField, isGeneratingAB }}>
       <div className="flex flex-col gap-6 w-full font-sans">
 
         {/* Top Header Row */}
@@ -2469,7 +2685,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 )}
 
-                {/* T-1.18: Variant count selector + Next step button */}
+                {/* Next step button */}
                 {step === 1 && (
                   <div className="flex flex-col gap-2">
                     {/* Variant count segmented control */}
@@ -2578,6 +2794,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                     const previewTimestamp = postData.published_at || toDateInputValue(new Date());
                     const isCardSelected = selectedVariantId === v.id;
+                    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                      selectedPlatform === 'threads' ? 'originalThreads' :
+                        'originalInstagram';
+                    const currentVal = v[selectedPlatform] || '';
+                    const originalVal = v[originalField] || '';
+                    const hasChanged = !!(originalVal && currentVal !== originalVal);
+
                     return (
                       <motion.div
                         key={v.id}
@@ -2604,22 +2827,35 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRegenerateVariant(v.id);
-                              }}
-                              disabled={regeneratingVariantId === v.id}
-                              className={`p-1.5 rounded-full hover:bg-gray-100 border border-gray-200 transition-colors ${regeneratingVariantId === v.id ? 'opacity-50 pointer-events-none' : ''
-                                }`}
-                              title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
-                            >
-                              {regeneratingVariantId === v.id ? (
-                                <Loader2 size={13} className="animate-spin text-primary" />
-                              ) : (
-                                <RefreshCw size={13} className="text-gray-500" />
-                              )}
-                            </button>
+                            {hasChanged && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const confirmMsg = language === 'vi'
+                                    ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                                    : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                                  if (window.confirm(confirmMsg)) {
+                                    handleUpdateVariantField(v.id, selectedPlatform, originalVal);
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-[10px] font-black text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 px-2.5 py-1 rounded-xl transition-all cursor-pointer select-none"
+                                title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                              >
+                                <RefreshCw size={10} />
+                                {language === 'vi' ? 'Về bản gốc' : 'Revert'}
+                              </button>
+                            )}
+                            {isCardSelected && (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
+                              >
+                                <Check size={9} />
+                                {language === 'vi' ? 'Đã chọn' : 'Selected'}
+                              </motion.span>
+                            )}
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
                               {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
@@ -2668,6 +2904,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                         variantId={v.id}
                                         field="threads"
                                         value={v.threads}
+                                        originalValue={v.originalThreads}
                                         textarea
                                       />
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
@@ -2794,6 +3031,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     variantId={v.id}
                                     field="instagram"
                                     value={v.instagram}
+                                    originalValue={v.originalInstagram}
                                     textarea
                                   />
                                 </div>
@@ -2845,6 +3083,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     variantId={v.id}
                                     field="facebook"
                                     value={v.facebook}
+                                    originalValue={v.originalFacebook}
                                     textarea
                                   />
                                 </div>
@@ -2891,6 +3130,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     );
                   })}
                 </AnimatePresence>
+
+                {/* Add Variant Card */}
+                <motion.button
+                  onClick={handleAddVariant}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
+                    <Plus size={24} />
+                  </div>
+                  <div className="text-center">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
+                    <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
+                  </div>
+                </motion.button>
               </div>
 
               {/* Bottom Actions Row */}
@@ -3023,7 +3278,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 )}
                                 {toggles.showDescription && (
                                   <div className="whitespace-pre-wrap">
-                                    <EditableText variantId={v.id} field="threads" value={v.threads} textarea />
+                                    <EditableText variantId={v.id} field="threads" value={v.threads} originalValue={v.originalThreads} textarea />
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle">1/2</span>
                                   </div>
                                 )}
@@ -3098,7 +3353,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
                                 <span className="font-extrabold mr-1.5">antbiz_official</span>
-                                <EditableText variantId={v.id} field="instagram" value={v.instagram} textarea />
+                                <EditableText variantId={v.id} field="instagram" value={v.instagram} originalValue={v.originalInstagram} textarea />
                               </div>
                             )}
                             {toggles.showAuthor && (
@@ -3140,7 +3395,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             )}
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
-                                <EditableText variantId={v.id} field="facebook" value={v.facebook} textarea />
+                                <EditableText variantId={v.id} field="facebook" value={v.facebook} originalValue={v.originalFacebook} textarea />
                               </div>
                             )}
                             {(toggles.showAuthor || toggles.showTags) && (
@@ -4015,17 +4270,33 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </button>
 
                   {activeAiTab === 'editor' ? (
-                    <button type="button" onClick={() => {
-                      if (!activePrompt) return;
-                      const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
-                      const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                      setSelectedPrompt(newPrompt);
-                      generateVariants(postData, newPrompt);
-                      setIsAiPromptDialogOpen(false);
-                    }} disabled={!activePrompt}
-                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                      Lưu &amp; Sử dụng Prompt
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => {
+                        if (!activePrompt) return;
+                        const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                        const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                        setSelectedPrompt(newPrompt);
+                        generateVariants(postData, newPrompt);
+                        setIsAiPromptDialogOpen(false);
+                      }} disabled={!activePrompt}
+                        className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none">
+                        Chỉ sử dụng
+                      </button>
+
+                      <button type="button" onClick={async () => {
+                        if (!activePrompt) return;
+                        const savedPrompt = await handleSaveCurrentPrompt();
+                        const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                        const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                        setSelectedPrompt(newPrompt);
+                        generateVariants(postData, newPrompt);
+                        setIsAiPromptDialogOpen(false);
+                      }} disabled={!activePrompt || isSavingPrompt}
+                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2">
+                        {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
+                        Lưu &amp; Sử dụng Prompt
+                      </button>
+                    </div>
                   ) : (
                     <button type="button" onClick={() => {
                       if (selectedPrompt) {
@@ -4042,13 +4313,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             </motion.div>
           )}
         </AnimatePresence>
-
-        <PopupDialog
-          isOpen={!!popup?.isOpen}
-          message={popup?.message || ''}
-          type={popup?.type || 'info'}
-          onClose={() => setPopup(null)}
-        />
 
       </div>
     </EditableTextContext.Provider>

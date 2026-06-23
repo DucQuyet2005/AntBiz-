@@ -116,6 +116,8 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Thêm trang xử lý từ chối quyền truy cập `AdminAccessDenied.tsx` và cấu hình phân quyền trong Layout của trang Admin.
 
 ### Changed
+- **Cải tiến tự động hóa Changelog (AI Skill)**: Nâng cấp kỹ năng `write-changelog` để AI tự động đánh giá và chỉ ghi nhận các thay đổi quan trọng vào file CHANGELOG.md mỗi khi hoàn thành tác vụ, bỏ qua các sửa đổi nhỏ lẻ.
+- **Tương thích Playwright trên Serverless / VPS**: Tích hợp `@sparticuz/chromium` và `playwright-core` vào `lib/crawler/index.ts` để cho phép chạy Playwright headless ổn định trên cả môi trường Local và Vercel/VPS, thiết lập làm trình duyệt cào dữ liệu ưu tiên mặc định.
 - **Ẩn nút "Add Post" trên giao diện Admin**:
   - Cập nhật `components/Header.tsx` sử dụng hook `usePathname` để nhận diện các đường dẫn bắt đầu bằng `/admin` và tự động ẩn nút thêm bài viết ("Add Post").
 - **Điều chỉnh hiển thị Sidebar theo phân quyền Admin**:
@@ -140,6 +142,7 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Loại bỏ hoàn toàn 13 vị trí sử dụng hàm `alert` mặc định của trình duyệt và thay thế bằng `PopupDialog` trong các chế độ xem: Lịch nội dung (`ContentCalendarView`), Lưu trữ bài viết (`ArchiveView`), và Trình tạo AI (`AiCreatorView`).
 
 ### Fixed
+- **Sửa lỗi chuyển hướng Google OAuth trên VPS**: Bổ sung hỗ trợ ưu tiên đọc biến môi trường `NEXT_PUBLIC_SITE_URL` trong `app/(auth)/actions.ts` và `app/api/auth/callback/route.ts` để sửa lỗi redirect nhầm về `http://localhost:3000` khi Nginx reverse proxy không forward cấu hình header chuyển tiếp một cách hợp lệ.
 - **Sửa lỗi Footer đè lên nội dung cuối trang**:
   - Thay thế thuộc tính `min-h-screen` bằng `flex-1` trên thẻ bọc nội dung chính của `DashboardLayout` (`app/(dashboard)/layout.tsx`), cho phép container chính co giãn tự nhiên theo chiều cao thực tế của nội dung trang và đẩy Footer xuống dưới cùng của trang một cách chuẩn xác.
 - **Sửa lỗi chật hẹp và tràn dòng của Header trên thiết bị di động**:
@@ -147,6 +150,7 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - **Sửa lỗi đè giao diện do cột Preview Sticky trên di động**:
   - Chuyển đổi class `sticky top-6` của cột Shared Preview trong `components/views/AiCreatorView.tsx` thành `lg:sticky lg:top-6` để tắt chế độ sticky khi các cột chuyển sang dạng xếp chồng dọc trên màn hình di động/máy tính bảng, tránh việc cột preview trôi nổi đè lên vùng tùy chỉnh mục hiển thị.
 
+---
 ## [1.2.7] - 2026-06-22
 
 ### Changed
