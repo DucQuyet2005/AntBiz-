@@ -4,6 +4,49 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.3.0] - 2026-06-23
+
+### Added
+- **Hệ thống Thông báo In-app thời gian thực (Epic-07)**:
+  - Thiết kế schema và tạo migration database cho bảng `notifications` lưu trữ thông tin thông báo (id, user_id, type, title, message, is_read, metadata, created_at).
+  - Xây dựng bộ service helper `notificationService.ts` để chuẩn hóa việc tạo thông báo in-app.
+  - Phát triển các API route xử lý thông báo: `GET/POST /api/notifications` hỗ trợ phân trang và lọc theo loại; `PUT /api/notifications/[id]/read` và `PUT /api/notifications/read-all` để cập nhật trạng thái đã đọc.
+  - Tích hợp lắng nghe thay đổi thời gian thực qua Supabase CDC Realtime Subscription giúp đẩy thông báo dạng Premium Toast tức thì trên thanh Header và cập nhật số lượng tin nhắn chưa đọc.
+  - Thiết kế và xây dựng trang xem toàn bộ thông báo tại `/notifications`, hỗ trợ bộ lọc phân loại trực quan (Tất cả, Lên lịch thành công, Bài đăng thất bại, A/B Test hoàn thành, Thông báo hệ thống) cùng nút "Tải thêm" phân trang động.
+  - Viết suite kiểm thử tự động `notifications.test.ts` kiểm thử toàn diện các API route với độ bao phủ >80% (đạt 80.3%).
+- **Tự động kích hoạt thông báo theo vai trò người dùng**:
+  - **Mọi người dùng**: Nhận thông báo khi lưu thông tin cá nhân (ProfileView), thay đổi màu sắc giao diện (SettingsView), hoặc đổi mật khẩu thành công (change-password API).
+  - **Marketer**: Nhận thông báo khi lên lịch bài viết thành công (scheduled-posts API), tạo prompt mới thành công (prompts API), hoặc khôi phục thành công phiên bản caption lịch sử (ArticleDetailView).
+  - **Admin**: Nhận thông báo khi thực hiện khóa/mở khóa tài khoản người dùng, thay đổi vai trò người dùng (role API), hoặc xuất bản cấu hình landing page mới (landing-config API).
+- **Gửi Email thông báo bảo mật**:
+  - Tích hợp gửi email tự động (kèm lý do cụ thể) tới người dùng khi tài khoản của họ bị khóa hoặc được mở khóa bởi Admin, sử dụng SMTP cấu hình qua Nodemailer.
+
+### Changed
+- **Tối ưu hóa hiệu năng Database & API Admin**:
+  - Tích hợp song song (parallelization) bằng `Promise.all` cho các tác vụ phụ của Admin bao gồm: ghi nhật ký hệ thống (`audit_logs`), gửi email thông báo, và tạo thông báo in-app hàng loạt (`createNotifications` qua bulk insert) tại API cập nhật trạng thái tài khoản (`status` route) và thay đổi vai trò người dùng (`role` route), giúp giảm đáng kể thời gian chờ phản hồi của API Database.
+- **Trải nghiệm đóng Modal nhanh lập tức (Optimistic UI)**:
+  - Cập nhật giao diện quản lý người dùng tại `app/(dashboard)/admin/users/page.tsx` để đóng Modal thay đổi vai trò và Modal khóa/mở khóa tài khoản ngay lập tức khi Admin nhấn nút xác nhận. Các API fetch sẽ được thực thi ngầm dưới background, sau đó hiển thị toast thông báo kết quả qua `PopupDialog` và tải lại bảng danh sách người dùng.
+- **Ẩn nút "Thêm bài viết" cho Admin trên toàn cục**:
+  - Cập nhật `components/Header.tsx` truy vấn vai trò của người dùng (`userRole`); ẩn hoàn toàn nút "Thêm bài viết" khi vai trò là `admin` trên tất cả các trang (bao gồm cả các trang dùng chung như Tổng quan, Cài đặt và FAQ).
+- **Đồng bộ hóa quốc tế hóa (i18n) cho Trang thông báo**:
+  - Gắn tệp dịch `translations.ts` và tích hợp hàm `t()` của context ngôn ngữ cho toàn bộ văn bản giao diện tĩnh tại `app/(dashboard)/notifications/page.tsx`.
+  - Cập nhật cơ chế dịch động (Dynamic Translation) các thông báo thô từ cơ sở dữ liệu (tiêu đề và nội dung) từ Tiếng Việt sang Tiếng Anh sử dụng helper `translateNotification.ts` để đồng bộ khi thay đổi ngôn ngữ trên cả trang Xem thông báo và dropdown thông báo ở Header.
+  - Xóa bỏ dòng mô tả phụ bên dưới tiêu đề trang thông báo.
+- **Tinh chỉnh giao diện AI Creator (Step 2)**:
+  - Xóa bỏ nhãn `✓ Đã chọn` (Selected) trên các thẻ biến thể được chọn để giao diện gọn gàng hơn.
+  - Loại bỏ hoàn toàn khối nút tạo biến thể mới bằng dấu cộng nét đứt ("GENERATE NEW VARIANT") tại màn hình kiểm thử A/B đa kênh để đơn giản hóa giao diện theo yêu cầu.
+
+### Fixed
+- **Loại bỏ xung đột kiểm thử vitest**:
+  - Cấu hình loại trừ thư mục `e2e` trong `vitest.config.ts` để ngăn vitest quét nhầm các file test Playwright E2E gây lỗi thực thi.
+- **Lọc thông báo A/B Test hoàn thành cho Admin**:
+  - Cấu hình API `GET /api/notifications` để tự động lọc và không trả về các thông báo loại `ab_test_complete` cho người dùng có vai trò `admin`.
+  - Cập nhật hàm `completeABTest` tại `lib/services/abTestService.ts` để kiểm tra vai trò người tạo; bỏ qua việc tạo thông báo in-app `ab_test_complete` nếu người tạo có vai trò `admin`.
+  - Điều chỉnh `components/Header.tsx` và `app/(dashboard)/notifications/page.tsx` để ẩn tab lọc "A/B Test hoàn thành" và bỏ qua các sự kiện thông báo thời gian thực loại `ab_test_complete` khi tài khoản đăng nhập là `admin`.
+- **Cải tiến Icon và loại bỏ Toast trùng lặp**:
+  - Cập nhật hàm `getNotificationIcon` trong `Header.tsx` và trang `/notifications` để phân tích tiêu đề; tự động đổi icon tương ứng với mô tả (ví dụ: hiển thị Lock/Unlock khi khóa/mở tài khoản, UserCog khi đổi vai trò, Palette khi đổi màu giao diện, Key khi đổi mật khẩu, RotateCcw khi khôi phục phiên bản...) thay vì chỉ hiển thị một dấu chấm than (`Info` icon) mặc định.
+  - Loại bỏ hoàn toàn pop-up toast trượt `activeToast` ở góc màn hình tại `Header.tsx` để tránh chồng chéo/trùng lặp do hệ thống đã sử dụng bộ `PopupDialog` riêng ở các view chức năng.
+
 ## [1.2.9] - 2026-06-23
 
 ### Added

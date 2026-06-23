@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { publishToFacebookPage } from '../facebook';
 import { logAndNotifyPublishResult } from '../email';
+import { createNotification } from '../services/notificationService';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -93,6 +94,22 @@ export async function runSchedulerCycle() {
         'success',
         `Đã đăng lên Facebook Page thành công.\nPost ID: ${publishResult.postId}`
       );
+
+      // Gửi thông báo in-app (Không ảnh hưởng luồng chính)
+      try {
+        await createNotification({
+          userId,
+          type: 'post_success',
+          title: 'Đăng bài thành công',
+          message: `Bài viết "${postTitle}" đã được tự động đăng lên Facebook Page thành công.`,
+          metadata: {
+            post_id: post.id,
+            fb_post_id: publishResult.postId,
+          }
+        });
+      } catch (err: any) {
+        console.error('[Scheduler] Lỗi khi tạo thông báo thành công:', err.message);
+      }
     } else {
       const errorMsg = publishResult.error || 'Lỗi không xác định từ Facebook API';
       console.error(`[Scheduler] Đăng bài ID ${post.id} thất bại:`, errorMsg);
@@ -118,6 +135,22 @@ export async function runSchedulerCycle() {
         'failed',
         `Đăng lên Facebook Page thất bại.\nLý do: ${errorMsg}`
       );
+
+      // Gửi thông báo in-app (Không ảnh hưởng luồng chính)
+      try {
+        await createNotification({
+          userId,
+          type: 'post_failed',
+          title: 'Đăng bài thất bại',
+          message: `Đăng bài "${postTitle}" lên Facebook Page thất bại. Lý do: ${errorMsg}`,
+          metadata: {
+            post_id: post.id,
+            error: errorMsg,
+          }
+        });
+      } catch (err: any) {
+        console.error('[Scheduler] Lỗi khi tạo thông báo thất bại:', err.message);
+      }
     }
   }
 }

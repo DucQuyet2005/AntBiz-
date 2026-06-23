@@ -2604,16 +2604,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            {isCardSelected && (
-                              <motion.span
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                              >
-                                <Check size={9} />
-                                Đã chọn
-                              </motion.span>
-                            )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2901,22 +2891,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     );
                   })}
                 </AnimatePresence>
-
-                {/* Add Variant Card */}
-                <motion.button
-                  onClick={handleAddVariant}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
-                    <Plus size={24} />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
-                    <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
-                  </div>
-                </motion.button>
               </div>
 
               {/* Bottom Actions Row */}

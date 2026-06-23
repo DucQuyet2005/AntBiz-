@@ -70,6 +70,7 @@ export default function ArticleDetailView() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<any>(articleData);
   const [captions, setCaptions] = useState<any[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
@@ -248,6 +249,12 @@ export default function ArticleDetailView() {
     loadData();
   }, [id]);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
   const getDisplayContent = () => {
     if (selectedCheckpoint) {
       if (typeof selectedCheckpoint.content === 'object') {
@@ -299,6 +306,26 @@ export default function ArticleDetailView() {
     setSuccessMsg(language === 'vi'
       ? `Đã khôi phục thành công về bản lưu ${selectedCheckpoint.version}!`
       : `Reverted successfully to version ${selectedCheckpoint.version}!`);
+
+    // Gửi thông báo in-app
+    if (userId) {
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            type: 'info',
+            title: 'Khôi phục phiên bản lưu trữ',
+            message: `Bạn đã khôi phục thành công phiên bản nội dung bài viết '${activeArticle.title}' về bản lưu ${selectedCheckpoint.version}.`,
+          }),
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi thông báo khôi phục phiên bản:', err);
+      }
+    }
 
     setSelectedCheckpoint(null);
     setReverting(false);

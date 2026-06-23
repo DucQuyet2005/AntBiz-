@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { formatZodError } from '@/lib/api/zod-error';
 import { createPromptSchema, promptListQuerySchema } from '@/lib/validations/prompt';
+import { createNotification } from '@/lib/services/notificationService';
 
 // GET /api/prompts?platform=facebook&tag=ban-hang&search=tet&page=1&pageSize=20
 // Theo SPEC.md: tìm theo tên, lọc theo Nền tảng và Thẻ phân loại
@@ -92,6 +93,21 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[POST /api/prompts] supabase error:', error);
     return NextResponse.json({ error: 'Không thể tạo prompt' }, { status: 500 });
+  }
+
+  // Gửi thông báo in-app
+  try {
+    await createNotification({
+      userId: user.id,
+      type: 'info',
+      title: 'Thêm Prompt thành công',
+      message: `Prompt "${data.name}" đã được tạo thành công cho nền tảng ${data.platform}.`,
+      metadata: {
+        prompt_id: data.id,
+      }
+    });
+  } catch (err: any) {
+    console.error('[POST /api/prompts] Lỗi khi tạo thông báo thêm prompt:', err.message);
   }
 
   return NextResponse.json({ data }, { status: 201 });
