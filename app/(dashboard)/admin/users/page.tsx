@@ -71,18 +71,23 @@ export default function AdminUsersPage() {
 
   const confirmRoleChange = async () => {
     if (!roleModal.user) return;
+    const targetUser = roleModal.user;
+    const targetRole = roleModal.newRole;
+
+    // Tắt modal lập tức
+    setRoleModal({ isOpen: false, user: null, newRole: '' });
+
     try {
-      const res = await fetch(`/api/admin/users/${roleModal.user.id}/role`, {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: roleModal.newRole })
+        body: JSON.stringify({ role: targetRole })
       });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Update failed');
       }
-      setToast({ isOpen: true, message: `Đã đổi quyền cho ${roleModal.user.email}`, type: 'success' });
-      setRoleModal({ isOpen: false, user: null, newRole: '' });
+      setToast({ isOpen: true, message: `Đã đổi quyền cho ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
       setToast({ isOpen: true, message: err.message, type: 'error' });
@@ -101,18 +106,24 @@ export default function AdminUsersPage() {
       return;
     }
 
+    const targetUser = lockModal.user;
+    const targetStatus = lockModal.targetStatus;
+    const reason = lockModal.reason;
+
+    // Tắt modal lập tức
+    setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' });
+
     try {
-      const res = await fetch(`/api/admin/users/${lockModal.user.id}/status`, {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: lockModal.targetStatus, locked_reason: lockModal.reason })
+        body: JSON.stringify({ status: targetStatus, locked_reason: reason })
       });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Update failed');
       }
-      setToast({ isOpen: true, message: `Đã ${lockModal.targetStatus === 'locked' ? 'khóa' : 'mở khóa'} tài khoản ${lockModal.user.email}`, type: 'success' });
-      setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' });
+      setToast({ isOpen: true, message: `Đã ${targetStatus === 'locked' ? 'khóa' : 'mở khóa'} tài khoản ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
       setToast({ isOpen: true, message: err.message, type: 'error' });

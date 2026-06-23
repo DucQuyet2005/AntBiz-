@@ -462,7 +462,8 @@ export default function ChangePasswordView() {
 
         if (profile) {
           setRole(profile.role || 'marketer_content');
-          setStatus(profile.status || 'active');
+          // Nếu DB vẫn là 'pending' nhưng user đã đăng nhập thành công → hiển thị là 'active'
+          setStatus(profile.status === 'pending' ? 'active' : (profile.status || 'active'));
           setAvatarUrl(profile.avatars || '');
         }
       } finally {

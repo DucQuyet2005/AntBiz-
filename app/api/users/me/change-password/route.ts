@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { sendEmail } from '@/lib/email';
+import { createNotification } from '@/lib/services/notificationService';
 
 export async function POST(req: Request) {
   try {
@@ -44,6 +45,18 @@ export async function POST(req: Request) {
 
     if (signOutError) {
       console.error('Lỗi khi thu hồi các session:', signOutError);
+    }
+
+    // Gửi thông báo in-app
+    try {
+      await createNotification({
+        userId: user.id,
+        type: 'info',
+        title: 'Đổi mật khẩu tài khoản',
+        message: 'Mật khẩu tài khoản của bạn đã được thay đổi thành công.',
+      });
+    } catch (err: any) {
+      console.error('Lỗi khi tạo thông báo đổi mật khẩu:', err.message);
     }
 
     // 4. Send email notification
