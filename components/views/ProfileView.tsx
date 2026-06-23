@@ -684,8 +684,20 @@ export default function ProfileView() {
 
         if (profile) {
           setRole(profile.role || 'marketer_content');
-          setStatus(profile.status || 'active');
           setAvatarUrl(profile.avatars || '');
+
+          // Nếu status đang là 'pending' nhưng user đã đăng nhập thành công
+          // → tự động upgrade thành 'active' (pending chỉ là trạng thái tạm thời khi đăng ký)
+          const resolvedStatus = profile.status === 'pending' ? 'active' : (profile.status || 'active');
+          setStatus(resolvedStatus);
+
+          if (profile.status === 'pending') {
+            // Âm thầm cập nhật DB để đồng bộ
+            await supabase
+              .from('users')
+              .update({ status: 'active' })
+              .eq('id', user.id);
+          }
         }
       } finally {
         setIsLoading(false);
@@ -747,6 +759,24 @@ export default function ProfileView() {
       if (authUpdateError) throw authUpdateError;
 
       setPopup({ isOpen: true, message: 'Cập nhật thông tin cá nhân thành công.', type: 'success' });
+
+      // Gửi thông báo in-app
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            type: 'info',
+            title: 'Cập nhật thông tin cá nhân',
+            message: 'Bạn đã cập nhật thông tin hồ sơ cá nhân (tên hiển thị, bộ phận, hoặc ảnh đại diện) thành công.',
+          }),
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi thông báo cập nhật profile:', err);
+      }
     } catch (err: any) {
       setPopup({ isOpen: true, message: err.message || 'Lỗi lưu thông tin cá nhân.', type: 'error' });
     } finally {

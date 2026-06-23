@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createNotification, createNotifications } from '@/lib/services/notificationService';
 
 export async function PUT(
   req: NextRequest,
@@ -43,7 +44,7 @@ export async function PUT(
   // Get current user role to log the change
   const { data: targetUser, error: fetchError } = await supabase
     .from('users')
-    .select('role')
+    .select('role, email')
     .eq('id', id)
     .single();
 
@@ -63,14 +64,56 @@ export async function PUT(
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // Insert audit log
-  await supabase.from('audit_logs').insert({
-    actor_id: user.id,
-    target_user_id: id,
-    action: 'change_role',
-    before_value: { role: oldRole },
-    after_value: { role: role },
-  });
+  // Thực hiện song song các tác vụ phụ (ghi audit log & tạo thông báo in-app)
+  const bgPromises: Promise<any>[] = [];
+
+  // 1. Ghi audit log
+  bgPromises.push(
+    supabase.from('audit_logs').insert({
+      actor_id: user.id,
+      target_user_id: id,
+      action: 'change_role',
+      before_value: { role: oldRole },
+      after_value: { role: role },
+    })
+    .catch((err) => console.error('[Role API] Lỗi khi ghi audit log:', err.message))
+  );
+
+  // 2. Gửi thông báo in-app tới toàn bộ Admin (sử dụng bulk insert)
+  bgPromises.push(
+    (async () => {
+      try {
+        const { data: admins } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'admin');
+        
+        if (admins && admins.length > 0) {
+          const title = 'Thay đổi vai trò người dùng';
+          const message = `Admin ${user.email} đã thay đổi vai trò của người dùng ${targetUser.email || 'không rõ'} từ ${oldRole} sang ${role}.`;
+          
+          const notificationsInput = admins.map(admin => ({
+            userId: admin.id,
+            type: 'info' as const,
+            title,
+            message,
+            metadata: {
+              target_user_id: id,
+              action_by: user.id,
+              old_role: oldRole,
+              new_role: role,
+            }
+          }));
+
+          await createNotifications(notificationsInput);
+        }
+      } catch (notifErr: any) {
+        console.error('[Role API] Lỗi khi tạo thông báo in-app cho admin:', notifErr.message);
+      }
+    })()
+  );
+
+  await Promise.all(bgPromises);
 
   return NextResponse.json({ success: true, message: 'Role updated successfully' });
 }

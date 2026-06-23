@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { initScheduler } from '@/lib/scheduler/scheduler';
+import { createNotification } from '@/lib/services/notificationService';
 
 // Khởi chạy trình chạy ngầm scheduler
 // [ĐÃ COMMENT ĐỂ DEPLOY LÊN VERCEL] initScheduler();
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
   // Xác minh caption tồn tại và lấy nền tảng
   const { data: caption, error: captionError } = await supabase
     .from('captions')
-    .select('*')
+    .select('*, articles(title)')
     .eq('id', captionId)
     .maybeSingle();
 
@@ -125,6 +126,25 @@ export async function POST(request: NextRequest) {
     .from('captions')
     .update({ status: 'scheduled' })
     .eq('id', captionId);
+
+  // Gửi thông báo in-app (Không ảnh hưởng main flow)
+  try {
+    const articleTitle = (caption as any).articles?.title || 'Bài viết không tên';
+    const timeLabel = new Date(scheduledAt).toLocaleString('vi-VN');
+    await createNotification({
+      userId: user.id,
+      type: 'info',
+      title: 'Đã lên lịch bài đăng',
+      message: `Bài viết "${articleTitle}" đã được lên lịch đăng tải thành công vào lúc ${timeLabel}.`,
+      metadata: {
+        post_id: scheduledPost.id,
+        scheduled_at: scheduledPost.scheduled_at,
+        platform: scheduledPost.platform,
+      }
+    });
+  } catch (err: any) {
+    console.error('[POST /api/scheduled-posts] Lỗi khi tạo thông báo in-app:', err.message);
+  }
 
   return NextResponse.json({ data: scheduledPost }, { status: responseStatus });
 }

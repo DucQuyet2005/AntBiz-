@@ -2706,7 +2706,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
                               >
                                 <Check size={9} />
-                                Đã chọn
+                                {language === 'vi' ? 'Đã chọn' : 'Selected'}
                               </motion.span>
                             )}
                             <button
