@@ -42,6 +42,8 @@ import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
+import PromptSuggestionSection from '../PromptSuggestionSection';
 
 
 // Threads Custom SVG Logo
@@ -323,9 +325,18 @@ export default function AiCreatorView() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
 
-  const showPopup = (message: string, type: PopupType = 'info') => {
-    setPopup({ isOpen: true, message, type });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  useUnsavedChanges(
+    hasUnsavedChanges,
+    language === 'vi'
+      ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+      : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
+  );
+
+  const handleTabSwitch = (newTab: 'editor' | 'generator') => {
+    setActiveAiTab(newTab);
   };
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
   // State for Social Media Variants (A/B Test copies)
@@ -897,9 +908,34 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return { dateStr, hour };
   };
 
-  const isCellOccupied = (dateStr: string, hour: number) => {
-    // Luôn cho phép lên lịch nhiều bài đăng trong cùng một khung giờ
-    return false;
+  const getCellPostCount = (dateStr: string, hour: number, excludePlatform?: string) => {
+    let count = existingPosts.filter(p => {
+      const { dateStr: postDate, hour: postHour } = getPostDateAndHour(p.scheduled_at);
+      return postDate === dateStr && postHour === hour;
+    }).length;
+
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+
+    if (excludePlatform !== 'facebook' && targetPlatforms.includes('facebook') && facebookDate === dateStr) {
+      const fbHr = parseInt(facebookTime.split(':')[0]) || 0;
+      if (fbHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'threads' && targetPlatforms.includes('threads') && threadsDate === dateStr) {
+      const trHr = parseInt(threadsTime.split(':')[0]) || 0;
+      if (trHr === hour) count++;
+    }
+
+    if (excludePlatform !== 'instagram' && targetPlatforms.includes('instagram') && instagramDate === dateStr) {
+      const igHr = parseInt(instagramTime.split(':')[0]) || 0;
+      if (igHr === hour) count++;
+    }
+
+    return count;
+  };
+
+  const isCellOccupied = (dateStr: string, hour: number, excludePlatform?: string) => {
+    return getCellPostCount(dateStr, hour, excludePlatform) >= 3;
   };
 
   const getCellPosts = (dateStr: string, hour: number) => {
@@ -981,8 +1017,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleFacebookDateChange = (val: string) => {
     const activeHour = parseInt(facebookTime.split(':')[0]) || 9;
-    if (isCellOccupied(val, activeHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${facebookTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${facebookTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${facebookTime} on ${val}.`);
     } else {
       setFacebookError("");
       setFacebookDate(val);
@@ -1001,8 +1037,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(facebookDate, clampedHour)) {
-      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${facebookDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(facebookDate, clampedHour, 'facebook')) {
+      setFacebookError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${facebookDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${facebookDate}.`);
     } else {
       setFacebookError("");
       setFacebookTime(finalTime);
@@ -1011,8 +1047,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleThreadsDateChange = (val: string) => {
     const activeHour = parseInt(threadsTime.split(':')[0]) || 10;
-    if (isCellOccupied(val, activeHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${threadsTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${threadsTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${threadsTime} on ${val}.`);
     } else {
       setThreadsError("");
       setThreadsDate(val);
@@ -1031,8 +1067,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(threadsDate, clampedHour)) {
-      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${threadsDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(threadsDate, clampedHour, 'threads')) {
+      setThreadsError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${threadsDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${threadsDate}.`);
     } else {
       setThreadsError("");
       setThreadsTime(finalTime);
@@ -1044,7 +1080,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setFacebookError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setFacebookError(""), 4500);
   };
@@ -1054,7 +1090,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setThreadsError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setThreadsError(""), 4500);
   };
@@ -1121,8 +1157,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const handleInstagramDateChange = (val: string) => {
     const activeHour = parseInt(instagramTime.split(':')[0]) || 11;
-    if (isCellOccupied(val, activeHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${instagramTime} on ${val} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(val, activeHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${instagramTime} ngày ${val} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${instagramTime} on ${val}.`);
     } else {
       setInstagramError("");
       setInstagramDate(val);
@@ -1141,8 +1177,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const clampedMinute = Math.max(0, Math.min(59, m || 0));
     const finalTime = `${clampedHour.toString().padStart(2, '0')}:${clampedMinute.toString().padStart(2, '0')}`;
 
-    if (isCellOccupied(instagramDate, clampedHour)) {
-      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot full! The slot at ${finalTime} on ${instagramDate} has reached maximum capacity (max 3 posts/hour).`);
+    if (isCellOccupied(instagramDate, clampedHour, 'instagram')) {
+      setInstagramError(language === 'vi' ? `Lịch bị cản trở! Ô lúc ${finalTime} ngày ${instagramDate} đã đầy bài (tối đa 3 bài/giờ).` : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${finalTime} on ${instagramDate}.`);
     } else {
       setInstagramError("");
       setInstagramTime(finalTime);
@@ -1154,7 +1190,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setInstagramError(
       language === 'vi'
         ? `Lịch bị cản trở! Ô lúc ${timeStr} ngày ${blockedDate} đã đầy bài (tối đa 3 bài/giờ).`
-        : `Slot full! The slot at ${timeStr} on ${blockedDate} is at maximum capacity (max 3 posts/hour).`
+        : `Slot blocked! The slot has reached maximum capacity (max 3 posts/hour) at ${timeStr} on ${blockedDate}.`
     );
     setTimeout(() => setInstagramError(""), 4500);
   };
@@ -1592,7 +1628,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     if (!url || !url.trim()) {
-      showPopup(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL', 'warning');
+      alert(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL');
       return;
     }
     setIsFetching(true);
@@ -1710,6 +1746,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
 
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditState({ variantId, field });
+        }}
+        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+      >
+        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+          <Edit2 size={10} className="text-primary" />
+        </span>
+      </div>
+    );
+  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
@@ -2659,7 +2710,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 )}
 
-                {/* T-1.18: Variant count selector + Next step button */}
+                {/* Next step button */}
                 {step === 1 && (
                   <div className="flex flex-col gap-2">
                     {/* Variant count segmented control */}
@@ -2830,22 +2881,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 {language === 'vi' ? 'Đã chọn' : 'Selected'}
                               </motion.span>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRegenerateVariant(v.id);
-                              }}
-                              disabled={regeneratingVariantId === v.id}
-                              className={`p-1.5 rounded-full hover:bg-gray-100 border border-gray-200 transition-colors ${regeneratingVariantId === v.id ? 'opacity-50 pointer-events-none' : ''
-                                }`}
-                              title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
-                            >
-                              {regeneratingVariantId === v.id ? (
-                                <Loader2 size={13} className="animate-spin text-primary" />
-                              ) : (
-                                <RefreshCw size={13} className="text-gray-500" />
-                              )}
-                            </button>
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
                               {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
@@ -4303,13 +4338,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
             </motion.div>
           )}
         </AnimatePresence>
-
-        <PopupDialog
-          isOpen={!!popup?.isOpen}
-          message={popup?.message || ''}
-          type={popup?.type || 'info'}
-          onClose={() => setPopup(null)}
-        />
 
       </div>
     </EditableTextContext.Provider>
