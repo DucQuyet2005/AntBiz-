@@ -222,16 +222,15 @@ export default function OverviewView() {
 
         <div className="flex flex-col gap-2 relative z-10">
           <span className="text-[10px] text-indigo-600 font-mono tracking-widest uppercase font-extrabold flex items-center gap-1.5">
-            <Sparkles size={11} className="animate-pulse" />
             {language === 'vi' ? 'Hệ điều hành xuất bản tự động' : 'AUTOMATED PUBLISHING PIPELINE'}
           </span>
           <h1 className="text-3xl font-black tracking-tight leading-tight text-slate-800">
-            {language === 'vi' ? `Chào mừng trở lại, ${userName}! ✨` : `Welcome back, ${userName}! ✨`}
+            {language === 'vi' ? `Chào mừng trở lại, ${userName}!` : `Welcome back, ${userName}!`}
           </h1>
           <p className="text-slate-500 text-sm font-medium max-w-xl leading-relaxed">
             {language === 'vi' 
-              ? 'Hệ thống AI đang chạy ngầm tối ưu hóa chiến dịch của bạn. Tất cả các dữ liệu đã sẵn sàng để vận hành.'
-              : 'The AI pipeline is continuously active and optimizing your copy variants in the background.'}
+              ? 'Hệ thống đang chạy ngầm tối ưu hóa chiến dịch của bạn. Tất cả các dữ liệu đã sẵn sàng để vận hành.'
+              : 'The system is continuously active and optimizing your copy variants in the background.'}
           </p>
         </div>
 
@@ -261,9 +260,6 @@ export default function OverviewView() {
                 {language === 'vi' ? 'Nội dung tích lũy' : 'Ingested Content'}
               </h2>
             </div>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-              <Newspaper size={18} />
-            </div>
           </div>
 
           <div className="flex items-end justify-between mt-4">
@@ -277,9 +273,9 @@ export default function OverviewView() {
             </div>
             <div className="flex flex-col text-right">
               <span className="text-sm font-black text-indigo-650 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-100/40">
-                {stats.captionsCount} {language === 'vi' ? 'AI Caption' : 'AI Captions'}
+                {stats.captionsCount} {language === 'vi' ? 'Caption' : 'Captions'}
               </span>
-              <span className="text-[9px] text-slate-400 font-bold mt-1">
+              <span className="text-[9px] text-slate-450 font-bold mt-1">
                 {stats.pendingCount} {language === 'vi' ? 'bài chờ đăng' : 'pending in queue'}
               </span>
             </div>
@@ -292,6 +288,7 @@ export default function OverviewView() {
 
         {/* Stat Card 2: Platform Distribution (Cylindrical Bar Chart Theme) */}
         <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
+          
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-400 font-mono tracking-wider font-extrabold uppercase">
@@ -300,9 +297,6 @@ export default function OverviewView() {
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
                 {language === 'vi' ? 'Phân bổ bài đăng kênh' : 'Platform Publication Share'}
               </h2>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
-              <Zap size={18} />
             </div>
           </div>
 
@@ -351,6 +345,7 @@ export default function OverviewView() {
 
         {/* Stat Card 3: Publication Status (Cyan Glow theme) */}
         <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
+          
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-400 font-mono tracking-wider font-extrabold uppercase">
@@ -359,9 +354,6 @@ export default function OverviewView() {
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
                 {language === 'vi' ? 'Trạng thái xuất bản' : 'Publication Status'}
               </h2>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shadow-sm">
-              <CheckCircle2 size={18} />
             </div>
           </div>
 

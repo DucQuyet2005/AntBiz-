@@ -349,10 +349,10 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             </div>
 
             <div className="flex items-center gap-2">
-              <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {language === 'vi' ? 'Đăng nhập' : 'Login'}
               </Link>
-              <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-4 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {language === 'vi' ? 'Đăng ký' : 'Register'}
               </Link>
             </div>
@@ -516,11 +516,6 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
 
       {/* 11. FOOTER */}
       <footer className="mt-auto flex flex-col w-full">
-        <div className="bg-slate-950 text-slate-500 py-12 text-center text-xs border-t border-slate-900">
-          <EditableField section="sections" field="footerText">
-            <p>{config.sections.footerText}</p>
-          </EditableField>
-        </div>
         {!isEditor && !isPreview && (
           <div className="w-full text-left text-base [&>footer]:mt-0 [&>footer]:rounded-none">
             <Footer />

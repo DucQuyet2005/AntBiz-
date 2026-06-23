@@ -70,6 +70,7 @@ export default function ArticleDetailView() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<any>(articleData);
   const [captions, setCaptions] = useState<any[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
@@ -248,6 +249,12 @@ export default function ArticleDetailView() {
     loadData();
   }, [id]);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
   const getDisplayContent = () => {
     if (selectedCheckpoint) {
       if (typeof selectedCheckpoint.content === 'object') {
@@ -299,6 +306,26 @@ export default function ArticleDetailView() {
     setSuccessMsg(language === 'vi'
       ? `Đã khôi phục thành công về bản lưu ${selectedCheckpoint.version}!`
       : `Reverted successfully to version ${selectedCheckpoint.version}!`);
+
+    // Gửi thông báo in-app
+    if (userId) {
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            type: 'info',
+            title: 'Khôi phục phiên bản lưu trữ',
+            message: `Bạn đã khôi phục thành công phiên bản nội dung bài viết '${activeArticle.title}' về bản lưu ${selectedCheckpoint.version}.`,
+          }),
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi thông báo khôi phục phiên bản:', err);
+      }
+    }
 
     setSelectedCheckpoint(null);
     setReverting(false);
@@ -404,8 +431,8 @@ export default function ArticleDetailView() {
                 <button
                   onClick={() => setSelectedPlatform('facebook')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-text-muted hover:text-text'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-text-muted hover:text-text'
                     }`}
                 >
                   <ThumbsUp size={11} className={selectedPlatform === 'facebook' ? 'fill-white' : ''} />
@@ -414,8 +441,8 @@ export default function ArticleDetailView() {
                 <button
                   onClick={() => setSelectedPlatform('threads')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'threads'
-                      ? 'bg-black text-white shadow-sm'
-                      : 'text-text-muted hover:text-text'
+                    ? 'bg-black text-white shadow-sm'
+                    : 'text-text-muted hover:text-text'
                     }`}
                 >
                   <ThreadsIcon size={11} />
@@ -835,6 +862,25 @@ export default function ArticleDetailView() {
             </div>
           )}
 
+          {/* Image Cards Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {activeArticle.images.map((img: any, idx: number) => (
+              <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+                <img
+                  src={img.url}
+                  alt={`Image ${idx}`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {img.caption && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
+                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
+                      {img.caption}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
         </div>
 
@@ -892,8 +938,8 @@ export default function ArticleDetailView() {
                         }
                       }}
                       className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent ${isViewing
-                          ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
-                          : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
+                        ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
+                        : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
                         }`}
                     >
                       {isActive && (

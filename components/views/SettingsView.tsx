@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   Bell, 
@@ -11,10 +11,13 @@ import {
   GitBranch,
   Check,
   Sliders,
-  Sparkles
+  Sparkles,
+  Type
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
+import { createClient } from '@/utils/supabase/client';
+import { useFont, fonts } from '@/contexts/FontContext';
 
 // API Plug / Connection icon custom SVG to match mockup
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
@@ -26,12 +29,44 @@ const PlugIcon = ({ size = 20 }: { size?: number }) => (
 export default function SettingsView() {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const { font, setFont } = useFont();
 
   // State for interactive inputs
   const [openaiConnected, setOpenaiConnected] = useState(true);
   const [midjourneyConnected, setMidjourneyConnected] = useState(false);
   const [aiGenNotify, setAiGenNotify] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
+  const handleThemeChange = async (newTheme: Theme, colorLabel: string) => {
+    setTheme(newTheme);
+    if (userId) {
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            type: 'info',
+            title: 'Thay đổi màu giao diện',
+            message: `Bạn đã thay đổi màu sắc giao diện hệ thống thành tông màu: ${colorLabel}.`,
+          }),
+        });
+      } catch (err) {
+        console.error('Lỗi khi gửi thông báo đổi màu giao diện:', err);
+      }
+    }
+  };
 
 
   return (
@@ -233,7 +268,7 @@ export default function SettingsView() {
                     return (
                       <button
                         key={s.id}
-                        onClick={() => setTheme(s.id as Theme)}
+                        onClick={() => handleThemeChange(s.id as Theme, language === 'vi' ? s.labelVi : s.labelEn)}
                         title={language === 'vi' ? s.labelVi : s.labelEn}
                         className={`w-8 h-8 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative ${
                           isSelected 
@@ -264,7 +299,7 @@ export default function SettingsView() {
                     return (
                       <button
                         key={g.id}
-                        onClick={() => setTheme(g.id as Theme)}
+                        onClick={() => handleThemeChange(g.id as Theme, language === 'vi' ? g.labelVi : g.labelEn)}
                         className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[38px] ${
                           isSelected 
                             ? 'border-slate-800 scale-[1.02] ring-2 ring-primary/30' 
@@ -286,7 +321,7 @@ export default function SettingsView() {
                   {language === 'vi' ? 'Hiệu ứng RGB' : 'RGB Effects'}
                 </span>
                 <button
-                  onClick={() => setTheme('rgb')}
+                  onClick={() => handleThemeChange('rgb', language === 'vi' ? 'Cầu vồng 7 sắc' : 'RGB Rainbow')}
                   className={`relative overflow-hidden w-full h-10 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm ${
                     theme === 'rgb' ? 'border-slate-800 scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 hover:border-slate-300'
                   }`}
@@ -304,6 +339,66 @@ export default function SettingsView() {
                     {theme === 'rgb' && <Check size={13} className="text-white drop-shadow stroke-[3.5]" />}
                   </div>
                 </button>
+              </div>
+ 
+              {/* Font Customizer Setting Block */}
+              <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Type size={14} className="text-primary shrink-0" />
+                  <span className="text-sm font-bold text-[#1E293B]">
+                    {language === 'vi' ? 'Kiểu chữ hệ thống' : 'System Typeface'}
+                  </span>
+                </div>
+
+                {/* Font Card Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {fonts.map((f) => {
+                    const isActive = font === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setFont(f.id)}
+                        className={`relative text-left rounded-xl border px-3 py-2.5 transition-all active:scale-[0.98] cursor-pointer ${
+                          isActive
+                            ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10'
+                            : 'border-[#E4E6F8] bg-white hover:border-primary/30 hover:bg-primary/[0.02]'
+                        }`}
+                      >
+                        {isActive && (
+                          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
+                        <p
+                          className="text-[13px] font-semibold text-[#1E293B] leading-tight truncate"
+                          style={{ fontFamily: f.family }}
+                        >
+                          {f.name}
+                        </p>
+                        <span className="mt-1 inline-block text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none">
+                          {f.tag}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected font description */}
+                {(() => {
+                  const activeFont = fonts.find(f => f.id === font);
+                  if (!activeFont) return null;
+                  return (
+                    <div className="bg-white/70 border border-[#E4E6F8] rounded-xl px-3 py-2.5">
+                      <p
+                        className="text-sm font-medium text-[#1E293B] leading-snug"
+                        style={{ fontFamily: activeFont.family }}
+                      >
+                        Aa — Chào mừng đến với AntBiz.
+                      </p>
+                      <p className="mt-1 text-[10px] text-text-muted leading-normal">
+                        {language === 'vi' ? activeFont.descriptionVi : activeFont.descriptionEn}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
