@@ -13,23 +13,32 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [language, setLanguageState] = useState<Language>('vi');
+export const LanguageProvider = ({ 
+  children,
+  defaultLanguage = 'vi'
+}: { 
+  children: React.ReactNode;
+  defaultLanguage?: Language;
+}) => {
+  const [language, setLanguageState] = useState<Language>(defaultLanguage);
 
   // Load language from localStorage on mount and listen to window events
   useEffect(() => {
     const savedLang = localStorage.getItem('lang') as Language;
     if (savedLang === 'en' || savedLang === 'vi') {
       setLanguageState(savedLang);
+      document.cookie = `lang=${savedLang};path=/;max-age=31536000;SameSite=Lax`;
     } else {
-      localStorage.setItem('lang', 'vi');
-      setLanguageState('vi');
+      localStorage.setItem('lang', defaultLanguage);
+      setLanguageState(defaultLanguage);
+      document.cookie = `lang=${defaultLanguage};path=/;max-age=31536000;SameSite=Lax`;
     }
 
     const handleLangChange = () => {
       const currentLang = localStorage.getItem('lang') as Language;
       if (currentLang === 'en' || currentLang === 'vi') {
         setLanguageState(currentLang);
+        document.cookie = `lang=${currentLang};path=/;max-age=31536000;SameSite=Lax`;
       }
     };
 
@@ -37,11 +46,12 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     return () => {
       window.removeEventListener('languageChange', handleLangChange);
     };
-  }, []);
+  }, [defaultLanguage]);
 
   const setLanguage = (newLang: Language) => {
     setLanguageState(newLang);
     localStorage.setItem('lang', newLang);
+    document.cookie = `lang=${newLang};path=/;max-age=31536000;SameSite=Lax`;
     // Dispatch event to keep other contexts/instances in sync
     window.dispatchEvent(new Event('languageChange'));
   };

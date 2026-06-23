@@ -4,6 +4,23 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.3.1] - 2026-06-23
+
+### Added
+- **Quốc tế hóa toàn diện các trang xác thực (Auth Pages)**:
+  - Tích hợp hook `useLanguage` và tệp dịch thuật `translations.ts` cho các trang Đăng nhập (`/login`), Đăng ký (`/register`), Quên mật khẩu (`/forgot-password`), và Đặt lại mật khẩu (`/reset-password`).
+  - Ánh xạ động các lỗi xác thực từ máy chủ Supabase (như "invalid login credentials", "user already registered", giới hạn tần suất) và các thông báo lỗi Zod validation hiển thị trực quan theo locale đang chọn.
+
+### Changed
+- **Tối ưu hóa bố cục trang Landing Page**:
+  - Áp dụng các lớp Tailwind (`w-24 text-center inline-block`) cho hai nút Đăng nhập / Đăng ký để cố định kích thước hiển thị, ngăn chặn hiện tượng co giãn, xô lệch menu khi thay đổi ngôn ngữ.
+  - Loại bỏ dải màu đen copyright dư thừa (`bg-slate-950`) ở chân trang Landing Page để làm sạch thiết kế giao diện.
+
+### Fixed
+- **Khắc phục lỗi ngôn ngữ màn hình tải trung chuyển (Transition Screen)**:
+  - Đồng bộ hóa ngôn ngữ người dùng chọn sang cookie `lang` trên trình duyệt.
+  - Cập nhật `RootLayout` đọc cookie ngôn ngữ và truyền xuống `LanguageProvider` qua `defaultLanguage` prop giúp render giao diện phía máy chủ (SSR) đồng bộ ngôn ngữ, giải quyết triệt để lỗi hiển thị tiếng Việt mặc định ("Đang xác thực tài khoản...") khi chuyển sang trang Overview.
+
 ## [1.3.0] - 2026-06-23
 
 ### Added

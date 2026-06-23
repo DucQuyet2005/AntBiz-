@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema, ResetPasswordInput } from "@/lib/validations/auth";
 import { createClient } from "@/utils/supabase/client";
 import { Toast, useToast } from "@/components/Toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { AnimatePresence } from "framer-motion";
 
 export default function ResetPasswordPage() {
@@ -19,6 +20,18 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const { t } = useLanguage();
+
+  const getPasswordErrorMessage = (message?: string) => {
+    if (!message) return "";
+    if (message === "Mật khẩu phải chứa ít nhất 8 ký tự") return t("resetPassword.passwordMinError");
+    if (message === "Mật khẩu phải chứa ít nhất 1 chữ hoa") return t("resetPassword.passwordUpperError");
+    if (message === "Mật khẩu phải chứa ít nhất 1 chữ thường") return t("resetPassword.passwordLowerError");
+    if (message === "Mật khẩu phải chứa ít nhất 1 chữ số") return t("resetPassword.passwordNumberError");
+    if (message === "Vui lòng xác nhận mật khẩu mới") return t("resetPassword.confirmRequiredError");
+    if (message === "Mật khẩu xác nhận không trùng khớp") return t("resetPassword.confirmMismatchError");
+    return message;
+  };
 
   const {
     register,
@@ -44,10 +57,10 @@ export default function ResetPasswordPage() {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error || !session) {
-          setSessionError("Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu một liên kết mới.");
+          setSessionError(t("resetPassword.invalidSession"));
         }
       } catch (err) {
-        setSessionError("Không thể xác minh phiên làm việc.");
+        setSessionError(t("resetPassword.verifyError"));
       } finally {
         setIsVerifyingSession(false);
       }
@@ -71,11 +84,11 @@ export default function ResetPasswordPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Đã xảy ra lỗi khi đặt lại mật khẩu.");
+        throw new Error(result.error || t("resetPassword.toastError"));
       }
 
       // Đổi mật khẩu thành công -> Chuyển về trang đăng nhập với param reset=success
-      showToast("Đặt lại mật khẩu thành công!", "success");
+      showToast(t("resetPassword.toastSuccess"), "success");
       setTimeout(() => {
         router.push("/login?reset=success");
       }, 1500);
@@ -88,7 +101,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
         <div className="w-8 h-8 border-4 border-[#5A5CDE] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-600 text-sm">Đang xác thực yêu cầu...</p>
+        <p className="text-gray-600 text-sm">{t("resetPassword.verifying")}</p>
       </div>
     );
   }
@@ -99,7 +112,7 @@ export default function ResetPasswordPage() {
         <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
           <AlertCircle className="h-6 w-6" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Yêu cầu không hợp lệ</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">{t("resetPassword.invalidSessionTitle")}</h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-6">
           {sessionError}
         </p>
@@ -107,7 +120,7 @@ export default function ResetPasswordPage() {
           href="/forgot-password"
           className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
         >
-          Yêu cầu liên kết mới
+          {t("resetPassword.requestNewLink")}
         </Link>
       </div>
     );
@@ -129,7 +142,7 @@ export default function ResetPasswordPage() {
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
           <Image
             src="/images/login.png"
-            alt="Bento Studio AI Dashboard"
+            alt={t("login.altText")}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover opacity-80"
@@ -145,8 +158,7 @@ export default function ResetPasswordPage() {
               <span className="text-white font-semibold text-lg">Bento Studio</span>
             </div>
             <p className="text-white/80 text-sm leading-relaxed text-balance">
-              Where AI meets organized creativity. Build, generate, and
-              orchestrate your content in a digital playground.
+              {t("login.leftDesc")}
             </p>
           </div>
         </div>
@@ -154,12 +166,12 @@ export default function ResetPasswordPage() {
 
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Đặt lại mật khẩu</h1>
-        <p className="text-gray-500 text-sm mb-8">Thiết lập mật khẩu mới cho tài khoản của bạn</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">{t("resetPassword.title")}</h1>
+        <p className="text-gray-500 text-sm mb-8">{t("resetPassword.subtitle")}</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Mật khẩu mới</label>
+            <label className="text-xs font-semibold text-gray-700">{t("resetPassword.newPasswordLabel")}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-gray-400" />
@@ -167,7 +179,7 @@ export default function ResetPasswordPage() {
               <input
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder={t("resetPassword.passwordPlaceholder")}
                 disabled={isSubmitting}
                 className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5A5CDE]/20 focus:border-[#5A5CDE] transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -180,11 +192,15 @@ export default function ResetPasswordPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-red-500 text-xs font-medium pl-1 mt-1">
+                {getPasswordErrorMessage(errors.password.message)}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Xác nhận mật khẩu mới</label>
+            <label className="text-xs font-semibold text-gray-700">{t("resetPassword.confirmPasswordLabel")}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Lock className="h-4 w-4 text-gray-400" />
@@ -192,7 +208,7 @@ export default function ResetPasswordPage() {
               <input
                 {...register("confirmPassword")}
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder={t("resetPassword.passwordPlaceholder")}
                 disabled={isSubmitting}
                 className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5A5CDE]/20 focus:border-[#5A5CDE] transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -205,7 +221,11 @@ export default function ResetPasswordPage() {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.confirmPassword && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-xs font-medium pl-1 mt-1">
+                {getPasswordErrorMessage(errors.confirmPassword.message)}
+              </p>
+            )}
           </div>
 
           <button
@@ -213,7 +233,7 @@ export default function ResetPasswordPage() {
             disabled={isSubmitting}
             className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+            {isSubmitting ? t("resetPassword.submitting") : t("resetPassword.submitBtn")}
             {!isSubmitting && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>

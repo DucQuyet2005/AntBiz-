@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ShieldX } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     let isMounted = true;
@@ -84,7 +86,7 @@ export default function DashboardLayout({
           (payload) => {
             const newRecord = payload.new as { status: string; locked_reason?: string };
             if (newRecord.status === 'locked') {
-              showLockDialogThenLogout(newRecord.locked_reason || 'Vi phạm chính sách sử dụng.');
+              showLockDialogThenLogout(newRecord.locked_reason || t("dashboardLayout.defaultReason"));
             }
           }
         )
@@ -116,7 +118,7 @@ export default function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen bg-[#F4F5F9]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-semibold text-slate-500">Đang xác thực tài khoản...</p>
+          <p className="text-sm font-semibold text-slate-500">{t("dashboardLayout.verifying")}</p>
         </div>
       </div>
     );
@@ -144,14 +146,14 @@ export default function DashboardLayout({
                 <ShieldX className="w-8 h-8 text-rose-600" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-gray-900 mb-1">Tài khoản bị khóa</h2>
-                <p className="text-sm text-gray-500">Quản trị viên đã khóa tài khoản của bạn</p>
+                <h2 className="text-xl font-black text-gray-900 mb-1">{t("dashboardLayout.lockedTitle")}</h2>
+                <p className="text-sm text-gray-500">{t("dashboardLayout.lockedSubtitle")}</p>
               </div>
               <div className="w-full bg-rose-50 border border-rose-200 rounded-xl p-4">
-                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-1">Lý do</p>
+                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-1">{t("dashboardLayout.reasonLabel")}</p>
                 <p className="text-sm text-rose-800 font-medium leading-relaxed">{lockedReason}</p>
               </div>
-              <p className="text-xs text-gray-400">Bạn sẽ được đăng xuất tự động sau vài giây. Vui lòng liên hệ quản trị viên để được hỗ trợ.</p>
+              <p className="text-xs text-gray-400">{t("dashboardLayout.lockedWarning")}</p>
               <button
                 onClick={() => {
                   sessionStorage.setItem('logging_out', 'true');
@@ -161,7 +163,7 @@ export default function DashboardLayout({
                 }}
                 className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors text-sm"
               >
-                Đã hiểu, đăng xuất ngay
+                {t("dashboardLayout.logoutBtn")}
               </button>
             </motion.div>
           </motion.div>

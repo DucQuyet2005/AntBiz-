@@ -684,8 +684,20 @@ export default function ProfileView() {
 
         if (profile) {
           setRole(profile.role || 'marketer_content');
-          setStatus(profile.status || 'active');
           setAvatarUrl(profile.avatars || '');
+
+          // Nếu status đang là 'pending' nhưng user đã đăng nhập thành công
+          // → tự động upgrade thành 'active' (pending chỉ là trạng thái tạm thời khi đăng ký)
+          const resolvedStatus = profile.status === 'pending' ? 'active' : (profile.status || 'active');
+          setStatus(resolvedStatus);
+
+          if (profile.status === 'pending') {
+            // Âm thầm cập nhật DB để đồng bộ
+            await supabase
+              .from('users')
+              .update({ status: 'active' })
+              .eq('id', user.id);
+          }
         }
       } finally {
         setIsLoading(false);

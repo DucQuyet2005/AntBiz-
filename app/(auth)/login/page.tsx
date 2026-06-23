@@ -12,10 +12,37 @@ import { Toast, useToast } from "@/components/Toast";
 import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
   const { toast, showToast, hideToast } = useToast();
   const router = useRouter();
+  const { t } = useLanguage();
+
+  const getEmailErrorMessage = (message?: string) => {
+    if (!message) return "";
+    if (message === "Vui lòng nhập email") return t("login.emailRequired");
+    if (message === "Định dạng email không hợp lệ") return t("login.emailInvalid");
+    return message;
+  };
+
+  const getPasswordErrorMessage = (message?: string) => {
+    if (!message) return "";
+    if (message === "Vui lòng nhập mật khẩu") return t("login.passwordRequired");
+    return message;
+  };
+
+  const getAuthErrorMessage = (errorMsg: string) => {
+    if (!errorMsg) return "";
+    const cleanMsg = errorMsg.toLowerCase();
+    if (cleanMsg.includes("invalid login credentials") || cleanMsg.includes("thông tin đăng nhập không chính xác")) {
+      return t("login.toastInvalidCredentials");
+    }
+    if (cleanMsg.includes("rate limit exceeded") || cleanMsg.includes("quá giới hạn")) {
+      return t("login.toastEmailRateLimit");
+    }
+    return errorMsg;
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -68,22 +95,22 @@ export default function LoginPage() {
       const resetParam = params.get("reset");
       
       if (errorParam === "no_profile") {
-        showToast("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.", "error");
+        showToast(t("login.toastNoProfile"), "error");
       } else if (errorParam === "locked") {
         const reason = params.get("reason");
         const message = reason
-          ? `Tài khoản của bạn đã bị khóa. Lý do: ${reason}`
-          : "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.";
+          ? t("login.toastLockedReason", { reason })
+          : t("login.toastLocked");
         showToast(message, "error");
       } else if (errorParam) {
-        showToast(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam, "error");
+        showToast(errorParam === "Could not authenticate user" ? t("login.toastAuthFailed") : errorParam, "error");
       }
 
       if (resetParam === "success") {
-        showToast("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại với mật khẩu mới.", "success");
+        showToast(t("login.toastResetSuccess"), "success");
       }
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -114,7 +141,7 @@ export default function LoginPage() {
     const result = await login(formData);
 
     if (result?.error) {
-      showToast(result.error, "error");
+      showToast(getAuthErrorMessage(result.error), "error");
       
       let attempts = parseInt(localStorage.getItem("login_attempts_count") || "0", 10);
       attempts += 1;
@@ -139,7 +166,7 @@ export default function LoginPage() {
     hideToast();
     const result = await signInWithGoogle();
     if (result?.error) {
-      showToast(result.error, "error");
+      showToast(getAuthErrorMessage(result.error), "error");
     }
   };
 
@@ -159,7 +186,7 @@ export default function LoginPage() {
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
           <Image
             src="/images/login.png"
-            alt="Bento Studio AI Dashboard"
+            alt={t("login.altText")}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover opacity-80"
@@ -175,8 +202,7 @@ export default function LoginPage() {
               <span className="text-white font-semibold text-lg">Bento Studio</span>
             </div>
             <p className="text-white/80 text-sm leading-relaxed text-balance">
-              Where AI meets organized creativity. Build, generate, and
-              orchestrate your content in a digital playground.
+              {t("login.leftDesc")}
             </p>
           </div>
         </div>
@@ -184,12 +210,12 @@ export default function LoginPage() {
 
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Chào mừng trở lại</h1>
-        <p className="text-gray-500 text-sm mb-8">Đăng nhập vào AI Creative Studio của bạn</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">{t("login.title")}</h1>
+        <p className="text-gray-500 text-sm mb-8">{t("login.subtitle")}</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">Địa chỉ Email</label>
+            <label className="text-xs font-semibold text-gray-700">{t("login.emailLabel")}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Mail className="h-4 w-4 text-gray-400" />
@@ -197,22 +223,26 @@ export default function LoginPage() {
               <input
                 {...register("email")}
                 type="email"
-                placeholder="creator@example.com"
+                placeholder={t("login.emailPlaceholder")}
                 disabled={isLockedOut}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
-            {errors.email && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.email.message}</p>}
+            {errors.email && (
+              <p className="text-red-500 text-xs font-medium pl-1 mt-1">
+                {getEmailErrorMessage(errors.email.message)}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-700">Mật khẩu</label>
+              <label className="text-xs font-semibold text-gray-700">{t("login.passwordLabel")}</label>
               <Link
                 href={emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : "/forgot-password"}
                 className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
               >
-                Quên mật khẩu?
+                {t("login.forgotPassword")}
               </Link>
             </div>
             <div className="relative">
@@ -222,7 +252,7 @@ export default function LoginPage() {
               <input
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder={t("login.passwordPlaceholder")}
                 disabled={isLockedOut}
                 className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -235,7 +265,11 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-red-500 text-xs font-medium pl-1 mt-1">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-red-500 text-xs font-medium pl-1 mt-1">
+                {getPasswordErrorMessage(errors.password.message)}
+              </p>
+            )}
           </div>
 
           <button
@@ -243,14 +277,14 @@ export default function LoginPage() {
             disabled={isSubmitting || isLockedOut}
             className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLockedOut ? `Vui lòng thử lại sau ${lockoutTime}s` : isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+            {isLockedOut ? t("login.lockoutMessage", { time: lockoutTime }) : isSubmitting ? t("login.submitting") : t("login.submitBtn")}
             {!isLockedOut && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
         <div className="mt-8 flex items-center">
           <div className="flex-1 border-t border-gray-200"></div>
-          <span className="px-4 text-xs text-gray-400 bg-white">hoặc tiếp tục với</span>
+          <span className="px-4 text-xs text-gray-400 bg-white">{t("login.orContinueWith")}</span>
           <div className="flex-1 border-t border-gray-200"></div>
         </div>
 
@@ -279,14 +313,14 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Google
+            {t("login.googleBtn")}
           </button>
         </div>
 
         <p className="mt-8 text-center text-xs text-gray-500 font-medium">
-          Chưa có tài khoản?{" "}
+          {t("login.noAccount")}{" "}
           <Link href="/register" className="text-primary hover:text-primary-hover font-semibold transition-colors">
-            Tạo tài khoản mới
+            {t("login.registerLink")}
           </Link>
         </p>
       </div>
