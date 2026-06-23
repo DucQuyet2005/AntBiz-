@@ -1,18 +1,254 @@
 "use client";
 
-import React from 'react';
-import { Search, Plus, Bell, Menu } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  Plus,
+  Bell,
+  Menu,
+  Loader2,
+  CheckCheck,
+  ExternalLink,
+  Unlock,
+  Lock,
+  UserCog,
+  Palette,
+  Globe,
+  User,
+  Key,
+  RotateCcw,
+  Terminal,
+  CheckCircle2,
+  XCircle,
+  Trophy,
+  Info
+} from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import UserProfileDropdown from '@/components/UserProfileDropdown';
-
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@/utils/supabase/client';
+import { translateNotification } from '@/lib/i18n/translateNotification';
 
 const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const { t, language } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
+
+  // Search Suggestions State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<{
+    articles: any[];
+    captions: any[];
+    prompts: any[];
+    faqs: any[];
+  } | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false); // matches user's notification dropdown state
+  const [loading, setLoading] = useState(false); // matches user's notification loading state
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const supabase = createClient();
+
+  // Debounce API calls when search query changes
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSuggestions(null);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    setIsSearchLoading(true);
+    setIsSearchOpen(true);
+
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}&lang=${language}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+        }
+      } catch (err) {
+        console.error('Error fetching search suggestions:', err);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery, language]);
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const triggerSearch = () => {
+    if (searchQuery.trim()) {
+      setIsSearchOpen(false);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setIsSearchOpen(false);
+    } else if (e.key === 'Enter') {
+      triggerSearch();
+    }
+  };
+
+  const hasSuggestions =
+    suggestions &&
+    (suggestions.articles.length > 0 ||
+      suggestions.captions.length > 0 ||
+      suggestions.prompts.length > 0 ||
+      suggestions.faqs.length > 0);
+
+  // Fetch Notifications
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!error && data) {
+        setNotifications(data);
+      }
+
+      const { count, error: countError } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (!countError) {
+        setUnreadCount(count || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications in Header:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkAsRead = async (id: string, isRead: boolean) => {
+    if (isRead) return;
+    try {
+      const response = await fetch(`/api/notifications/${id}/read`, {
+        method: 'PUT',
+      });
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(prev - 1, 0));
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/read-all', {
+        method: 'PUT',
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  };
+
+  const getNotificationIcon = (type: string, title?: string) => {
+    const titleLower = (title || '').toLowerCase();
+    if (titleLower.includes('mở khóa') || titleLower.includes('mở khoá')) {
+      return <Unlock className="w-5 h-5 text-emerald-500 shrink-0" />;
+    }
+    if (titleLower.includes('khóa') || titleLower.includes('khoá')) {
+      return <Lock className="w-5 h-5 text-rose-500 shrink-0" />;
+    }
+    if (titleLower.includes('vai trò')) {
+      return <UserCog className="w-5 h-5 text-blue-500 shrink-0" />;
+    }
+    if (titleLower.includes('màu giao diện') || titleLower.includes('tông màu')) {
+      return <Palette className="w-5 h-5 text-purple-500 shrink-0" />;
+    }
+    if (titleLower.includes('landing page') || titleLower.includes('landing')) {
+      return <Globe className="w-5 h-5 text-cyan-500 shrink-0" />;
+    }
+    if (titleLower.includes('hồ sơ') || titleLower.includes('thông tin cá nhân') || titleLower.includes('ảnh đại diện')) {
+      return <User className="w-5 h-5 text-indigo-500 shrink-0" />;
+    }
+    if (titleLower.includes('mật khẩu')) {
+      return <Key className="w-5 h-5 text-amber-500 shrink-0" />;
+    }
+    if (titleLower.includes('khôi phục') || titleLower.includes('lưu trữ')) {
+      return <RotateCcw className="w-5 h-5 text-teal-500 shrink-0" />;
+    }
+    if (titleLower.includes('prompt')) {
+      return <Terminal className="w-5 h-5 text-orange-500 shrink-0" />;
+    }
+
+    switch (type) {
+      case 'post_success':
+        return <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />;
+      case 'post_failed':
+        return <XCircle className="w-5 h-5 text-rose-500 shrink-0" />;
+      case 'ab_test_complete':
+        return <Trophy className="w-5 h-5 text-amber-500 shrink-0" />;
+      default:
+        return <Info className="w-5 h-5 text-indigo-500 shrink-0" />;
+    }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return t('notifications.timeJustNow') || (language === 'vi' ? 'Vừa xong' : 'Just now');
+    if (diffMins < 60) return (t('notifications.timeMinsAgo') || '{mins} phút trước').replace('{mins}', String(diffMins));
+    if (diffHours < 24) return (t('notifications.timeHoursAgo') || '{hours} giờ trước').replace('{hours}', String(diffHours));
+    return (t('notifications.timeDaysAgo') || '{days} ngày trước').replace('{days}', String(diffDays));
+  };
 
   return (
     <header className="flex items-center justify-between py-6 gap-3 sm:gap-6">
@@ -23,13 +259,165 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         >
           <Menu size={24} />
         </button>
-        <div className="relative w-full max-w-[120px] sm:max-w-md">
+        <div ref={containerRef} className="relative w-full max-w-[120px] sm:max-w-md z-40">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted w-5 h-5" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              if (searchQuery.trim().length >= 2) {
+                setIsSearchOpen(true);
+              }
+            }}
             placeholder={t('header.searchPlaceholder')}
-            className="w-full bg-sidebar/50 rounded-full py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted"
+            className="w-full bg-sidebar/50 rounded-full py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-transparent focus:border-gray-200"
           />
+          {isSearchLoading && (
+            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-primary w-4 h-4 animate-spin" />
+          )}
+
+          {/* Suggestions Dropdown */}
+          {isSearchOpen && (
+            <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white border border-gray-200 rounded-[28px] shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
+              {isSearchLoading && !hasSuggestions ? (
+                <div className="flex items-center justify-center py-8 text-xs text-text-muted gap-2">
+                  <Loader2 className="animate-spin text-primary" size={14} />
+                  <span>{t('common.loading')}</span>
+                </div>
+              ) : !hasSuggestions ? (
+                <div className="text-center py-8 text-xs text-text-muted font-bold">
+                  {t('search.noResults')}
+                </div>
+              ) : (
+                <>
+                  {/* Articles Section */}
+                  {suggestions.articles.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                        {t('search.articles')}
+                      </span>
+                      <div className="flex flex-col">
+                        {suggestions.articles.slice(0, 3).map((art) => (
+                          <Link
+                            key={art.id}
+                            href={`/archive/${art.id}`}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                          >
+                            <div className="text-xs font-extrabold text-text line-clamp-1">{art.title}</div>
+                            {art.description && (
+                              <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5">{art.description}</div>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Captions Section */}
+                  {suggestions.captions.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                        {t('search.captions')}
+                      </span>
+                      <div className="flex flex-col">
+                        {suggestions.captions.slice(0, 3).map((cap) => (
+                          <Link
+                            key={cap.id}
+                            href={`/archive/${cap.article_id}?captionId=${cap.id}`}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase">
+                                {cap.platform}
+                              </span>
+                              {cap.articles?.title && (
+                                <span className="text-[9px] text-text-muted font-bold line-clamp-1">
+                                  {cap.articles.title}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-text line-clamp-1 font-medium">
+                              {cap.edited_content || cap.ai_content}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prompts Section */}
+                  {suggestions.prompts.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                        {t('search.prompts')}
+                      </span>
+                      <div className="flex flex-col">
+                        {suggestions.prompts.slice(0, 3).map((p) => (
+                          <Link
+                            key={p.id}
+                            href={`/prompts?promptId=${p.id}`}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase">
+                                {p.platform}
+                              </span>
+                              {p.tags?.slice(0, 2).map((tag: string) => (
+                                <span
+                                  key={tag}
+                                  className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[8px] font-black"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="text-xs font-extrabold text-text line-clamp-1">{p.name}</div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FAQs Section */}
+                  {suggestions.faqs.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                        {t('search.faqs')}
+                      </span>
+                      <div className="flex flex-col">
+                        {suggestions.faqs.slice(0, 3).map((faq) => (
+                          <Link
+                            key={faq.key}
+                            href={`/faq?key=${faq.key}`}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                          >
+                            <div className="text-xs font-extrabold text-text line-clamp-1">{faq.question}</div>
+                            {faq.answer && (
+                              <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5">{faq.answer}</div>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer Action */}
+                  <button
+                    onClick={triggerSearch}
+                    className="w-full text-center text-xs font-black text-primary hover:underline border-t border-gray-100 pt-3 cursor-pointer"
+                  >
+                    {t('search.seeAll')} &quot;{searchQuery}&quot;
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
