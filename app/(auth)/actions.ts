@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 
 import { headers, cookies } from 'next/headers'
@@ -56,8 +57,11 @@ export async function login(formData: FormData) {
     }
   }
 
+  // Sử dụng adminSupabase để bypass RLS (đặc biệt là policy update users chỉ cho phép admin)
+  const adminSupabase = createAdminClient()
+
   // Kiểm tra xem profile có tồn tại trong bảng public.users không
-  const { data: userProfile, error: profileError } = await supabase
+  const { data: userProfile, error: profileError } = await adminSupabase
     .from('users')
     .select('status')
     .eq('id', signInData.user.id)
@@ -65,7 +69,7 @@ export async function login(formData: FormData) {
 
   if (profileError || !userProfile) {
     // Nếu chưa có profile trong public.users (tài khoản tạo trước khi chạy schema), tự động tạo/đồng bộ
-    const { error: insertError } = await supabase
+    const { error: insertError } = await adminSupabase
       .from('users')
       .insert({
         id: signInData.user.id,
@@ -84,7 +88,7 @@ export async function login(formData: FormData) {
     return { error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' }
   } else {
     // Cập nhật đăng nhập cuối
-    await supabase
+    await adminSupabase
       .from('users')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', signInData.user.id)

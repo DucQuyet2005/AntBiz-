@@ -174,8 +174,47 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   useEffect(() => {
     fetchNotifications();
+
+    let realtimeChannel: any = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      realtimeChannel = supabase
+        .channel(`user-notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Realtime notification update received in Header:', payload);
+            fetchNotifications();
+          }
+        )
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.warn(`Supabase Realtime notification channel status for user-notifications-${user.id}:`, status, err);
+          } else {
+            console.log(`Supabase Realtime notification channel active for user-notifications-${user.id}`);
+          }
+        });
+    };
+
+    setupRealtime();
+
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string, isRead: boolean) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -60,7 +60,7 @@ export default function NotificationsPage() {
     });
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -93,11 +93,51 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filterType, supabase]);
 
   useEffect(() => {
     fetchNotifications();
-  }, [currentPage, filterType]);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    let realtimeChannel: any = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      realtimeChannel = supabase
+        .channel(`page-user-notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Realtime notification update received on page:', payload);
+            fetchNotifications();
+          }
+        )
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.warn(`Supabase Realtime notification channel status on page for page-user-notifications-${user.id}:`, status, err);
+          } else {
+            console.log(`Supabase Realtime notification channel active on page for page-user-notifications-${user.id}`);
+          }
+        });
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
+  }, [fetchNotifications, supabase]);
 
   // Reset về trang 1 khi đổi bộ lọc
   const handleFilterChange = (type: string) => {

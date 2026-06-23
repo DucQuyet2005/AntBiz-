@@ -7,6 +7,12 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [1.3.3] - 2026-06-23
 
 ### Changed
+- **Sửa lỗi lưu trữ thời gian Đăng nhập cuối (last_login_at)**:
+  - Cập nhật luồng xử lý đăng nhập qua mật khẩu trong `app/(auth)/actions.ts` và Google OAuth trong `app/api/auth/callback/route.ts` sang sử dụng Supabase Admin Client (`createAdminClient`) thay thế cho client người dùng thông thường khi ghi nhận/cập nhật trường `last_login_at` trên bảng `users`.
+  - Giúp bypass thành công chính sách bảo mật Row Level Security (RLS) vốn chỉ cho phép Admin chỉnh sửa bảng `users`, đảm bảo thời điểm đăng nhập cuối của toàn bộ đối tượng tài khoản (kể cả Marketer) luôn được lưu trữ và ghi nhận chính xác 100% khi deploy.
+- **Tối ưu hóa tốc độ nhận thông báo qua Supabase Realtime**:
+  - Tích hợp lắng nghe thay đổi thời gian thực qua Supabase Realtime WebSocket cho bảng `notifications` trong `components/Header.tsx` và trang danh sách thông báo chính `/notifications` (`page.tsx`).
+  - Giúp giao diện cập nhật lập tức số đếm chưa đọc và danh sách thông báo thả xuống/chính ngay khi thông báo được ghi nhận vào database, thay vì chờ polling 30 giây như trước đây.
 - **Đồng bộ hóa quy trình xuất dữ liệu CSV**:
   - Chuyển đổi cơ chế xuất file CSV sang xử lý đồng bộ (synchronous execution) trong API `/api/captions/export` để đảm bảo gửi email và tải về hoạt động tin cậy 100% khi deploy (Vercel/VPS) mà không lo ngại tiến trình nền bị giải phóng.
   - Thay thế endpoint tải file CSV mẫu bằng endpoint mới `/api/captions/export/download` cho phép truy xuất và tạo nội dung CSV theo đúng bộ lọc của job đã lưu.
