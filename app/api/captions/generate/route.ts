@@ -301,8 +301,38 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
             }
           }
 
+          // Ingest completed caption into DB as draft
+          const insertPayload: Record<string, unknown> = {
+            article_id: article.id,
+            prompt_id: dbPromptId,
+            created_by: user.id,
+            platform: targetPlatform === 'threads' ? 'thread' : targetPlatform,
+            ai_content: generatedText,
+            status: 'draft',
+            variant_index: resolvedVariantIndex,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          // Only set variant_group_id when grouping multiple variants together
+          if (variantGroupId) {
+            insertPayload.variant_group_id = variantGroupId;
+          }
+
+          const { data: savedCaption, error: saveError } = await userSupabase
+            .from('captions')
+            .insert(insertPayload)
+            .select()
+            .single();
+
+          let captionId = '';
+          if (saveError) {
+            console.error('[Generate API] Error saving generated caption to DB:', saveError);
+          } else if (savedCaption) {
+            captionId = savedCaption.id;
+          }
+
           // Send signal that stream is complete with metadata
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId: '', versionId: '', articleId: article.id, variantGroupId: variantGroupId || null })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ done: true, captionId, articleId: article.id, variantGroupId: variantGroupId || null })}\n\n`));
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (err) {

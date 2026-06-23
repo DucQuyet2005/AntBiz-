@@ -6,7 +6,15 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ---
 ## [1.3.2] - 2026-06-23
 
+### Added
+- **Migration kích hoạt Realtime cho bảng users**:
+  - Bổ sung migration `migrations/20260623_enable_users_realtime.sql` để tự động kích hoạt Supabase Realtime cho bảng `users` thông qua publication `supabase_realtime`, đảm bảo tính năng đồng bộ hóa trạng thái khóa tài khoản hoạt động tự động khi deploy trên môi trường VPS.
+
 ### Changed
+- **Log trạng thái kết nối Realtime ở DashboardLayout**:
+  - Cập nhật `app/(dashboard)/layout.tsx` để ghi log chi tiết trạng thái đăng ký kênh Realtime (`SUBSCRIBED`, `CLOSED`, `CHANNEL_ERROR`), hỗ trợ quá trình phát hiện lỗi kết nối WebSocket trên VPS.
+- **Tối ưu hóa hiệu năng truy vấn thông báo (Parallel Queries)**:
+  - Cải tiến chạy song song các truy vấn cơ sở dữ liệu bằng `Promise.all` tại Client (`components/Header.tsx`) và API Route (`app/api/notifications/route.ts`), giúp giảm một nửa thời gian phản hồi bằng cách loại bỏ các bước chờ tuần tự (sequential network round-trips) khi kết nối với database Supabase từ VPS.
 - **Hiển thị giờ phút của thông báo**:
   - Cập nhật hàm `formatTimeAgo` ở cả trang xem thông báo (`app/(dashboard)/notifications/page.tsx`) và danh sách thông báo thả xuống ở Header (`components/Header.tsx`) để hiển thị kèm giờ và phút của thông báo (Ví dụ: `14:30 - 2 giờ trước` hoặc `10:15 22/06 - 3 ngày trước`).
 - **Việt hóa và bổ sung Icon cho hoạt động Đăng bài trên Nhật ký Hệ thống**:

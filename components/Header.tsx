@@ -130,25 +130,26 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const [listRes, countRes] = await Promise.all([
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+      ]);
 
-      if (!error && data) {
-        setNotifications(data);
+      if (!listRes.error && listRes.data) {
+        setNotifications(listRes.data);
       }
 
-      const { count, error: countError } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (!countError) {
-        setUnreadCount(count || 0);
+      if (!countRes.error) {
+        setUnreadCount(countRes.count || 0);
       }
     } catch (err) {
       console.error('Error fetching notifications in Header:', err);
