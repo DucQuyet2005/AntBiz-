@@ -4,6 +4,16 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.3.2] - 2026-06-23
+
+### Changed
+- **Hiển thị giờ phút của thông báo**:
+  - Cập nhật hàm `formatTimeAgo` ở cả trang xem thông báo (`app/(dashboard)/notifications/page.tsx`) và danh sách thông báo thả xuống ở Header (`components/Header.tsx`) để hiển thị kèm giờ và phút của thông báo (Ví dụ: `14:30 - 2 giờ trước` hoặc `10:15 22/06 - 3 ngày trước`).
+- **Việt hóa và bổ sung Icon cho hoạt động Đăng bài trên Nhật ký Hệ thống**:
+  - Bản dịch hóa hai hành động `publish_post_success` và `publish_post_failed` sang ngôn ngữ tự nhiên hiển thị tương ứng ở cả hai ngôn ngữ ("Đăng bài thành công"/"Đăng bài thất bại" và "Publish Post Success"/"Publish Post Failed").
+  - Gán icon trực quan tương ứng: `CheckCircle2` (màu xanh lá) cho đăng bài thành công và `XCircle` (màu đỏ) cho đăng bài thất bại, thay thế cho icon `Activity` (nhịp tim/pulse) mặc định.
+  - Bổ sung hai hành động này vào bộ lọc danh sách thả xuống ở trang Nhật ký Hệ thống (`app/(dashboard)/admin/audit-logs/page.tsx`).
+
 ## [1.3.1] - 2026-06-23
 
 ### Added

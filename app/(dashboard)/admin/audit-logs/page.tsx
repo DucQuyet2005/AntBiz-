@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Clock, Activity, Shield, KeyRound, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Search, Filter, Clock, Activity, Shield, KeyRound, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -48,6 +48,8 @@ export default function AuditLogsPage() {
       case 'change_role': return { label: t('admin.actionChangeRole'), icon: <Shield className="w-4 h-4 text-purple-600" />, color: 'bg-purple-100 text-purple-700' };
       case 'lock_account': return { label: t('admin.actionLock'), icon: <KeyRound className="w-4 h-4 text-rose-600" />, color: 'bg-rose-100 text-rose-700' };
       case 'unlock_account': return { label: t('admin.actionUnlock'), icon: <KeyRound className="w-4 h-4 text-emerald-600" />, color: 'bg-emerald-100 text-emerald-700' };
+      case 'publish_post_success': return { label: t('admin.actionPublishPostSuccess'), icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, color: 'bg-emerald-100 text-emerald-700' };
+      case 'publish_post_failed': return { label: t('admin.actionPublishPostFailed'), icon: <XCircle className="w-4 h-4 text-rose-600" />, color: 'bg-rose-100 text-rose-700' };
       default: return { label: action, icon: <Activity className="w-4 h-4 text-slate-600" />, color: 'bg-slate-100 text-slate-700' };
     }
   };
@@ -86,6 +88,8 @@ export default function AuditLogsPage() {
               <option value="change_role">{t('admin.actionChangeRole')}</option>
               <option value="lock_account">{t('admin.actionLock')}</option>
               <option value="unlock_account">{t('admin.actionUnlock')}</option>
+              <option value="publish_post_success">{t('admin.actionPublishPostSuccess')}</option>
+              <option value="publish_post_failed">{t('admin.actionPublishPostFailed')}</option>
             </select>
           </div>
         </div>

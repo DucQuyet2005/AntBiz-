@@ -283,10 +283,25 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return language === 'vi' ? 'Vừa xong' : 'Just now';
-    if (diffMins < 60) return language === 'vi' ? `${diffMins} phút trước` : `${diffMins}m ago`;
-    if (diffHours < 24) return language === 'vi' ? `${diffHours} giờ trước` : `${diffHours}h ago`;
-    return language === 'vi' ? `${diffDays} ngày trước` : `${diffDays}d ago`;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    let relativeStr = '';
+    if (diffMins < 1) {
+      relativeStr = language === 'vi' ? 'Vừa xong' : 'Just now';
+    } else if (diffMins < 60) {
+      relativeStr = language === 'vi' ? `${diffMins} phút trước` : `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      relativeStr = language === 'vi' ? `${diffHours} giờ trước` : `${diffHours}h ago`;
+    } else {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      relativeStr = language === 'vi' ? `${diffDays} ngày trước` : `${diffDays}d ago`;
+      return `${timeStr} ${day}/${month} - ${relativeStr}`;
+    }
+
+    return `${timeStr} - ${relativeStr}`;
   };
 
   return (

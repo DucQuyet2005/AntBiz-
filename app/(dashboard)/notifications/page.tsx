@@ -192,10 +192,25 @@ export default function NotificationsPage() {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return t('notifications.timeJustNow');
-    if (diffMins < 60) return t('notifications.timeMinsAgo').replace('{mins}', String(diffMins));
-    if (diffHours < 24) return t('notifications.timeHoursAgo').replace('{hours}', String(diffHours));
-    return t('notifications.timeDaysAgo').replace('{days}', String(diffDays));
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    let relativeStr = '';
+    if (diffMins < 1) {
+      relativeStr = t('notifications.timeJustNow');
+    } else if (diffMins < 60) {
+      relativeStr = t('notifications.timeMinsAgo').replace('{mins}', String(diffMins));
+    } else if (diffHours < 24) {
+      relativeStr = t('notifications.timeHoursAgo').replace('{hours}', String(diffHours));
+    } else {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      relativeStr = t('notifications.timeDaysAgo').replace('{days}', String(diffDays));
+      return `${timeStr} ${day}/${month} - ${relativeStr}`;
+    }
+
+    return `${timeStr} - ${relativeStr}`;
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
