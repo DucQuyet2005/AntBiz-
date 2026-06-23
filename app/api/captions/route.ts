@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
       ...(prompt_id && { prompt_id }),
       ...(utm_config_id && { utm_config_id }),
-      status: 'draft',
+      status: edited_content ? 'edited' : 'draft',
     })
     .select()
     .single();
@@ -63,6 +63,18 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[POST /api/captions] supabase error:', error);
     return NextResponse.json({ error: 'Không thể tạo caption' }, { status: 500 });
+  }
+
+  // Cập nhật tất cả các phiên bản nháp trước đó sang caption_id mới tạo
+  const { error: updateVersionsError } = await supabase
+    .from('caption_versions')
+    .update({ caption_id: data.id })
+    .eq('article_id', article_id)
+    .eq('platform', platform)
+    .is('caption_id', null);
+
+  if (updateVersionsError) {
+    console.warn('[POST /api/captions] update versions reference error:', updateVersionsError);
   }
 
   return NextResponse.json({ data }, { status: 201 });

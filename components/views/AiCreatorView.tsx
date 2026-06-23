@@ -32,11 +32,15 @@ import {
   X,
   FileText,
   Save,
-  Wand2
+  Wand2,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRouter } from 'next/navigation';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
+import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 
@@ -52,6 +56,12 @@ interface SocialVariant {
   facebook: string;
   threads: string;
   instagram: string;
+  originalFacebook?: string;
+  originalThreads?: string;
+  originalInstagram?: string;
+  facebookCaptionId?: string;
+  threadsCaptionId?: string;
+  instagramCaptionId?: string;
   title: string;
   author: string;
   tags: string;
@@ -97,6 +107,12 @@ const createEmptyVariant = (id: string): SocialVariant => ({
   facebook: '',
   threads: '',
   instagram: '',
+  originalFacebook: '',
+  originalThreads: '',
+  originalInstagram: '',
+  facebookCaptionId: '',
+  threadsCaptionId: '',
+  instagramCaptionId: '',
   title: '',
   author: '',
   tags: '',
@@ -104,10 +120,17 @@ const createEmptyVariant = (id: string): SocialVariant => ({
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
 
+// Module-level variables to share state/handlers with EditableText without unmounting it
+let _editState: any = null;
+let _setEditState: any = () => {};
+let _handleUpdateVariantField: any = () => {};
+let _isGeneratingAB: boolean = false;
+
 interface EditableTextContextProps {
   editState: { variantId: string; field: string } | null;
   setEditState: (state: { variantId: string; field: keyof SocialVariant } | null) => void;
   handleUpdateVariantField: (variantId: string, field: keyof SocialVariant, value: string) => void;
+  isGeneratingAB?: boolean;
 }
 
 const EditableTextContext = React.createContext<EditableTextContextProps | null>(null);
@@ -125,10 +148,12 @@ const EditableText = ({
   textarea?: boolean;
   className?: string;
 }) => {
+  const { language } = useLanguage();
   const context = React.useContext(EditableTextContext);
-  if (!context) return null;
-
-  const { editState, setEditState, handleUpdateVariantField } = context;
+  const editState = context?.editState ?? _editState;
+  const setEditState = context?.setEditState ?? _setEditState;
+  const handleUpdateVariantField = context?.handleUpdateVariantField ?? _handleUpdateVariantField;
+  const isGeneratingAB = context?.isGeneratingAB ?? _isGeneratingAB;
   const isEditing = editState?.variantId === variantId && editState?.field === field;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -184,7 +209,18 @@ const EditableText = ({
       }}
       className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
     >
-      <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
+      <span className="whitespace-pre-wrap">
+        {value ? (
+          value
+        ) : isGeneratingAB ? (
+          <span className="text-gray-400 italic flex items-center gap-1.5">
+            <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+            {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
+          </span>
+        ) : (
+          <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
+        )}
+      </span>
       <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
         <Edit2 size={10} className="text-primary" />
       </span>
@@ -194,6 +230,7 @@ const EditableText = ({
 
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
 
@@ -201,6 +238,27 @@ export default function AiCreatorView() {
     setPopup({ isOpen: true, message, type });
   };
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+
+  // State for Social Media Variants (A/B Test copies)
+  const [variants, setVariants] = useState<SocialVariant[]>([
+    createEmptyVariant('A'),
+    createEmptyVariant('B'),
+  ]);
+
+  // Track unsaved changes (T-1.13.5)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<'editor' | 'generator' | null>(null);
+
+  // Undo history state (T-1.13.5)
+  const [savedHistory, setSavedHistory] = useState<SocialVariant[][]>([]);
+
+  // Use unsaved changes warning hook
+  useUnsavedChanges(
+    hasUnsavedChanges,
+    language === 'vi'
+      ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
+      : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
+  );
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
   const [customPromptTitle, setCustomPromptTitle] = useState('');
@@ -532,35 +590,40 @@ export default function AiCreatorView() {
   };
 
   const handleSaveCurrentPrompt = async () => {
-    if (!activePrompt) return;
+    if (!activePrompt) return null;
     setIsSavingPrompt(true);
     setSaveSuccess(false);
     try {
+      const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
       const res = await fetch('/api/prompts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `AI Generated - ${new Date().toLocaleDateString()}`,
+          name: finalTitle,
           content: activePrompt,
-          platform: selectedPlatform,
-          tags: ['AI Generated', selectedPlatform]
+          platform: promptPlatform,
+          tags: ['AI Generated', promptPlatform]
         }),
       });
       if (res.ok) {
+        const json = await res.json();
         setSaveSuccess(true);
+        setHasUnsavedChanges(false);
         setTimeout(() => setSaveSuccess(false), 3000);
         // Refresh prompt list
         const listRes = await fetch('/api/prompts?pageSize=100');
         if (listRes.ok) {
-          const json = await listRes.json();
-          setPromptsList(json.data || []);
+          const listJson = await listRes.json();
+          setPromptsList(listJson.data || []);
         }
+        return json.data;
       }
     } catch (error) {
       console.error('Error saving prompt:', error);
     } finally {
       setIsSavingPrompt(false);
     }
+    return null;
   };
 
   const handleSaveAiResult = (variantId: string) => {
@@ -1058,6 +1121,72 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       .finally(() => setPromptsLoading(false));
   }, []);
 
+  // Prevent leaving the page with unsaved changes (T-1.13.5)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsavedChanges = variants.some(v => {
+        return (v.facebook && v.facebook !== v.originalFacebook) ||
+          (v.threads && v.threads !== v.originalThreads) ||
+          (v.instagram && v.instagram !== v.originalInstagram);
+      });
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [variants]);
+
+  // Local history tracking for Ctrl+Z Undo – 1 second after user stops typing
+  useEffect(() => {
+    if (step !== 2) return;
+
+    const timer = setTimeout(() => {
+      setSavedHistory(prev => {
+        const currentStr = JSON.stringify(variants);
+        const lastHistory = prev[prev.length - 1];
+        const lastStr = lastHistory ? JSON.stringify(lastHistory) : '';
+        if (currentStr !== lastStr) {
+          return [...prev, JSON.parse(currentStr)];
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [variants, step]);
+
+  const handleRevertToSaved = () => {
+    if (savedHistory.length === 0) return;
+
+    const currentStr = JSON.stringify(variants);
+    const latestSavedStr = JSON.stringify(savedHistory[savedHistory.length - 1]);
+
+    if (currentStr !== latestSavedStr) {
+      setVariants(JSON.parse(latestSavedStr));
+    } else if (savedHistory.length > 1) {
+      const newHistory = [...savedHistory];
+      newHistory.pop();
+      const previousSaved = newHistory[newHistory.length - 1];
+      setVariants(JSON.parse(JSON.stringify(previousSaved)));
+      setSavedHistory(newHistory);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (step === 2) {
+          e.preventDefault();
+          handleRevertToSaved();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [savedHistory, step, variants]);
+
   const handleGenerate = async () => {
     if (!selectedPromptId) {
       setGenerateError(language === 'vi' ? 'Vui lòng chọn một prompt trước.' : 'Please select a prompt first.');
@@ -1186,12 +1315,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     showImage: true
   });
 
-  // State for Social Media Variants (A/B Test copies)
-  const [variants, setVariants] = useState<SocialVariant[]>([
-    createEmptyVariant('A'),
-    createEmptyVariant('B'),
-  ]);
-
   // Inline Editing Active States
   const [editState, setEditState] = useState<{ variantId: string; field: string } | null>(null);
 
@@ -1289,6 +1412,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, false) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, false) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, false) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1299,6 +1425,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         facebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
         threads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
         instagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
+        originalFacebook: targetPlatforms.includes('facebook') ? generatePlatformContent('facebook', prompt, data, true) : "",
+        originalThreads: targetPlatforms.includes('threads') ? generatePlatformContent('threads', prompt, data, true) : "",
+        originalInstagram: targetPlatforms.includes('instagram') ? generatePlatformContent('instagram', prompt, data, true) : "",
         title: data.title,
         author: data.author,
         tags: tagsStr
@@ -1306,6 +1435,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     ];
 
     setVariants(newVariants);
+    setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
 
     // Auto-select the first available platform tab
     if (targetPlatforms.length > 0) {
@@ -1368,6 +1498,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setActivePrompt(defaultPrompt);
           generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
+          setHasUnsavedChanges(true);
           return;
         }
       }
@@ -1402,7 +1533,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Update variant field state on inline edit
   const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
     setVariants(prev => prev.map(v => v.id === variantId ? { ...v, [field]: value } : v));
+    setHasUnsavedChanges(true);
   };
+
+  // Sync state values to module-level refs for EditableText
+  _editState = editState;
+  _setEditState = setEditState;
+  _handleUpdateVariantField = handleUpdateVariantField;
+  _isGeneratingAB = isGeneratingAB;
 
   // Import from Live Explorer
   const handleImportFromExplorer = async () => {
@@ -1429,6 +1567,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setUrl(explorerUrl);
           generateVariants(updatedPostData, selectedPrompt);
           setIsExplorerOpen(false);
+          setHasUnsavedChanges(true);
         }
       }
     } catch (e) {
@@ -1449,93 +1588,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  // Inline editable wrapper component that prevents layout shifts
-  const EditableText = ({
-    variantId,
-    field,
-    value,
-    textarea = false,
-    className = ""
-  }: {
-    variantId: string;
-    field: keyof SocialVariant;
-    value: string;
-    textarea?: boolean;
-    className?: string;
-  }) => {
-    const isEditing = editState?.variantId === variantId && editState?.field === field;
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      if (isEditing) {
-        if (textarea && textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-      }
-    }, [isEditing, value, textarea]);
-
-    if (isEditing) {
-      return (
-        <div className="w-full relative">
-          {textarea ? (
-            <textarea
-              ref={textareaRef}
-              autoFocus
-              value={value}
-              onChange={(e) => {
-                handleUpdateVariantField(variantId, field, e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-            />
-          ) : (
-            <input
-              ref={inputRef}
-              autoFocus
-              type="text"
-              value={value}
-              onChange={(e) => handleUpdateVariantField(variantId, field, e.target.value)}
-              onBlur={() => setEditState(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setEditState(null);
-              }}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditState({ variantId, field });
-        }}
-        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
-      >
-        <span className="whitespace-pre-wrap">
-          {value ? (
-            value
-          ) : isGeneratingAB ? (
-            <span className="text-gray-400 italic flex items-center gap-1.5">
-              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
-            </span>
-          ) : (
-            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
-          )}
-        </span>
-        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-          <Edit2 size={10} className="text-primary" />
-        </span>
-      </div>
-    );
-  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
@@ -1614,7 +1667,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const finalCompiledContent = compileFinalMessage(selectedVariant);
-    const activeCaptionId = selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+    
+    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
+      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+        'instagramCaptionId';
+    
+    // Platform-specific caption ID fallback
+    const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
 
     if (activeCaptionId) {
       // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
@@ -1633,9 +1692,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId) {
+      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId } : v))
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
         );
       }
       return activeCaptionId;
@@ -1658,14 +1717,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
+    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+      selectedPlatform === 'threads' ? 'originalThreads' :
+        'originalInstagram';
+    const originalAiText = selectedVariant[originalField] || selectedContent;
+
+    // Check if the user has edited the caption compared to the original AI content
+    const isEdited = selectedVariant[selectedPlatform] !== originalAiText;
+    const editedContentPayload = isEdited ? finalCompiledContent : null;
+
     const res = await fetch('/api/captions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
         platform: toDatabasePlatform(selectedPlatform),
-        ai_content: selectedContent,
-        edited_content: finalCompiledContent,
+        ai_content: originalAiText,
+        edited_content: editedContentPayload,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
           ? { prompt_id: selectedPrompt.id }
           : {}),
@@ -1685,7 +1753,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     const newCaptionId = data.data.id;
     setCaptionId(newCaptionId);
     setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId } : v))
+      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId, [platKey]: newCaptionId } : v))
     );
     return newCaptionId as string;
   };
@@ -1737,6 +1805,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       setIsScheduled(true);
+      setHasUnsavedChanges(false);
     } catch (err: any) {
       setSchedulingError(err.message || 'Lỗi xảy ra trong quá trình lên lịch bài đăng');
     } finally {
@@ -1745,7 +1814,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
   return (
-    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField }}>
+    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField, isGeneratingAB }}>
       <div className="flex flex-col gap-6 w-full font-sans">
 
         {/* Top Header Row */}
@@ -2578,6 +2647,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                     const previewTimestamp = postData.published_at || toDateInputValue(new Date());
                     const isCardSelected = selectedVariantId === v.id;
+                    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                      selectedPlatform === 'threads' ? 'originalThreads' :
+                        'originalInstagram';
+                    const currentVal = v[selectedPlatform] || '';
+                    const originalVal = v[originalField] || '';
+                    const hasChanged = !!(originalVal && currentVal !== originalVal);
+
                     return (
                       <motion.div
                         key={v.id}
@@ -2604,6 +2680,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
+                            {hasChanged && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const confirmMsg = language === 'vi'
+                                    ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                                    : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                                  if (window.confirm(confirmMsg)) {
+                                    handleUpdateVariantField(v.id, selectedPlatform, originalVal);
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-[10px] font-black text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 px-2.5 py-1 rounded-xl transition-all cursor-pointer select-none"
+                                title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                              >
+                                <RefreshCw size={10} />
+                                {language === 'vi' ? 'Về bản gốc' : 'Revert'}
+                              </button>
+                            )}
                             {isCardSelected && (
                               <motion.span
                                 initial={{ scale: 0, opacity: 0 }}
@@ -4041,17 +4136,33 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </button>
 
                   {activeAiTab === 'editor' ? (
-                    <button type="button" onClick={() => {
-                      if (!activePrompt) return;
-                      const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
-                      const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
-                      setSelectedPrompt(newPrompt);
-                      generateVariants(postData, newPrompt);
-                      setIsAiPromptDialogOpen(false);
-                    }} disabled={!activePrompt}
-                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none">
-                      Lưu &amp; Sử dụng Prompt
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => {
+                        if (!activePrompt) return;
+                        const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                        const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                        setSelectedPrompt(newPrompt);
+                        generateVariants(postData, newPrompt);
+                        setIsAiPromptDialogOpen(false);
+                      }} disabled={!activePrompt}
+                        className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none">
+                        Chỉ sử dụng
+                      </button>
+
+                      <button type="button" onClick={async () => {
+                        if (!activePrompt) return;
+                        const savedPrompt = await handleSaveCurrentPrompt();
+                        const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                        const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                        setSelectedPrompt(newPrompt);
+                        generateVariants(postData, newPrompt);
+                        setIsAiPromptDialogOpen(false);
+                      }} disabled={!activePrompt || isSavingPrompt}
+                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2">
+                        {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
+                        Lưu &amp; Sử dụng Prompt
+                      </button>
+                    </div>
                   ) : (
                     <button type="button" onClick={() => {
                       if (selectedPrompt) {

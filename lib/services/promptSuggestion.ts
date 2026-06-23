@@ -23,10 +23,16 @@ const CATEGORY_TAG_MAP: Record<string, string[]> = {
 /**
  * Tính relevance score cho một prompt dựa trên category.
  *
+ * T-1.19.2: Hỗ trợ content-based matching khi tag match không tìm thấy.
+ *
  * Công thức:
- *   score = (tagMatchCount / categoryKeywords.length) * 0.7
- *           + (tagMatchCount > 0 ? 0.2 : 0)          ← bonus nếu có bất kỳ tag match
- *           + (usageWeight * 0.1)                     ← usage_count normalized
+ *   tagMatchScore = (tagMatchCount / categoryKeywords.length) * 0.7
+ *   contentMatchScore = (contentMatchCount / categoryKeywords.length) * 0.5  ← fallback
+ *   tagBonus = (tagMatchCount > 0 ? 0.2 : 0)
+ *   contentBonus = (contentMatchCount > 0 && tagMatchCount === 0 ? 0.1 : 0)
+ *   usageWeight = (usage_count / maxUsageCount) * 0.1
+ *
+ * score = max(tagMatchScore, contentMatchScore) + tagBonus + contentBonus + usageWeight
  *
  * Trả về score trong [0, 1].
  */
@@ -40,20 +46,37 @@ export function computeRelevanceScore(
   const promptTagsLower = prompt.tags.map((t) => t.toLowerCase());
   const keywordsLower = categoryKeywords.map((k) => k.toLowerCase());
 
+  // Tag matching
   const matchedKeywords = keywordsLower.filter((kw) =>
     promptTagsLower.some((tag) => tag.includes(kw) || kw.includes(tag))
   );
 
-  if (matchedKeywords.length === 0) return 0;
+  const tagMatchScore = matchedKeywords.length > 0
+    ? (matchedKeywords.length / categoryKeywords.length) * 0.7
+    : 0;
 
-  const tagMatchScore = matchedKeywords.length / categoryKeywords.length;
-  const hasAnyMatch = matchedKeywords.length > 0 ? 0.2 : 0;
+  const hasAnyTagMatch = matchedKeywords.length > 0 ? 0.2 : 0;
 
+  // Content-based matching (T-1.19.2: fallback khi tag match không có)
+  const promptContentLower = `${prompt.name} ${prompt.content}`.toLowerCase();
+  const contentMatches = keywordsLower.filter((kw) =>
+    promptContentLower.includes(kw)
+  );
+
+  const contentMatchScore = contentMatches.length > 0 && matchedKeywords.length === 0
+    ? (contentMatches.length / categoryKeywords.length) * 0.5
+    : 0;
+
+  const hasAnyContentMatch = contentMatches.length > 0 && matchedKeywords.length === 0 ? 0.1 : 0;
+
+  // Usage weight
   const usageNorm = maxUsageCount > 0
     ? ((prompt.usage_count ?? 0) / maxUsageCount)
     : 0;
 
-  return Math.min(tagMatchScore * 0.7 + hasAnyMatch + usageNorm * 0.1, 1);
+  const score = Math.max(tagMatchScore, contentMatchScore) + hasAnyTagMatch + hasAnyContentMatch + usageNorm * 0.1;
+
+  return Math.min(score, 1);
 }
 
 /**
