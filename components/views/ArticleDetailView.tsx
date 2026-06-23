@@ -22,7 +22,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
@@ -67,6 +67,8 @@ export default function ArticleDetailView() {
   const { t, language } = useLanguage();
   const params = useParams();
   const id = params?.id as string;
+  const searchParams = useSearchParams();
+  const captionIdParam = searchParams?.get('captionId');
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,22 @@ export default function ArticleDetailView() {
   const [isFbExpanded, setIsFbExpanded] = useState(false);
   const [isThreadsExpanded, setIsThreadsExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+
+  // Automatically toggle platform and highlight mockup if captionId query param is provided
+  useEffect(() => {
+    if (captionIdParam && captions.length > 0) {
+      const matchingCap = captions.find(c => c.id === captionIdParam);
+      if (matchingCap) {
+        if (matchingCap.platform === 'facebook' || matchingCap.platform === 'threads') {
+          setSelectedPlatform(matchingCap.platform);
+        }
+        setIsHighlighted(true);
+        const timer = setTimeout(() => setIsHighlighted(false), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [captionIdParam, captions]);
 
   function loadMockData() {
     const fbText = "Đứng giữa căn hộ 2 phòng ngủ trống huơ trống hoác, chưa có lấy một món nội thất nào ra hồn, tài khoản ngân hàng thì báo số dư gần như cạn kiệt, anh Phạm Quang H. lại thấy lòng mình nhẹ nhõm đến lạ.\n\nSau 10 năm tích cóp mua vàng, hai vợ chồng cuối cùng cũng chạm tay vào ước mơ sở hữu căn hộ riêng tại Hà Nội. Đọc chi tiết hành trình đầy cảm hứng này tại AntBiz!";
@@ -478,7 +496,7 @@ export default function ArticleDetailView() {
             )}
 
             {/* Post Layout Display */}
-            <div className="border border-gray-100 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5">
+            <div className={`border border-gray-100 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5 transition-all duration-500 ${isHighlighted ? 'ring-4 ring-primary/40 border-primary bg-primary/5 animate-pulse' : ''}`}>
               {selectedPlatform === 'facebook' ? (
                 /* Facebook Preview Mockup */
                 <div className="flex flex-col bg-white">

@@ -85,14 +85,15 @@ export async function PUT(
 
   // 1. Ghi audit log
   bgPromises.push(
-    supabase.from('audit_logs').insert({
-      actor_id: user.id,
-      target_user_id: id,
-      action: status === 'locked' ? 'lock_account' : 'unlock_account',
-      before_value: { status: oldStatus },
-      after_value: { status: status, reason: locked_reason || null },
-    })
-    .catch((err) => console.error('[Status API] Lỗi khi ghi audit log:', err.message))
+    Promise.resolve(
+      supabase.from('audit_logs').insert({
+        actor_id: user.id,
+        target_user_id: id,
+        action: status === 'locked' ? 'lock_account' : 'unlock_account',
+        before_value: { status: oldStatus },
+        after_value: { status: status, reason: locked_reason || null },
+      })
+    ).catch((err: any) => console.error('[Status API] Lỗi khi ghi audit log:', err.message))
   );
 
   // 2. Gửi email thông báo cho người dùng bị khóa/mở khóa

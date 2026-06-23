@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Plus,
@@ -87,6 +88,8 @@ function parseTagsText(tagsText: string): string[] {
 
 export default function PromptsView() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const promptIdParam = searchParams?.get("promptId");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -197,6 +200,20 @@ export default function PromptsView() {
     setFormError(null);
     setModal({ mode: "edit", prompt });
   }
+
+  // Load specific prompt for editing if promptId is in URL query parameters
+  useEffect(() => {
+    if (promptIdParam) {
+      fetch(`/api/prompts/${promptIdParam}`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.data) {
+            openEditModal(json.data);
+          }
+        })
+        .catch((err) => console.error("Error loading prompt for edit modal:", err));
+    }
+  }, [promptIdParam]);
 
   function closeModal() {
     if (submitting) return;

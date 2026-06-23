@@ -42,8 +42,6 @@ import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
-import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
-import PromptSuggestionSection from '../PromptSuggestionSection';
 
 
 // Threads Custom SVG Logo
@@ -324,19 +322,6 @@ export default function AiCreatorView() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
-
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  useUnsavedChanges(
-    hasUnsavedChanges,
-    language === 'vi'
-      ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
-      : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
-  );
-
-  const handleTabSwitch = (newTab: 'editor' | 'generator') => {
-    setActiveAiTab(newTab);
-  };
-  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
   // State for Social Media Variants (A/B Test copies)
@@ -359,9 +344,14 @@ export default function AiCreatorView() {
       ? 'Bạn có thay đổi chưa được lưu. Nếu rời khỏi trang, dữ liệu sẽ bị mất. Bạn có muốn tiếp tục?'
       : 'You have unsaved changes. If you leave this page, your data will be lost. Do you want to continue?'
   );
+
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
   const [customPromptTitle, setCustomPromptTitle] = useState('');
+
+  const handleTabSwitch = (newTab: 'editor' | 'generator') => {
+    setActiveAiTab(newTab);
+  };
 
   const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
 
@@ -1746,21 +1736,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   };
 
 
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditState({ variantId, field });
-        }}
-        className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
-      >
-        <span className="whitespace-pre-wrap">{value || <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>}</span>
-        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-          <Edit2 size={10} className="text-primary" />
-        </span>
-      </div>
-    );
-  };
 
   const getSelectedVariantCaption = () => {
     const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
