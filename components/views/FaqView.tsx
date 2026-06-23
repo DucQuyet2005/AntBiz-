@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Rocket, 
   Lightbulb, 
@@ -11,11 +11,37 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams } from 'next/navigation';
 
 export default function FaqView() {
   const { t, language } = useLanguage();
+  const searchParams = useSearchParams();
+  const keyParam = searchParams?.get('key');
+  const qParam = searchParams?.get('q') || searchParams?.get('search');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  // Handle auto-expanding and scrolling based on query parameters
+  useEffect(() => {
+    if (qParam) {
+      setSearchQuery(qParam);
+    }
+    if (keyParam) {
+      setExpandedItems(prev => ({
+        ...prev,
+        [keyParam]: true
+      }));
+
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`faq-${keyParam}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [keyParam, qParam]);
 
   const toggleItem = (key: string) => {
     setExpandedItems(prev => ({
@@ -158,7 +184,7 @@ export default function FaqView() {
                   {category.questions.map((item) => {
                     const isOpen = isItemOpen(item.key);
                     return (
-                      <div key={item.key} className="w-full flex flex-col">
+                      <div key={item.key} id={`faq-${item.key}`} className="w-full flex flex-col scroll-mt-20">
                         <button 
                           onClick={() => toggleItem(item.key)}
                           className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 transition-colors hover:text-primary outline-none group cursor-pointer select-none"
