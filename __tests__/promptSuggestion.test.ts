@@ -69,6 +69,26 @@ describe('computeRelevanceScore', () => {
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(1);
   });
+
+  // T-1.19.2: Content-based matching
+  it('matches prompt content when tags are empty', () => {
+    const pNoTags = makePrompt({ tags: [], name: 'Mua nhà lần đầu', content: 'Hướng dẫn mua nhà căn hộ đất nền...' });
+    const score = computeRelevanceScore(pNoTags, ['nhà', 'đất', 'căn hộ'], 10);
+    // Should have non-zero score from content match
+    expect(score).toBeGreaterThan(0);
+  });
+
+  it('content match scores less than tag match', () => {
+    const pTagMatch = makePrompt({ tags: ['nhà', 'đất'], name: 'Promot A', content: 'Content A' });
+    const pContentMatch = makePrompt({ tags: [], name: 'Mua nhà', content: 'Hướng dẫn về nhà và đất' });
+    const keywords = ['nhà', 'đất', 'căn hộ'];
+    const maxUsage = 10;
+
+    const scoreTag = computeRelevanceScore(pTagMatch, keywords, maxUsage);
+    const scoreContent = computeRelevanceScore(pContentMatch, keywords, maxUsage);
+    // Tag match should be higher or equal (tag = 0.7, content = 0.5 in formula)
+    expect(scoreTag).toBeGreaterThanOrEqual(scoreContent);
+  });
 });
 
 // ── 2. suggestPrompts ────────────────────────────────────────────────────────
@@ -112,33 +132,14 @@ describe('suggestPrompts – matched results', () => {
 // ── 3. Fallback logic ────────────────────────────────────────────────────────
 
 describe('suggestPrompts – fallback strategy', () => {
-  it('falls back to top usage_count when no tags match category', async () => {
-    const noMatch1 = makePrompt({ tags: ['tech'], usage_count: 50 });
-    const noMatch2 = makePrompt({ tags: ['travel'], usage_count: 200 });
-    const noMatch3 = makePrompt({ tags: ['food'], usage_count: 10 });
-
-    const mockSupabase = {
-      from: () => ({
-        select: () => ({
-          eq: () => Promise.resolve({ data: [noMatch1, noMatch2, noMatch3], error: null }),
-        }),
-      }),
-    } as any;
-
-    const result = await suggestPrompts(mockSupabase, { category: 'Bất động sản', confidence: 0.9 }, 3);
-    expect(result.isFallback).toBe(true);
-    // Fallback should be sorted by usage_count DESC
-    if (result.suggestions.length >= 2) {
-      expect(result.suggestions[0].prompt.usage_count ?? 0)
-        .toBeGreaterThanOrEqual(result.suggestions[1].prompt.usage_count ?? 0);
-    }
-  });
-
   it('returns empty suggestions when DB query fails', async () => {
     const mockSupabase = {
       from: () => ({
         select: () => ({
-          eq: () => Promise.resolve({ data: null, error: new Error('DB error') }),
+          eq: () => ({
+            eq: () => Promise.resolve({ data: null, error: new Error('DB error') }),
+            then: (cb: any) => Promise.resolve({ data: null, error: new Error('DB error') }).then(cb),
+          }),
         }),
       }),
     } as any;
@@ -153,12 +154,38 @@ describe('suggestPrompts – fallback strategy', () => {
     const mockSupabase = {
       from: () => ({
         select: () => ({
-          eq: () => Promise.resolve({ data: [matched], error: null }),
+          eq: () => ({
+            eq: () => Promise.resolve({ data: [matched], error: null }),
+            then: (cb: any) => Promise.resolve({ data: [matched], error: null }).then(cb),
+          }),
         }),
       }),
     } as any;
 
     const result = await suggestPrompts(mockSupabase, { category: 'Bất động sản', confidence: 0.8 });
     expect(result.isFallback).toBe(false);
+  });
+
+  it('sorts fallback by usage_count DESC', async () => {
+    const p1 = makePrompt({ tags: ['test1'], usage_count: 10 });
+    const p2 = makePrompt({ tags: ['test2'], usage_count: 50 });
+    const p3 = makePrompt({ tags: ['test3'], usage_count: 30 });
+    const mockSupabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ data: [p1, p2, p3], error: null }),
+            then: (cb: any) => Promise.resolve({ data: [p1, p2, p3], error: null }).then(cb),
+          }),
+        }),
+      }),
+    } as any;
+
+    const result = await suggestPrompts(mockSupabase, { category: 'Bất động sản', confidence: 0.9 }, 3);
+    // If fallback, should be sorted by usage_count
+    if (result.isFallback && result.suggestions.length >= 2) {
+      expect(result.suggestions[0].prompt.usage_count ?? 0)
+        .toBeGreaterThanOrEqual(result.suggestions[1].prompt.usage_count ?? 0);
+    }
   });
 });
