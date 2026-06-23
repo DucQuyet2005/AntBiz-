@@ -233,18 +233,34 @@ const EditableText = ({
       }}
       className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
     >
-      <span className="whitespace-pre-wrap">
-        {value ? (
-          value
-        ) : isGeneratingAB ? (
-          <span className="text-gray-400 italic flex items-center gap-1.5">
-            <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-            {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
-          </span>
-        ) : (
-          <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
+      <div className="flex flex-col w-full">
+        <span className="whitespace-pre-wrap">
+          {value ? (
+            value
+          ) : isGeneratingAB ? (
+            <span className="text-gray-400 italic flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+              {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
+            </span>
+          ) : (
+            <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
+          )}
+        </span>
+        {isCaptionField && charLimit && value && (
+          <div className="flex flex-col gap-0.5 mt-1.5 border-t border-dashed border-gray-150 pt-1">
+            <div className={`text-[9px] text-right font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+              {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+            </div>
+            {value.length > charLimit && (
+              <div className="text-[8px] text-rose-600 font-extrabold text-right">
+                {language === 'vi' 
+                  ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
+                  : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
+              </div>
+            )}
+          </div>
         )}
-      </span>
+      </div>
       <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
         <Edit2 size={10} className="text-primary" />
       </span>
@@ -2702,13 +2718,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               {selectedPlatform === 'instagram' && <Instagram size={12} />}
                             </div>
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full select-none transition-colors duration-200 ${
-                              currentVal.length > (selectedPlatform === 'facebook' ? 63206 : selectedPlatform === 'threads' ? 5000 : 2200)
-                                ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {currentVal.length.toLocaleString()} / {(selectedPlatform === 'facebook' ? 63206 : selectedPlatform === 'threads' ? 5000 : 2200).toLocaleString()}
-                            </span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             {hasChanged && (
