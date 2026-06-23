@@ -139,12 +139,14 @@ const EditableText = ({
   variantId,
   field,
   value,
+  originalValue,
   textarea = false,
   className = ""
 }: {
   variantId: string;
   field: keyof SocialVariant;
   value: string;
+  originalValue?: string;
   textarea?: boolean;
   className?: string;
 }) => {
@@ -165,6 +167,7 @@ const EditableText = ({
     instagram: 2200
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
+  const hasChanged = originalValue !== undefined && originalValue !== "" && value !== originalValue;
 
   React.useEffect(() => {
     if (isEditing) {
@@ -194,8 +197,31 @@ const EditableText = ({
             />
             {isCaptionField && charLimit && (
               <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 pt-1">
-                <div className={`text-[9px] text-right font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                  {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                <div className="flex items-center justify-between mt-1">
+                  <div>
+                    {hasChanged && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const confirmMsg = language === 'vi'
+                            ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                            : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                          if (window.confirm(confirmMsg)) {
+                            handleUpdateVariantField(variantId, field, originalValue || '');
+                          }
+                        }}
+                        className="flex items-center gap-1 text-[9px] font-extrabold text-rose-600 hover:text-rose-700 transition-colors select-none cursor-pointer border-none bg-transparent p-0"
+                        title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                      >
+                        <RotateCcw size={10} />
+                        {language === 'vi' ? 'Về bản gốc AI' : 'Revert to original AI'}
+                      </button>
+                    )}
+                  </div>
+                  <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                  </div>
                 </div>
                 {value.length > charLimit && (
                   <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -248,8 +274,31 @@ const EditableText = ({
         </span>
         {isCaptionField && charLimit && value && (
           <div className="flex flex-col gap-0.5 mt-1.5 border-t border-dashed border-gray-150 pt-1">
-            <div className={`text-[9px] text-right font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-              {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+            <div className="flex items-center justify-between mt-1">
+              <div>
+                {hasChanged && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const confirmMsg = language === 'vi'
+                        ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
+                        : 'Are you sure you want to discard your edits and revert to the original AI content?';
+                      if (window.confirm(confirmMsg)) {
+                        handleUpdateVariantField(variantId, field, originalValue || '');
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[9px] font-extrabold text-rose-600 hover:text-rose-700 transition-colors select-none cursor-pointer border-none bg-transparent p-0"
+                    title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
+                  >
+                    <RotateCcw size={10} />
+                    {language === 'vi' ? 'Về bản gốc AI' : 'Revert to original AI'}
+                  </button>
+                )}
+              </div>
+              <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+                {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+              </div>
             </div>
             {value.length > charLimit && (
               <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -448,6 +497,22 @@ export default function AiCreatorView() {
             }
           }
         }
+
+        // Stream finished successfully, save the original text
+        setVariants((prev) =>
+          prev.map((v) => {
+            if (v.id === variantId) {
+              const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                selectedPlatform === 'threads' ? 'originalThreads' :
+                  'originalInstagram';
+              return {
+                ...v,
+                [originalField]: accumulated,
+              };
+            }
+            return v;
+          })
+        );
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
         console.error(`Error streaming variant ${variantId}:`, err);
@@ -559,6 +624,22 @@ export default function AiCreatorView() {
           }
         }
       }
+
+      // Stream finished successfully, save the original text
+      setVariants((prev) =>
+        prev.map((v) => {
+          if (v.id === variantId) {
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
+            return {
+              ...v,
+              [originalField]: accumulated,
+            };
+          }
+          return v;
+        })
+      );
     } catch (err) {
       console.error('Error regenerating variant:', err);
     } finally {
@@ -2813,6 +2894,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                         variantId={v.id}
                                         field="threads"
                                         value={v.threads}
+                                        originalValue={v.originalThreads}
                                         textarea
                                       />
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
@@ -2939,6 +3021,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     variantId={v.id}
                                     field="instagram"
                                     value={v.instagram}
+                                    originalValue={v.originalInstagram}
                                     textarea
                                   />
                                 </div>
@@ -2990,6 +3073,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     variantId={v.id}
                                     field="facebook"
                                     value={v.facebook}
+                                    originalValue={v.originalFacebook}
                                     textarea
                                   />
                                 </div>
@@ -3184,7 +3268,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 )}
                                 {toggles.showDescription && (
                                   <div className="whitespace-pre-wrap">
-                                    <EditableText variantId={v.id} field="threads" value={v.threads} textarea />
+                                    <EditableText variantId={v.id} field="threads" value={v.threads} originalValue={v.originalThreads} textarea />
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle">1/2</span>
                                   </div>
                                 )}
@@ -3259,7 +3343,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
                                 <span className="font-extrabold mr-1.5">antbiz_official</span>
-                                <EditableText variantId={v.id} field="instagram" value={v.instagram} textarea />
+                                <EditableText variantId={v.id} field="instagram" value={v.instagram} originalValue={v.originalInstagram} textarea />
                               </div>
                             )}
                             {toggles.showAuthor && (
@@ -3301,7 +3385,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             )}
                             {toggles.showDescription && (
                               <div className="whitespace-pre-wrap">
-                                <EditableText variantId={v.id} field="facebook" value={v.facebook} textarea />
+                                <EditableText variantId={v.id} field="facebook" value={v.facebook} originalValue={v.originalFacebook} textarea />
                               </div>
                             )}
                             {(toggles.showAuthor || toggles.showTags) && (
