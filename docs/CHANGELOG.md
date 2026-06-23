@@ -13,6 +13,12 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Bản dịch hóa hai hành động `publish_post_success` và `publish_post_failed` sang ngôn ngữ tự nhiên hiển thị tương ứng ở cả hai ngôn ngữ ("Đăng bài thành công"/"Đăng bài thất bại" và "Publish Post Success"/"Publish Post Failed").
   - Gán icon trực quan tương ứng: `CheckCircle2` (màu xanh lá) cho đăng bài thành công và `XCircle` (màu đỏ) cho đăng bài thất bại, thay thế cho icon `Activity` (nhịp tim/pulse) mặc định.
   - Bổ sung hai hành động này vào bộ lọc danh sách thả xuống ở trang Nhật ký Hệ thống (`app/(dashboard)/admin/audit-logs/page.tsx`).
+- **Tự động lưu trữ đăng nhập cuối (last_login_at)**:
+  - Lưu thời điểm đăng nhập cuối (`last_login_at`) vào bảng `users` khi người dùng đăng nhập thành công qua mật khẩu hoặc Google OAuth.
+  - Hiển thị đầy đủ giờ, phút, và giây (`HH:MM:SS DD/MM/YYYY`) thay vì chỉ hiển thị ngày ở cột Đăng nhập cuối trên trang Quản lý người dùng (`app/(dashboard)/admin/users/page.tsx`).
+- **Tự động thêm @gmail.com khi nhập thiếu**:
+  - Tự động bổ sung hậu tố `@gmail.com` nếu người dùng nhập email đăng nhập thiếu phần `@`.
+  - Chuyển đổi thẻ input Email từ `type="email"` sang `type="text"` để bypass cơ chế chặn bubble mặc định của trình duyệt và cho phép xử lý tự động này chạy trơn tru.
 
 ## [1.3.1] - 2026-06-23
 

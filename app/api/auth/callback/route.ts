@@ -28,11 +28,17 @@ export async function GET(request: Request) {
             id: data.user.id,
             email: data.user.email || '',
             role: 'marketer_content',
-            status: 'active'
+            status: 'active',
+            last_login_at: new Date().toISOString()
           })
       } else if (profile.status === 'locked') {
         await supabase.auth.signOut()
         return NextResponse.redirect(`${origin}/login?error=locked`)
+      } else {
+        await supabase
+          .from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', data.user.id)
       }
 
       return NextResponse.redirect(`${origin}${next}`)

@@ -148,6 +148,18 @@ export default function AdminUsersPage() {
     }
   };
 
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return t('admin.neverLoggedIn');
+    const d = new Date(dateStr);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${hh}:${mm}:${ss} ${dd}/${mo}/${yyyy}`;
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header Actions & Filters */}
@@ -271,7 +283,7 @@ export default function AdminUsersPage() {
                         {new Date(user.created_at).toLocaleDateString('vi-VN')}
                       </td>
                       <td className="p-5 text-sm text-slate-500 font-medium">
-                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : t('admin.neverLoggedIn')}
+                        {formatDateTime(user.last_login_at)}
                       </td>
                       <td className="p-5 pr-6 text-right">
                         <button 
