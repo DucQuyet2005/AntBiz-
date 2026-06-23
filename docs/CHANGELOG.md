@@ -4,6 +4,18 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.3.3] - 2026-06-23
+
+### Changed
+- **Đồng bộ hóa quy trình xuất dữ liệu CSV**:
+  - Chuyển đổi cơ chế xuất file CSV sang xử lý đồng bộ (synchronous execution) trong API `/api/captions/export` để đảm bảo gửi email và tải về hoạt động tin cậy 100% khi deploy (Vercel/VPS) mà không lo ngại tiến trình nền bị giải phóng.
+  - Thay thế endpoint tải file CSV mẫu bằng endpoint mới `/api/captions/export/download` cho phép truy xuất và tạo nội dung CSV theo đúng bộ lọc của job đã lưu.
+
+### Removed
+- **Xóa bỏ tính năng mô phỏng Demo Complete**:
+  - Gỡ bỏ hoàn toàn nút bấm "Demo Complete" trên giao diện tab Lịch sử (tab History) của `ArchiveView.tsx` và hàm `handleMockCompleteJob` ở client-side.
+  - Xóa bỏ API Route POST mock hoàn tất công việc `/api/export-jobs` và toàn bộ thư mục chứa các route test cũ tại `app/api/test/` (`complete-job` và `download-csv`).
+
 ## [1.3.2] - 2026-06-23
 
 ### Added
@@ -15,6 +27,15 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Cập nhật `app/(dashboard)/layout.tsx` để ghi log chi tiết trạng thái đăng ký kênh Realtime (`SUBSCRIBED`, `CLOSED`, `CHANNEL_ERROR`), hỗ trợ quá trình phát hiện lỗi kết nối WebSocket trên VPS.
 - **Tối ưu hóa hiệu năng truy vấn thông báo (Parallel Queries)**:
   - Cải tiến chạy song song các truy vấn cơ sở dữ liệu bằng `Promise.all` tại Client (`components/Header.tsx`) và API Route (`app/api/notifications/route.ts`), giúp giảm một nửa thời gian phản hồi bằng cách loại bỏ các bước chờ tuần tự (sequential network round-trips) khi kết nối với database Supabase từ VPS.
+- **Tối ưu hóa trải nghiệm Thay đổi trạng thái & Quyền người dùng (Optimistic UI & Non-blocking APIs)**:
+  - Loại bỏ từ khóa `await` đối với nhóm tác vụ phụ trong API cập nhật trạng thái (`[id]/status/route.ts`) và vai trò (`[id]/role/route.ts`) như gửi email và ghi nhật ký hệ thống, giúp API phản hồi ngay lập tức cho client mà không bị nghẽn (do SMTP mail server phản hồi chậm trên VPS).
+  - Áp dụng kỹ thuật **Optimistic UI** tại trang Quản lý người dùng (`admin/users/page.tsx`) giúp cập nhật trạng thái "Khóa/Mở khóa" và "Vai trò" lập tức trên màn hình ngay khi xác nhận mà không cần chờ đợi.
+  - Bổ sung cấu hình `{ cache: 'no-store' }` cho API tải danh sách người dùng tại client, giải quyết triệt để lỗi trình duyệt lưu cache kết quả cũ dẫn tới giao diện không đổi sau khi thực hiện thao tác.
+- **Ẩn nút Thêm bài viết tại giao diện Admin & tài khoản Admin (Header Optimization)**:
+  - Cập nhật `components/Header.tsx` tự động ẩn nút "Thêm bài viết" (`Add Post`) khi ở các trang quản trị (đường dẫn bắt đầu bằng `/admin`) hoặc khi tài khoản đăng nhập có vai trò là `admin` (`role === 'admin'`), mang lại sự nhất quán với giao diện Sidebar.
+- **Gom nhóm bài viết lên lịch sát nhau trên Lịch nội dung (Calendar Grouping)**:
+  - Cải tiến logic hiển thị tại `components/views/ContentCalendarView.tsx` bằng thuật toán gom nhóm khoảng trượt (sliding window 60 phút). Bất kỳ bài đăng nào có thời gian lên lịch cách nhau dưới 60 phút trong ngày sẽ tự động được gộp chung vào một ô xếp chồng (stacked group), ngăn chặn triệt để lỗi chồng chéo giao diện (overlapping card) và giúp trải nghiệm hiển thị trực quan hơn.
+  - Sử dụng mã màu đục (`bg-[#F0F1FD]`) cho thẻ gộp chính để che khuất phần viền dưới của các lớp bài đăng xếp chồng bên dưới, giúp phần gộp chỉ hiển thị phần lồi ra ở trên cùng của thẻ mà không bị lộ ở dưới.
 - **Hiển thị giờ phút của thông báo**:
   - Cập nhật hàm `formatTimeAgo` ở cả trang xem thông báo (`app/(dashboard)/notifications/page.tsx`) và danh sách thông báo thả xuống ở Header (`components/Header.tsx`) để hiển thị kèm giờ và phút của thông báo (Ví dụ: `14:30 - 2 giờ trước` hoặc `10:15 22/06 - 3 ngày trước`).
 - **Việt hóa và bổ sung Icon cho hoạt động Đăng bài trên Nhật ký Hệ thống**:

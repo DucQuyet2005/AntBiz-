@@ -43,7 +43,9 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(search)}&role=${roleFilter}&status=${statusFilter}&page=${page}&limit=10`);
+      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(search)}&role=${roleFilter}&status=${statusFilter}&page=${page}&limit=10`, {
+        cache: 'no-store'
+      });
       if (!res.ok) throw new Error('Failed to fetch users');
       const json = await res.json();
       setUsers(json.data || []);
@@ -77,6 +79,11 @@ export default function AdminUsersPage() {
     // Tắt modal lập tức
     setRoleModal({ isOpen: false, user: null, newRole: '' });
 
+    const originalUsers = [...users];
+
+    // Optimistic UI: Cập nhật quyền lập tức trên giao diện
+    setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, role: targetRole } : u));
+
     try {
       const res = await fetch(`/api/admin/users/${targetUser.id}/role`, {
         method: 'PUT',
@@ -90,6 +97,7 @@ export default function AdminUsersPage() {
       setToast({ isOpen: true, message: `Đã đổi quyền cho ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
+      setUsers(originalUsers);
       setToast({ isOpen: true, message: err.message, type: 'error' });
     }
   };
@@ -113,6 +121,11 @@ export default function AdminUsersPage() {
     // Tắt modal lập tức
     setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' });
 
+    const originalUsers = [...users];
+
+    // Optimistic UI: Cập nhật trạng thái lập tức trên giao diện
+    setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, status: targetStatus } : u));
+
     try {
       const res = await fetch(`/api/admin/users/${targetUser.id}/status`, {
         method: 'PUT',
@@ -126,6 +139,7 @@ export default function AdminUsersPage() {
       setToast({ isOpen: true, message: `Đã ${targetStatus === 'locked' ? 'khóa' : 'mở khóa'} tài khoản ${targetUser.email}`, type: 'success' });
       fetchUsers();
     } catch (err: any) {
+      setUsers(originalUsers);
       setToast({ isOpen: true, message: err.message, type: 'error' });
     }
   };

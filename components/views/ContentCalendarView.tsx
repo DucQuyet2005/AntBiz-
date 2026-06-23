@@ -712,32 +712,56 @@ export default function ContentCalendarView() {
 
                   {/* Post Event Cards */}
                   {(() => {
-                    const grouped: { [key: string]: any[] } = {};
+                    // 1. Phân loại posts theo từng ngày trong tuần (0 đến 6)
+                    const dayPostsArray: any[][] = Array.from({ length: 7 }, () => []);
                     
                     filteredPosts.forEach(post => {
                       const pos = getDayAndPosition(post.scheduled_at, currentWeekStart);
                       if (!pos) return;
-                      const key = `${pos.dayIndex}-${pos.hours}`;
-                      if (!grouped[key]) {
-                        grouped[key] = [];
-                      }
-                      grouped[key].push({
+                      dayPostsArray[pos.dayIndex].push({
                         ...post,
                         pos
                       });
                     });
 
-                    return Object.keys(grouped).map(key => {
-                      const groupPosts = grouped[key];
-                      groupPosts.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                    // 2. Gom nhóm các post trong cùng khoảng 1 giờ (60 phút) của từng ngày
+                    const allGroups: any[][] = [];
+                    
+                    dayPostsArray.forEach((dayPosts) => {
+                      if (dayPosts.length === 0) return;
                       
+                      // Sắp xếp các bài đăng theo thời gian tăng dần
+                      dayPosts.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                      
+                      let currentGroup: any[] = [dayPosts[0]];
+                      
+                      for (let i = 1; i < dayPosts.length; i++) {
+                        const prevPost = currentGroup[currentGroup.length - 1];
+                        const currPost = dayPosts[i];
+                        
+                        const prevTime = new Date(prevPost.scheduled_at).getTime();
+                        const currTime = new Date(currPost.scheduled_at).getTime();
+                        
+                        // Nếu khoảng cách giữa bài đăng này và bài đăng trước đó trong nhóm <= 60 phút
+                        if (currTime - prevTime < 3600000) {
+                          currentGroup.push(currPost);
+                        } else {
+                          allGroups.push(currentGroup);
+                          currentGroup = [currPost];
+                        }
+                      }
+                      allGroups.push(currentGroup);
+                    });
+
+                    // 3. Render các nhóm bài đăng
+                    return allGroups.map((groupPosts) => {
                       const count = groupPosts.length;
                       const firstPost = groupPosts[0];
-                      const { dayIndex, hours } = firstPost.pos;
+                      const { dayIndex, hours, minutes } = firstPost.pos;
                       
                       if (count === 1) {
                         const post = firstPost;
-                        const { minutes, timeStr } = post.pos;
+                        const { timeStr } = post.pos;
                         const topOffset = hours * 60 + minutes;
                         const cardHeight = 54;
                         
@@ -821,7 +845,7 @@ export default function ContentCalendarView() {
                                     <Sparkles size={11} className="animate-pulse" />
                                   </div>
                                   <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-                                    {language === 'vi' ? 'Bản mo phỏng A/B' : 'A/B Mock Preview'}
+                                    {language === 'vi' ? 'Bản mô phỏng A/B' : 'A/B Mock Preview'}
                                   </span>
                                 </div>
                                 <span className={`text-[8px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${
@@ -953,20 +977,20 @@ export default function ContentCalendarView() {
                           </div>
                         );
                       } else {
-                        // Stacked layout for multiple posts in same hour
-                        const topOffset = hours * 60;
+                        // Stacked layout for multiple posts in same interval
+                        const topOffset = hours * 60 + minutes;
                         const cardHeight = 54;
                         const dateOfPost = new Date(firstPost.scheduled_at);
                         const uniquePlatforms = Array.from(new Set(groupPosts.map(gp => gp.platform?.toLowerCase())));
 
                         return (
-                          <React.Fragment key={`multiple-${dayIndex}-${hours}`}>
+                          <React.Fragment key={`multiple-${dayIndex}-${hours}-${minutes}`}>
                             {/* Render helper layers underneath to show stacked deck of cards (only extending upwards) */}
                             {Array.from({ length: Math.min(count - 1, 3) }).map((_, i) => {
                               const layerIndex = i + 1;
                               return (
                                 <div
-                                  key={`layer-${dayIndex}-${hours}-${layerIndex}`}
+                                  key={`layer-${dayIndex}-${hours}-${minutes}-${layerIndex}`}
                                   style={{
                                     gridColumnStart: dayIndex + 1,
                                     gridColumnEnd: dayIndex + 2,
@@ -991,7 +1015,7 @@ export default function ContentCalendarView() {
                                 height: `${cardHeight}px`,
                                 zIndex: 20
                               }}
-                              className="absolute left-1 right-1 rounded-2xl p-2 bg-primary/8 border border-primary/20 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-primary/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all group"
+                              className="absolute left-1 right-1 rounded-2xl p-2 bg-[#F0F1FD] border border-primary/20 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-primary/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all group"
                             >
                               <div className="flex items-center justify-between gap-1 select-none">
                                 <span className="whitespace-nowrap text-[8px] font-black text-primary bg-primary/20 px-1.5 py-0.5 rounded-md">

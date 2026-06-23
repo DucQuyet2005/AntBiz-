@@ -58,6 +58,20 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const supabase = createClient();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    fetchRole();
+  }, [supabase]);
 
   // Debounce API calls when search query changes
   useEffect(() => {
@@ -438,7 +452,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-        {!isAdminRoute && (
+        {!isAdminRoute && userRole !== 'admin' && (
           <button
             onClick={() => {
               router.push('/ai-creator');
