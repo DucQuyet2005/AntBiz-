@@ -158,6 +158,14 @@ const EditableText = ({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
+  const captionLimits = {
+    facebook: 63206,
+    threads: 5000,
+    instagram: 2200
+  };
+  const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
+
   React.useEffect(() => {
     if (isEditing) {
       if (textarea && textareaRef.current) {
@@ -171,18 +179,34 @@ const EditableText = ({
     return (
       <div className="w-full relative">
         {textarea ? (
-          <textarea
-            ref={textareaRef}
-            autoFocus
-            value={value}
-            onChange={(e) => {
-              handleUpdateVariantField(variantId, field, e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onBlur={() => setEditState(null)}
-            className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
-          />
+          <div className="flex flex-col w-full">
+            <textarea
+              ref={textareaRef}
+              autoFocus
+              value={value}
+              onChange={(e) => {
+                handleUpdateVariantField(variantId, field, e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onBlur={() => setEditState(null)}
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+            />
+            {isCaptionField && charLimit && (
+              <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 pt-1">
+                <div className={`text-[9px] text-right font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
+                  {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                </div>
+                {value.length > charLimit && (
+                  <div className="text-[8px] text-rose-600 font-extrabold text-right">
+                    {language === 'vi' 
+                      ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
+                      : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <input
             ref={inputRef}
@@ -2678,6 +2702,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               {selectedPlatform === 'instagram' && <Instagram size={12} />}
                             </div>
                             <span className="text-xs font-extrabold text-text">{platformLabel}</span>
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full select-none transition-colors duration-200 ${
+                              currentVal.length > (selectedPlatform === 'facebook' ? 63206 : selectedPlatform === 'threads' ? 5000 : 2200)
+                                ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {currentVal.length.toLocaleString()} / {(selectedPlatform === 'facebook' ? 63206 : selectedPlatform === 'threads' ? 5000 : 2200).toLocaleString()}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             {hasChanged && (
