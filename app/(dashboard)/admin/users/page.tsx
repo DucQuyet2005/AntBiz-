@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Shield, ShieldAlert, Lock, Unlock, MoreVertical, X, Loader2 } from 'lucide-react';
+import { Search, Shield, ShieldAlert, Lock, Unlock, MoreVertical, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
@@ -17,7 +17,7 @@ type User = {
 };
 
 export default function AdminUsersPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
   
   // Toast state
   const [toast, setToast] = useState<{ isOpen: boolean; message: string; type: PopupType }>({
@@ -47,6 +48,7 @@ export default function AdminUsersPage() {
       const json = await res.json();
       setUsers(json.data || []);
       setTotalPages(json.meta?.totalPages || 1);
+      setTotalUsers(json.meta?.total || 0);
     } catch (err) {
       setToast({ isOpen: true, message: 'Lỗi tải danh sách người dùng', type: 'error' });
     } finally {
@@ -176,7 +178,14 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Users List */}
-      <div className="bg-white rounded-[20px] border border-slate-200/60 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[20px] border border-slate-200/60 shadow-sm overflow-hidden relative">
+        {/* Loading overlay when refreshing and we already have data */}
+        {loading && users.length > 0 && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -190,83 +199,133 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="p-10 text-center text-slate-400">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
-                    {t('admin.loading')}
-                  </td>
-                </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-10 text-center text-slate-500 font-medium">
-                    {t('admin.noUsersFound')}
-                  </td>
-                </tr>
-              ) : (
-                users.map(user => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="p-5 pl-6 font-bold text-slate-800 text-sm">
-                      {user.email}
+              {loading && users.length === 0 ? (
+                Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse h-[61px]">
+                    <td className="p-5 pl-6">
+                      <div className="h-4 bg-slate-200 rounded w-48"></div>
                     </td>
                     <td className="p-5">
-                      <select 
-                        value={user.role}
-                        onChange={(e) => handleRoleChangeRequest(user, e.target.value)}
-                        className="bg-transparent border border-transparent hover:border-slate-300 rounded-lg px-2 py-1 -ml-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
-                      >
-                        <option value="admin">{t('admin.roleAdmin')}</option>
-                        <option value="marketer_full">{t('admin.roleMarketerFull')}</option>
-                        <option value="marketer_content">{t('admin.roleMarketerContent')}</option>
-                      </select>
+                      <div className="h-8 bg-slate-200 rounded-lg w-32"></div>
                     </td>
                     <td className="p-5">
-                      {getStatusBadge(user.status)}
+                      <div className="h-6 bg-slate-200 rounded-md w-16"></div>
                     </td>
-                    <td className="p-5 text-sm text-slate-500 font-medium">
-                      {new Date(user.created_at).toLocaleDateString('vi-VN')}
+                    <td className="p-5">
+                      <div className="h-4 bg-slate-200 rounded w-20"></div>
                     </td>
-                    <td className="p-5 text-sm text-slate-500 font-medium">
-                      {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : t('admin.neverLoggedIn')}
+                    <td className="p-5">
+                      <div className="h-4 bg-slate-200 rounded w-24"></div>
                     </td>
                     <td className="p-5 pr-6 text-right">
-                      <button 
-                        onClick={() => handleStatusToggle(user)}
-                        className={`p-2 rounded-xl transition-all ${user.status === 'locked' ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}`}
-                        title={user.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                      >
-                        {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}
-                      </button>
+                      <div className="h-8 bg-slate-200 rounded-xl w-8 ml-auto"></div>
                     </td>
                   </tr>
                 ))
+              ) : users.length === 0 ? (
+                <>
+                  <tr className="h-[61px]">
+                    <td colSpan={6} className="p-10 text-center text-slate-500 font-medium">
+                      {t('admin.noUsersFound')}
+                    </td>
+                  </tr>
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <tr key={`empty-${i}`} className="h-[61px]">
+                      <td colSpan={6} className="p-5">&nbsp;</td>
+                    </tr>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {users.map(user => (
+                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group h-[61px]">
+                      <td className="p-5 pl-6 font-bold text-slate-800 text-sm">
+                        {user.email}
+                      </td>
+                      <td className="p-5">
+                        <select 
+                          value={user.role}
+                          onChange={(e) => handleRoleChangeRequest(user, e.target.value)}
+                          className="bg-transparent border border-transparent hover:border-slate-300 rounded-lg px-2 py-1 -ml-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
+                        >
+                          <option value="admin">{t('admin.roleAdmin')}</option>
+                          <option value="marketer_full">{t('admin.roleMarketerFull')}</option>
+                          <option value="marketer_content">{t('admin.roleMarketerContent')}</option>
+                        </select>
+                      </td>
+                      <td className="p-5">
+                        {getStatusBadge(user.status)}
+                      </td>
+                      <td className="p-5 text-sm text-slate-500 font-medium">
+                        {new Date(user.created_at).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="p-5 text-sm text-slate-500 font-medium">
+                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : t('admin.neverLoggedIn')}
+                      </td>
+                      <td className="p-5 pr-6 text-right">
+                        <button 
+                          onClick={() => handleStatusToggle(user)}
+                          className={`p-2 rounded-xl transition-all ${user.status === 'locked' ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}`}
+                          title={user.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                        >
+                          {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {Array.from({ length: Math.max(0, 10 - users.length) }).map((_, i) => (
+                    <tr key={`empty-${i}`} className="h-[61px]">
+                      <td colSpan={6} className="p-5">&nbsp;</td>
+                    </tr>
+                  ))}
+                </>
               )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div className="border-t border-slate-100 p-4 flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate-500 ml-2">
-            {t('admin.pageInfo').replace('{page}', page.toString()).replace('{totalPages}', (totalPages || 1).toString())}
-          </span>
-          <div className="flex gap-2">
-            <button 
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-lg transition-colors"
-            >
-              {t('admin.prevPage')}
-            </button>
-            <button 
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => p + 1)}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-lg transition-colors"
-            >
-              {t('admin.nextPage')}
-            </button>
+        {totalPages > 1 && (
+          <div className="border-t border-slate-100 p-6 flex items-center justify-between select-none">
+            <div className="text-xs text-slate-500 font-bold ml-2">
+              {language === 'vi' 
+                ? `Hiển thị ${totalUsers === 0 ? 0 : (page - 1) * 10 + 1} - ${Math.min(page * 10, totalUsers)} trong tổng số ${totalUsers} người dùng`
+                : `Showing ${totalUsers === 0 ? 0 : (page - 1) * 10 + 1} - ${Math.min(page * 10, totalUsers)} of ${totalUsers} users`
+              }
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                    page === p
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={page === totalPages}
+                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Role Change Modal */}

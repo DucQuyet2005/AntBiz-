@@ -4,6 +4,33 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.2.9] - 2026-06-23
+
+### Added
+- **Trang Đổi mật khẩu độc lập (`/profile/change-password`)**:
+  - Tạo route mới `/profile/change-password` sử dụng view `ChangePasswordView` để xử lý đổi mật khẩu riêng biệt thay vì tích hợp chung một trang.
+  - Cung cấp form đổi mật khẩu với đầy đủ các trường: Mật khẩu hiện tại, Mật khẩu mới, Xác nhận mật khẩu mới.
+  - Tích hợp bộ kiểm tra độ mạnh của mật khẩu (real-time password strength validation) và check khớp mật khẩu xác nhận.
+  - Hỗ trợ ẩn/hiện mật khẩu bằng icon `Eye`/`EyeOff`.
+  - Tự động đăng xuất sau 3 giây khi đổi thành công và redirect về trang đăng nhập với thông báo khôi phục mật khẩu thành công (`/login?reset=success`).
+- **API đổi mật khẩu có xác minh (`POST /api/users/me/change-password`)**:
+  - Tạo endpoint API `POST /api/users/me/change-password` hỗ trợ xác minh mật khẩu hiện tại thông qua Supabase Auth.
+  - Cập nhật mật khẩu mới và gọi `signOut(user.id, 'global')` qua Supabase Admin Client để huỷ toàn bộ session/refresh token trên mọi thiết bị.
+  - Gửi email xác nhận thay đổi mật khẩu thành công đến hòm thư người dùng qua SMTP (sử dụng thư viện Nodemailer).
+
+### Changed
+- **Nút "Đổi mật khẩu tài khoản" trên Profile**:
+  - Tạo nút bấm "Đổi mật khẩu tài khoản" (sử dụng icon `Key`) nằm gọn gàng bên dưới Avatar và phần Vai trò / Trạng thái ở thẻ thông tin cột trái của trang cá nhân.
+- **Đồng bộ hóa cảnh báo thành `PopupDialog`**:
+  - Loại bỏ toàn bộ các khối thông báo alert cũ trên trang Profile và đổi mật khẩu.
+  - Thay thế bằng component `PopupDialog` (dạng toast trượt ở góc dưới bên phải) cho tất cả các hành động: cập nhật thông tin cá nhân thành công, lỗi tải ảnh đại diện lên bộ nhớ lưu trữ, cảnh báo điều kiện mật khẩu không thoả mãn, và đổi mật khẩu thành công.
+
+### Fixed
+- **Sửa lỗi crash build và 404 do xung đột Middleware**:
+  - Khôi phục file cấu hình định tuyến bắt buộc `proxy.ts` (Next.js 16) từ Git.
+  - Đổi tên file `middleware.ts` (file backup/log hoạt động của người dùng) thành `middleware-history.ts` ở thư mục gốc để tránh xung đột cấu hình gây crash Turbopack biên dịch.
+  - Sửa đổi tham số hàm `POST` của change-password API route từ `NextRequest` thành `Request` để vượt qua kiểm tra kiểu TypeScript của Vitest.
+
 ## [1.2.8] - 2026-06-22
 
 ### Added

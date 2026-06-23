@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Loader2, Sparkles, Upload, X, User, Briefcase, Mail, Shield, UserCheck, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Check, Loader2, Sparkles, Upload, X, User, Briefcase, Mail, Shield, UserCheck, ChevronRight, Key, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 /* ──────────────────────────────────────────
    1. STATIC PARTICLE POSITION DATA
@@ -653,6 +655,11 @@ export default function ProfileView() {
   const [showDialog,   setShowDialog]   = useState(false);
   const [dialogTab,    setDialogTab]    = useState<'effects' | 'bases'>('effects');
 
+  // Popup Dialog state
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType }>({
+    isOpen: false, message: '', type: 'info'
+  });
+
   useEffect(() => {
     (async () => {
       try {
@@ -702,11 +709,17 @@ export default function ProfileView() {
       const ext  = file.name.split('.').pop() || 'png';
       const path = `${userId}/avatar.${ext}`;
       const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-      if (error) { setUploadError('Upload thất bại: ' + error.message); return; }
+      if (error) {
+        setUploadError('Upload thất bại: ' + error.message);
+        setPopup({ isOpen: true, message: 'Upload thất bại: ' + error.message, type: 'error' });
+        return;
+      }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       setAvatarUrl(data.publicUrl + `?t=${Date.now()}`);
+      setPopup({ isOpen: true, message: 'Tải lên ảnh đại diện thành công.', type: 'success' });
     } catch {
       setUploadError('Lỗi upload, vui lòng thử lại.');
+      setPopup({ isOpen: true, message: 'Lỗi upload, vui lòng thử lại.', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -716,12 +729,13 @@ export default function ProfileView() {
     e.preventDefault();
     if (!userId) return;
     setIsSaving(true);
-    setSaveSuccess(false);
     try {
       // Lưu avatar URL vào users table
-      await supabase.from('users').update({ avatars: avatarUrl }).eq('id', userId);
+      const { error: userTableError } = await supabase.from('users').update({ avatars: avatarUrl }).eq('id', userId);
+      if (userTableError) throw userTableError;
+
       // Lưu frame, effect, base vào user_metadata (sync qua Supabase Auth → hoạt động mọi thiết bị)
-      await supabase.auth.updateUser({
+      const { error: authUpdateError } = await supabase.auth.updateUser({
         data: {
           full_name: fullName,
           department,
@@ -730,8 +744,11 @@ export default function ProfileView() {
           avatar_base: avatarBase,
         }
       });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      if (authUpdateError) throw authUpdateError;
+
+      setPopup({ isOpen: true, message: 'Cập nhật thông tin cá nhân thành công.', type: 'success' });
+    } catch (err: any) {
+      setPopup({ isOpen: true, message: err.message || 'Lỗi lưu thông tin cá nhân.', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -794,6 +811,15 @@ export default function ProfileView() {
                 <span className={`font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px] ${status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{status}</span>
               </div>
             </div>
+
+            {/* Đổi mật khẩu button */}
+            <Link
+              href="/profile/change-password"
+              className="mt-6 w-full py-3 px-4 border border-gray-200 hover:border-primary/50 hover:bg-primary/5 text-slate-700 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <Key size={14} />
+              <span>Đổi mật khẩu tài khoản</span>
+            </Link>
           </div>
         </div>
 
@@ -960,17 +986,15 @@ export default function ProfileView() {
               {isSaving ? <><Loader2 size={14} className="animate-spin" />{t('profile.saving')}</> : <><Sparkles size={14} className="animate-pulse" />{t('profile.saveChanges')}</>}
             </button>
           </div>
-
-          <AnimatePresence>
-            {saveSuccess && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-800 text-xs font-semibold flex items-center gap-2 justify-center">
-                ✓ {t('profile.saved')}
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </form>
+
+      <PopupDialog
+        isOpen={popup.isOpen}
+        onClose={() => setPopup(prev => ({ ...prev, isOpen: false }))}
+        message={popup.message}
+        type={popup.type}
+      />
 
       {/* Effect Picker Dialog */}
       <EffectPickerDialog

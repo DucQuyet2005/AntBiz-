@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { ShieldX } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -17,21 +18,89 @@ export default function DashboardLayout({
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
+  const [lockedReason, setLockedReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkUser = async () => {
+    let isMounted = true;
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const forceLogout = async (reason?: string) => {
+      if (!isMounted) return;
+      sessionStorage.setItem('logging_out', 'true');
+      await supabase.auth.signOut();
+      const reasonParam = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+      window.location.replace(`/login?error=locked${reasonParam}`);
+    };
+
+    const showLockDialogThenLogout = (reason: string) => {
+      if (!isMounted) return;
+      // Show dialog overlay immediately
+      setLockedReason(reason);
+      // Auto-redirect after 8 seconds if user doesn't click
+      setTimeout(() => forceLogout(reason), 8000);
+    };
+
+    const initAuth = async () => {
       if (typeof window !== 'undefined' && sessionStorage.getItem('logging_out') === 'true') {
         return;
       }
+
       const { data: { user } } = await supabase.auth.getUser();
+      if (!isMounted) return;
+
       if (!user) {
-        router.replace('/');
-      } else {
-        setLoading(false);
+        window.location.replace('/');
+        return;
+      }
+
+      // Initial status check against DB (also fetch locked_reason)
+      const { data: profile } = await supabase
+        .from('users')
+        .select('status, locked_reason')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (!profile || profile.status === 'locked') {
+        await forceLogout(profile?.locked_reason ?? undefined);
+        return;
+      }
+
+      setLoading(false);
+
+      // 🔴 Supabase Realtime: subscribe to changes on THIS user's row
+      // Fires immediately when admin changes status to 'locked' — no polling needed
+      realtimeChannel = supabase
+        .channel(`user-status-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newRecord = payload.new as { status: string; locked_reason?: string };
+            if (newRecord.status === 'locked') {
+              showLockDialogThenLogout(newRecord.locked_reason || 'Vi phạm chính sách sử dụng.');
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    initAuth();
+
+    return () => {
+      isMounted = false;
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
       }
     };
-    checkUser();
-  }, [router, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editorSidebarHover, setEditorSidebarHover] = useState(false);
@@ -57,6 +126,47 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
+      {/* 🔴 Account Locked Dialog Overlay */}
+      <AnimatePresence>
+        {lockedReason && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col items-center gap-5 text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center">
+                <ShieldX className="w-8 h-8 text-rose-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-gray-900 mb-1">Tài khoản bị khóa</h2>
+                <p className="text-sm text-gray-500">Quản trị viên đã khóa tài khoản của bạn</p>
+              </div>
+              <div className="w-full bg-rose-50 border border-rose-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-1">Lý do</p>
+                <p className="text-sm text-rose-800 font-medium leading-relaxed">{lockedReason}</p>
+              </div>
+              <p className="text-xs text-gray-400">Bạn sẽ được đăng xuất tự động sau vài giây. Vui lòng liên hệ quản trị viên để được hỗ trợ.</p>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('logging_out', 'true');
+                  supabase.auth.signOut().then(() => {
+                    window.location.replace(`/login?error=locked&reason=${encodeURIComponent(lockedReason)}`);
+                  });
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors text-sm"
+              >
+                Đã hiểu, đăng xuất ngay
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {isLandingEditor ? (
         <>
           {/* Bulletproof CSS Hover Sidebar */}

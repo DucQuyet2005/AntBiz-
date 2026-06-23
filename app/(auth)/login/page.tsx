@@ -70,7 +70,11 @@ export default function LoginPage() {
       if (errorParam === "no_profile") {
         showToast("Tài khoản của bạn chưa được đồng bộ dữ liệu hệ thống (Public Schema). Vui lòng đăng ký lại.", "error");
       } else if (errorParam === "locked") {
-        showToast("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.", "error");
+        const reason = params.get("reason");
+        const message = reason
+          ? `Tài khoản của bạn đã bị khóa. Lý do: ${reason}`
+          : "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.";
+        showToast(message, "error");
       } else if (errorParam) {
         showToast(errorParam === "Could not authenticate user" ? "Xác thực thất bại. Vui lòng thử lại." : errorParam, "error");
       }
