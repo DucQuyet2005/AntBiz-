@@ -235,7 +235,7 @@ export const translations = {
       conversions: "Chuyển đổi",
       likes: "Lượt thích",
       comments: "Bình luận",
-      tabPosts: "Duyệt bài viết",
+      tabPosts: "Danh sách bài viết",
       tabCaptions: "Duyệt Caption",
       tabPreview: "Xem trước dữ liệu",
       tabHistory: "Lịch sử xuất bản",
