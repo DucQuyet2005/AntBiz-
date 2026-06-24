@@ -199,27 +199,7 @@ export default function ArchiveView() {
     }
   };
 
-  const handleMockCompleteJob = async (jobId: string) => {
-    try {
-      const res = await fetch('/api/export-jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobId }),
-      });
-      if (res.ok) {
-        showPopup(language === 'vi' ? 'Đã hoàn thành job xuất dữ liệu (Demo).' : 'Completed export job (Demo).', 'success');
-        fetchExportJobs();
-      } else {
-        const err = await res.json();
-        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'), 'error');
-      }
-    } catch (err) {
-      console.error('Error completing job:', err);
-      showPopup(language === 'vi' ? 'Có lỗi xảy ra khi hoàn tất job.' : 'An error occurred while completing job.', 'error');
-    }
-  };
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -717,14 +697,6 @@ export default function ArchiveView() {
                         {new Date(job.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        {job.status === 'pending' && (
-                          <button
-                            onClick={() => handleMockCompleteJob(job.id)}
-                            className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 underline"
-                          >
-                            Demo Complete
-                          </button>
-                        )}
                         {job.status === 'completed' && job.download_url ? (
                           <a
                             href={job.download_url}

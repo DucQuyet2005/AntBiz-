@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 
 import { headers, cookies } from 'next/headers'
@@ -14,7 +15,10 @@ export async function login(formData: FormData) {
     return { error: 'Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 3 phút.', isLockedOut: true }
   }
 
-  const email = formData.get('email') as string
+  let email = formData.get('email') as string
+  if (email && !email.includes('@')) {
+    email = `${email}@gmail.com`
+  }
   const password = formData.get('password') as string
 
   // Server-side validation
@@ -26,8 +30,8 @@ export async function login(formData: FormData) {
   const supabase = createClient()
 
   const { data: signInData, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+    email: validatedFields.data.email,
+    password: validatedFields.data.password,
   })
 
   if (error) {
@@ -53,8 +57,11 @@ export async function login(formData: FormData) {
     }
   }
 
+  // Sử dụng adminSupabase để bypass RLS (đặc biệt là policy update users chỉ cho phép admin)
+  const adminSupabase = createAdminClient()
+
   // Kiểm tra xem profile có tồn tại trong bảng public.users không
-  const { data: userProfile, error: profileError } = await supabase
+  const { data: userProfile, error: profileError } = await adminSupabase
     .from('users')
     .select('status')
     .eq('id', signInData.user.id)
@@ -62,13 +69,14 @@ export async function login(formData: FormData) {
 
   if (profileError || !userProfile) {
     // Nếu chưa có profile trong public.users (tài khoản tạo trước khi chạy schema), tự động tạo/đồng bộ
-    const { error: insertError } = await supabase
+    const { error: insertError } = await adminSupabase
       .from('users')
       .insert({
         id: signInData.user.id,
         email: signInData.user.email || '',
         role: 'marketer_content',
-        status: 'active'
+        status: 'active',
+        last_login_at: new Date().toISOString()
       })
 
     if (insertError) {
@@ -78,6 +86,12 @@ export async function login(formData: FormData) {
   } else if (userProfile.status === 'locked') {
     await supabase.auth.signOut()
     return { error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' }
+  } else {
+    // Cập nhật đăng nhập cuối
+    await adminSupabase
+      .from('users')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('id', signInData.user.id)
   }
 
   // Success: Clear lockout states
@@ -130,11 +144,12 @@ export async function signInWithGoogle() {
   const host = headersList.get('host')
   const protocol = headersList.get('x-forwarded-proto') || 'http'
   const origin = `${protocol}://${host}`
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/api/auth/callback`,
+      redirectTo: `${siteUrl}/api/auth/callback`,
     },
   })
 
