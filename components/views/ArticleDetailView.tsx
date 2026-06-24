@@ -689,18 +689,20 @@ export default function ArticleDetailView() {
                       : `Viewing historical checkpoint (${selectedCheckpoint.version}) from ${selectedCheckpoint.created_at}`}
                   </span>
                 </div>
-                <button
-                  onClick={handleRevert}
-                  disabled={reverting}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-[11px] font-extrabold shrink-0 disabled:opacity-50 cursor-pointer border-0"
-                >
-                  {reverting ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : (
-                    <RotateCcw size={12} />
-                  )}
-                  {language === 'vi' ? 'Khôi phục bản này' : 'Revert to this'}
-                </button>
+                {!isPublished && (
+                  <button
+                    onClick={handleRevert}
+                    disabled={reverting}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-[11px] font-extrabold shrink-0 disabled:opacity-50 cursor-pointer border-0"
+                  >
+                    {reverting ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={12} />
+                    )}
+                    {language === 'vi' ? 'Khôi phục bản này' : 'Revert to this'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -1195,7 +1197,6 @@ export default function ArticleDetailView() {
               {checkpoints.length > 0 ? (
                 checkpoints.map((cp) => {
                   const isViewing = selectedCheckpoint?.id === cp.id;
-                  const isActive = !selectedCheckpoint && cp.version === `v${checkpoints.length}`;
 
                   return (
                     <button
@@ -1212,12 +1213,6 @@ export default function ArticleDetailView() {
                         : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
                         }`}
                     >
-                      {isActive && (
-                        <div className="absolute top-0 right-0 bg-[#3F51B5] text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-bl select-none">
-                          {language === 'vi' ? 'Hiện tại' : 'Current'}
-                        </div>
-                      )}
-
                       <div className="flex items-center justify-between">
                         <span className={`text-xs font-extrabold ${isViewing ? 'text-[#3F51B5]' : 'text-text'}`}>
                           Checkpoint {cp.version}

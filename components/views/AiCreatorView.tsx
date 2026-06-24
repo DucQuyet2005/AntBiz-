@@ -2848,6 +2848,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 {language === 'vi' ? 'Về bản gốc' : 'Revert'}
                               </button>
                             )}
+                            <button
+                              type="button"
+                              disabled={isGeneratingAB || isGenerating || regeneratingVariantId !== null}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRegenerateVariant(v.id);
+                              }}
+                              className="text-gray-400 hover:text-primary disabled:opacity-40 transition-colors p-1 rounded-lg cursor-pointer flex items-center justify-center"
+                              title={language === 'vi' ? 'Tạo lại nội dung AI cho riêng bản này' : 'Regenerate AI content for this variant'}
+                            >
+                              {regeneratingVariantId === v.id ? (
+                                <Loader2 size={13} className="animate-spin text-primary" />
+                              ) : (
+                                <RefreshCw size={13} className="transition-transform active:rotate-180 duration-500" />
+                              )}
+                            </button>
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
                               {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
