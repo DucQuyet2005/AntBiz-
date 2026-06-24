@@ -93,6 +93,25 @@ const getFutureScheduleSlot = (offsetHours: number) => {
   };
 };
 
+const convertToHashtag = (tag: string): string => {
+  const cleaned = tag.trim().replace(/#/g, '');
+  if (!cleaned) return '';
+  const camelCase = cleaned
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+  return `#${camelCase}`;
+};
+
+const formatTagsAsHashtags = (tagsStr: string): string => {
+  if (!tagsStr) return '';
+  return tagsStr
+    .split(',')
+    .map(t => convertToHashtag(t))
+    .filter(Boolean)
+    .join(' ');
+};
+
 const getWeekStartDate = () => {
   const start = new Date();
   const day = start.getDay();
@@ -391,7 +410,7 @@ export default function AiCreatorView() {
 
     setSelectedVariantId('');
     setIsGeneratingAB(true);
-    const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+    const tagsStr = formatTagsAsHashtags(postData.tags);
 
     // T-1.18: Build N variants (A, B, C) based on variantCount
     const variantIds = ['A', 'B', 'C'].slice(0, variantCount);
@@ -1556,7 +1575,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // T-1.19.1: Tạo 2 bản A/B với 2 phong cách khác nhau từ cùng 1 prompt
   const generateVariants = (data: typeof postData, prompt: any) => {
     const targetPlatforms = getPromptTargetPlatforms(prompt);
-    const tagsStr = data.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
+    const tagsStr = formatTagsAsHashtags(data.tags);
 
     const newVariants: SocialVariant[] = [
       {

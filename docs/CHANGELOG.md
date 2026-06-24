@@ -18,6 +18,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - **Truyền Caption ID cũ từ Frontend**:
   - Cập nhật hàm `handleRegenerateVariant` trong `components/views/AiCreatorView.tsx` để lưu lại `captionId` của variant trước khi reset state và truyền `oldCaptionId` lên API tái sinh caption.
 
+### Fixed
+- **Sửa lỗi Hashtag bị đứt đoạn chứa khoảng trắng khi đăng Facebook**:
+  - Thêm helper function `convertToHashtag` và `formatTagsAsHashtags` trong `components/views/AiCreatorView.tsx`.
+  - Tự động chuẩn hóa danh sách thẻ tag (tags) bằng cách loại bỏ khoảng trắng bên trong từng tag và chuyển đổi sang dạng PascalCase (VD: `#Hệ số K` -> `#HệSốK`) để Facebook nhận diện nguyên vẹn toàn bộ cụm hashtag.
+
 ## [1.3.3] - 2026-06-23
 
 ### Changed
