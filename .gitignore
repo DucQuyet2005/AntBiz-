@@ -45,3 +45,6 @@ next-env.d.ts
 
 # database schema context
 /docs/schema/
+
+# temporary scratch directory
+/scratch/
