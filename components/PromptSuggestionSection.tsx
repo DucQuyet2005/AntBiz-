@@ -111,10 +111,10 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
       {relevanceScore > 0 && <RelevanceBar score={relevanceScore} />}
 
       {/* Buttons */}
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+      <div className="flex gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-200">
         <button
           onClick={handleUsePrompt}
-          className="w-full bg-primary text-white text-[10px] font-extrabold py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+          className="w-full bg-primary text-white text-[10px] font-extrabold py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-offset-2"
         >
           Dùng prompt này
         </button>
@@ -215,7 +215,7 @@ export default function PromptSuggestionSection({
   if (!articleId && !articleTitle && !loading) return null;
 
   return (
-    <div className="bg-white border border-gray-200/80 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
         <div className="flex items-center gap-2">

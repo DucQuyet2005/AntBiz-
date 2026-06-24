@@ -147,7 +147,8 @@ export default function FaqView() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('faq.searchPlace')} 
-          className="w-full bg-sidebar/50 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+          aria-label={t('faq.searchPlace') || "Search FAQ"}
+          className="w-full bg-sidebar/50 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
         />
       </div>
 
@@ -157,11 +158,11 @@ export default function FaqView() {
         {/* Left Column: Categories List & Accordions */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           {filteredCategories.length === 0 ? (
-            <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-12 flex flex-col items-center text-center gap-2">
-              <p className="font-bold text-slate-700">
+            <div className="bg-sidebar/50 border border-primary/10 rounded-2xl p-12 flex flex-col items-center text-center gap-2">
+              <p className="font-bold text-text">
                 {language === 'vi' ? 'Không tìm thấy câu hỏi phù hợp' : 'No matching questions found'}
               </p>
-              <p className="text-slate-500 text-xs">
+              <p className="text-text-muted text-xs">
                 {language === 'vi' ? 'Thử tìm kiếm với từ khóa khác.' : 'Try searching with another keyword.'}
               </p>
             </div>
@@ -169,7 +170,7 @@ export default function FaqView() {
             filteredCategories.map((category) => (
               <div 
                 key={category.id} 
-                className={`bg-white border border-gray-200/60 rounded-[32px] p-6 flex flex-col gap-4 shadow-sm transition-all duration-300 ${category.borderClass}`}
+                className={`bg-white border border-gray-200/60 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300 ${category.borderClass}`}
               >
                 {/* Category Title */}
                 <div className="flex items-center gap-3">
@@ -186,8 +187,11 @@ export default function FaqView() {
                     return (
                       <div key={item.key} id={`faq-${item.key}`} className="w-full flex flex-col scroll-mt-20">
                         <button 
+                          id={`faq-btn-${item.key}`}
                           onClick={() => toggleItem(item.key)}
-                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 transition-colors hover:text-primary outline-none group cursor-pointer select-none"
+                          aria-expanded={isOpen}
+                          aria-controls={`faq-content-${item.key}`}
+                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-lg group cursor-pointer select-none"
                         >
                           <span className="pr-4 leading-tight">{item.q}</span>
                           <ChevronDown 
@@ -197,6 +201,9 @@ export default function FaqView() {
                         </button>
                         
                         <div 
+                          id={`faq-content-${item.key}`}
+                          role="region"
+                          aria-labelledby={`faq-btn-${item.key}`}
                           className="overflow-hidden transition-all duration-300 ease-in-out"
                           style={{
                             maxHeight: isOpen ? '600px' : '0px',
@@ -204,7 +211,7 @@ export default function FaqView() {
                             pointerEvents: isOpen ? 'auto' : 'none'
                           }}
                         >
-                          <p className="text-xs leading-relaxed text-slate-500 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80">
+                          <p className="text-xs leading-relaxed text-slate-600 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80">
                             {item.a}
                           </p>
                         </div>
@@ -220,34 +227,34 @@ export default function FaqView() {
         {/* Right Column: Tips & Support Sidebar */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
           
-          {/* Pro Tips Section (Emerald theme matching app) */}
-          <div className="bg-gradient-to-br from-[#4E7164] to-[#3A564C] border border-emerald-800/25 rounded-3xl p-6 text-white flex flex-col gap-4 shadow-sm relative overflow-hidden shrink-0">
+          {/* Pro Tips Section (Dynamic theme matching app primary gradient) */}
+          <div className="bg-gradient-to-br from-primary to-primary-hover border border-primary/20 rounded-2xl p-6 text-white flex flex-col gap-4 shadow-sm relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0">
                 <Lightbulb size={18} />
               </div>
               <h2 className="text-lg font-black tracking-tight">{t('faq.proTips')}</h2>
             </div>
             
-            <p className="text-xs font-semibold text-emerald-100/90 leading-relaxed">
+            <p className="text-xs font-semibold text-white/95 leading-relaxed">
               {t('faq.tipIntro')}
             </p>
 
-            <div className="flex flex-col gap-3 text-xs font-bold text-white/80">
+            <div className="flex flex-col gap-3 text-xs font-bold text-white">
               <div className="flex gap-2.5 items-start">
-                <CheckCircle size={15} className="text-[#C2E1D9] shrink-0 mt-[1px]" />
+                <CheckCircle size={15} className="text-white/80 shrink-0 mt-[1px]" />
                 <span className="leading-tight">{t('faq.tip1')}</span>
               </div>
               <div className="flex gap-2.5 items-start">
-                <CheckCircle size={15} className="text-[#C2E1D9] shrink-0 mt-[1px]" />
+                <CheckCircle size={15} className="text-white/80 shrink-0 mt-[1px]" />
                 <span className="leading-tight">{t('faq.tip2')}</span>
               </div>
             </div>
           </div>
 
           {/* Support Help Contact Card (Glassmorphic) */}
-          <div className="bg-white border border-gray-200/60 rounded-3xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
+          <div className="bg-white border border-gray-200/60 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -260,7 +267,7 @@ export default function FaqView() {
               {t('faq.contactDesc')}
             </p>
 
-            <button className="w-full bg-primary hover:bg-primary-hover text-white transition-all py-3 rounded-2xl font-black text-xs shadow-md shadow-primary/20 active:scale-95 cursor-pointer mt-2 flex items-center justify-center gap-1.5">
+            <button className="w-full bg-primary hover:bg-primary-hover text-white transition-all py-3 rounded-2xl font-black text-xs shadow-md shadow-primary/20 active:scale-95 cursor-pointer mt-2 flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
               <span>{t('faq.contactBtn')}</span>
             </button>
           </div>

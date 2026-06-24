@@ -213,6 +213,7 @@ vi.mock('@/lib/email', () => ({
 // Now safely import the modules, knowing their dependency evaluations will read from the mocked client.
 import { POST as createScheduledPost, GET as getScheduledPosts } from '@/app/api/scheduled-posts/route';
 import { POST as cancelScheduledPost } from '@/app/api/scheduled-posts/[id]/cancel/route';
+import { PATCH as reschedulePost } from '@/app/api/scheduled-posts/[id]/route';
 import { runSchedulerCycle } from '@/lib/scheduler/scheduler';
 
 describe('Scheduled Posts API Endpoint & Scheduler', () => {
@@ -329,7 +330,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.message).toContain('Đã hủy lịch đăng bài');
@@ -342,7 +343,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('Không thể hủy lịch đăng bài ở trạng thái: posted');
@@ -353,8 +354,34 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(404);
+  });
+
+  it('PATCH /api/scheduled-posts/[id] reschedules a scheduled post', async () => {
+    const state = hoisted.getState();
+    state.mockScheduledPostsDb = [{ id: 'sp1', caption_id: 'c1', platform: 'facebook', status: 'pending', created_by: 'u1', scheduled_at: new Date().toISOString() }];
+
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+    const req = new NextRequest('http://localhost/api/scheduled-posts/sp1', {
+      method: 'PATCH',
+      body: JSON.stringify({ scheduledAt: futureDate }),
+    });
+    
+    const res = await reschedulePost(req, { params: Promise.resolve({ id: 'sp1' }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.scheduled_at).toBe(futureDate);
+    expect(state.mockScheduledPostsDb[0].scheduled_at).toBe(futureDate);
+  });
+
+  it('PATCH returns 400 if scheduledAt is missing', async () => {
+    const req = new NextRequest('http://localhost/api/scheduled-posts/sp1', {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+    });
+    const res = await reschedulePost(req, { params: Promise.resolve({ id: 'sp1' }) });
+    expect(res.status).toBe(400);
   });
 
   it('runSchedulerCycle runs and publishes pending due posts', async () => {

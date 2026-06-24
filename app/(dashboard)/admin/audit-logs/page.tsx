@@ -62,7 +62,7 @@ export default function AuditLogsPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Actions & Filters */}
-      <div className="bg-white rounded-[20px] p-6 border border-slate-200/60 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
             <Activity className="w-5 h-5 text-slate-700" />
@@ -82,7 +82,7 @@ export default function AuditLogsPage() {
                 setActionFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none appearance-none cursor-pointer"
             >
               <option value="all">{t('admin.allActions')}</option>
               <option value="change_role">{t('admin.actionChangeRole')}</option>
@@ -96,7 +96,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Timeline View */}
-      <div className="bg-white rounded-[20px] border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
         {loading && logs.length === 0 ? (
           <div className="p-16 flex flex-col items-center justify-center text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
@@ -116,8 +116,17 @@ export default function AuditLogsPage() {
               return (
                 <div key={log.id} className="group flex flex-col hover:bg-slate-50/50 transition-colors">
                   <div 
-                    className="p-5 flex items-center gap-4 cursor-pointer"
+                    className="p-5 flex items-center gap-4 cursor-pointer focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
                     onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpandedId(isExpanded ? null : log.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={isExpanded}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/50 shadow-sm ${color}`}>
                       {icon}
@@ -175,14 +184,14 @@ export default function AuditLogsPage() {
               <button 
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-lg transition-colors shadow-sm"
+                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-xl transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 {t('admin.prevPage')}
               </button>
               <button 
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-lg transition-colors shadow-sm"
+                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 text-sm font-bold rounded-xl transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 {t('admin.nextPage')}
               </button>

@@ -99,8 +99,8 @@ export default function ResetPasswordPage() {
 
   if (isVerifyingSession) {
     return (
-      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-8 h-8 border-4 border-[#5A5CDE] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-gray-600 text-sm">{t("resetPassword.verifying")}</p>
       </div>
     );
@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
 
   if (sessionError) {
     return (
-      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl p-8 text-center flex flex-col items-center">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center flex flex-col items-center">
         <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
           <AlertCircle className="h-6 w-6" />
         </div>
@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
         </p>
         <Link
           href="/forgot-password"
-          className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+          className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           {t("resetPassword.requestNewLink")}
         </Link>
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+    <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
       <AnimatePresence>
         {toast && (
           <Toast
@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
       </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
-        <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
+        <div className="relative w-full h-full rounded-xl overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
           <Image
             src="/images/login.png"
             alt={t("login.altText")}
@@ -181,11 +181,11 @@ export default function ResetPasswordPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder={t("resetPassword.passwordPlaceholder")}
                 disabled={isSubmitting}
-                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5A5CDE]/20 focus:border-[#5A5CDE] transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
@@ -210,11 +210,11 @@ export default function ResetPasswordPage() {
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder={t("resetPassword.passwordPlaceholder")}
                 disabled={isSubmitting}
-                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5A5CDE]/20 focus:border-[#5A5CDE] transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={isSubmitting}
               >
@@ -231,7 +231,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             {isSubmitting ? t("resetPassword.submitting") : t("resetPassword.submitBtn")}
             {!isSubmitting && <ArrowRight className="h-4 w-4" />}

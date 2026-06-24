@@ -66,9 +66,9 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
   ];
 
   return (
-    <aside className={`w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-[32px] fixed left-0 top-0 overflow-y-auto no-scrollbar z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+    <aside className={`w-[280px] h-screen bg-sidebar flex flex-col justify-between pt-0 pb-8 px-0 rounded-tr-2xl fixed left-0 top-0 overflow-y-auto no-scrollbar z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div>
-        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-[32px] flex items-center justify-between gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
+        <div className="bg-primary pt-8 pb-6 px-6 w-full mb-6 rounded-tr-2xl flex items-center justify-between gap-3 text-white shadow-md shadow-primary/20 transition-all duration-300">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow-inner">
               <img
@@ -88,7 +88,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
           </div>
           <button 
             onClick={onClose} 
-            className="lg:hidden text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer"
+            className="lg:hidden text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
           >
             <X size={20} />
           </button>
@@ -102,7 +102,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-4 py-3 transition-all relative ${
+                className={`flex items-center gap-4 py-3 transition-all relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                   isActive
                     ? "bg-primary/8 text-primary border-l-4 border-primary pl-5 pr-4 rounded-r-xl rounded-l-none font-extrabold shadow-sm shadow-primary/5"
                     : "text-text-muted hover:bg-white/50 hover:text-text pl-5 pr-4 border-l-4 border-transparent rounded-r-xl rounded-l-none"
@@ -126,7 +126,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
           <div className="flex gap-0.5 bg-white/50 p-0.5 rounded-lg border border-gray-200/50">
             <button
               onClick={() => setLanguage("vi")}
-              className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] ${
+              className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                 language === "vi"
                   ? "bg-primary text-white shadow-sm"
                   : "text-text-muted hover:text-text"
@@ -137,7 +137,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
 
             <button
               onClick={() => setLanguage("en")}
-              className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] ${
+              className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                 language === "en"
                   ? "bg-primary text-white shadow-sm"
                   : "text-text-muted hover:text-text"
@@ -148,14 +148,14 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
           </div>
         </div>
 
-        <button className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full">
+        <button className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl">
           <HeadphonesIcon size={20} />
           {t("sidebar.support")}
         </button>
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full text-left bg-transparent border-0 cursor-pointer"
+          className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full text-left bg-transparent border-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl"
         >
           <LogOut size={20} />
           {t("sidebar.logout")}

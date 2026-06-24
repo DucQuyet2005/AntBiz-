@@ -170,7 +170,7 @@ export default function CaptionsView() {
             placeholder={t.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+            className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
           />
         </div>
 
@@ -180,7 +180,7 @@ export default function CaptionsView() {
             <button
               key={p}
               onClick={() => setPlatformFilter(p)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all select-none border border-gray-200/40 shadow-sm cursor-pointer ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all select-none border border-gray-200/40 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                 platformFilter === p
                   ? "bg-primary text-white"
                   : "bg-white text-text-muted hover:text-text hover:bg-gray-50"
@@ -201,7 +201,7 @@ export default function CaptionsView() {
           </span>
         </div>
       ) : captions.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-gray-100 rounded-[32px] shadow-sm">
+        <div className="text-center py-20 bg-white border border-gray-100 rounded-2xl shadow-sm">
           <MessageSquare className="mx-auto text-gray-300 mb-4" size={48} />
           <p className="text-sm font-medium text-text-muted">{t.noCaptions}</p>
         </div>
@@ -222,7 +222,7 @@ export default function CaptionsView() {
               return (
                 <div
                   key={cap.id}
-                  className="bg-white border border-gray-150 rounded-[32px] p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[380px]"
+                  className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[380px]"
                 >
                   {/* Card Header */}
                   <div>
@@ -240,14 +240,18 @@ export default function CaptionsView() {
                       {/* Copy Action */}
                       <button
                         onClick={() => handleCopy(displayContent, cap.id)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                        className={`p-2 rounded-xl border transition-all duration-100 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                           copiedId === cap.id
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm shadow-emerald-100"
                             : "bg-white border-gray-200 hover:bg-gray-50 text-text-muted hover:text-text"
                         }`}
                         title={t.copyButton}
                       >
-                        {copiedId === cap.id ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedId === cap.id ? (
+                          <Check size={14} className="transition-transform duration-300 scale-110 rotate-12 text-emerald-600" />
+                        ) : (
+                          <Copy size={14} className="transition-transform duration-300 scale-100 rotate-0" />
+                        )}
                       </button>
                     </div>
 
@@ -255,7 +259,7 @@ export default function CaptionsView() {
                     {cap.articles && (
                       <Link
                         href={`/archive/${cap.articles.id}`}
-                        className="group flex items-start gap-1 text-sm font-extrabold text-text hover:text-primary transition-colors line-clamp-2 mb-3"
+                        className="group flex items-start gap-1 text-sm font-extrabold text-text hover:text-primary transition-colors line-clamp-2 mb-3 rounded focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                       >
                         <span>{cap.articles.title}</span>
                         <ExternalLink
@@ -308,7 +312,7 @@ export default function CaptionsView() {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -318,7 +322,7 @@ export default function CaptionsView() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                      className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
                         currentPage === page
                           ? "bg-primary text-white shadow-lg shadow-primary/20"
                           : "border border-gray-200/80 text-text hover:bg-gray-50"
@@ -334,7 +338,7 @@ export default function CaptionsView() {
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
                   disabled={currentPage === totalPages}
-                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                  className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                 >
                   <ChevronRight size={16} />
                 </button>

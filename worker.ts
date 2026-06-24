@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
+// @ts-ignore
 import cron from 'node-cron';
 import { runSchedulerCycle } from './lib/scheduler/scheduler';
 

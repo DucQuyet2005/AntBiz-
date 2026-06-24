@@ -16,7 +16,7 @@ export default function HeroForm({ config, onChange }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
           Nội dung Hero
         </h3>
         <div className="flex flex-col gap-4">
@@ -25,7 +25,7 @@ export default function HeroForm({ config, onChange }: Props) {
             <textarea 
               value={config.tagline}
               onChange={(e) => onChange('tagline', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none resize-none h-20"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-none h-20"
               placeholder="Nhập tiêu đề chính..."
             />
             <p className="text-[10px] text-slate-400 font-medium text-right">{config.tagline.length}/80 ký tự</p>
@@ -36,7 +36,7 @@ export default function HeroForm({ config, onChange }: Props) {
             <textarea 
               value={config.description}
               onChange={(e) => onChange('description', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none resize-none h-24"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-none h-24"
               placeholder="Nhập đoạn mô tả ngắn gọn..."
             />
           </div>
@@ -47,7 +47,7 @@ export default function HeroForm({ config, onChange }: Props) {
               type="text" 
               value={config.ctaText}
               onChange={(e) => onChange('ctaText', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               placeholder="VD: Trải Nghiệm Ngay"
             />
           </div>
@@ -55,7 +55,7 @@ export default function HeroForm({ config, onChange }: Props) {
       </div>
 
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
           Hình ảnh Hero (Background)
         </h3>
         <div className="flex flex-col gap-2">
@@ -64,10 +64,10 @@ export default function HeroForm({ config, onChange }: Props) {
             type="text" 
             value={config.bgImageUrl}
             onChange={(e) => onChange('bgImageUrl', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             placeholder="https://..."
           />
-          <div className="mt-2 w-full h-32 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden relative group">
+          <div className="mt-2 w-full h-32 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden relative group">
             {config.bgImageUrl ? (
               <img 
                 src={config.bgImageUrl} 

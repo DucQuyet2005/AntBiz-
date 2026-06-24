@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +34,72 @@ export default function OverviewView() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
+
+  // Onboarding Tour state
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  useEffect(() => {
+    // Only run on client side
+    const completed = localStorage.getItem('antbiz_onboarded');
+    if (!completed) {
+      const timer = setTimeout(() => {
+        setShowTour(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const highlightElement = (step: number) => {
+    clearHighlights();
+    let targetId = '';
+    if (step === 1) targetId = 'tour-welcome';
+    if (step === 2) targetId = 'tour-stats';
+    if (step === 3) targetId = 'tour-chart';
+    if (step === 4) targetId = 'tour-recent';
+
+    if (targetId) {
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
+      }
+    }
+  };
+
+  const clearHighlights = () => {
+    const ids = ['tour-welcome', 'tour-stats', 'tour-chart', 'tour-recent'];
+    ids.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.classList.remove('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
+      }
+    });
+  };
+
+  const handleNextStep = () => {
+    const nextStep = tourStep + 1;
+    setTourStep(nextStep);
+    highlightElement(nextStep);
+  };
+
+  const handlePrevStep = () => {
+    const prevStep = tourStep - 1;
+    setTourStep(prevStep);
+    highlightElement(prevStep);
+  };
+
+  const handleSkipTour = () => {
+    localStorage.setItem('antbiz_onboarded', 'true');
+    setShowTour(false);
+    clearHighlights();
+  };
+
+  const handleRestartTour = () => {
+    setTourStep(0);
+    setShowTour(true);
+    clearHighlights();
+  };
   
   // Real-time statistics state
   const [stats, setStats] = useState({
@@ -48,6 +114,49 @@ export default function OverviewView() {
     recentPosts: [] as { id: string; platform: string; status: string; scheduled_at: string; imgUrl: string; title: string }[]
   });
 
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [chartTimeframe, setChartTimeframe] = useState<'week' | 'month'>('week');
+  const [chartPlatform, setChartPlatform] = useState<'all' | 'facebook' | 'instagram' | 'threads'>('all');
+
+  const dailyVolume = useMemo(() => {
+    const daysCount = chartTimeframe === 'week' ? 7 : 30;
+    
+    // Generate dates for the selected timeframe
+    const datesArray = Array.from({ length: daysCount }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      
+      const offset = d.getTimezoneOffset();
+      const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+      const dateString = localDate.toISOString().split('T')[0];
+
+      return {
+        dateString,
+        dayLabel: d.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short' }),
+        dateNum: d.getDate(),
+        count: 0
+      };
+    }).reverse();
+
+    // Match counts based on filters
+    allPosts.forEach(p => {
+      const plat = p.platform?.toLowerCase();
+      if (chartPlatform !== 'all' && plat !== chartPlatform) return;
+
+      const postDate = new Date(p.scheduled_at);
+      const postOffset = postDate.getTimezoneOffset();
+      const localPostDate = new Date(postDate.getTime() - (postOffset * 60 * 1000));
+      const postDateStr = localPostDate.toISOString().split('T')[0];
+
+      const matchedDay = datesArray.find(d => d.dateString === postDateStr);
+      if (matchedDay) {
+        matchedDay.count++;
+      }
+    });
+
+    return datesArray;
+  }, [allPosts, chartTimeframe, chartPlatform, language]);
+
   const fetchDashboardData = async () => {
     try {
       // 1. Get current user profile
@@ -61,6 +170,10 @@ export default function OverviewView() {
       const { data: posts } = await supabase
         .from('scheduled_posts')
         .select('id, platform, status, scheduled_at, image_urls, captions(ai_content, edited_content, articles(title, images))');
+
+      if (posts) {
+        setAllPosts(posts);
+      }
 
       // 3. Fetch articles count
       const { count: articlesCount } = await supabase
@@ -197,14 +310,29 @@ export default function OverviewView() {
     return Math.round((value / totalShares) * 100);
   };
 
-  // Compute max count of posts in 7 days for scaling the chart
-  const maxPostVolume = Math.max(...stats.dailyVolume.map(d => d.count), 1);
+  // Compute max count of posts in timeframe for scaling the chart
+  const maxPostVolume = Math.max(...dailyVolume.map(d => d.count), 1);
+
+  const sparklinePoints = useMemo(() => {
+    const points = dailyVolume.slice(-7).map(d => d.count);
+    const maxVal = Math.max(...points);
+    const minVal = Math.min(...points);
+    const range = maxVal - minVal || 1;
+    const width = 80;
+    const height = 24;
+    const padding = 2;
+    return points.map((val, idx) => {
+      const x = (idx / (points.length - 1)) * (width - padding * 2) + padding;
+      const y = height - ((val - minVal) / range) * (height - padding * 2) - padding;
+      return { x, y };
+    });
+  }, [dailyVolume]);
 
   if (loading) {
     return (
       <div className="h-[400px] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin text-indigo-600" size={36} />
-        <span className="text-xs font-bold text-slate-450 uppercase tracking-widest">
+        <Loader2 className="animate-spin text-primary" size={36} />
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
           {language === 'vi' ? 'Đang tải số liệu thống kê...' : 'Loading statistics...'}
         </span>
       </div>
@@ -215,13 +343,13 @@ export default function OverviewView() {
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
       
       {/* Dynamic Greeting Hero Banner - White Theme */}
-      <div className="relative overflow-hidden bg-white border border-slate-200/60 rounded-[32px] p-6 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div id="tour-welcome" className="relative overflow-hidden bg-white border border-slate-200/60 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all duration-300">
         {/* Background neon ambient graphic */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-indigo-500/5 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-primary/5 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-emerald-500/5 to-transparent blur-2xl pointer-events-none" />
 
         <div className="flex flex-col gap-2 relative z-10">
-          <span className="text-[10px] text-indigo-600 font-mono tracking-widest uppercase font-extrabold flex items-center gap-1.5">
+          <span className="text-[10px] text-primary font-mono tracking-widest uppercase font-extrabold flex items-center gap-1.5">
             {language === 'vi' ? 'Hệ điều hành xuất bản tự động' : 'AUTOMATED PUBLISHING PIPELINE'}
           </span>
           <h1 className="text-3xl font-black tracking-tight leading-tight text-slate-800">
@@ -234,26 +362,36 @@ export default function OverviewView() {
           </p>
         </div>
 
-        <button 
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200/50 text-slate-700 hover:text-indigo-605 px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer relative z-10"
-        >
-          {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
-        </button>
+        <div className="flex gap-2 relative z-10 shrink-0">
+          <button
+            onClick={handleRestartTour}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-primary/10 border border-slate-200/50 text-slate-700 hover:text-primary px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <Sparkles size={13} />
+            <span>{language === 'vi' ? 'Hướng dẫn' : 'Tour Guide'}</span>
+          </button>
+
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-primary/10 border border-slate-200/50 text-slate-700 hover:text-primary px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300">
         
         {/* Stat Card 1: Ingestion & Copywriting (Rose/Violet Theme) */}
-        <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-[120px] h-[120px] bg-gradient-to-bl from-rose-500/5 to-indigo-500/5 rounded-bl-[100px] pointer-events-none" />
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-[120px] h-[120px] bg-gradient-to-bl from-rose-500/5 to-primary/5 rounded-bl-[100px] pointer-events-none" />
           
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-mono tracking-wider font-extrabold uppercase">
+              <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
                 {language === 'vi' ? 'Tiến độ Crawl & Soạn thảo' : 'Ingestion & Copywriting'}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
@@ -265,33 +403,60 @@ export default function OverviewView() {
           <div className="flex items-end justify-between mt-4">
             <div className="flex flex-col">
               <span className="text-4xl font-black text-slate-900 tracking-tight">
-                {stats.articlesCount} <span className="text-sm text-slate-400 font-bold">{language === 'vi' ? 'bài báo' : 'articles'}</span>
+                {stats.articlesCount} <span className="text-sm text-slate-500 font-bold">{language === 'vi' ? 'bài báo' : 'articles'}</span>
               </span>
               <span className="text-[10px] text-emerald-600 font-black tracking-wide flex items-center gap-0.5 mt-1">
                 <ArrowUpRight size={10} /> +12% {language === 'vi' ? 'tuần này' : 'this week'}
               </span>
             </div>
+            
+            {sparklinePoints.length > 1 && (
+              <div className="flex flex-col items-center gap-0.5 select-none opacity-85 hover:opacity-100 transition-opacity">
+                <svg className="w-16 h-6 overflow-visible" viewBox="0 0 80 24">
+                  <defs>
+                    <linearGradient id="sparkline-overview" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d={`M 2,24 L ${sparklinePoints.map(p => `${p.x},${p.y}`).join(' L ')} L 78,24 Z`}
+                    fill="url(#sparkline-overview)"
+                  />
+                  <polyline
+                    fill="none"
+                    stroke="#8B5CF6"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={sparklinePoints.map(p => `${p.x},${p.y}`).join(' ')}
+                  />
+                </svg>
+                <span className="text-[7px] text-slate-400 font-black tracking-wider uppercase">{language === 'vi' ? '7 ngày qua' : '7-day trend'}</span>
+              </div>
+            )}
+
             <div className="flex flex-col text-right">
-              <span className="text-sm font-black text-indigo-650 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-100/40">
+              <span className="text-sm font-black text-primary bg-primary/10 px-2.5 py-1 rounded-xl border border-primary/20">
                 {stats.captionsCount} {language === 'vi' ? 'Caption' : 'Captions'}
               </span>
-              <span className="text-[9px] text-slate-450 font-bold mt-1">
+              <span className="text-[9px] text-slate-500 font-bold mt-1">
                 {stats.pendingCount} {language === 'vi' ? 'bài chờ đăng' : 'pending in queue'}
               </span>
             </div>
           </div>
 
           <div className="h-1.5 w-full bg-slate-105 rounded-full mt-4 overflow-hidden relative">
-            <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-rose-500 to-indigo-500 rounded-full" style={{ width: '70%' }} />
+            <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-rose-500 to-primary rounded-full" style={{ width: '70%' }} />
           </div>
         </div>
 
         {/* Stat Card 2: Platform Distribution (Cylindrical Bar Chart Theme) */}
-        <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
           
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-mono tracking-wider font-extrabold uppercase">
+              <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
                 {language === 'vi' ? 'Độ phủ trên mạng xã hội' : 'Cross-Platform Cover'}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
@@ -338,17 +503,17 @@ export default function OverviewView() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-[8.5px] text-slate-400 font-bold border-t border-slate-100/60 pt-2">
+          <div className="flex justify-between items-center text-[8.5px] text-slate-500 font-bold border-t border-slate-100/60 pt-2">
             <span>{language === 'vi' ? 'Tổng số bài:' : 'Total scheduled:'} <strong className="text-slate-700">{totalShares}</strong></span>
           </div>
         </div>
 
         {/* Stat Card 3: Publication Status (Cyan Glow theme) */}
-        <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
           
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-mono tracking-wider font-extrabold uppercase">
+              <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
                 {language === 'vi' ? 'Đo lường Vận hành' : 'Publication Status'}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
@@ -371,7 +536,7 @@ export default function OverviewView() {
               <span className="text-2xl font-black text-rose-800 mt-0.5">{stats.failedCount}</span>
             </div>
             <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col">
-              <span className="text-[9px] text-slate-500 font-black uppercase">{language === 'vi' ? 'Đã hủy' : 'Cancelled'}</span>
+              <span className="text-[9px] text-slate-550 font-black uppercase">{language === 'vi' ? 'Đã hủy' : 'Cancelled'}</span>
               <span className="text-2xl font-black text-slate-650 mt-0.5">{stats.cancelledCount}</span>
             </div>
           </div>
@@ -380,61 +545,152 @@ export default function OverviewView() {
       </div>
 
       {/* Chart: 7-Day Publication Volume Bar Chart */}
-      <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm relative overflow-hidden flex flex-col gap-6">
-        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-gradient-to-bl from-indigo-500/5 to-transparent pointer-events-none" />
+      <div id="tour-chart" className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col gap-6 transition-all duration-300">
+        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-gradient-to-bl from-primary/5 to-transparent pointer-events-none" />
         
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 pb-4">
           <div className="flex flex-col">
-            <span className="text-[10px] text-indigo-500 font-mono tracking-wider font-extrabold uppercase">
+            <span className="text-[10px] text-primary font-mono tracking-wider font-extrabold uppercase">
               {language === 'vi' ? 'Biểu đồ xuất bản' : 'Publication Chart'}
             </span>
             <h2 className="text-lg font-extrabold text-slate-800 mt-0.5">
-              {language === 'vi' ? 'Số lượng bài đăng 7 ngày qua' : 'Publications Last 7 Days'}
+              {language === 'vi' 
+                ? `Số lượng bài đăng ${chartTimeframe === 'week' ? '7 ngày qua' : '30 ngày qua'}` 
+                : `Publications Last ${chartTimeframe === 'week' ? '7' : '30'} Days`}
             </h2>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-450 font-bold bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-400" />
-            <span>{language === 'vi' ? 'Tổng số bài' : 'Total volume'}</span>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Timeframe selector */}
+            <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
+              <button
+                type="button"
+                onClick={() => setChartTimeframe('week')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  chartTimeframe === 'week'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                {language === 'vi' ? '7 Ngày' : '7 Days'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartTimeframe('month')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  chartTimeframe === 'month'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                {language === 'vi' ? '30 Ngày' : '30 Days'}
+              </button>
+            </div>
+
+            {/* Platform selector */}
+            <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
+              <button
+                type="button"
+                onClick={() => setChartPlatform('all')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  chartPlatform === 'all'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                {language === 'vi' ? 'Tất cả' : 'All'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartPlatform('facebook')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                  chartPlatform === 'facebook'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                <Facebook size={12} />
+                <span>FB</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartPlatform('instagram')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                  chartPlatform === 'instagram'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                <Instagram size={12} />
+                <span>IG</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartPlatform('threads')}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                  chartPlatform === 'threads'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-slate-550 hover:text-slate-800'
+                }`}
+              >
+                <ThreadsIcon size={12} />
+                <span>Threads</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-[#22D3EE]" />
+              <span>{language === 'vi' ? 'Tổng số bài' : 'Total volume'}</span>
+            </div>
           </div>
         </div>
 
         {/* Dynamic Interactive Chart */}
-        <div className="h-[220px] w-full flex items-end justify-between px-6 pb-6 relative">
+        <div className="h-[220px] w-full flex items-end justify-between px-2 md:px-6 pb-6 relative">
           
           {/* Horizontal grid guide lines */}
-          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0 px-6 pb-12 pt-6">
+          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0 px-2 md:px-6 pb-12 pt-6">
             <div className="border-b border-slate-100 w-full h-[1px]" />
             <div className="border-b border-slate-100 w-full h-[1px]" />
             <div className="border-b border-slate-100 w-full h-[1px]" />
             <div className="border-b border-slate-100 w-full h-[1px]" />
           </div>
 
-          {stats.dailyVolume.map((d, i) => {
+          {dailyVolume.map((d, i) => {
             const heightPct = (d.count / maxPostVolume) * 80; // Scale height max at 80% of container
+            const isWeek = chartTimeframe === 'week';
+            const shouldShowLabel = isWeek ? true : (i % 5 === 0 || i === dailyVolume.length - 1);
+            const barWidth = isWeek ? 'w-6 md:w-10' : 'w-1.5 md:w-3';
+
             return (
               <div key={i} className="flex flex-col items-center gap-3 w-full group relative z-10">
                 {/* Tooltip on hover */}
-                <div className="absolute bottom-[calc(100%+8px)] bg-slate-800 text-white text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-md z-30 flex items-center gap-1">
+                <div className="absolute bottom-[calc(100%+8px)] bg-slate-800 text-white text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-md z-30 flex items-center gap-1 whitespace-nowrap">
                   <span>{d.count}</span>
                   <span>{language === 'vi' ? 'bài' : 'posts'}</span>
+                  <span className="text-slate-400 font-normal">({d.dateString})</span>
                 </div>
                 
                 {/* Bar graphic container */}
-                <div className="w-8 bg-slate-50 rounded-2xl h-[120px] flex items-end overflow-hidden border border-slate-100">
+                <div className={`${barWidth} bg-slate-50 rounded-2xl h-[120px] flex items-end overflow-hidden border border-slate-100`}>
                   <div 
-                    className="w-full bg-gradient-to-t from-indigo-600 to-cyan-400 rounded-2xl group-hover:scale-y-[1.03] transition-all duration-500 origin-bottom"
+                    className="w-full bg-gradient-to-t from-primary to-[#22D3EE] rounded-2xl group-hover:scale-y-[1.03] transition-all duration-500 origin-bottom"
                     style={{ height: `${heightPct}%`, minHeight: d.count > 0 ? '8px' : '0' }}
                   />
                 </div>
                 
                 {/* Day axis label */}
-                <div className="flex flex-col items-center select-none">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase group-hover:text-indigo-605 transition-colors">
-                    {d.dayLabel}
-                  </span>
-                  <span className="text-[9px] text-slate-450 font-bold font-mono mt-0.5">
-                    {d.dateNum}
-                  </span>
+                <div className="flex flex-col items-center select-none h-6">
+                  {shouldShowLabel && (
+                    <>
+                      <span className="text-[9px] md:text-[10px] text-slate-550 font-extrabold uppercase group-hover:text-primary transition-colors">
+                        {d.dayLabel}
+                      </span>
+                      <span className="text-[8px] md:text-[9px] text-slate-500 font-bold font-mono mt-0.5">
+                        {d.dateNum}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -444,13 +700,13 @@ export default function OverviewView() {
       </div>
 
       {/* Recent Posts Image Activity Log Grid */}
-      <div className="bg-white border border-slate-200/60 rounded-[32px] p-6 shadow-sm flex flex-col gap-5">
+      <div id="tour-recent" className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col gap-5 transition-all duration-300">
         <div className="flex justify-between items-center pb-3 border-b border-slate-100/60">
           <div className="flex flex-col">
             <h2 className="text-lg font-extrabold text-slate-800">
               {language === 'vi' ? 'Nhật ký Hoạt động Bài đăng Gần đây' : 'Recent Posts Activity Log'}
             </h2>
-            <p className="text-xs text-slate-400 font-medium leading-normal">
+            <p className="text-xs text-slate-550 font-medium leading-normal">
               {language === 'vi' 
                 ? 'Hình ảnh minh họa trực quan cùng trạng thái của các bài đăng mới nhất trong cơ sở dữ liệu.' 
                 : 'Visual images and live statuses of the latest campaign publications.'}
@@ -458,7 +714,7 @@ export default function OverviewView() {
           </div>
           <Link 
             href="/content-calendar" 
-            className="flex items-center gap-1 text-xs font-black text-indigo-650 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl transition-all cursor-pointer decoration-none border-0 active:scale-95 animate-fade-in"
+            className="flex items-center gap-1 text-xs font-black text-primary bg-primary/10 hover:bg-primary/20 px-3.5 py-2 rounded-xl transition-all cursor-pointer decoration-none border-0 active:scale-95 animate-fade-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <span>{language === 'vi' ? 'Xem lịch đăng bài' : 'View Calendar'}</span>
             <ChevronRight size={13} />
@@ -466,8 +722,8 @@ export default function OverviewView() {
         </div>
 
         {stats.recentPosts.length === 0 ? (
-          <div className="bg-[#F8F9FE] border border-dashed border-[#E4E6F8] rounded-[24px] py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 animate-pulse">
+          <div className="bg-[#F8F9FE] border border-dashed border-[#E4E6F8] rounded-2xl py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary animate-pulse">
               <Globe size={20} />
             </div>
             <div className="flex flex-col gap-1">
@@ -504,7 +760,8 @@ export default function OverviewView() {
               return (
                 <div 
                   key={post.id}
-                  className="bg-white rounded-3xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-slate-150/60"
+                  tabIndex={0}
+                  className="bg-white rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-slate-150/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   {/* Image Grid Card */}
                   <div className="w-full h-full bg-slate-50">
@@ -516,7 +773,7 @@ export default function OverviewView() {
                   </div>
 
                   {/* Dark Hover Overlay */}
-                  <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 text-white z-20">
+                  <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 text-white z-20">
                     <div className="flex justify-between items-start">
                       <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
                         {platIcon}
@@ -549,6 +806,116 @@ export default function OverviewView() {
           </div>
         )}
       </div>
+
+      {/* Onboarding Tour Overlay */}
+      <AnimatePresence>
+        {showTour && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[1.5px] z-40 pointer-events-auto"
+              onClick={handleSkipTour}
+            />
+
+            {/* Tour Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", bounce: 0.1, duration: 0.4 }}
+              className={`fixed z-50 bg-white border border-slate-200/85 shadow-2xl rounded-2xl p-6 flex flex-col gap-4 ${
+                tourStep === 0 || tourStep === 5
+                  ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[calc(100vw-2rem)]'
+                  : 'bottom-6 right-6 w-[360px] max-w-[calc(100vw-2rem)]'
+              }`}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center select-none">
+                <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
+                  {tourStep === 0 
+                    ? (language === 'vi' ? 'Chào mừng' : 'Welcome')
+                    : tourStep === 5 
+                    ? (language === 'vi' ? 'Hoàn tất' : 'Finished')
+                    : `${language === 'vi' ? 'Bước' : 'Step'} ${tourStep} / 4`}
+                </span>
+                <button
+                  onClick={handleSkipTour}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
+                >
+                  {language === 'vi' ? 'Bỏ qua ✕' : 'Skip ✕'}
+                </button>
+              </div>
+
+              {/* Step content */}
+              <div className="flex flex-col gap-2">
+                <h3 className="text-base font-extrabold text-slate-800 leading-snug">
+                  {tourStep === 0 && (language === 'vi' ? 'Khám phá AntBiz! 👋' : 'Welcome to AntBiz! 👋')}
+                  {tourStep === 1 && (language === 'vi' ? 'Bảng Chào Mừng & Đồng Bộ' : 'Greeting Banner & Sync')}
+                  {tourStep === 2 && (language === 'vi' ? 'Thống Kê Số Liệu Thực Tế' : 'Live Ingestion Metrics')}
+                  {tourStep === 3 && (language === 'vi' ? 'Biểu Đồ Vận Hành 7 Ngày' : '7-Day Publication Volume')}
+                  {tourStep === 4 && (language === 'vi' ? 'Nhật Ký Ảnh Bài Đăng Gần Đây' : 'Recent Publication Logs')}
+                  {tourStep === 5 && (language === 'vi' ? 'Sẵn sàng tự động hóa! 🚀' : 'Ready to Automate! 🚀')}
+                </h3>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  {tourStep === 0 && (language === 'vi' 
+                    ? 'Chào mừng bạn đến với AntBiz. Hãy cùng dạo quanh nhanh các khu vực cốt lõi trên màn hình Tổng quan để tối ưu hóa chiến dịch AI của bạn.' 
+                    : 'Welcome to AntBiz. Let’s take a quick tour around the core widgets on your Overview dashboard to optimize your AI campaigns.')}
+                  {tourStep === 1 && (language === 'vi' 
+                    ? 'Khu vực chào mừng hiển thị tên tài khoản cùng trạng thái hệ thống. Sử dụng nút "Làm mới số liệu" để đồng bộ dữ liệu thời gian thực.' 
+                    : 'The greeting card displays your profile and automated scheduler status. Click "Refresh Metrics" to sync database changes in real-time.')}
+                  {tourStep === 2 && (language === 'vi' 
+                    ? 'Xem số lượng bài viết AI tích lũy, biểu đồ tỷ lệ phân phối đa kênh (Facebook/Instagram/Threads) và đo lường tỷ lệ lỗi/thành công.' 
+                    : 'Track your total AI copywriting volume, platform share ratios, and real-time success/failure metrics at a single glance.')}
+                  {tourStep === 3 && (language === 'vi' 
+                    ? 'Biểu đồ trực quan hóa số lượng bài viết đã đăng trong 7 ngày qua. Hãy di chuột lên từng cột để xem số lượng bài viết chi tiết.' 
+                    : 'Interactive bar chart showing actual published counts over the past week. Hover on any column to see the exact post volume.')}
+                  {tourStep === 4 && (language === 'vi' 
+                    ? 'Bản xem trước hình ảnh trực quan cùng trạng thái đăng thực tế của các bài đăng gần nhất giúp marketer phát hiện nhanh các bài lỗi.' 
+                    : 'Visual list of recent posts displaying thumbnail previews and direct platform publication statuses for quick verification.')}
+                  {tourStep === 5 && (language === 'vi' 
+                    ? 'Bạn đã sẵn sàng để sáng tạo! Hãy di chuyển sang mục AI Creator trên Sidebar bên trái để viết bài viết AI đầu tiên nhé!' 
+                    : 'You are now ready to create content! Navigate to the "AI Creator" on the left Sidebar to write your first automated post!')}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center mt-2 pt-4 border-t border-slate-100">
+                {tourStep > 0 ? (
+                  <button
+                    onClick={handlePrevStep}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    {language === 'vi' ? 'Quay lại' : 'Back'}
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {tourStep < 5 ? (
+                  <button
+                    onClick={handleNextStep}
+                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  >
+                    {tourStep === 0 
+                      ? (language === 'vi' ? 'Bắt đầu khám phá' : 'Start Tour') 
+                      : (language === 'vi' ? 'Tiếp tục' : 'Next')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSkipTour}
+                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  >
+                    {language === 'vi' ? 'Hoàn tất hướng dẫn' : 'Finish Tour'}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
     </div>
   );

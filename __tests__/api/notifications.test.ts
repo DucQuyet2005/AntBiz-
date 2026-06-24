@@ -64,7 +64,7 @@ describe('Notifications API Routes', () => {
       });
 
       const req = new Request('http://localhost/api/notifications?page=1&limit=10');
-      const res = await getNotifications(req);
+      const res = await getNotifications(req as any);
       expect(res.status).toBe(401);
     });
 
@@ -81,7 +81,7 @@ describe('Notifications API Routes', () => {
       mockRange.mockResolvedValue({ data: mockData, error: null, count: 1 });
 
       const req = new Request('http://localhost/api/notifications?page=1&limit=10&type=info');
-      const res = await getNotifications(req);
+      const res = await getNotifications(req as any);
 
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -99,7 +99,7 @@ describe('Notifications API Routes', () => {
       mockRange.mockResolvedValue({ data: null, error: { message: 'DB Read Error' }, count: 0 });
 
       const req = new Request('http://localhost/api/notifications?page=1&limit=10');
-      const res = await getNotifications(req);
+      const res = await getNotifications(req as any);
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.error).toBe('Không thể tải danh sách thông báo');
@@ -118,7 +118,7 @@ describe('Notifications API Routes', () => {
         method: 'POST',
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(401);
     });
 
@@ -136,7 +136,7 @@ describe('Notifications API Routes', () => {
 
       process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_CmYMg8R7IAQzj_RyuKBDxQ_98WXMt0G';
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(201);
       const json = await res.json();
       expect(json.success).toBe(true);
@@ -155,7 +155,7 @@ describe('Notifications API Routes', () => {
         body: JSON.stringify({ userId: 'u1', title: 'Test' }),
       });
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toContain('Thiếu các trường bắt buộc');
@@ -174,7 +174,7 @@ describe('Notifications API Routes', () => {
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.error).toBe('Insert DB failed');
@@ -193,7 +193,7 @@ describe('Notifications API Routes', () => {
       mockSingle.mockResolvedValue({ data: mockSingleNotif, error: null });
 
       const res = await readSingleNotification(
-        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }) as any,
         { params: Promise.resolve({ id: 'n1' }) }
       );
 
@@ -212,7 +212,7 @@ describe('Notifications API Routes', () => {
       mockSingle.mockResolvedValue({ data: null, error: { message: 'Update failed' } });
 
       const res = await readSingleNotification(
-        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }) as any,
         { params: Promise.resolve({ id: 'n1' }) }
       );
 
@@ -234,7 +234,7 @@ describe('Notifications API Routes', () => {
       mockSelect.mockResolvedValue({ data: mockUpdatedList, error: null });
 
       const res = await readAllNotifications(
-        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' })
+        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' }) as any
       );
 
       expect(res.status).toBe(200);
@@ -255,7 +255,7 @@ describe('Notifications API Routes', () => {
       mockSelect.mockResolvedValue({ data: null, error: { message: 'Batch update failed' } });
 
       const res = await readAllNotifications(
-        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' })
+        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' }) as any
       );
 
       expect(res.status).toBe(500);

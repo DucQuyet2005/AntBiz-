@@ -43,7 +43,7 @@ export default function SectionsForm({ config, onChange }: Props) {
     <div className="flex flex-col gap-8">
       {/* 1. About Section */}
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
           Section Giới thiệu (About)
         </h3>
         <div className="flex flex-col gap-4">
@@ -52,7 +52,7 @@ export default function SectionsForm({ config, onChange }: Props) {
             <textarea 
               value={config.aboutTitle}
               onChange={(e) => onChange('aboutTitle', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none resize-none h-20"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-none h-20"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -60,7 +60,7 @@ export default function SectionsForm({ config, onChange }: Props) {
             <textarea 
               value={config.aboutContent}
               onChange={(e) => onChange('aboutContent', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none resize-y min-h-[120px]"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-y min-h-[120px]"
             />
             <p className="text-[10px] text-slate-400 font-medium">Sử dụng plain text hoặc mã HTML cơ bản (như &lt;b&gt;, &lt;br&gt;) để định dạng.</p>
           </div>
@@ -71,11 +71,11 @@ export default function SectionsForm({ config, onChange }: Props) {
 
       {/* 2. Features Section */}
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2 flex justify-between items-center">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4 flex justify-between items-center">
           <span>Section Tính năng (Features)</span>
           <button 
             onClick={addFeature}
-            className="flex items-center gap-1 text-[10px] bg-[#5A5CDE]/10 text-[#5A5CDE] px-2 py-1 rounded font-bold hover:bg-[#5A5CDE]/20 transition-colors"
+            className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2.5 py-1.5 rounded-full font-bold hover:bg-primary/20 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <Plus size={12} /> Thêm tính năng
           </button>
@@ -88,7 +88,7 @@ export default function SectionsForm({ config, onChange }: Props) {
               type="text"
               value={config.featuresTitle}
               onChange={(e) => onChange('featuresTitle', e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             />
           </div>
         </div>
@@ -107,7 +107,7 @@ export default function SectionsForm({ config, onChange }: Props) {
                       type="text"
                       value={feature.title}
                       onChange={(e) => updateFeature(idx, 'title', e.target.value)}
-                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-sm font-bold outline-none"
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                     />
                   </div>
                   <div className="w-24 flex flex-col gap-1">
@@ -117,7 +117,7 @@ export default function SectionsForm({ config, onChange }: Props) {
                       value={feature.icon}
                       onChange={(e) => updateFeature(idx, 'icon', e.target.value)}
                       placeholder="lucide-icon"
-                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono outline-none"
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                     />
                   </div>
                 </div>
@@ -127,7 +127,7 @@ export default function SectionsForm({ config, onChange }: Props) {
                     type="text"
                     value={feature.image}
                     onChange={(e) => updateFeature(idx, 'image', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono outline-none"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                     placeholder="https://..."
                   />
                 </div>
@@ -136,13 +136,13 @@ export default function SectionsForm({ config, onChange }: Props) {
                   <textarea 
                     value={feature.desc}
                     onChange={(e) => updateFeature(idx, 'desc', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-sm font-medium outline-none h-16 resize-none"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none h-16 resize-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                   />
                 </div>
               </div>
               <button 
                 onClick={() => removeFeature(idx)}
-                className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1 bg-red-50 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-all"
+                className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg opacity-0 group-hover:opacity-100 focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none transition-all"
                 title="Xóa thẻ"
               >
                 <Trash2 size={14} />
@@ -156,7 +156,7 @@ export default function SectionsForm({ config, onChange }: Props) {
 
       {/* 3. Footer Section */}
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
           Footer
         </h3>
         <div className="flex flex-col gap-2">
@@ -165,7 +165,7 @@ export default function SectionsForm({ config, onChange }: Props) {
             type="text" 
             value={config.footerText}
             onChange={(e) => onChange('footerText', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           />
         </div>
       </div>

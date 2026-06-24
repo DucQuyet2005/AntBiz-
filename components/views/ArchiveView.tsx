@@ -319,21 +319,21 @@ export default function ArchiveView() {
       <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('posts')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPosts')}
           {activeTab === 'posts' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('preview')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPreview')}
           {activeTab === 'preview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabHistory')}
           {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
@@ -353,7 +353,7 @@ export default function ArchiveView() {
                 placeholder={t('archive.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+                className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-text-muted border border-gray-200/50 shadow-sm"
               />
             </div>
 
@@ -364,7 +364,7 @@ export default function ArchiveView() {
               <div className="relative">
                 <button 
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
                   <ChevronDown size={16} className="text-text-muted" />
@@ -378,7 +378,7 @@ export default function ArchiveView() {
                           setPlatformFilter(p);
                           setShowPlatformDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 capitalize font-medium ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {p === 'All Platforms' ? t('archive.allPlatforms') : p}
                       </button>
@@ -391,7 +391,7 @@ export default function ArchiveView() {
               <div className="relative">
                 <button 
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
                   <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
@@ -406,7 +406,7 @@ export default function ArchiveView() {
                           setSortBy(s);
                           setShowSortDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 font-medium ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 font-medium focus-visible:outline-none focus-visible:bg-gray-50 ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {s === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}
                       </button>
@@ -425,7 +425,7 @@ export default function ArchiveView() {
               <Link
                 href={item.link}
                 key={item.id}
-                className="bg-white border border-gray-200/60 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between"
+                className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
 
                 {/* Top Visual Banner */}
@@ -500,7 +500,7 @@ export default function ArchiveView() {
                             {shouldTruncate && (
                               <button
                                 onClick={(e) => toggleExpand(item.id, e)}
-                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block"
+                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded inline-block"
                               >
                                 {isExpanded 
                                   ? (language === 'vi' ? 'Ẩn bớt' : 'Show less') 
@@ -612,7 +612,7 @@ export default function ArchiveView() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-[11px] border-collapse min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -639,14 +639,14 @@ export default function ArchiveView() {
                 ) : (
                   previewData.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-gray-400">{row.id.substring(0, 8)}...</td>
+                      <td className="px-4 py-3 font-mono text-slate-500">{row.id.substring(0, 8)}...</td>
                       <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
                         <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 font-black text-[9px]">{row.platform}</span>
                       </td>
                       <td className="px-4 py-3 text-text-muted truncate max-w-[250px]">{row.ai_content}</td>
                       <td className="px-4 py-3 font-black text-[10px]">{row.status}</td>
-                      <td className="px-4 py-3 text-gray-400">{new Date(row.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-slate-500">{new Date(row.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))
                 )}
@@ -657,7 +657,7 @@ export default function ArchiveView() {
       ) : (
         /* Export History Tab */
         <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -702,14 +702,14 @@ export default function ArchiveView() {
                             href={job.download_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl text-xs font-black transition-all"
+                            className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                           >
                             <Download size={14} />
                             {t('archive.jobDownload')}
                           </a>
                         ) : (
-                          <span className="text-gray-300">
-                            <Download size={14} className="inline" />
+                          <span className="text-slate-405">
+                            <Download size={14} className="inline text-slate-400" />
                           </span>
                         )}
                       </td>
@@ -719,8 +719,8 @@ export default function ArchiveView() {
               </tbody>
             </table>
           </div>
-
-          <div className="flex items-center gap-3 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl">
+ 
+          <div className="flex items-center gap-3 p-5 bg-blue-50/50 border border-blue-100 rounded-2xl">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
               <Clock size={20} />
             </div>

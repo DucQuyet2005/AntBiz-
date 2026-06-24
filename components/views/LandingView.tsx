@@ -272,7 +272,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
     index, 
     className = '' 
   }: { 
-    children: React.ReactNode, 
+    children?: React.ReactNode, 
     section: string, 
     field: string, 
     index?: number,
@@ -289,8 +289,8 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           onEditClick?.(section, field, index);
         }}
       >
-        <div className="absolute -inset-2 border-2 border-dashed border-[#5A5CDE] bg-[#5A5CDE]/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none z-20 flex items-start justify-end p-1">
-          <div className="bg-[#5A5CDE] text-white p-1 rounded-sm shadow-md flex items-center justify-center gap-1 text-[10px] font-bold uppercase">
+        <div className="absolute -inset-2 border-2 border-dashed border-primary bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none z-20 flex items-start justify-end p-1">
+          <div className="bg-primary text-white p-1 rounded-sm shadow-md flex items-center justify-center gap-1 text-[10px] font-bold uppercase">
             <Edit2 size={12} /> Sửa
           </div>
         </div>
@@ -331,28 +331,28 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none">
+            <Link href="/" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
               {language === 'vi' ? 'Trang chủ' : 'Home'}
             </Link>
-            <a href="#what-we-do" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none">
+            <a href="#what-we-do" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
               {language === 'vi' ? 'Tính năng' : 'Features'}
             </a>
-            <Link href="/faq" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none">
+            <Link href="/faq" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
               {language === 'vi' ? 'Hỗ trợ & FAQ' : 'FAQ & Support'}
             </Link>
           </nav>
 
           <div className="flex items-center gap-4">
             <div className="flex gap-0.5 bg-slate-200/60 p-0.5 rounded-lg border border-slate-300">
-              <button onClick={() => setLanguage("vi")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 ${language === "vi" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>VN</button>
-              <button onClick={() => setLanguage("en")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 ${language === "en" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>EN</button>
+              <button onClick={() => setLanguage("vi")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "vi" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>VN</button>
+              <button onClick={() => setLanguage("en")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "en" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>EN</button>
             </div>
 
             <div className="flex items-center gap-2">
-              <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {language === 'vi' ? 'Đăng nhập' : 'Login'}
               </Link>
-              <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {language === 'vi' ? 'Đăng ký' : 'Register'}
               </Link>
             </div>
@@ -382,7 +382,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow">
             {currentHero?.description}
           </motion.p>
-          <motion.button key={`btn-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0">
+          <motion.button key={`btn-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">
             <span>{currentHero?.ctaText}</span>
             <ArrowRight size={14} />
           </motion.button>
@@ -395,7 +395,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
               <button 
                 key={i} 
                 onClick={(e) => { e.stopPropagation(); setCurrentSlide(i); }} 
-                className={`w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/80'}`}
+                className={`w-2 h-2 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${i === currentSlide ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/80'}`}
               />
             ))}
           </div>
@@ -406,14 +406,14 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <>
             <button 
               onClick={handlePrevSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all"
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
               title={language === 'vi' ? 'Slide trước' : 'Previous Slide'}
             >
               <ChevronLeft size={24} />
             </button>
             <button 
               onClick={handleNextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
               title={language === 'vi' ? 'Slide sau' : 'Next Slide'}
             >
               <ChevronRight size={24} />
@@ -426,7 +426,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             <button 
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditClick?.('heroSlides', 'slideConfig'); }}
-              className="bg-white hover:bg-slate-50 text-[#5A5CDE] px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-[#5A5CDE]"
+              className="bg-white hover:bg-slate-50 text-primary px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
             >
               <Edit2 size={16} /> {language === 'vi' ? 'Chỉnh sửa Banners' : 'Edit Banners'}
             </button>
@@ -500,7 +500,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
       </section>
 
       {/* 10. CTA BANNER */}
-      <section className="py-20 bg-gradient-to-br from-[#5A5CDE] to-[#4A4CBF] text-center px-6">
+      <section className="py-20 bg-gradient-to-br from-primary to-primary-hover text-center px-6">
         <div className="max-w-3xl mx-auto">
           <EditableField section="sections" field="ctaBannerTitle">
             <h2 className="text-3xl md:text-4xl font-black text-white mb-6 uppercase tracking-tight">{config.sections.ctaBannerTitle}</h2>
@@ -509,7 +509,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             <p className="text-white/80 font-semibold mb-10">{config.sections.ctaBannerText}</p>
           </EditableField>
           <EditableField section="sections" field="ctaBannerBtn">
-            <button className="bg-white text-[#5A5CDE] hover:bg-slate-50 px-10 py-4 rounded-full font-extrabold text-sm uppercase shadow-2xl transition-transform active:scale-95">{config.sections.ctaBannerBtn}</button>
+            <button className="bg-white text-primary hover:bg-slate-50 px-10 py-4 rounded-full font-extrabold text-sm uppercase shadow-2xl transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">{config.sections.ctaBannerBtn}</button>
           </EditableField>
         </div>
       </section>

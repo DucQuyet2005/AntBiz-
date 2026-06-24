@@ -19,7 +19,11 @@ import {
   User,
   Key,
   RotateCcw,
-  Terminal
+  Terminal,
+  Send,
+  Calendar,
+  Sparkles,
+  Settings2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
@@ -46,10 +50,16 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const filterType = 'all';
+  const [filterCategory, setFilterCategory] = useState<'all' | 'bai-dang' | 'prompt' | 'lich' | 'he-thong'>('all');
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+
+  const handleFilterChange = (newCategory: typeof filterCategory) => {
+    setFilterCategory(newCategory);
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -63,37 +73,28 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Gọi API route với param category — server tự build query Supabase đúng chuẩn
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(ITEMS_PER_PAGE),
+        category: filterCategory,
+      });
 
-      const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      // Xây dựng câu truy vấn
-      let query = supabase
-        .from('notifications')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (filterType !== 'all') {
-        query = query.eq('type', filterType);
+      const res = await fetch(`/api/notifications?${params.toString()}`);
+      if (!res.ok) {
+        console.error('fetchNotifications HTTP error:', res.status);
+        return;
       }
 
-      const { data, error, count } = await query.range(from, to);
-
-      if (error) {
-        console.error('fetchNotifications query error:', error);
-      } else if (data) {
-        setNotifications(data as Notification[]);
-        setTotalCount(count || 0);
-      }
+      const json = await res.json();
+      setNotifications((json.data || []) as Notification[]);
+      setTotalCount(json.count || 0);
     } catch (err) {
       console.error('Error loading notifications:', err);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, supabase]);
+  }, [currentPage, filterCategory]);
 
   useEffect(() => {
     fetchNotifications();
@@ -279,10 +280,38 @@ export default function NotificationsPage() {
         </button>
       </div>
 
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100/80 w-fit select-none">
+        {[
+          { key: 'all' as const, label: language === 'vi' ? 'Tất cả' : 'All', icon: null, activeClass: 'bg-primary text-white shadow-sm shadow-primary/25' },
+          { key: 'bai-dang' as const, label: language === 'vi' ? 'Bài đăng' : 'Posts', icon: Send, activeClass: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' },
+          { key: 'prompt' as const, label: 'Prompt', icon: Sparkles, activeClass: 'bg-amber-500 text-white shadow-sm shadow-amber-200' },
+          { key: 'lich' as const, label: language === 'vi' ? 'Lịch' : 'Calendar', icon: Calendar, activeClass: 'bg-emerald-600 text-white shadow-sm shadow-emerald-200' },
+          { key: 'he-thong' as const, label: language === 'vi' ? 'Hệ thống' : 'System', icon: Settings2, activeClass: 'bg-slate-700 text-white shadow-sm shadow-slate-200' },
+        ].map(({ key, label, icon: Icon, activeClass }) => {
+          const isActive = filterCategory === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleFilterChange(key)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border-0 active:scale-95 ${
+                isActive
+                  ? activeClass
+                  : 'text-slate-550 hover:text-slate-800 hover:bg-white/80 bg-transparent'
+              }`}
+            >
+              {Icon && <Icon size={13} />}
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
 
 
       {/* Main List */}
-      <div className="bg-white border border-gray-200/80 rounded-[32px] p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 my-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -304,22 +333,24 @@ export default function NotificationsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     onClick={() => handleMarkAsRead(n.id, n.is_read)}
-                    className={`p-4 rounded-2xl border transition-all flex items-start gap-4 cursor-pointer relative overflow-hidden ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleMarkAsRead(n.id, n.is_read);
+                      }
+                    }}
+                    tabIndex={0}
+                    className={`p-4 rounded-2xl border transition-all flex items-start gap-4 cursor-pointer relative overflow-hidden focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
                       !n.is_read
-                        ? 'bg-[#5A5CDE]/5 border-primary/20 hover:bg-[#5A5CDE]/8'
+                        ? 'bg-primary/5 border-primary/20 hover:bg-primary/8'
                         : 'bg-white border-gray-150 hover:bg-gray-50'
                     }`}
                   >
-                    {/* Left Border Highlight for Unread */}
-                    {!n.is_read && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                    )}
-
                     {/* Icon */}
                     <div className="mt-0.5 shrink-0">
                       {getNotificationIcon(n.type, n.title)}
                     </div>
-
+ 
                     {/* Content */}
                     <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -337,7 +368,7 @@ export default function NotificationsPage() {
                           {translated.message}
                         </p>
                       </div>
-
+ 
                       <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
                         <span className="text-[10px] text-gray-400 font-bold select-none whitespace-nowrap">
                           {formatTimeAgo(n.created_at)}
@@ -350,7 +381,7 @@ export default function NotificationsPage() {
             </AnimatePresence>
           </div>
         )}
-
+ 
         {/* Unified Premium Pagination Controls */}
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
@@ -364,7 +395,7 @@ export default function NotificationsPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -373,7 +404,7 @@ export default function NotificationsPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
                     currentPage === page
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
                       : 'border border-gray-200/80 text-text hover:bg-gray-50'
@@ -382,11 +413,11 @@ export default function NotificationsPage() {
                   {page}
                 </button>
               ))}
-
+ 
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronRight size={16} />
               </button>

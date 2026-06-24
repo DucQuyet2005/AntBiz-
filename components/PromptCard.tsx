@@ -20,7 +20,14 @@ const PromptCard = ({
   return (
     <div 
       onClick={() => onSelect(prompt)}
-      className={`group relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden ${
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(prompt);
+        }
+      }}
+      className={`group relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
         isSelected 
           ? 'bg-primary/5 border-primary shadow-md ring-1 ring-primary/20' 
           : 'bg-white border-gray-100 hover:border-primary/40 hover:shadow-sm'

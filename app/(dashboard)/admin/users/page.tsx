@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Actions & Filters */}
-      <div className="bg-white rounded-[20px] p-6 border border-slate-200/60 shadow-sm flex flex-col md:flex-row items-center gap-4">
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
           <input 
@@ -185,7 +185,7 @@ export default function AdminUsersPage() {
             placeholder={t('admin.searchUser')} 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-all"
           />
         </div>
         
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
           <select 
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="flex-1 md:flex-none py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+            className="flex-1 md:flex-none py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none cursor-pointer"
           >
             <option value="all">{t('admin.allRoles')}</option>
             <option value="admin">{t('admin.roleAdmin')}</option>
@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex-1 md:flex-none py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+            className="flex-1 md:flex-none py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none cursor-pointer"
           >
             <option value="all">{t('admin.allStatuses')}</option>
             <option value="active">{t('admin.statusActive')}</option>
@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Users List */}
-      <div className="bg-white rounded-[20px] border border-slate-200/60 shadow-sm overflow-hidden relative">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden relative">
         {/* Loading overlay when refreshing and we already have data */}
         {loading && users.length > 0 && (
           <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
@@ -283,7 +283,7 @@ export default function AdminUsersPage() {
                         <select 
                           value={user.role}
                           onChange={(e) => handleRoleChangeRequest(user, e.target.value)}
-                          className="bg-transparent border border-transparent hover:border-slate-300 rounded-lg px-2 py-1 -ml-2 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
+                          className="bg-transparent border border-transparent hover:border-slate-300 rounded-lg px-2 py-1 -ml-2 text-sm font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none focus-visible:border-primary cursor-pointer transition-colors"
                         >
                           <option value="admin">{t('admin.roleAdmin')}</option>
                           <option value="marketer_full">{t('admin.roleMarketerFull')}</option>
@@ -302,7 +302,7 @@ export default function AdminUsersPage() {
                       <td className="p-5 pr-6 text-right">
                         <button 
                           onClick={() => handleStatusToggle(user)}
-                          className={`p-2 rounded-xl transition-all ${user.status === 'locked' ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}`}
+                          className={`p-2 rounded-xl transition-all focus-visible:ring-2 focus-visible:outline-none ${user.status === 'locked' ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 focus-visible:ring-emerald-500' : 'bg-rose-100 text-rose-600 hover:bg-rose-200 focus-visible:ring-rose-500'}`}
                           title={user.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
                         >
                           {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}
@@ -334,7 +334,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1}
-                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer"
+                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -343,7 +343,7 @@ export default function AdminUsersPage() {
                 <button
                   key={p}
                   onClick={() => setPage(p)}
-                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
                     page === p
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
                       : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -356,7 +356,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={page === totalPages}
-                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer"
+                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronRight size={16} />
               </button>
@@ -370,7 +370,7 @@ export default function AdminUsersPage() {
         {roleModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setRoleModal({ isOpen: false, user: null, newRole: '' })} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-[20px] p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 border border-primary/20">
                 <Shield className="w-6 h-6 text-primary" />
               </div>
@@ -379,10 +379,10 @@ export default function AdminUsersPage() {
                 {t('admin.changeRoleDesc').replace('{email}', roleModal.user?.email || '').replace('{oldRole}', roleModal.user?.role || '').replace('{newRole}', roleModal.newRole || '')}
               </p>
               <div className="flex gap-3 w-full">
-                <button onClick={() => setRoleModal({ isOpen: false, user: null, newRole: '' })} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
+                <button onClick={() => setRoleModal({ isOpen: false, user: null, newRole: '' })} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">
                   {t('admin.cancel')}
                 </button>
-                <button onClick={confirmRoleChange} className="flex-1 px-4 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary/20">
+                <button onClick={confirmRoleChange} className="flex-1 px-4 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">
                   {t('admin.confirm')}
                 </button>
               </div>
@@ -396,7 +396,7 @@ export default function AdminUsersPage() {
         {lockModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' })} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-[20px] p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 border ${lockModal.targetStatus === 'locked' ? 'bg-rose-100 border-rose-200' : 'bg-emerald-100 border-emerald-200'}`}>
                 <ShieldAlert className={`w-6 h-6 ${lockModal.targetStatus === 'locked' ? 'text-rose-600' : 'text-emerald-600'}`} />
               </div>
@@ -413,19 +413,19 @@ export default function AdminUsersPage() {
                   <textarea 
                     value={lockModal.reason}
                     onChange={(e) => setLockModal(prev => ({ ...prev, reason: e.target.value }))}
-                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 resize-none h-24"
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-rose-500/40 focus-visible:border-rose-500 focus-visible:outline-none resize-none h-24"
                     placeholder={t('admin.lockReasonPlaceholder')}
                   />
                 </div>
               )}
 
               <div className="flex gap-3 w-full">
-                <button onClick={() => setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' })} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
+                <button onClick={() => setLockModal({ isOpen: false, user: null, targetStatus: '', reason: '' })} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">
                   {t('admin.cancel')}
                 </button>
                 <button 
                   onClick={confirmStatusChange} 
-                  className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors shadow-lg ${lockModal.targetStatus === 'locked' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'}`}
+                  className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${lockModal.targetStatus === 'locked' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20 focus-visible:ring-rose-500' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 focus-visible:ring-emerald-500'}`}
                 >
                   {lockModal.targetStatus === 'locked' ? t('admin.confirmLock') : t('admin.confirmUnlock')}
                 </button>

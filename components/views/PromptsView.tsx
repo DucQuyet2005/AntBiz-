@@ -383,7 +383,7 @@ export default function PromptsView() {
         </div>
         <button
           onClick={openCreateModal}
-          className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-full flex items-center gap-2 font-bold text-sm transition-colors shadow-md shadow-primary/20 shrink-0"
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-full flex items-center gap-2 font-bold text-sm transition-colors shadow-md shadow-primary/20 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
         >
           <Plus size={18} />
           {t("prompts.createNew")}
@@ -401,14 +401,14 @@ export default function PromptsView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("prompts.searchPlaceholder")}
-              className="w-full bg-card border border-gray-200/70 rounded-full py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted"
+              className="w-full bg-card border border-gray-200/70 rounded-full py-2.5 pl-11 pr-4 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPlatformFilter("")}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                 platformFilter === ""
                   ? "bg-primary text-white shadow-sm"
                   : "bg-card text-text-muted border border-gray-200/70 hover:text-text"
@@ -420,7 +420,7 @@ export default function PromptsView() {
               <button
                 key={opt.value}
                 onClick={() => setPlatformFilter(opt.value)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-colors inline-flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-colors inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                   platformFilter === opt.value
                     ? "bg-primary text-white shadow-sm"
                     : "bg-card text-text-muted border border-gray-200/70 hover:text-text"
@@ -437,7 +437,7 @@ export default function PromptsView() {
             <button
               type="button"
               onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-              className="bg-card border border-gray-200/70 rounded-full px-4 py-2.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus:outline-none"
+              className="bg-card border border-gray-200/70 rounded-full px-4 py-2.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
             >
               {t("prompts.filterByTag", { count: tagsFilter.length })}
             </button>
@@ -525,7 +525,7 @@ export default function PromptsView() {
           {loadError}
         </div>
       ) : prompts.length === 0 ? (
-        <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-12 flex flex-col items-center text-center gap-2">
+        <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-12 flex flex-col items-center text-center gap-2">
           <p className="font-bold text-text">
             {search || platformFilter || tagsFilter.length > 0
               ? t("prompts.noMatching")
@@ -554,7 +554,7 @@ export default function PromptsView() {
           {prompts.map((prompt) => (
             <div
               key={prompt.id}
-              className="bg-card border border-gray-100 rounded-[28px] p-6 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-card border border-gray-100 rounded-2xl p-6 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -579,7 +579,7 @@ export default function PromptsView() {
                             prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
                           )
                         }
-                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
                           isSelected
                             ? "bg-[#C4F0E1] text-[#1F4C3F] ring-1 ring-[#1F4C3F]/30"
                             : "bg-[#C4F0E1]/50 text-[#1F4C3F] hover:bg-[#C4F0E1]"
@@ -596,18 +596,18 @@ export default function PromptsView() {
                     onClick={() => handleClone(prompt)}
                     disabled={cloningId === prompt.id}
                     title={t("prompts.cloneTooltip")}
-                    className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-all duration-100 active:scale-95 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                   >
                     {cloningId === prompt.id ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin text-primary" />
                     ) : (
-                      <Copy size={16} />
+                      <Copy size={16} className="transition-transform duration-300 scale-100 rotate-0" />
                     )}
                   </button>
                   <button
                     onClick={() => openEditModal(prompt)}
                     title={t("prompts.editTooltip")}
-                    className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="p-2 rounded-full text-text-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                   >
                     <Pencil size={16} />
                   </button>
@@ -617,7 +617,7 @@ export default function PromptsView() {
                       isCheckingDelete && deletingPrompt?.id === prompt.id
                     }
                     title={t("prompts.deleteTooltip")}
-                    className="p-2 rounded-full text-text-muted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-full text-text-muted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                   >
                     {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -647,14 +647,14 @@ export default function PromptsView() {
             <button
               disabled={page === 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
             >
               {t("prompts.prev")}
             </button>
             <button
               disabled={page >= Math.ceil(total / pageSize)}
               onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
             >
               {t("prompts.next")}
             </button>
@@ -667,7 +667,7 @@ export default function PromptsView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <form
             onSubmit={handleSubmit}
-            className="bg-card rounded-[28px] p-8 w-full max-w-lg flex flex-col gap-5 shadow-xl max-h-[90vh] overflow-y-auto"
+            className="bg-card rounded-2xl p-8 w-full max-w-lg flex flex-col gap-5 shadow-xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-text">
@@ -676,7 +676,7 @@ export default function PromptsView() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-100"
+                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
               >
                 <X size={20} />
               </button>
@@ -701,7 +701,7 @@ export default function PromptsView() {
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
                 placeholder={t("prompts.promptNamePlaceholder")}
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25"
+                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-sm font-medium"
               />
             </div>
 
@@ -717,7 +717,7 @@ export default function PromptsView() {
                     onClick={() =>
                       setForm((f) => ({ ...f, platform: opt.value }))
                     }
-                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border ${
+                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
                       form.platform === opt.value
                         ? "bg-primary text-white border-primary shadow-sm"
                         : "bg-bg text-text-muted border-gray-200/70 hover:text-text"
@@ -742,7 +742,7 @@ export default function PromptsView() {
                   setForm((f) => ({ ...f, content: e.target.value }))
                 }
                 placeholder={t("prompts.instructionPlaceholder")}
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25 resize-none"
+                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-sm font-medium resize-none"
               />
             </div>
 
@@ -758,7 +758,7 @@ export default function PromptsView() {
                 }
                 placeholder={t("prompts.tagsPlaceholder")}
                 list="prompt-tag-suggestions"
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus:outline-none text-sm font-medium focus:ring-2 focus:ring-primary/25"
+                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-sm font-medium"
               />
               <datalist id="prompt-tag-suggestions">
                 {allTags.map((tag) => (
@@ -772,14 +772,14 @@ export default function PromptsView() {
                 type="button"
                 onClick={closeModal}
                 disabled={submitting}
-                className="px-6 py-3 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50"
+                className="px-6 py-3 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
               >
                 {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-full font-bold text-sm transition-colors shadow-md shadow-primary/20 inline-flex items-center gap-2 disabled:opacity-60"
+                className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-full font-bold text-sm transition-colors shadow-md shadow-primary/20 inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
               >
                 {submitting && <Loader2 size={16} className="animate-spin" />}
                 {modal.mode === "edit" ? t("common.save") : t("prompts.createNew")}
@@ -792,7 +792,7 @@ export default function PromptsView() {
       {/* Delete confirm modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="bg-card rounded-[28px] p-8 w-full max-w-sm flex flex-col gap-4 shadow-xl">
+          <div className="bg-card rounded-2xl p-8 w-full max-w-sm flex flex-col gap-4 shadow-xl">
             {/* Icon */}
             <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
               {deleteState.captionCount > 0 ? (
@@ -838,14 +838,14 @@ export default function PromptsView() {
               <button
                 onClick={handleCancelDelete}
                 disabled={deleteState.phase === "deleting"}
-                className="px-5 py-2.5 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleteState.phase === "deleting"}
-                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 ${
+                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                   deleteState.captionCount > 0
                     ? "bg-amber-500 hover:bg-amber-600 text-white"
                     : "bg-red-600 hover:bg-red-700 text-white"

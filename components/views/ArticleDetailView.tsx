@@ -551,7 +551,7 @@ export default function ArticleDetailView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-[#3F51B5] w-8 h-8" />
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
       </div>
     );
   }
@@ -562,11 +562,11 @@ export default function ArticleDetailView() {
       {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2 text-text-muted">
-          <Link href="/archive" className="hover:text-text transition-colors p-1 -ml-1">
+          <Link href="/archive" className="hover:text-text transition-colors p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Link href="/archive" className="hover:text-text transition-colors">{t('articleDetail.contentList')}</Link>
+            <Link href="/archive" className="hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">{t('articleDetail.contentList')}</Link>
             <span>/</span>
             <span className="text-text max-w-[200px] truncate" title={activeArticle.title}>
               {activeArticle.title}
@@ -575,21 +575,21 @@ export default function ArticleDetailView() {
         </div>
 
         <div className="flex items-center gap-3 justify-end">
-          <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
+          <button className="w-10 h-10 rounded-full bg-white border border-slate-200/60 shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
             <Share2 size={18} />
           </button>
-          <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
+          <button className="w-10 h-10 rounded-full bg-white border border-slate-200/60 shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
             <LinkIcon size={18} />
           </button>
           <button
             onClick={handleEditClick}
             disabled={isEditing}
-            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent ${
+            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
               isPublished
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                ? 'bg-gray-200 text-gray-405 cursor-not-allowed shadow-none'
                 : isEditing
-                ? 'bg-indigo-50 text-indigo-400 border border-indigo-200 cursor-default shadow-none'
-                : 'bg-[#3F51B5] hover:bg-indigo-700 text-white shadow-md shadow-[#3F51B5]/20 cursor-pointer'
+                ? 'bg-primary/10 text-primary/70 border border-primary/20 cursor-default shadow-none'
+                : 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20 cursor-pointer'
             }`}
           >
             <Edit3 size={16} />
@@ -622,8 +622,8 @@ export default function ArticleDetailView() {
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
 
           {/* Title & Author Card */}
-          <div className="bg-[#F8F9FE] rounded-[32px] p-8 flex flex-col gap-5 border border-[#E4E6F8]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#3F51B5] bg-white px-4 py-1.5 rounded-full w-fit shadow-sm border border-[#E4E6F8]">
+          <div className="bg-slate-50 rounded-2xl p-8 flex flex-col gap-5 border border-slate-200/60">
+            <div className="flex items-center gap-2 text-xs font-bold text-primary bg-white px-4 py-1.5 rounded-full w-fit shadow-sm border border-slate-200/60">
               <span>🏠</span>
               {activeArticle.category}
             </div>
@@ -632,9 +632,9 @@ export default function ArticleDetailView() {
               {activeArticle.title}
             </h1>
 
-            <div className="flex items-center gap-6 mt-3 pt-6 border-t border-[#E4E6F8]">
+            <div className="flex items-center gap-6 mt-3 pt-6 border-t border-slate-100">
               <div className="flex items-center gap-2 text-text-muted text-sm font-semibold">
-                <div className="w-6 h-6 rounded-full bg-[#E9EAF5] text-[#3F51B5] flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                   <User size={12} />
                 </div>
                 {activeArticle.author}
@@ -647,14 +647,14 @@ export default function ArticleDetailView() {
           </div>
 
           {/* High-Fidelity Platform Mockup Viewport */}
-          <div className="bg-white border border-gray-200/80 rounded-[32px] p-6 shadow-sm flex flex-col gap-5">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
               <h3 className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={16} className="text-[#3F51B5]" />
+                <Sparkles size={16} className="text-primary" />
                 {language === 'vi' ? 'Bản xem trước mạng xã hội' : 'Social Media Preview'}
               </h3>
 
-              <div className="flex bg-[#F8F9FE] rounded-full p-1 border border-[#E4E6F8]">
+              <div className="flex bg-slate-50 rounded-full p-1 border border-slate-200/60">
                 <button
                   onClick={() => setSelectedPlatform('facebook')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
@@ -713,7 +713,7 @@ export default function ArticleDetailView() {
                 <div className="flex flex-col bg-white">
                   <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#3F51B5] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                      <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
                         AB
                       </div>
                       <div className="flex flex-col">
@@ -738,7 +738,7 @@ export default function ArticleDetailView() {
                         <textarea
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#3F51B5] text-xs font-medium leading-relaxed bg-white text-text resize-y"
+                          className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary text-xs font-medium leading-relaxed bg-white text-text resize-y"
                           placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
                         />
                       ) : (
@@ -754,7 +754,7 @@ export default function ArticleDetailView() {
                               {shouldTruncate && (
                                 <button
                                   onClick={() => setIsFbExpanded(!isFbExpanded)}
-                                  className="text-blue-650 font-extrabold ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                                  className="text-primary font-extrabold ml-1.5 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded inline-block bg-transparent border-0 p-0"
                                 >
                                   {isFbExpanded
                                     ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
@@ -872,7 +872,7 @@ export default function ArticleDetailView() {
                                   {shouldTruncate && (
                                     <button
                                       onClick={() => setIsThreadsExpanded(!isThreadsExpanded)}
-                                      className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                                      className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded inline-block bg-transparent border-0 p-0"
                                     >
                                       {isThreadsExpanded
                                         ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
@@ -927,9 +927,9 @@ export default function ArticleDetailView() {
 
                       <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
                         <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                        <MessageCircle size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
                         <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                        <Share2 size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
                       </div>
                     </div>
                   </div>
@@ -957,9 +957,9 @@ export default function ArticleDetailView() {
 
                       <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
                         <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                        <MessageCircle size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
                         <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                        <Share2 size={14} className="hover:text-[#3F51B5] cursor-pointer transition-colors" />
+                        <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
                       </div>
                     </div>
                   </div>
@@ -978,7 +978,7 @@ export default function ArticleDetailView() {
                 </button>
                 <button
                   onClick={handleSaveAndReplaceOriginal}
-                  className="bg-[#3F51B5] hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md shadow-[#3F51B5]/20 flex items-center gap-1.5 cursor-pointer border-0"
+                  className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md shadow-primary/20 flex items-center gap-1.5 cursor-pointer border-0"
                 >
                   <span>🔄</span>
                   {language === 'vi' ? 'Lưu thay thế bản gốc' : 'Save & Replace Original'}
@@ -994,8 +994,8 @@ export default function ArticleDetailView() {
           </div>
 
           {/* Summary Card */}
-          <div className="bg-gradient-to-br from-[#F3F4FD] to-[#EEF2FF] rounded-[32px] p-8 border border-[#E4E6F8] shadow-sm relative overflow-hidden">
-            <div className="flex items-center gap-2 text-[#3F51B5] font-bold text-lg mb-4">
+          <div className="bg-gradient-to-br from-primary/5 to-cyan-500/5 rounded-2xl p-8 border border-primary/20 shadow-sm relative overflow-hidden">
+            <div className="flex items-center gap-2 text-primary font-bold text-lg mb-4">
               <Quote size={20} className="fill-current opacity-5 absolute top-6 right-6 w-32 h-32" />
               <Quote size={20} />
               <h2>{t('articleDetail.summary')}</h2>
@@ -1007,14 +1007,14 @@ export default function ArticleDetailView() {
 
           {/* Nội dung bài viết đầy đủ (body blocks: text + ảnh xen kẽ) */}
           {Array.isArray(activeArticle.body) && activeArticle.body.length > 0 ? (
-            <div className="bg-white border border-gray-200/80 rounded-[32px] p-8 shadow-sm flex flex-col gap-5">
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 shadow-sm flex flex-col gap-5">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg">
                   <span className="text-2xl">📄</span>
                   <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
                 </div>
               </div>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 max-w-[72ch]">
                 {(() => {
                   const blocks = activeArticle.body;
                   const shouldTruncate = blocks.length > 3;
@@ -1056,7 +1056,7 @@ export default function ArticleDetailView() {
                         <div className="flex justify-center pt-2">
                           <button
                             onClick={() => setIsBodyExpanded(!isBodyExpanded)}
-                            className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
+                            className="bg-primary/10 hover:bg-primary/20 text-primary px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                           >
                             {isBodyExpanded
                               ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung')
@@ -1071,12 +1071,12 @@ export default function ArticleDetailView() {
             </div>
           ) : activeArticle.full_text ? (
             /* Fallback: hiển thị full_text nếu không có body */
-            <div className="bg-white border border-gray-200/80 rounded-[32px] p-8 shadow-sm flex flex-col gap-4">
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 shadow-sm flex flex-col gap-4">
               <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg border-b border-gray-100 pb-4">
                 <span className="text-2xl">📄</span>
                 <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
               </div>
-              <div className="text-[14px] text-text leading-[1.9] whitespace-pre-wrap font-medium">
+              <div className="text-[14px] text-text leading-[1.9] whitespace-pre-wrap font-medium max-w-[72ch]">
                 {(() => {
                   const text = activeArticle.full_text;
                   const shouldTruncate = text.length > 500;
@@ -1090,7 +1090,7 @@ export default function ArticleDetailView() {
                         <div className="flex justify-center pt-4">
                           <button
                             onClick={() => setIsBodyExpanded(!isBodyExpanded)}
-                            className="bg-[#3F51B5]/10 hover:bg-[#3F51B5]/20 text-[#3F51B5] px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0"
+                            className="bg-primary/10 hover:bg-primary/20 text-primary px-6 py-2 rounded-full font-bold text-xs transition-all active:scale-95 cursor-pointer border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                           >
                             {isBodyExpanded
                               ? (language === 'vi' ? 'Ẩn bớt nội dung' : 'Xem thêm nội dung')
@@ -1114,7 +1114,7 @@ export default function ArticleDetailView() {
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {activeArticle.images.map((img: any, idx: number) => (
-                  <div key={idx} className="relative rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+                  <div key={idx} className="relative rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
                     <img
                       src={img.url}
                       alt={img.caption || `Image ${idx + 1}`}
@@ -1137,7 +1137,7 @@ export default function ArticleDetailView() {
           {/* Image Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {activeArticle.images.map((img: any, idx: number) => (
-              <div key={idx} className="relative h-[240px] rounded-[32px] overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
+              <div key={idx} className="relative h-[240px] rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
                 <img
                   src={img.url}
                   alt={`Image ${idx}`}
@@ -1160,12 +1160,12 @@ export default function ArticleDetailView() {
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
 
           {/* Performance Metrics Card */}
-          <div className="bg-[#FCF9F2] border border-[#F2E8D5] rounded-[32px] p-7 shadow-sm">
-            <h3 className="text-[11px] font-bold tracking-[0.1em] text-amber-800/50 uppercase mb-5">
+          <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-7 shadow-sm">
+            <h3 className="text-[11px] font-bold tracking-[0.1em] text-amber-850/60 uppercase mb-5">
               {t('articleDetail.performanceMetrics')}
             </h3>
 
-            <div className="bg-white rounded-[24px] p-5 shadow-sm border border-[#F2E8D5] flex items-center justify-between mb-6">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-200/50 flex items-center justify-between mb-6">
               <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Eye size={24} />
               </div>
@@ -1187,9 +1187,9 @@ export default function ArticleDetailView() {
           </div>
 
           {/* Checkpoint Version History Card */}
-          <div className="bg-white border border-gray-200 rounded-[32px] p-6 shadow-sm flex flex-col gap-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
             <h3 className="text-[11px] font-bold tracking-[0.1em] text-[#1E293B]/60 uppercase border-b border-gray-100 pb-3 flex items-center gap-1.5 select-none">
-              <RotateCcw size={13} className="text-[#3F51B5]" />
+              <RotateCcw size={13} className="text-primary" />
               {language === 'vi' ? 'Lịch sử Checkpoint' : 'Checkpoint History'}
             </h3>
 
@@ -1208,13 +1208,13 @@ export default function ArticleDetailView() {
                           setSelectedCheckpoint(cp);
                         }
                       }}
-                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent ${isViewing
-                        ? 'border-[#3F51B5] bg-[#3F51B5]/5 shadow-sm'
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${isViewing
+                        ? 'border-primary bg-primary/5 shadow-sm'
                         : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
                         }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-extrabold ${isViewing ? 'text-[#3F51B5]' : 'text-text'}`}>
+                        <span className={`text-xs font-extrabold ${isViewing ? 'text-primary' : 'text-text'}`}>
                           Checkpoint {cp.version}
                         </span>
                         <span className="text-[9px] text-text-muted font-semibold">
@@ -1229,7 +1229,7 @@ export default function ArticleDetailView() {
                         }
                       </p>
 
-                      <div className="text-[8px] text-[#3F51B5] font-bold text-right pt-0.5 mt-0.5 border-t border-gray-100/50">
+                      <div className="text-[8px] text-primary font-bold text-right pt-0.5 mt-0.5 border-t border-gray-100/50">
                         {language === 'vi' ? 'Bấm để xem thử' : 'Click to preview'}
                       </div>
                     </button>
@@ -1244,7 +1244,7 @@ export default function ArticleDetailView() {
           </div>
 
           {/* Metadata Tags Card */}
-          <div className="bg-white border border-[#E4E6F8] rounded-[32px] p-7 shadow-sm">
+          <div className="bg-white border border-slate-200/60 rounded-2xl p-7 shadow-sm">
             <div className="flex items-center gap-2 text-[#1E293B] font-bold text-sm mb-5">
               <Tag size={18} className="text-text-muted" />
               <h3>{t('articleDetail.metadataTags')}</h3>
@@ -1254,7 +1254,7 @@ export default function ArticleDetailView() {
               {activeArticle.tags.map((tag: string, idx: number) => (
                 <span
                   key={idx}
-                  className="bg-[#F3F4FD] text-[#3F51B5] px-4 py-2 rounded-full text-[13px] font-bold"
+                  className="bg-primary/10 text-primary px-4 py-2 rounded-full text-[13px] font-bold"
                 >
                   {tag}
                 </span>

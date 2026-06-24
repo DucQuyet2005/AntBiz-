@@ -106,10 +106,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+    <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#0C121E] p-3">
-        <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-gradient-to-b from-[#111A2A] to-[#080B12] flex items-center justify-center min-h-[600px] shadow-inner border border-white/5">
+        <div className="relative w-full h-full rounded-xl overflow-hidden bg-gradient-to-b from-[#111A2A] to-[#080B12] flex items-center justify-center min-h-[600px] shadow-inner border border-white/5">
           <Image
             src="/images/register.png"
             alt={t("register.altText")}
@@ -161,7 +161,7 @@ export default function RegisterPage() {
                 {...register("fullName")}
                 type="text"
                 placeholder={t("register.fullNamePlaceholder")}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900"
               />
             </div>
             {errors.fullName && (
@@ -181,7 +181,7 @@ export default function RegisterPage() {
                 {...register("email")}
                 type="email"
                 placeholder={t("register.emailPlaceholder")}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900"
               />
             </div>
             {errors.email && (
@@ -201,11 +201,11 @@ export default function RegisterPage() {
                 {...register("password")}
                 type={showPassword ? "text" : "password"}
                 placeholder={t("register.passwordPlaceholder")}
-                className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900"
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -221,7 +221,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-full flex items-center justify-center gap-2 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             {isSubmitting ? t("register.submitting") : t("register.submitBtn")}
             <ArrowRight className="h-4 w-4" />
@@ -230,7 +230,7 @@ export default function RegisterPage() {
 
         <p className="mt-8 text-center text-xs text-gray-500 font-medium">
           {t("register.hasAccount")}{" "}
-          <Link href="/login" className="text-primary hover:text-primary-hover font-semibold transition-colors">
+          <Link href="/login" className="text-primary hover:text-primary-hover font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded">
             {t("register.loginLink")}
           </Link>
         </p>

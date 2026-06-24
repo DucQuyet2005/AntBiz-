@@ -558,7 +558,7 @@ export default function ChangePasswordView() {
 
       <div className="grid grid-cols-12 gap-8 items-stretch">
         {/* ── LEFT: Live Preview ── */}
-        <div className="col-span-12 lg:col-span-4 bg-white border border-gray-200/60 rounded-[32px] p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+        <div className="col-span-12 lg:col-span-4 bg-white border border-gray-200/60 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-transparent pointer-events-none" />
           <div className="relative z-10 flex flex-col items-center w-full">
             <div className="mb-8">
@@ -576,7 +576,7 @@ export default function ChangePasswordView() {
               <Mail size={12} className="text-gray-400" />{email}
             </p>
             {department && (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#F3F4FD] text-primary border border-primary/10 text-xs font-bold rounded-full mb-6">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 text-primary border border-primary/10 text-xs font-bold rounded-full mb-6">
                 <Briefcase size={12} />{department}
               </span>
             )}
@@ -594,7 +594,7 @@ export default function ChangePasswordView() {
             {/* Back to Profile details */}
             <Link
               href="/profile"
-              className="mt-6 w-full py-3 px-4 border border-gray-200 hover:border-primary/50 hover:bg-primary/5 text-slate-700 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2"
+              className="mt-6 w-full py-3 px-4 border border-gray-200 hover:border-primary/50 hover:bg-primary/5 text-slate-700 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
             >
               <User size={14} />
               <span>Chỉnh sửa thông tin cá nhân</span>
@@ -603,7 +603,7 @@ export default function ChangePasswordView() {
         </div>
 
         {/* ── RIGHT: Password Change Form ── */}
-        <div className="col-span-12 lg:col-span-8 bg-white border border-gray-200/60 rounded-[32px] p-8 shadow-sm flex flex-col gap-6 relative overflow-hidden">
+        <div className="col-span-12 lg:col-span-8 bg-white border border-gray-200/60 rounded-2xl p-8 shadow-sm flex flex-col gap-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-primary/5 to-transparent pointer-events-none" />
           <div className="relative z-10 flex flex-col gap-6 h-full justify-between">
             <div>
@@ -624,13 +624,13 @@ export default function ChangePasswordView() {
                       type={showCurrent ? 'text' : 'password'}
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Nhập mật khẩu hiện tại"
                     />
                     <button
                       type="button"
                       onClick={() => setShowCurrent(!showCurrent)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors rounded focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                     >
                       {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -645,13 +645,13 @@ export default function ChangePasswordView() {
                       type={showNew ? 'text' : 'password'}
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Nhập mật khẩu mới"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNew(!showNew)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors rounded focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                     >
                       {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -666,13 +666,13 @@ export default function ChangePasswordView() {
                       type={showConfirm ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Xác nhận mật khẩu mới"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text transition-colors rounded focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                     >
                       {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -720,7 +720,7 @@ export default function ChangePasswordView() {
                 <button
                   type="submit"
                   disabled={isChangingPassword || !currentPassword || !isPasswordStrong || !passwordsMatch}
-                  className="w-full md:w-auto px-8 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="w-full md:w-auto px-8 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
                 >
                   {isChangingPassword ? (
                     <><Loader2 size={14} className="animate-spin" />Đang cập nhật...</>

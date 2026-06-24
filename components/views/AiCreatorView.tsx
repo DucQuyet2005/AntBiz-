@@ -42,10 +42,11 @@ import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
+import DebouncedTextarea from '../DebouncedTextarea';
 
 
 // Threads Custom SVG Logo
-const ThreadsIcon = ({ size = 14, className = "" }: { size?: number; className?: string }) => (
+const ThreadsIcon = ({ size = 14, className = "" }: { size?: number; className?: string; key?: any }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>
     <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
   </svg>
@@ -91,6 +92,30 @@ const getFutureScheduleSlot = (offsetHours: number) => {
     date: toDateInputValue(date),
     time: toHourInputValue(date),
   };
+};
+
+// Note: DebouncedTextarea has been extracted to components/DebouncedTextarea.tsx for better re-render performance
+
+const handleFocusTrap = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  if (e.key !== 'Tab') return;
+  const modalEl = e.currentTarget;
+  const focusableEls = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusableEls.length === 0) return;
+  const focusable = Array.from(focusableEls) as HTMLElement[];
+  const firstEl = focusable[0];
+  const lastEl = focusable[focusable.length - 1];
+
+  if (e.shiftKey) {
+    if (document.activeElement === firstEl) {
+      lastEl.focus();
+      e.preventDefault();
+    }
+  } else {
+    if (document.activeElement === lastEl) {
+      firstEl.focus();
+      e.preventDefault();
+    }
+  }
 };
 
 const convertToHashtag = (tag: string): string => {
@@ -197,6 +222,13 @@ const EditableText = ({
     }
   }, [isEditing, value, textarea]);
 
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const shouldFold = textarea && value && value.length > 280;
+
+  React.useEffect(() => {
+    setIsExpanded(false);
+  }, [variantId, field]);
+
   if (isEditing) {
     return (
       <div className="w-full relative">
@@ -212,7 +244,7 @@ const EditableText = ({
                 e.target.style.height = `${e.target.scrollHeight}px`;
               }}
               onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:ring-0 focus:outline-none leading-relaxed transition-all"
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/45 focus-visible:ring-offset-1 leading-relaxed transition-all"
             />
             {isCaptionField && charLimit && (
               <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 pt-1">
@@ -263,7 +295,7 @@ const EditableText = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') setEditState(null);
             }}
-            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:ring-0 focus:outline-none font-inherit transition-all"
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/45 focus-visible:ring-offset-1 font-inherit transition-all"
           />
         )}
       </div>
@@ -281,7 +313,39 @@ const EditableText = ({
       <div className="flex flex-col w-full">
         <span className="whitespace-pre-wrap">
           {value ? (
-            value
+            shouldFold ? (
+              !isExpanded ? (
+                <>
+                  {value.substring(0, 280)}...
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(true);
+                    }}
+                    className="text-primary hover:underline font-extrabold ml-1 border-0 bg-transparent p-0 cursor-pointer text-[10px]"
+                  >
+                    {language === 'vi' ? 'Xem thêm' : 'See more'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {value}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(false);
+                    }}
+                    className="text-primary hover:underline font-extrabold ml-1.5 border-0 bg-transparent p-0 cursor-pointer text-[10px]"
+                  >
+                    {language === 'vi' ? 'Ẩn bớt' : 'Show less'}
+                  </button>
+                </>
+              )
+            ) : (
+              value
+            )
           ) : isGeneratingAB ? (
             <span className="text-gray-400 italic flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin text-primary shrink-0" />
@@ -458,6 +522,7 @@ export default function AiCreatorView() {
             platform: selectedPlatform,
             variantGroupId: groupId,
             variantIndex,
+            model: selectedModel,
             ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
               ? { promptId: selectedPrompt.id }
               : {}),
@@ -606,6 +671,7 @@ export default function AiCreatorView() {
           variantGroupId: groupId,
           variantIndex,
           oldCaptionId,
+          model: selectedModel,
           ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
             ? { promptId: selectedPrompt.id }
             : {}),
@@ -1278,6 +1344,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const [streamedCaption, setStreamedCaption] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateDone, setGenerateDone] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch prompts on mount
@@ -1345,18 +1412,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        if (step === 2) {
-          e.preventDefault();
-          handleRevertToSaved();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [savedHistory, step, variants]);
+
 
   const handleGenerate = async () => {
     if (!selectedPromptId) {
@@ -1375,7 +1431,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       const res = await fetch('/api/captions/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, promptId: selectedPromptId }),
+        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -1449,6 +1505,85 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setIsGenerating(false);
     setIsGeneratingAB(false);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + Z Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (step === 2) {
+          e.preventDefault();
+          handleRevertToSaved();
+        }
+      }
+
+      // Ctrl + Enter (or Cmd + Enter): Generate AI content
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (step === 2 && !isGenerating) {
+          e.preventDefault();
+          handleGenerate();
+        }
+      }
+
+      // Esc: Cancel generation or close modal
+      if (e.key === 'Escape') {
+        if (isGenerating || isGeneratingAB) {
+          e.preventDefault();
+          handleCancelGenerate();
+        }
+      }
+
+      // Ctrl + Shift + C: Copy selected variant content
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+        if (step === 2) {
+          e.preventDefault();
+          const activeVariant = variants.find(v => v.id === (selectedVariantId || 'A'));
+          const textToCopy = activeVariant ? (activeVariant[selectedPlatform] || '') : '';
+          if (textToCopy) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              alert(language === 'vi' ? 'Đã sao chép nội dung biến thể!' : 'Variant content copied to clipboard!');
+            }).catch(err => {
+              console.error('Failed to copy text: ', err);
+            });
+          }
+        }
+      }
+
+      // Arrow keys (when not in input/textarea): Toggle platform
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const activeEl = document.activeElement;
+        const isInputFocused = activeEl && (
+          activeEl.tagName === 'INPUT' || 
+          activeEl.tagName === 'TEXTAREA' || 
+          activeEl.getAttribute('contenteditable') === 'true'
+        );
+        if (!isInputFocused) {
+          e.preventDefault();
+          const platforms: ('facebook' | 'threads' | 'instagram')[] = ['facebook', 'threads', 'instagram'];
+          const idx = platforms.indexOf(selectedPlatform);
+          if (idx !== -1) {
+            let nextIdx = idx;
+            if (e.key === 'ArrowRight') {
+              nextIdx = (idx + 1) % 3;
+            } else if (e.key === 'ArrowLeft') {
+              nextIdx = (idx - 1 + 3) % 3;
+            }
+            setSelectedPlatform(platforms[nextIdx]);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    step,
+    variants,
+    savedHistory,
+    isGenerating,
+    isGeneratingAB,
+    selectedVariantId,
+    selectedPlatform,
+    language
+  ]);
 
   // Gocnhinmoi Explorer Modal State
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
@@ -1999,34 +2134,90 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           </div>
 
           {/* Step Indicator Wizard */}
-          <div className="flex items-center gap-1 bg-slate-100/90 rounded-2xl p-1.5 border border-slate-200/70 shadow-sm select-none">
-            <button
-              onClick={() => changeStep(1)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
-                }`}
-            >
-              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 1 ? 'bg-white/20' : 'bg-slate-200'}`}>1</span>
-              {t('aiCreator.step1')}
-            </button>
-            <button
-              onClick={() => changeStep(2)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
-                }`}
-            >
-              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 2 ? 'bg-white/20' : 'bg-slate-200'}`}>2</span>
-              {t('aiCreator.step2')}
-            </button>
-            <button
-              onClick={() => { if (selectedVariantId) changeStep(3); }}
-              disabled={!selectedVariantId}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
-                  selectedVariantId ? 'text-slate-500 hover:text-slate-800 hover:bg-white/70 cursor-pointer' :
-                    'text-slate-300 cursor-not-allowed'
-                }`}
-            >
-              <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 3 ? 'bg-white/20' : 'bg-slate-200'}`}>3</span>
-              {t('aiCreator.step3')}
-            </button>
+          <div className="flex flex-col gap-2 w-full md:w-auto select-none">
+            {/* Smooth SVG/Motion Progress Bar */}
+            <div className="h-1 bg-slate-100 rounded-full overflow-hidden w-full relative">
+              <motion.div 
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-[#22D3EE]"
+                initial={{ width: '33.3%' }}
+                animate={{ 
+                  width: step === 1 ? '33.3%' : step === 2 ? '66.6%' : '100%' 
+                }}
+                transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+              />
+            </div>
+            
+            <div className="flex items-center gap-1 bg-slate-100/90 rounded-2xl p-1.5 border border-slate-200/70 shadow-sm">
+              <button
+                type="button"
+                onClick={() => changeStep(1)}
+                aria-current={step === 1 ? "step" : undefined}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                  }`}
+              >
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                  step === 1 
+                    ? 'bg-white/20 text-white' 
+                    : (articleId || postData.title) 
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-250' 
+                      : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {(articleId || postData.title) && step !== 1 ? (
+                    <Check size={10} strokeWidth={3.5} />
+                  ) : (
+                    '1'
+                  )}
+                </span>
+                {t('aiCreator.step1')}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => changeStep(2)}
+                aria-current={step === 2 ? "step" : undefined}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                  }`}
+              >
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                  step === 2 
+                    ? 'bg-white/20 text-white' 
+                    : selectedVariantId 
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-250' 
+                      : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {selectedVariantId && step !== 2 ? (
+                    <Check size={10} strokeWidth={3.5} />
+                  ) : (
+                    '2'
+                  )}
+                </span>
+                {t('aiCreator.step2')}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => { if (selectedVariantId) changeStep(3); }}
+                disabled={!selectedVariantId}
+                aria-current={step === 3 ? "step" : undefined}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
+                    selectedVariantId ? 'text-slate-500 hover:text-slate-800 hover:bg-white/70 cursor-pointer' :
+                      'text-slate-300 cursor-not-allowed'
+                  }`}
+              >
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                  step === 3 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {step === 3 && (typeof isScheduled !== 'undefined' && isScheduled) ? (
+                    <Check size={10} strokeWidth={3.5} />
+                  ) : (
+                    '3'
+                  )}
+                </span>
+                {t('aiCreator.step3')}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2045,7 +2236,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               className="lg:col-span-8 flex flex-col gap-6 order-1"
             >
               {/* URL Context Importer */}
-              <div className="bg-[#C4F0E1]/40 border border-[#C4F0E1] rounded-[28px] p-6 flex flex-col gap-4 shadow-sm">
+              <div className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
@@ -2085,7 +2276,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   <button
                     onClick={handleFetch}
                     disabled={isFetching}
-                    className="bg-[#4A6B5D] hover:bg-[#3A5B4D] disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                   >
                     {isFetching ? (
                       <>
@@ -2103,7 +2294,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               <button
                 type="button"
                 onClick={() => setIsAiPromptDialogOpen(true)}
-                className="bg-white border border-slate-200/80 rounded-[24px] p-5 flex items-center justify-between shadow-sm hover:border-primary/40 hover:shadow-lg cursor-pointer transition-all duration-300 group text-left w-full"
+                className="bg-white border border-slate-200/80 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:border-primary/40 hover:shadow-lg cursor-pointer transition-all duration-300 group text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 flex items-center justify-center text-primary border border-primary/15 group-hover:scale-105 transition-transform duration-300">
@@ -2165,12 +2356,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   {/* Main Prompt Area */}
                   <div className="flex flex-col gap-4">
                     <div className="relative group">
-                      <textarea
+                      <DebouncedTextarea
                         value={activePrompt}
-                        onChange={(e) => setActivePrompt(e.target.value)}
+                        onChange={setActivePrompt}
                         placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
                         rows={8}
-                        className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-[24px] px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-2xl px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
                       />
                       <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {saveSuccess && (
@@ -2196,7 +2387,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 10 }}
-                          className="bg-emerald-50/50 border border-emerald-100 rounded-[24px] p-6 flex flex-col gap-4"
+                          className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 flex flex-col gap-4"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-emerald-700">
@@ -2315,7 +2506,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     {language === 'vi' ? 'Prompt AI' : 'AI Prompt'}
                   </label>
                   {promptsLoading ? (
-                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-[#C7D2FE] text-xs text-text-muted">
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-primary/30 text-xs text-text-muted">
                       <Loader2 size={14} className="animate-spin text-primary" />
                       {language === 'vi' ? 'Đang tải prompts...' : 'Loading prompts...'}
                     </div>
@@ -2325,7 +2516,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         id="ai-prompt-select"
                         value={selectedPromptId}
                         onChange={(e) => { setSelectedPromptId(e.target.value); setGenerateError(null); }}
-                        className="w-full appearance-none bg-white border border-[#C7D2FE] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-all cursor-pointer font-semibold"
+                        className="w-full appearance-none bg-white border border-primary/30 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-all cursor-pointer font-semibold"
                       >
                         <option value="" disabled>
                           {language === 'vi' ? '── Chọn một prompt ──' : '── Select a prompt ──'}
@@ -2343,47 +2534,133 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   )}
                 </div>
 
-                {/* Error banner */}
+                {/* AI Model Selection Switcher (craft/shape) */}
+                <div className="flex flex-col gap-2 bg-[#F8F9FE] border border-[#E4E6F8] rounded-2xl p-4">
+                  <label className="text-[10px] font-black text-text uppercase tracking-widest">
+                    {language === 'vi' ? 'Engine AI (Mẫu ngôn ngữ)' : 'AI Engine (Language Model)'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('gpt4'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
+                        selectedModel === 'gpt4'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                      }`}
+                    >
+                      <Sparkles size={12} className={selectedModel === 'gpt4' ? 'text-white' : 'text-primary'} />
+                      <span>GPT-4o</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
+                        selectedModel === 'gemini'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                      }`}
+                    >
+                      <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
+                      <span>Gemini</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('claude'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
+                        selectedModel === 'claude'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                      }`}
+                    >
+                      <Wand2 size={12} className={selectedModel === 'claude' ? 'text-white' : 'text-amber-500'} />
+                      <span>Claude</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error banner (clarify) */}
                 {generateError && (
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+                    className="flex flex-col gap-3 bg-red-50 border border-red-200 rounded-xl p-4"
                   >
-                    <span className="text-xs text-red-700 font-semibold flex-1">
-                      ⚠️ {generateError}
-                    </span>
-                    <button
-                      onClick={handleGenerate}
-                      className="flex items-center gap-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
-                    >
-                      <RefreshCw size={12} />
-                      {language === 'vi' ? 'Thử lại' : 'Retry'}
-                    </button>
-                    <button
-                      onClick={() => setGenerateError(null)}
-                      className="text-red-400 hover:text-red-600 transition-colors shrink-0"
-                    >
-                      <X size={14} />
-                    </button>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-red-500 mt-0.5 shrink-0">⚠️</span>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <span className="text-xs text-red-800 font-bold">
+                          {language === 'vi' ? 'Lỗi sinh nội dung bằng AI' : 'AI Content Generation Error'}
+                        </span>
+                        <span className="text-[11px] text-red-700 leading-relaxed font-medium">
+                          {generateError.includes("prompt") || generateError.includes("Prompt")
+                            ? (language === 'vi' 
+                                ? 'Vui lòng chọn một mẫu prompt hợp lệ trước khi bắt đầu tạo nội dung.' 
+                                : 'Please select a valid prompt first before initiating caption creation.')
+                            : (language === 'vi'
+                                ? `Không thể kết nối với dịch vụ AI. Chi tiết: "${generateError}". Vui lòng kiểm tra lại cấu hình API key trong mục Cài đặt hoặc thử lại sau.`
+                                : `Could not connect to the AI service. Details: "${generateError}". Please check your API key configuration in Settings or try again later.`)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setGenerateError(null)}
+                        className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                        title={language === 'vi' ? 'Đóng' : 'Close'}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="flex gap-2 justify-end border-t border-red-100 pt-2.5">
+                      <button
+                        onClick={() => {
+                          setGenerateError(null);
+                          router.push('/settings');
+                        }}
+                        className="text-[10px] text-red-700 hover:text-red-900 hover:underline font-bold transition-all px-2 py-1 cursor-pointer"
+                      >
+                        {language === 'vi' ? 'Cấu hình API' : 'Configure API Key'}
+                      </button>
+                      <button
+                        onClick={handleGenerate}
+                        className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                      >
+                        <RefreshCw size={11} />
+                        {language === 'vi' ? 'Thử lại' : 'Retry'}
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
-                {/* Streaming output box */}
+                {/* Streaming output box (overdrive/delight) */}
                 <AnimatePresence>
                   {(isGenerating || streamedCaption) && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="relative bg-white border border-[#C7D2FE] rounded-2xl p-4 overflow-hidden"
+                      className={`relative bg-white border rounded-2xl p-4 overflow-hidden transition-all duration-500 ${
+                        generateDone 
+                          ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20" 
+                          : "border-primary/30"
+                      }`}
                     >
                       {/* Shimmer bar while generating */}
                       {isGenerating && (
-                        <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-1 overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%] animate-[shimmer_1.5s_linear_infinite]" />
                         </div>
                       )}
+
+                      {/* Floating particles delight/overdrive */}
+                      {generateDone && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                          <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full top-[10%] left-[20%] animate-ping" />
+                          <div className="absolute w-1 h-1 bg-primary rounded-full top-[80%] left-[85%] animate-ping delay-300" />
+                          <div className="absolute w-2 h-2 bg-amber-400 rounded-full top-[40%] left-[90%] animate-ping delay-700" />
+                          <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full top-[70%] left-[10%] animate-ping delay-1000" />
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
                           {isGenerating && <Loader2 size={11} className="animate-spin" />}
@@ -2433,7 +2710,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               </div>
 
               {/* Manual Edit Form */}
-              <div className="bg-white border border-gray-200/80 rounded-[28px] p-8 flex flex-col gap-6 shadow-sm">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
                   <Layers size={18} className="text-primary" />
                   <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
@@ -2537,7 +2814,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, ease: 'easeOut' }}
-                  className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4"
+                  className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4"
                 >
                   <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-3">
                     <Layers size={16} className="text-primary" />
@@ -2576,7 +2853,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
               {/* 2. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 2 (as a standalone card) */}
               {step === 2 && (
-                <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4 font-sans">
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
                   <div className="flex items-center justify-between font-sans">
                     <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
                       📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
@@ -2608,7 +2885,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               )}
 
               {/* 3. Article Live Preview Card (Bài viết gốc) */}
-              <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
                     <Smartphone size={16} className="text-primary" />
@@ -2773,7 +3050,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               className="lg:col-span-8 flex flex-col gap-6 order-2"
             >
               {/* Platform Selector */}
-              <div className="bg-white border border-gray-200 rounded-[28px] p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
                   <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
@@ -3441,7 +3718,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   );
                 })()}
 
-                <div className="bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5 mt-2">
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-5 mt-2">
                   <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                     <Calendar size={18} className="text-primary" />
                     <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
@@ -3503,7 +3780,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               </div>
 
               {/* Right Column - 2D Calendar Grid (col-span-8) */}
-              <div className="lg:col-span-8 bg-white border border-gray-200 rounded-[28px] p-6 shadow-sm flex flex-col">
+              <div className="lg:col-span-8 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col">
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4 gap-4">
                   <div>
@@ -3728,7 +4005,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
                 transition={{ type: 'spring', duration: 0.5 }}
-                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+                onKeyDown={handleFocusTrap}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden focus-visible:outline-none"
               >
 
                 {/* Browser Header Bar */}
@@ -3738,13 +4019,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={handleIframeBack}
-                      className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                      className="w-10 h-10 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                     >
                       <ArrowLeft size={14} />
                     </button>
                     <button
                       onClick={handleRefresh}
-                      className="w-8 h-8 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer"
+                      className="w-10 h-10 rounded-full bg-white hover:bg-gray-200 border border-gray-300 flex items-center justify-center text-text-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                     >
                       <RefreshCw size={12} />
                     </button>
@@ -3761,7 +4042,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   {/* Close Button */}
                   <button
                     onClick={() => setIsExplorerOpen(false)}
-                    className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
                   >
                     <X size={16} />
                   </button>
@@ -3828,7 +4109,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5"
+                onKeyDown={handleFocusTrap}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5 focus-visible:outline-none"
               >
                 <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner animate-bounce">
                   <CheckCircle2 size={36} />
@@ -3907,7 +4192,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4"
+                onKeyDown={handleFocusTrap}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <div className="flex flex-col">
@@ -4030,7 +4319,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 initial={{ scale: 0.95, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 15 }}
-                className="bg-white rounded-[28px] border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh]"
+                onKeyDown={handleFocusTrap}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh] focus-visible:outline-none"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
@@ -4118,7 +4411,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.96, y: 20, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="bg-white rounded-[32px] border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+                onKeyDown={handleFocusTrap}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden focus-visible:outline-none"
               >
                 {/* Dialog Header */}
                 <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 px-7 py-5 flex items-center justify-between shrink-0">
@@ -4196,7 +4493,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             Tạo Prompt thông minh
                           </button>
                         </div>
-                        <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
+                        <DebouncedTextarea value={activePrompt} onChange={setActivePrompt}
                           placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
                           className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
                         />

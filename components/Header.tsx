@@ -21,11 +21,14 @@ import {
   CheckCircle2,
   XCircle,
   Trophy,
-  Info
+  Info,
+  Sun,
+  Moon
 } from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import UserProfileDropdown from '@/components/UserProfileDropdown';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +37,7 @@ import { translateNotification } from '@/lib/i18n/translateNotification';
 
 const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const { t, language } = useLanguage();
+  const { isDark, toggleDarkMode } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
@@ -326,7 +330,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       <div className="flex items-center flex-1 min-w-0">
         <button
           onClick={onMenuClick}
-          className="lg:hidden text-primary hover:bg-sidebar p-2 rounded-xl transition-colors mr-2 cursor-pointer shrink-0"
+          className="lg:hidden text-primary hover:bg-sidebar p-2 rounded-xl transition-colors mr-2 cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           <Menu size={24} />
         </button>
@@ -351,7 +355,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
           {/* Suggestions Dropdown */}
           {isSearchOpen && (
-            <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white border border-gray-200 rounded-[28px] shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
+            <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white border border-gray-200 rounded-2xl shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
               {isSearchLoading && !hasSuggestions ? (
                 <div className="flex items-center justify-center py-8 text-xs text-text-muted gap-2">
                   <Loader2 className="animate-spin text-primary" size={14} />
@@ -375,7 +379,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={art.id}
                             href={`/archive/${art.id}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="text-xs font-extrabold text-text line-clamp-1">{art.title}</div>
                             {art.description && (
@@ -399,7 +403,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={cap.id}
                             href={`/archive/${cap.article_id}?captionId=${cap.id}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase">
@@ -432,7 +436,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={p.id}
                             href={`/prompts?promptId=${p.id}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase">
@@ -466,7 +470,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={faq.key}
                             href={`/faq?key=${faq.key}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors"
+                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="text-xs font-extrabold text-text line-clamp-1">{faq.question}</div>
                             {faq.answer && (
@@ -481,7 +485,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                   {/* Footer Action */}
                   <button
                     onClick={triggerSearch}
-                    className="w-full text-center text-xs font-black text-primary hover:underline border-t border-gray-100 pt-3 cursor-pointer"
+                    className="w-full text-center text-xs font-black text-primary hover:underline border-t border-gray-100 pt-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl"
                   >
                     {t('search.seeAll')} &quot;{searchQuery}&quot;
                   </button>
@@ -499,7 +503,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
               router.push('/ai-creator');
               window.dispatchEvent(new CustomEvent('ai-creator-go-to-step-1'));
             }}
-            className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer"
+            className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <Plus size={18} />
             <span className="hidden sm:inline">{t('header.addPost')}</span>
@@ -510,7 +514,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`relative text-primary p-2 rounded-full transition-colors cursor-pointer ${isOpen ? 'bg-sidebar' : 'hover:bg-sidebar'
+            className={`relative text-primary p-2 rounded-full transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${isOpen ? 'bg-sidebar' : 'hover:bg-sidebar'
               }`}
           >
             <Bell size={24} />
@@ -538,7 +542,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}
-                      className="text-[11px] font-bold text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer border-0 bg-transparent"
+                      className="text-[11px] font-bold text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer border-0 bg-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded px-1"
                     >
                       <CheckCheck size={14} />
                       {language === 'vi' ? 'Đọc tất cả' : 'Read all'}
@@ -563,12 +567,16 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                       return (
                         <div
                           key={n.id}
-                          onClick={() => {
-                            handleMarkAsRead(n.id, n.is_read);
-                            setIsOpen(false);
-                            router.push('/notifications');
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleMarkAsRead(n.id, n.is_read);
+                              setIsOpen(false);
+                              router.push('/notifications');
+                            }
                           }}
-                          className={`px-4 py-3.5 flex gap-3 cursor-pointer hover:bg-slate-50 transition-colors border-b border-gray-100/60 ${!n.is_read ? 'bg-[#5A5CDE]/5' : ''
+                          className={`px-4 py-3.5 flex gap-3 cursor-pointer hover:bg-slate-50 transition-colors border-b border-gray-100/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${!n.is_read ? 'bg-primary/5' : ''
                             }`}
                         >
                           {getNotificationIcon(n.type, n.title)}
@@ -600,7 +608,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                     setIsOpen(false);
                     router.push('/notifications');
                   }}
-                  className="px-4 py-3 text-center text-xs font-bold text-primary hover:bg-slate-50 transition-colors border-t border-gray-100 flex items-center justify-center gap-1 cursor-pointer w-full bg-transparent border-0"
+                  className="px-4 py-3 text-center text-xs font-bold text-primary hover:bg-slate-50 transition-colors border-t border-gray-100 flex items-center justify-center gap-1 cursor-pointer w-full bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                 >
                   {language === 'vi' ? 'Xem tất cả thông báo' : 'View all notifications'}
                   <ExternalLink size={12} />
@@ -610,8 +618,18 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           </AnimatePresence>
         </div>
 
+        {/* Dark Mode Toggle Button */}
+        <button
+          onClick={toggleDarkMode}
+          className="text-primary hover:bg-sidebar p-2 rounded-full transition-all duration-100 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          title={isDark ? (language === 'vi' ? 'Chuyển sang chế độ sáng' : 'Switch to light mode') : (language === 'vi' ? 'Chuyển sang chế độ tối' : 'Switch to dark mode')}
+        >
+          {isDark ? <Sun size={24} className="text-amber-500 animate-[spin_0.5s_ease-out_1]" /> : <Moon size={24} className="text-primary" />}
+        </button>
+
         <UserProfileDropdown />
       </div>
+
     </header>
   );
 };

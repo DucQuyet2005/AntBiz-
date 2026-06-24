@@ -12,7 +12,8 @@ import {
   Check,
   Sliders,
   Sparkles,
-  Type
+  Type,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
@@ -33,9 +34,27 @@ export default function SettingsView() {
 
   // State for interactive inputs
   const [openaiConnected, setOpenaiConnected] = useState(true);
+  const [openaiLoading, setOpenaiLoading] = useState(false);
   const [midjourneyConnected, setMidjourneyConnected] = useState(false);
+  const [midjourneyLoading, setMidjourneyLoading] = useState(false);
   const [aiGenNotify, setAiGenNotify] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
+
+  const handleToggleOpenai = () => {
+    setOpenaiLoading(true);
+    setTimeout(() => {
+      setOpenaiConnected(prev => !prev);
+      setOpenaiLoading(false);
+    }, 600);
+  };
+
+  const handleToggleMidjourney = () => {
+    setMidjourneyLoading(true);
+    setTimeout(() => {
+      setMidjourneyConnected(prev => !prev);
+      setMidjourneyLoading(false);
+    }, 600);
+  };
 
   const [userId, setUserId] = useState<string | null>(null);
   const supabase = createClient();
@@ -81,8 +100,8 @@ export default function SettingsView() {
       {/* Two Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
-        {/* Left Column: API Integrations (Dark Green Card) */}
-        <div className="col-span-12 lg:col-span-7 bg-[#4E7164] border border-[#3E5C50] rounded-[32px] p-8 flex flex-col gap-6 text-white justify-between">
+        {/* Left Column: API Integrations (Theme-Aware Color Card) */}
+        <div className="col-span-12 lg:col-span-7 bg-primary border border-primary/20 rounded-2xl p-8 flex flex-col gap-6 text-white justify-between">
           
           <div>
             {/* Header */}
@@ -92,28 +111,44 @@ export default function SettingsView() {
             </div>
             
             {/* Subtitle */}
-            <p className="text-xs font-medium text-white/80 mt-2">
+            <p className="text-xs font-medium text-white/90 mt-2">
               {t('settings.apiSubtitle')}
             </p>
             
             {/* Integration connections list */}
             <div className="flex flex-col gap-4 mt-6">
-              
-              {/* OpenAI GPT-4 connection */}
+                  {/* OpenAI GPT-4 connection */}
               <div className="bg-white rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#EDE9FE] text-[#6366F1] flex items-center justify-center shrink-0">
                     <MessageSquare size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold">OpenAI GPT-4</h4>
-                    <span className="text-[10px] text-emerald-600 font-semibold block mt-[2px]">{t('settings.connected')}</span>
+                    <h3 className="text-sm font-bold">OpenAI GPT-4</h3>
+                    <span className="text-[10px] font-bold block mt-[2px]">
+                      {openaiLoading ? (
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <Loader2 size={10} className="animate-spin" />
+                          {language === 'vi' ? 'Đang cập nhật...' : 'Updating...'}
+                        </span>
+                      ) : openaiConnected ? (
+                        <span className="text-emerald-600">{t('settings.connected')}</span>
+                      ) : (
+                        <span className="text-text-muted">{language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}</span>
+                      )}
+                    </span>
                   </div>
                 </div>
                 <button 
-                  onClick={() => setOpenaiConnected(!openaiConnected)}
-                  className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors px-3 py-1 cursor-pointer select-none"
+                  onClick={handleToggleOpenai}
+                  disabled={openaiLoading}
+                  className={`text-xs font-bold transition-colors px-3 py-1.5 cursor-pointer select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                    openaiConnected 
+                      ? 'text-red-500 hover:text-red-700 focus-visible:ring-red-500' 
+                      : 'text-primary hover:opacity-80 focus-visible:ring-primary'
+                  }`}
                 >
+                  {openaiLoading && <Loader2 size={11} className="animate-spin" />}
                   {openaiConnected ? t('settings.disconnect') : t('settings.connect')}
                 </button>
               </div>
@@ -125,27 +160,40 @@ export default function SettingsView() {
                     <ImageIcon size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold">Midjourney API</h4>
-                    <span className="text-[10px] text-text-muted font-semibold block mt-[2px]">
-                      {midjourneyConnected ? t('settings.connected') : t('settings.notConnected')}
+                    <h3 className="text-sm font-bold">Midjourney API</h3>
+                    <span className="text-[10px] font-bold block mt-[2px]">
+                      {midjourneyLoading ? (
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <Loader2 size={10} className="animate-spin" />
+                          {language === 'vi' ? 'Đang cập nhật...' : 'Updating...'}
+                        </span>
+                      ) : midjourneyConnected ? (
+                        <span className="text-emerald-600">{t('settings.connected')}</span>
+                      ) : (
+                        <span className="text-text-muted">{language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}</span>
+                      )}
                     </span>
                   </div>
                 </div>
                 <button 
-                  onClick={() => setMidjourneyConnected(!midjourneyConnected)}
-                  className="text-xs font-bold text-primary hover:opacity-80 transition-colors px-3 py-1 cursor-pointer select-none"
+                  onClick={handleToggleMidjourney}
+                  disabled={midjourneyLoading}
+                  className={`text-xs font-bold transition-colors px-3 py-1.5 cursor-pointer select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                    midjourneyConnected 
+                      ? 'text-red-500 hover:text-red-700 focus-visible:ring-red-500' 
+                      : 'text-primary hover:opacity-80 focus-visible:ring-primary'
+                  }`}
                 >
+                  {midjourneyLoading && <Loader2 size={11} className="animate-spin" />}
                   {midjourneyConnected ? t('settings.disconnect') : t('settings.connect')}
                 </button>
               </div>
-
             </div>
           </div>
-
         </div>
 
-        {/* Right Column: Notifications & Language (Light Lavender Card) */}
-        <div className="col-span-12 lg:col-span-5 bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-8 flex flex-col gap-6 text-[#1E293B]">
+        {/* Right Column: Notifications & Language (Theme-Adapted Lavender/Sidebar Card) */}
+        <div className="col-span-12 lg:col-span-5 bg-sidebar/50 border border-primary/10 rounded-2xl p-8 flex flex-col gap-6 text-text">
           
           {/* Header Notifications */}
           <div className="flex items-center gap-3 font-bold text-lg text-primary">
@@ -158,9 +206,9 @@ export default function SettingsView() {
             
             {/* Config Item 1 */}
             <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-0.5" id="ai-notify-label">
                 <span className="text-sm font-bold">{t('settings.aiNotifyTitle')}</span>
-                <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                <span id="ai-notify-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
                   {t('settings.aiNotifyDesc')}
                 </span>
               </div>
@@ -169,9 +217,11 @@ export default function SettingsView() {
                   type="checkbox" 
                   checked={aiGenNotify}
                   onChange={() => setAiGenNotify(!aiGenNotify)}
+                  aria-labelledby="ai-notify-label"
+                  aria-describedby="ai-notify-desc"
                   className="sr-only peer" 
                 />
-                <div className={`w-11 h-6 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
                   aiGenNotify ? 'bg-primary' : 'bg-gray-200'
                 }`}></div>
               </label>
@@ -179,9 +229,9 @@ export default function SettingsView() {
 
             {/* Config Item 2 */}
             <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-0.5" id="weekly-digest-label">
                 <span className="text-sm font-bold">{t('settings.weeklyDigestTitle')}</span>
-                <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                <span id="weekly-digest-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
                   {t('settings.weeklyDigestDesc')}
                 </span>
               </div>
@@ -190,18 +240,20 @@ export default function SettingsView() {
                   type="checkbox" 
                   checked={weeklyDigest}
                   onChange={() => setWeeklyDigest(!weeklyDigest)}
+                  aria-labelledby="weekly-digest-label"
+                  aria-describedby="weekly-digest-desc"
                   className="sr-only peer" 
                 />
-                <div className={`w-11 h-6 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
                   weeklyDigest ? 'bg-primary' : 'bg-gray-200'
                 }`}></div>
               </label>
             </div>
 
             {/* Language Setting Block */}
-            <div className="border-t border-[#E4E6F8] pt-5 flex items-center justify-between gap-4">
+            <div className="border-t border-primary/10 pt-5 flex items-center justify-between gap-4">
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
+                <span className="text-sm font-bold text-text flex items-center gap-1.5">
                   <Globe size={16} className="text-primary" />
                   {t('settings.languageTitle')}
                 </span>
@@ -209,10 +261,10 @@ export default function SettingsView() {
                   {t('settings.languageDesc')}
                 </span>
               </div>
-              <div className="flex bg-white rounded-xl p-1 border border-[#E4E6F8] shadow-sm shrink-0">
+              <div className="flex bg-white rounded-xl p-1 border border-primary/10 shadow-sm shrink-0">
                 <button 
                   onClick={() => setLanguage('vi')}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                  className={`text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
                     language === 'vi' 
                       ? 'bg-primary text-white shadow-md shadow-primary/20' 
                       : 'text-text-muted hover:text-primary hover:bg-primary/5'
@@ -223,7 +275,7 @@ export default function SettingsView() {
                 </button>
                 <button 
                   onClick={() => setLanguage('en')}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                  className={`text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
                     language === 'en' 
                       ? 'bg-primary text-white shadow-md shadow-primary/20' 
                       : 'text-text-muted hover:text-primary hover:bg-primary/5'
@@ -235,57 +287,58 @@ export default function SettingsView() {
               </div>
             </div>
 
-              {/* Theme Customizer Setting Block */}
-              <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
-                    <Sliders size={16} className="text-primary" />
-                    {t('settings.themeColor')}
-                  </span>
-                  <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                    {t('settings.themeDesc')}
-                  </span>
+            {/* Theme Customizer Setting Block */}
+            <div className="border-t border-primary/10 pt-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-text flex items-center gap-1.5">
+                  <Sliders size={16} className="text-primary" />
+                  {t('settings.themeColor')}
+                </span>
+                <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                  {t('settings.themeDesc')}
+                </span>
+              </div>
+
+              {/* Solids Group */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  {t('settings.solidColors')}
+                </span>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { id: 'solid-red', color: '#EF4444', labelKey: 'settings.colorRed' },
+                    { id: 'solid-orange', color: '#F97316', labelKey: 'settings.colorOrange' },
+                    { id: 'solid-yellow', color: '#F59E0B', labelKey: 'settings.colorYellow' },
+                    { id: 'solid-green', color: '#10B981', labelKey: 'settings.colorGreen' },
+                    { id: 'solid-blue', color: '#5A5CDE', labelKey: 'settings.colorBlue' },
+                    { id: 'solid-indigo', color: '#6366F1', labelKey: 'settings.colorIndigo' },
+                    { id: 'solid-purple', color: '#A855F7', labelKey: 'settings.colorPurple' },
+                  ].map((s) => {
+                    const isSelected = theme === s.id;
+                    const labelStr = t(s.labelKey as any);
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => handleThemeChange(s.id as Theme, labelStr)}
+                        title={labelStr}
+                        aria-label={labelStr}
+                        className={`w-10 h-10 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
+                          isSelected 
+                            ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
+                            : 'border-white hover:border-slate-300'
+                        }`}
+                        style={{ backgroundColor: s.color }}
+                      >
+                        {isSelected && <Check size={14} className="text-white drop-shadow stroke-[3.5]" />}
+                      </button>
+                    );
+                  })}
                 </div>
-  
-                {/* Solids Group */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    {t('settings.solidColors')}
-                  </span>
-                  <div className="flex flex-wrap gap-2.5">
-                    {[
-                      { id: 'solid-red', color: '#EF4444', labelKey: 'settings.colorRed' },
-                      { id: 'solid-orange', color: '#F97316', labelKey: 'settings.colorOrange' },
-                      { id: 'solid-yellow', color: '#F59E0B', labelKey: 'settings.colorYellow' },
-                      { id: 'solid-green', color: '#10B981', labelKey: 'settings.colorGreen' },
-                      { id: 'solid-blue', color: '#5A5CDE', labelKey: 'settings.colorBlue' },
-                      { id: 'solid-indigo', color: '#6366F1', labelKey: 'settings.colorIndigo' },
-                      { id: 'solid-purple', color: '#A855F7', labelKey: 'settings.colorPurple' },
-                    ].map((s) => {
-                      const isSelected = theme === s.id;
-                      const labelStr = t(s.labelKey as any);
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => handleThemeChange(s.id as Theme, labelStr)}
-                          title={labelStr}
-                          className={`w-8 h-8 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative ${
-                            isSelected 
-                              ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
-                              : 'border-white hover:border-slate-300'
-                          }`}
-                          style={{ backgroundColor: s.color }}
-                        >
-                          {isSelected && <Check size={14} className="text-white drop-shadow stroke-[3.5]" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              </div>
 
               {/* Gradients Group */}
               <div className="flex flex-col gap-2">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   {t('settings.gradientColors')}
                 </span>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -300,7 +353,8 @@ export default function SettingsView() {
                       <button
                         key={g.id}
                         onClick={() => handleThemeChange(g.id as Theme, labelStr)}
-                        className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[38px] ${
+                        aria-label={labelStr}
+                        className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
                           isSelected 
                             ? 'border-slate-800 scale-[1.02] ring-2 ring-primary/30' 
                             : 'border-slate-200 hover:border-slate-300'
@@ -317,12 +371,13 @@ export default function SettingsView() {
 
               {/* RGB Rainbow Group */}
               <div className="flex flex-col gap-2">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   {t('settings.rgbEffects')}
                 </span>
                 <button
                   onClick={() => handleThemeChange('rgb', t('settings.colorRainbow'))}
-                  className={`relative overflow-hidden w-full h-10 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm ${
+                  aria-label={t('settings.colorRainbow')}
+                  className={`relative overflow-hidden w-full h-11 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
                     theme === 'rgb' ? 'border-slate-800 scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 hover:border-slate-300'
                   }`}
                   style={{
@@ -340,68 +395,67 @@ export default function SettingsView() {
                   </div>
                 </button>
               </div>
- 
-              {/* Font Customizer Setting Block */}
-              <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-3">
-                <div className="flex items-center gap-1.5">
-                  <Type size={14} className="text-primary shrink-0" />
-                  <span className="text-sm font-bold text-[#1E293B]">
-                    {t('settings.typeface')}
-                  </span>
-                </div>
-
-                {/* Font Card Grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {fonts.map((f) => {
-                    const isActive = font === f.id;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => setFont(f.id)}
-                        className={`relative text-left rounded-xl border px-3 py-2.5 transition-all active:scale-[0.98] cursor-pointer ${
-                          isActive
-                            ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10'
-                            : 'border-[#E4E6F8] bg-white hover:border-primary/30 hover:bg-primary/[0.02]'
-                        }`}
-                      >
-                        {isActive && (
-                          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                        <p
-                          className="text-[13px] font-semibold text-[#1E293B] leading-tight truncate"
-                          style={{ fontFamily: f.family }}
-                        >
-                          {f.name}
-                        </p>
-                        <span className="mt-1 inline-block text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none">
-                          {f.tag}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Selected font description */}
-                {(() => {
-                  const activeFont = fonts.find(f => f.id === font);
-                  if (!activeFont) return null;
-                  return (
-                    <div className="bg-white/70 border border-[#E4E6F8] rounded-xl px-3 py-2.5">
-                      <p
-                        className="text-sm font-medium text-[#1E293B] leading-snug"
-                        style={{ fontFamily: activeFont.family }}
-                      >
-                        {t('settings.welcomeText')}
-                      </p>
-                      <p className="mt-1 text-[10px] text-text-muted leading-normal">
-                        {language === 'vi' ? activeFont.descriptionVi : activeFont.descriptionEn}
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
             </div>
+ 
+            {/* Font Customizer Setting Block */}
+            <div className="border-t border-primary/10 pt-5 flex flex-col gap-3">
+              <div className="flex items-center gap-1.5">
+                <Type size={14} className="text-primary shrink-0" />
+                <span className="text-sm font-bold text-text">
+                  {t('settings.typeface')}
+                </span>
+              </div>
 
+              {/* Font Card Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {fonts.map((f) => {
+                  const isActive = font === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setFont(f.id)}
+                      className={`relative text-left rounded-xl border px-3 py-2.5 transition-all active:scale-[0.98] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
+                        isActive
+                          ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10'
+                          : 'border-primary/10 bg-white hover:border-primary/30 hover:bg-primary/[0.02]'
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      <p
+                        className="text-[13px] font-semibold text-text leading-tight truncate"
+                        style={{ fontFamily: f.family }}
+                      >
+                        {f.name}
+                      </p>
+                      <span className="mt-1 inline-block text-[9px] font-bold text-slate-500 uppercase tracking-wide leading-none">
+                        {f.tag}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected font description */}
+              {(() => {
+                const activeFont = fonts.find(f => f.id === font);
+                if (!activeFont) return null;
+                return (
+                  <div className="bg-white/70 border border-primary/10 rounded-xl px-3 py-2.5">
+                    <p
+                      className="text-sm font-medium text-text leading-snug"
+                      style={{ fontFamily: activeFont.family }}
+                    >
+                      {t('settings.welcomeText')}
+                    </p>
+                    <p className="mt-1 text-[10px] text-text-muted leading-normal">
+                      {language === 'vi' ? activeFont.descriptionVi : activeFont.descriptionEn}
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
         </div>
@@ -411,4 +465,3 @@ export default function SettingsView() {
     </div>
   );
 }
-
