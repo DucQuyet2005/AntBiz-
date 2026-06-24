@@ -1694,6 +1694,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Import from Live Explorer
   const handleImportFromExplorer = async () => {
     setIsScraping(true);
+    setIsFetching(true);
+    setUrl(explorerUrl);
+    setIsExplorerOpen(false);
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(explorerUrl)}`);
       if (res.ok) {
@@ -1713,9 +1716,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setPostData(updatedPostData);
           setArticleId(data.id || null);
           setCaptionId('');
-          setUrl(explorerUrl);
           generateVariants(updatedPostData, selectedPrompt);
-          setIsExplorerOpen(false);
           setHasUnsavedChanges(true);
         }
       }
@@ -1723,6 +1724,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       console.error("Scraper explorer error:", e);
     } finally {
       setIsScraping(false);
+      setIsFetching(false);
     }
   };
 
