@@ -54,7 +54,7 @@ next-env.d.ts
 
 # AI Agent customizations (Impeccable, skills, internal configs)
 # Không push các file cấu hình agent nội bộ lên git
-.agents/
+.agents/skills/impeccable/
 .impeccable/
 .codex/
 
