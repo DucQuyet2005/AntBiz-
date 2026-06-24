@@ -4,7 +4,8 @@ export const loginSchema = z.object({
   email: z
     .string()
     .min(1, "Vui lòng nhập email")
-    .email("Định dạng email không hợp lệ"),
+    .transform((val) => (val.includes("@") ? val : `${val}@gmail.com`))
+    .pipe(z.string().email("Định dạng email không hợp lệ")),
   password: z
     .string()
     .min(1, "Vui lòng nhập mật khẩu")

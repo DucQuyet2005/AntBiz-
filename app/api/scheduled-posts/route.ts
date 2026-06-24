@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
-import { initScheduler } from '@/lib/scheduler/scheduler';
 import { createNotification } from '@/lib/services/notificationService';
-
-// Khởi chạy trình chạy ngầm scheduler khi chạy ở local development
-if (process.env.NODE_ENV === 'development') {
-  initScheduler();
-}
 
 // GET /api/scheduled-posts - Lấy danh sách bài đăng đã lên lịch
 export async function GET(request: NextRequest) {

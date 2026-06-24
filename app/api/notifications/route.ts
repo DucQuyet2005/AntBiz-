@@ -16,37 +16,60 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const { data: dbUser } = await supabase
+    const rolePromise = supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
-    
-    const userRole = dbUser?.role || 'marketer';
 
-    if (userRole === 'admin' && ['post_success', 'post_failed', 'ab_test_complete'].includes(typeFilter)) {
-      return NextResponse.json({
-        data: [],
-        count: 0,
-        page,
-        limit,
-        totalPages: 0,
-      });
-    }
-
-    let query = supabase
-      .from('notifications')
-      .select('*', { count: 'exact' })
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    let data, error, count;
+    let userRole = 'marketer';
 
     if (typeFilter !== 'all') {
-      query = query.eq('type', typeFilter);
-    } else if (userRole === 'admin') {
-      query = query.eq('type', 'info');
-    }
+      const [roleRes, queryRes] = await Promise.all([
+        rolePromise,
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact' })
+          .eq('user_id', user.id)
+          .eq('type', typeFilter)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      ]);
+      userRole = roleRes.data?.role || 'marketer';
 
-    const { data, error, count } = await query.range(from, to);
+      if (userRole === 'admin' && ['post_success', 'post_failed', 'ab_test_complete'].includes(typeFilter)) {
+        return NextResponse.json({
+          data: [],
+          count: 0,
+          page,
+          limit,
+          totalPages: 0,
+        });
+      }
+
+      data = queryRes.data;
+      error = queryRes.error;
+      count = queryRes.count;
+    } else {
+      const roleRes = await rolePromise;
+      userRole = roleRes.data?.role || 'marketer';
+
+      let query = supabase
+        .from('notifications')
+        .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (userRole === 'admin') {
+        query = query.eq('type', 'info');
+      }
+
+      const queryRes = await query.range(from, to);
+      data = queryRes.data;
+      error = queryRes.error;
+      count = queryRes.count;
+    }
 
     if (error) {
       console.error('[GET /api/notifications] Supabase error:', error);

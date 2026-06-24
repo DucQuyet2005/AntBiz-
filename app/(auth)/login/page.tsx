@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useState, useEffect } from "react";
-import { login, signInWithGoogle } from "../actions";
+import { login, signInWithGoogle, clearLoginAttempts } from "../actions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validations/auth";
 import { Toast, useToast } from "@/components/Toast";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -61,6 +61,76 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [lockoutTime, setLockoutTime] = useState<number>(0);
 
+  // Matrix challenge states
+  const [isMatrixLocked, setIsMatrixLocked] = useState(false);
+  const [matrixNumbers, setMatrixNumbers] = useState<number[]>([]);
+  const [nextNumber, setNextNumber] = useState<number>(1);
+  const [shakeMatrix, setShakeMatrix] = useState(false);
+  const [matrixMessage, setMatrixMessage] = useState<string | null>(null);
+  const [matrixMessageType, setMatrixMessageType] = useState<"success" | "error" | null>(null);
+
+  const generateShuffledMatrix = () => {
+    const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    setMatrixNumbers(arr);
+    setNextNumber(1);
+    setMatrixMessage(null);
+    setMatrixMessageType(null);
+  };
+
+  const shakeVariants = {
+    shake: {
+      x: [0, -10, 10, -10, 10, -5, 5, 0],
+      transition: { duration: 0.5 }
+    },
+    idle: { x: 0 }
+  };
+
+  const handleNumberClick = (num: number) => {
+    if (num === nextNumber) {
+      if (num === 9) {
+        setNextNumber(10);
+        setMatrixMessage(t("login.matrixSuccess"));
+        setMatrixMessageType("success");
+        
+        // Clear server-side attempts and lockout cookies
+        clearLoginAttempts().catch((err) => console.error("Error clearing login attempts:", err));
+
+        setTimeout(() => {
+          localStorage.removeItem("login_matrix_locked");
+          localStorage.removeItem("login_attempts_count");
+          setIsMatrixLocked(false);
+          setNextNumber(1);
+          setMatrixMessage(null);
+          setMatrixMessageType(null);
+        }, 1500);
+      } else {
+        setNextNumber(prev => prev + 1);
+        setMatrixMessage(null);
+        setMatrixMessageType(null);
+      }
+    } else {
+      setMatrixMessage(t("login.matrixError"));
+      setMatrixMessageType("error");
+      setShakeMatrix(true);
+      
+      setTimeout(() => {
+        setShakeMatrix(false);
+      }, 500);
+      
+      setNextNumber(1);
+      const arr = [...matrixNumbers];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      setMatrixNumbers(arr);
+    }
+  };
+
   const {
     register,
     handleSubmit,
@@ -72,17 +142,23 @@ export default function LoginPage() {
 
   const emailValue = watch("email");
 
-  const isLockedOut = lockoutTime > 0;
+  const isLockedOut = lockoutTime > 0 || isMatrixLocked;
 
   useEffect(() => {
-    const storedLockout = localStorage.getItem("login_lockout_until");
-    if (storedLockout) {
-      const remaining = Math.floor((parseInt(storedLockout) - Date.now()) / 1000);
-      if (remaining > 0) {
-        setLockoutTime(remaining);
-      } else {
-        localStorage.removeItem("login_lockout_until");
-        localStorage.removeItem("login_attempts_count");
+    const isLocked = localStorage.getItem("login_matrix_locked") === "true";
+    if (isLocked) {
+      setIsMatrixLocked(true);
+      generateShuffledMatrix();
+    } else {
+      const storedLockout = localStorage.getItem("login_lockout_until");
+      if (storedLockout) {
+        const remaining = Math.floor((parseInt(storedLockout) - Date.now()) / 1000);
+        if (remaining > 0) {
+          setLockoutTime(remaining);
+        } else {
+          localStorage.removeItem("login_lockout_until");
+          localStorage.removeItem("login_attempts_count");
+        }
       }
     }
   }, []);
@@ -148,15 +224,15 @@ export default function LoginPage() {
       
       // @ts-ignore
       if (result.isLockedOut || attempts >= 5) {
-        const lockoutUntil = Date.now() + 180 * 1000;
-        localStorage.setItem("login_lockout_until", lockoutUntil.toString());
+        localStorage.setItem("login_matrix_locked", "true");
         localStorage.setItem("login_attempts_count", "0");
-        setLockoutTime(180);
+        setIsMatrixLocked(true);
+        generateShuffledMatrix();
       } else {
         localStorage.setItem("login_attempts_count", attempts.toString());
       }
     } else {
-      localStorage.removeItem("login_lockout_until");
+      localStorage.removeItem("login_matrix_locked");
       localStorage.removeItem("login_attempts_count");
     }
   };
@@ -213,6 +289,8 @@ export default function LoginPage() {
         <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">{t("login.title")}</h1>
         <p className="text-gray-500 text-sm mb-8">{t("login.subtitle")}</p>
 
+        <div className="relative">
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-700">{t("login.emailLabel")}</label>
@@ -222,7 +300,9 @@ export default function LoginPage() {
               </div>
               <input
                 {...register("email")}
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 placeholder={t("login.emailPlaceholder")}
                 disabled={isLockedOut}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -323,7 +403,78 @@ export default function LoginPage() {
             {t("login.registerLink")}
           </Link>
         </p>
+
+        <AnimatePresence>
+          {isMatrixLocked && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute -inset-2 z-40 flex flex-col items-center justify-center bg-white/98 backdrop-blur-md p-6 rounded-3xl border border-gray-100/60 shadow-xl text-center"
+            >
+              <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-2">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              
+              <h3 className="text-base font-bold text-gray-950 mb-0.5">{t("login.matrixTitle")}</h3>
+              <p className="text-xs text-gray-500 leading-normal max-w-xs">{t("login.matrixSubtitle")}</p>
+
+              {/* Matrix grid */}
+              <motion.div
+                variants={shakeVariants}
+                animate={shakeMatrix ? "shake" : "idle"}
+                className="grid grid-cols-3 gap-2 w-full my-3.5 max-w-[190px] aspect-square"
+              >
+                {matrixNumbers.map((num) => {
+                  const isClicked = num < nextNumber;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleNumberClick(num)}
+                      disabled={nextNumber > 9}
+                      className={`h-12 w-12 text-base font-bold rounded-xl flex items-center justify-center transition-all select-none border focus:outline-none focus:ring-2 active:scale-95 ${
+                        isClicked
+                          ? "bg-emerald-500 text-white border-emerald-600 shadow-inner scale-95"
+                          : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-gray-800 border-gray-200/60 focus:ring-primary/20"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                })}
+              </motion.div>
+
+              {/* Messages */}
+              <div className="h-6 flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                  {matrixMessage && (
+                    <motion.div
+                      key={matrixMessage}
+                      initial={{ opacity: 0, y: -3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                        matrixMessageType === "success"
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                          : "bg-red-50 text-red-500 border-red-100"
+                      }`}
+                    >
+                      {matrixMessageType === "success" ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5" />
+                      )}
+                      {matrixMessage}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
+  </div>
   );
 }

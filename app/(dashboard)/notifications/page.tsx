@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -46,7 +46,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterType, setFilterType] = useState<string>('all');
+  const filterType = 'all';
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export default function NotificationsPage() {
     });
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -93,17 +93,55 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, supabase]);
 
   useEffect(() => {
     fetchNotifications();
-  }, [currentPage, filterType]);
+  }, [fetchNotifications]);
 
-  // Reset về trang 1 khi đổi bộ lọc
-  const handleFilterChange = (type: string) => {
-    setFilterType(type);
-    setCurrentPage(1);
-  };
+  useEffect(() => {
+    let active = true;
+    let realtimeChannel: any = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !active) return;
+
+      realtimeChannel = supabase
+        .channel(`page-user-notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Realtime notification update received on page:', payload);
+            fetchNotifications();
+          }
+        )
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.warn(`Supabase Realtime notification channel status on page for page-user-notifications-${user.id}:`, status, err);
+          } else {
+            console.log(`Supabase Realtime notification channel active on page for page-user-notifications-${user.id}`);
+          }
+        });
+    };
+
+    setupRealtime();
+
+    return () => {
+      active = false;
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
+  }, [fetchNotifications, supabase]);
+
+
 
   // Đánh dấu đã đọc một thông báo
   const handleMarkAsRead = async (id: string, isRead: boolean) => {
@@ -192,24 +230,30 @@ export default function NotificationsPage() {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return t('notifications.timeJustNow');
-    if (diffMins < 60) return t('notifications.timeMinsAgo').replace('{mins}', String(diffMins));
-    if (diffHours < 24) return t('notifications.timeHoursAgo').replace('{hours}', String(diffHours));
-    return t('notifications.timeDaysAgo').replace('{days}', String(diffDays));
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    let relativeStr = '';
+    if (diffMins < 1) {
+      relativeStr = t('notifications.timeJustNow');
+    } else if (diffMins < 60) {
+      relativeStr = t('notifications.timeMinsAgo').replace('{mins}', String(diffMins));
+    } else if (diffHours < 24) {
+      relativeStr = t('notifications.timeHoursAgo').replace('{hours}', String(diffHours));
+    } else {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      relativeStr = t('notifications.timeDaysAgo').replace('{days}', String(diffDays));
+      return `${timeStr} ${day}/${month} - ${relativeStr}`;
+    }
+
+    return `${timeStr} - ${relativeStr}`;
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  // Danh sách các tab bộ lọc
-  const filterTabs = [
-    { type: 'all', label: t('notifications.filterAll') },
-    ...(userRole !== 'admin' ? [
-      { type: 'post_success', label: t('notifications.filterSuccess') },
-      { type: 'post_failed', label: t('notifications.filterFailed') },
-      { type: 'ab_test_complete', label: t('notifications.filterAb') },
-    ] : []),
-    { type: 'info', label: t('notifications.filterInfo') },
-  ];
+
 
   return (
     <div className="flex flex-col gap-6 font-sans">
@@ -235,22 +279,7 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 gap-2 no-scrollbar">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.type}
-            onClick={() => handleFilterChange(tab.type)}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer select-none border border-transparent ${
-              filterType === tab.type
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white border-gray-200 text-text-muted hover:bg-gray-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+
 
       {/* Main List */}
       <div className="bg-white border border-gray-200/80 rounded-[32px] p-6 shadow-sm min-h-[400px] flex flex-col justify-between">

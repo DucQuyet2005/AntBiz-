@@ -199,27 +199,7 @@ export default function ArchiveView() {
     }
   };
 
-  const handleMockCompleteJob = async (jobId: string) => {
-    try {
-      const res = await fetch('/api/export-jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobId }),
-      });
-      if (res.ok) {
-        showPopup(language === 'vi' ? 'Đã hoàn thành job xuất dữ liệu (Demo).' : 'Completed export job (Demo).', 'success');
-        fetchExportJobs();
-      } else {
-        const err = await res.json();
-        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'), 'error');
-      }
-    } catch (err) {
-      console.error('Error completing job:', err);
-      showPopup(language === 'vi' ? 'Có lỗi xảy ra khi hoàn tất job.' : 'An error occurred while completing job.', 'error');
-    }
-  };
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -283,7 +263,8 @@ export default function ArchiveView() {
       nodeType: 'Caption',
       link: `/archive/${art.id || ''}`,
       gradient: '',
-      created_at: cap.created_at
+      created_at: cap.created_at,
+      status: cap.status
     };
   });
 
@@ -464,13 +445,27 @@ export default function ArchiveView() {
 
                   {/* Overlay Badges */}
 
-                  {/* Type Badge (Left) */}
-                  <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
-                    {item.type}
-                  </span>
+                  <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
+                    {/* Type Badge */}
+                    <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
+                      {item.type}
+                    </span>
+
+                    {/* Publish Status Badge */}
+                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
+                      item.status === 'posted'
+                        ? 'bg-emerald-600/80 border border-emerald-500/30'
+                        : 'bg-amber-600/80 border border-amber-500/30'
+                    }`}>
+                      {item.status === 'posted'
+                        ? (language === 'vi' ? 'Đã đăng' : 'Published')
+                        : (language === 'vi' ? 'Chưa đăng' : 'Draft')
+                      }
+                    </span>
+                  </div>
 
                   {/* Platform Icon Badge (Right) */}
-                  <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none">
+                  <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none z-10">
                     {item.platform === 'facebook' && <Facebook size={14} className="fill-white" />}
                     {item.platform === 'instagram' && <Instagram size={14} />}
                     {item.platform === 'blog' && <Globe size={14} />}
@@ -702,14 +697,6 @@ export default function ArchiveView() {
                         {new Date(job.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        {job.status === 'pending' && (
-                          <button
-                            onClick={() => handleMockCompleteJob(job.id)}
-                            className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 underline"
-                          >
-                            Demo Complete
-                          </button>
-                        )}
                         {job.status === 'completed' && job.download_url ? (
                           <a
                             href={job.download_url}

@@ -25,7 +25,8 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toast, useToast } from '@/components/Toast';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -70,6 +71,7 @@ export default function ArticleDetailView() {
   const searchParams = useSearchParams();
   const captionIdParam = searchParams?.get('captionId');
   const supabase = createClient();
+  const { toast, showToast, hideToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -84,6 +86,9 @@ export default function ArticleDetailView() {
   const [isThreadsExpanded, setIsThreadsExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [versionTrigger, setVersionTrigger] = useState(0);
 
   // Automatically toggle platform and highlight mockup if captionId query param is provided
   useEffect(() => {
@@ -222,37 +227,6 @@ export default function ArticleDetailView() {
 
         if (dbCaptions && dbCaptions.length > 0) {
           setCaptions(dbCaptions);
-
-          // 4. Fetch caption_versions for the first caption
-          const mainCaption = dbCaptions[0];
-          const { data: dbVersions } = await supabase
-            .from('caption_versions')
-            .select('*')
-            .eq('caption_id', mainCaption.id)
-            .order('created_at', { ascending: false });
-
-          if (dbVersions && dbVersions.length > 0) {
-            const mappedVersions = dbVersions.map((v: any, index: number) => ({
-              id: v.id,
-              caption_id: v.caption_id,
-              version: `v${dbVersions.length - index}`,
-              created_at: new Date(v.created_at).toLocaleString('vi-VN'),
-              content: v.content,
-              platform: mainCaption.platform || dbPlatform
-            }));
-            setCheckpoints(mappedVersions);
-          } else {
-            setCheckpoints([
-              {
-                id: 'curr',
-                caption_id: mainCaption.id,
-                version: 'v1',
-                created_at: new Date().toLocaleString('vi-VN'),
-                content: mainCaption.content,
-                platform: dbPlatform
-              }
-            ]);
-          }
         } else {
           loadMockData();
         }
@@ -266,6 +240,55 @@ export default function ArticleDetailView() {
 
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    const fetchVersions = async () => {
+      const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+      if (!activeCap || !activeCap.id) return;
+      
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(activeCap.id)) return; // Skip mock caption
+
+      try {
+        const { data: dbVersions, error } = await supabase
+          .from('caption_versions')
+          .select('*')
+          .eq('caption_id', activeCap.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (dbVersions && dbVersions.length > 0) {
+          const mappedVersions = dbVersions.map((v: any, index: number) => ({
+            id: v.id,
+            caption_id: v.caption_id,
+            version: `v${dbVersions.length - index}`,
+            created_at: new Date(v.created_at).toLocaleString('vi-VN'),
+            content: v.content,
+            platform: selectedPlatform
+          }));
+          setCheckpoints(mappedVersions);
+        } else {
+          setCheckpoints([
+            {
+              id: 'curr',
+              caption_id: activeCap.id,
+              version: 'v1',
+              created_at: new Date(activeCap.created_at || new Date()).toLocaleString('vi-VN'),
+              content: activeCap.edited_content || activeCap.ai_content || activeCap.content || '',
+              platform: selectedPlatform
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error loading caption versions:", err);
+      }
+    };
+
+    if (captions.length > 0) {
+      fetchVersions();
+    }
+  }, [selectedPlatform, captions, versionTrigger]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -291,6 +314,180 @@ export default function ArticleDetailView() {
       return firstCap.edited_content || firstCap.ai_content || firstCap.content || '';
     }
     return '';
+  };
+
+  const isPublished = captions.some(c => c.status === 'posted');
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isPublished) {
+      showToast(
+        language === 'vi'
+          ? 'Không thể chỉnh sửa bài viết đã được đăng lên mạng xã hội.'
+          : 'Cannot edit a post that has already been published.',
+        'error'
+      );
+      return;
+    }
+    const currentText = getDisplayContent();
+    setEditText(currentText);
+    setIsEditing(true);
+  };
+
+  const handleSaveToVersion = async () => {
+    const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+    if (!activeCap) {
+      showToast(language === 'vi' ? 'Không có caption nào để lưu.' : 'No caption found to save.', 'error');
+      return;
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(activeCap.id)) {
+      try {
+        const { data: existingVersions, error: fetchErr } = await supabase
+          .from('caption_versions')
+          .select('version_number')
+          .eq('caption_id', activeCap.id);
+
+        if (fetchErr) throw fetchErr;
+
+        let nextVersionNumber = 1;
+        if (existingVersions && existingVersions.length > 0) {
+          const maxVersion = Math.max(...existingVersions.map((v: any) => v.version_number));
+          nextVersionNumber = maxVersion + 1;
+        }
+
+        const { error: insertErr } = await supabase
+          .from('caption_versions')
+          .insert({
+            caption_id: activeCap.id,
+            version_number: nextVersionNumber,
+            content: editText,
+            source: 'human',
+            created_at: new Date().toISOString()
+          });
+
+        if (insertErr) throw insertErr;
+
+        showToast(
+          language === 'vi'
+            ? 'Đã lưu thay đổi vào lịch sử phiên bản thành công!'
+            : 'Changes saved to version history successfully!',
+          'success'
+        );
+        setVersionTrigger(prev => prev + 1);
+        setIsEditing(false);
+      } catch (err: any) {
+        console.error("Error saving version:", err);
+        showToast(err.message || 'Lỗi không xác định', 'error');
+      }
+    } else {
+      // Mock mode
+      const nextVerNum = checkpoints.length + 1;
+      setCheckpoints(prev => [
+        {
+          id: `cp-mock-${Date.now()}`,
+          caption_id: activeCap.id,
+          version: `v${nextVerNum}`,
+          created_at: new Date().toLocaleString('vi-VN'),
+          content: editText,
+          platform: selectedPlatform
+        },
+        ...prev
+      ]);
+      showToast(
+        language === 'vi'
+          ? 'Đã lưu thay đổi vào lịch sử phiên bản thành công!'
+          : 'Changes saved to version history successfully!',
+        'success'
+      );
+      setIsEditing(false);
+    }
+  };
+
+  const handleSaveAndReplaceOriginal = async () => {
+    const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+    if (!activeCap) {
+      showToast(language === 'vi' ? 'Không có caption nào để lưu.' : 'No caption found to save.', 'error');
+      return;
+    }
+
+    const originalText = activeCap.edited_content || activeCap.ai_content || activeCap.content || '';
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(activeCap.id)) {
+      try {
+        const { data: existingVersions, error: fetchErr } = await supabase
+          .from('caption_versions')
+          .select('version_number')
+          .eq('caption_id', activeCap.id);
+
+        if (fetchErr) throw fetchErr;
+
+        let nextVersionNumber = 1;
+        if (existingVersions && existingVersions.length > 0) {
+          const maxVersion = Math.max(...existingVersions.map((v: any) => v.version_number));
+          nextVersionNumber = maxVersion + 1;
+        }
+
+        const { error: insertErr } = await supabase
+          .from('caption_versions')
+          .insert({
+            caption_id: activeCap.id,
+            version_number: nextVersionNumber,
+            content: originalText,
+            source: 'human',
+            created_at: new Date().toISOString()
+          });
+
+        if (insertErr) throw insertErr;
+
+        const { error: updateErr } = await supabase
+          .from('captions')
+          .update({
+            edited_content: editText,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activeCap.id);
+
+        if (updateErr) throw updateErr;
+
+        setCaptions(prev => prev.map(c => c.id === activeCap.id ? { ...c, edited_content: editText } : c));
+        showToast(
+          language === 'vi'
+            ? 'Đã lưu thay thế bản gốc và chuyển bản cũ vào lịch sử phiên bản thành công!'
+            : 'Original replaced and archived successfully!',
+          'success'
+        );
+        setVersionTrigger(prev => prev + 1);
+        setIsEditing(false);
+      } catch (err: any) {
+        console.error("Error saving and replacing original:", err);
+        showToast(err.message || 'Lỗi không xác định', 'error');
+      }
+    } else {
+      // Mock mode
+      const nextVerNum = checkpoints.length + 1;
+      const archivedCheckpoint = {
+        id: `cp-mock-orig-${Date.now()}`,
+        caption_id: activeCap.id,
+        version: `v${nextVerNum}`,
+        created_at: new Date().toLocaleString('vi-VN'),
+        content: originalText,
+        platform: selectedPlatform
+      };
+
+      setCaptions(prev => prev.map(c => c.id === activeCap.id ? { ...c, edited_content: editText, content: editText } : c));
+      setCheckpoints(prev => [archivedCheckpoint, ...prev]);
+
+      showToast(
+        language === 'vi'
+          ? 'Đã lưu thay thế bản gốc và chuyển bản cũ vào lịch sử phiên bản thành công!'
+          : 'Original replaced and archived successfully!',
+        'success'
+      );
+      setIsEditing(false);
+    }
   };
 
   const handleRevert = async () => {
@@ -384,9 +581,21 @@ export default function ArticleDetailView() {
           <button className="w-10 h-10 rounded-full bg-white border border-[#E4E6F8] shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors">
             <LinkIcon size={18} />
           </button>
-          <button className="bg-[#3F51B5] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-md shadow-[#3F51B5]/20 flex items-center gap-2">
+          <button
+            onClick={handleEditClick}
+            disabled={isEditing}
+            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent ${
+              isPublished
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                : isEditing
+                ? 'bg-indigo-50 text-indigo-400 border border-indigo-200 cursor-default shadow-none'
+                : 'bg-[#3F51B5] hover:bg-indigo-700 text-white shadow-md shadow-[#3F51B5]/20 cursor-pointer'
+            }`}
+          >
             <Edit3 size={16} />
-            {t('articleDetail.editPost')}
+            {isEditing 
+              ? (language === 'vi' ? 'Đang chỉnh sửa' : 'Editing') 
+              : t('articleDetail.editPost')}
           </button>
         </div>
       </div>
@@ -480,18 +689,20 @@ export default function ArticleDetailView() {
                       : `Viewing historical checkpoint (${selectedCheckpoint.version}) from ${selectedCheckpoint.created_at}`}
                   </span>
                 </div>
-                <button
-                  onClick={handleRevert}
-                  disabled={reverting}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-[11px] font-extrabold shrink-0 disabled:opacity-50 cursor-pointer border-0"
-                >
-                  {reverting ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : (
-                    <RotateCcw size={12} />
-                  )}
-                  {language === 'vi' ? 'Khôi phục bản này' : 'Revert to this'}
-                </button>
+                {!isPublished && (
+                  <button
+                    onClick={handleRevert}
+                    disabled={reverting}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-[11px] font-extrabold shrink-0 disabled:opacity-50 cursor-pointer border-0"
+                  >
+                    {reverting ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={12} />
+                    )}
+                    {language === 'vi' ? 'Khôi phục bản này' : 'Revert to this'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -523,28 +734,37 @@ export default function ArticleDetailView() {
 
                     {/* Caption content */}
                     <div className="whitespace-pre-wrap">
-                      {(() => {
-                        const content = getDisplayContent();
-                        const shouldTruncate = content.length > 200;
-                        const displayedText = shouldTruncate && !isFbExpanded
-                          ? `${content.slice(0, 200)}...`
-                          : content;
-                        return (
-                          <>
-                            {displayedText}
-                            {shouldTruncate && (
-                              <button
-                                onClick={() => setIsFbExpanded(!isFbExpanded)}
-                                className="text-blue-650 font-extrabold ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
-                              >
-                                {isFbExpanded
-                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
-                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
-                              </button>
-                            )}
-                          </>
-                        );
-                      })()}
+                      {isEditing ? (
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#3F51B5] text-xs font-medium leading-relaxed bg-white text-text resize-y"
+                          placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
+                        />
+                      ) : (
+                        (() => {
+                          const content = getDisplayContent();
+                          const shouldTruncate = content.length > 200;
+                          const displayedText = shouldTruncate && !isFbExpanded
+                            ? `${content.slice(0, 200)}...`
+                            : content;
+                          return (
+                            <>
+                              {displayedText}
+                              {shouldTruncate && (
+                                <button
+                                  onClick={() => setIsFbExpanded(!isFbExpanded)}
+                                  className="text-blue-650 font-extrabold ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                                >
+                                  {isFbExpanded
+                                    ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
+                                    : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()
+                      )}
                     </div>
 
                     {/* Author & Tags footer */}
@@ -632,29 +852,38 @@ export default function ArticleDetailView() {
 
                         {/* Caption content */}
                         <div className="whitespace-pre-wrap">
-                          {(() => {
-                            const content = getDisplayContent();
-                            const shouldTruncate = content.length > 200;
-                            const displayedText = shouldTruncate && !isThreadsExpanded
-                              ? `${content.slice(0, 200)}...`
-                              : content;
-                            return (
-                              <>
-                                {displayedText}
-                                {shouldTruncate && (
-                                  <button
-                                    onClick={() => setIsThreadsExpanded(!isThreadsExpanded)}
-                                    className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
-                                  >
-                                    {isThreadsExpanded
-                                      ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
-                                      : (language === 'vi' ? 'Xem thêm' : 'Read more')}
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                          {isEditing ? (
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black text-xs font-medium leading-relaxed bg-white text-text resize-y"
+                              placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
+                            />
+                          ) : (
+                            (() => {
+                              const content = getDisplayContent();
+                              const shouldTruncate = content.length > 200;
+                              const displayedText = shouldTruncate && !isThreadsExpanded
+                                ? `${content.slice(0, 200)}...`
+                                : content;
+                              return (
+                                <>
+                                  {displayedText}
+                                  {shouldTruncate && (
+                                    <button
+                                      onClick={() => setIsThreadsExpanded(!isThreadsExpanded)}
+                                      className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block bg-transparent border-0 p-0"
+                                    >
+                                      {isThreadsExpanded
+                                        ? (language === 'vi' ? 'Ẩn bớt' : 'Xem thêm')
+                                        : (language === 'vi' ? 'Xem thêm' : 'Read more')}
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            })()
+                          )}
+                          {!isEditing && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>}
                         </div>
 
                         {/* Author & Tags footer */}
@@ -737,6 +966,31 @@ export default function ArticleDetailView() {
                 </div>
               )}
             </div>
+
+            {isEditing && (
+              <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100 mt-1">
+                <button
+                  onClick={handleSaveToVersion}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md shadow-emerald-600/10 flex items-center gap-1.5 cursor-pointer border-0"
+                >
+                  <span>💾</span>
+                  {language === 'vi' ? 'Lưu thay đổi' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={handleSaveAndReplaceOriginal}
+                  className="bg-[#3F51B5] hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md shadow-[#3F51B5]/20 flex items-center gap-1.5 cursor-pointer border-0"
+                >
+                  <span>🔄</span>
+                  {language === 'vi' ? 'Lưu thay thế bản gốc' : 'Save & Replace Original'}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer border-0"
+                >
+                  {language === 'vi' ? 'Hủy' : 'Cancel'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Summary Card */}
@@ -943,7 +1197,6 @@ export default function ArticleDetailView() {
               {checkpoints.length > 0 ? (
                 checkpoints.map((cp) => {
                   const isViewing = selectedCheckpoint?.id === cp.id;
-                  const isActive = !selectedCheckpoint && cp.version === `v${checkpoints.length}`;
 
                   return (
                     <button
@@ -960,12 +1213,6 @@ export default function ArticleDetailView() {
                         : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
                         }`}
                     >
-                      {isActive && (
-                        <div className="absolute top-0 right-0 bg-[#3F51B5] text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-bl select-none">
-                          {language === 'vi' ? 'Hiện tại' : 'Current'}
-                        </div>
-                      )}
-
                       <div className="flex items-center justify-between">
                         <span className={`text-xs font-extrabold ${isViewing ? 'text-[#3F51B5]' : 'text-text'}`}>
                           Checkpoint {cp.version}
@@ -1019,6 +1266,15 @@ export default function ArticleDetailView() {
 
       </div>
 
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
