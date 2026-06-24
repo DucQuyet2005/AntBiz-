@@ -175,11 +175,12 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   useEffect(() => {
     fetchNotifications();
 
+    let active = true;
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !active) return;
 
       realtimeChannel = supabase
         .channel(`user-notifications-${user.id}`)
@@ -210,6 +211,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     const interval = setInterval(fetchNotifications, 30000);
 
     return () => {
+      active = false;
       clearInterval(interval);
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);

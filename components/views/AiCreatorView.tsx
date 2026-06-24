@@ -389,6 +389,7 @@ export default function AiCreatorView() {
       return;
     }
 
+    setSelectedVariantId('');
     setIsGeneratingAB(true);
     const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
 
@@ -1583,6 +1584,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     setVariants(newVariants);
     setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
+    setSelectedVariantId('');
 
     // Auto-select the first available platform tab
     if (targetPlatforms.length > 0) {
@@ -2810,7 +2812,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                        onClick={() => setSelectedVariantId(v.id)}
+                        onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
                         className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
                             ? 'bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
                             : 'bg-white border border-gray-200/80 hover:border-primary/30 hover:shadow-lg shadow-sm'
@@ -2845,16 +2847,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 <RefreshCw size={10} />
                                 {language === 'vi' ? 'Về bản gốc' : 'Revert'}
                               </button>
-                            )}
-                            {isCardSelected && (
-                              <motion.span
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                              >
-                                <Check size={9} />
-                                {language === 'vi' ? 'Đã chọn' : 'Selected'}
-                              </motion.span>
                             )}
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
