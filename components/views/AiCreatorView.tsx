@@ -389,6 +389,7 @@ export default function AiCreatorView() {
       return;
     }
 
+    setSelectedVariantId('');
     setIsGeneratingAB(true);
     const tagsStr = postData.tags.split(',').map((t: string) => '#' + t.trim().replace('#', '')).join(' ');
 
@@ -1583,6 +1584,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     setVariants(newVariants);
     setSavedHistory([JSON.parse(JSON.stringify(newVariants))]);
+    setSelectedVariantId('');
 
     // Auto-select the first available platform tab
     if (targetPlatforms.length > 0) {
@@ -1692,6 +1694,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   // Import from Live Explorer
   const handleImportFromExplorer = async () => {
     setIsScraping(true);
+    setIsFetching(true);
+    setUrl(explorerUrl);
+    setIsExplorerOpen(false);
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(explorerUrl)}`);
       if (res.ok) {
@@ -1711,9 +1716,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setPostData(updatedPostData);
           setArticleId(data.id || null);
           setCaptionId('');
-          setUrl(explorerUrl);
           generateVariants(updatedPostData, selectedPrompt);
-          setIsExplorerOpen(false);
           setHasUnsavedChanges(true);
         }
       }
@@ -1721,6 +1724,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       console.error("Scraper explorer error:", e);
     } finally {
       setIsScraping(false);
+      setIsFetching(false);
     }
   };
 
@@ -2810,7 +2814,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                        onClick={() => setSelectedVariantId(v.id)}
+                        onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
                         className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
                             ? 'bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
                             : 'bg-white border border-gray-200/80 hover:border-primary/30 hover:shadow-lg shadow-sm'
@@ -2846,16 +2850,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 {language === 'vi' ? 'Về bản gốc' : 'Revert'}
                               </button>
                             )}
-                            {isCardSelected && (
-                              <motion.span
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="flex items-center gap-1 text-[9px] text-white bg-primary font-black px-2 py-0.5 rounded-full"
-                              >
-                                <Check size={9} />
-                                {language === 'vi' ? 'Đã chọn' : 'Selected'}
-                              </motion.span>
-                            )}
+                            <button
+                              type="button"
+                              disabled={isGeneratingAB || isGenerating || regeneratingVariantId !== null}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRegenerateVariant(v.id);
+                              }}
+                              className="text-gray-400 hover:text-primary disabled:opacity-40 transition-colors p-1 rounded-lg cursor-pointer flex items-center justify-center"
+                              title={language === 'vi' ? 'Tạo lại nội dung AI cho riêng bản này' : 'Regenerate AI content for this variant'}
+                            >
+                              {regeneratingVariantId === v.id ? (
+                                <Loader2 size={13} className="animate-spin text-primary" />
+                              ) : (
+                                <RefreshCw size={13} className="transition-transform active:rotate-180 duration-500" />
+                              )}
+                            </button>
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
                               }`}>
                               {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}

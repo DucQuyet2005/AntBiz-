@@ -227,15 +227,15 @@ export default function LandingEditor() {
         <div className="flex flex-col gap-4">
           <ImageUploader value={feature.image} onChange={v => updateArrayItem('sections', 'features', index, 'image', v)} />
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Tiêu đề</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">{t.titleLabel}</label>
             <input className="px-3 py-2 border rounded-lg" value={feature.title} onChange={e => updateArrayItem('sections', 'features', index, 'title', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Icon (Lucide)</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">{t.iconLabel}</label>
             <input className="px-3 py-2 border rounded-lg" value={feature.icon} onChange={e => updateArrayItem('sections', 'features', index, 'icon', e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Mô tả</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">{t.descLabel}</label>
             <textarea className="px-3 py-2 border rounded-lg h-24" value={feature.desc} onChange={e => updateArrayItem('sections', 'features', index, 'desc', e.target.value)} />
           </div>
         </div>
@@ -248,9 +248,9 @@ export default function LandingEditor() {
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">Quản lý Logos</span>
+            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageLogos}</span>
             <button onClick={() => updateConfig('sections', 'trustedByLogos', [...logos, ''])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
-              <Plus size={14} /> Thêm Logo
+              <Plus size={14} /> {t.addLogo}
             </button>
           </div>
           {logos.map((logo: string, i: number) => (
@@ -258,7 +258,7 @@ export default function LandingEditor() {
               <button onClick={() => updateConfig('sections', 'trustedByLogos', logos.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100">
                 <Trash2 size={14} />
               </button>
-              <h4 className="font-extrabold text-xs text-slate-500 uppercase mb-4 tracking-wider">Logo {i + 1}</h4>
+              <h4 className="font-extrabold text-xs text-slate-500 uppercase mb-4 tracking-wider">{t.logoNumber?.replace('{number}', String(i + 1)) || `Logo ${i + 1}`}</h4>
               <ImageUploader value={logo} onChange={v => updatePrimitiveArrayItem('sections', 'trustedByLogos', i, v)} />
             </div>
           ))}
@@ -272,15 +272,15 @@ export default function LandingEditor() {
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">Quản lý Thống kê</span>
+            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageStats}</span>
             <button onClick={() => updateConfig('sections', 'stats', [...stats, { number: '0', label: 'New Stat' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
-              <Plus size={14} /> Thêm Stat
+              <Plus size={14} /> {t.addStat}
             </button>
           </div>
           {stats.map((stat: any, i: number) => (
             <div key={i} className="flex gap-2 items-center">
-              <input className="px-3 py-2 border rounded-lg w-1/3" placeholder="Number (1M+)" value={stat.number} onChange={e => updateArrayItem('sections', 'stats', i, 'number', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg flex-1" placeholder="Label (Users)" value={stat.label} onChange={e => updateArrayItem('sections', 'stats', i, 'label', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg w-1/3" placeholder={t.statNumberPlaceholder} value={stat.number} onChange={e => updateArrayItem('sections', 'stats', i, 'number', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg flex-1" placeholder={t.statLabelPlaceholder} value={stat.label} onChange={e => updateArrayItem('sections', 'stats', i, 'label', e.target.value)} />
               <button onClick={() => updateConfig('sections', 'stats', stats.filter((_: any, idx: number) => idx !== i))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                 <Trash2 size={16} />
               </button>
@@ -296,20 +296,20 @@ export default function LandingEditor() {
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">Quản lý Testimonials</span>
+            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageReviews}</span>
             <button onClick={() => updateConfig('sections', 'testimonials', [...tms, { quote: '', author: '', role: '', avatar: '' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
-              <Plus size={14} /> Thêm Review
+              <Plus size={14} /> {t.addReview}
             </button>
           </div>
-          {tms.map((t: any, i: number) => (
+          {tms.map((tItem: any, i: number) => (
             <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group flex flex-col gap-2">
               <button onClick={() => updateConfig('sections', 'testimonials', tms.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
                 <Trash2 size={14} />
               </button>
-              <ImageUploader value={t.avatar} onChange={v => updateArrayItem('sections', 'testimonials', i, 'avatar', v)} />
-              <textarea className="px-3 py-2 border rounded-lg" placeholder="Quote" value={t.quote} onChange={e => updateArrayItem('sections', 'testimonials', i, 'quote', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg" placeholder="Author Name" value={t.author} onChange={e => updateArrayItem('sections', 'testimonials', i, 'author', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg" placeholder="Role (e.g. CEO)" value={t.role} onChange={e => updateArrayItem('sections', 'testimonials', i, 'role', e.target.value)} />
+              <ImageUploader value={tItem.avatar} onChange={v => updateArrayItem('sections', 'testimonials', i, 'avatar', v)} />
+              <textarea className="px-3 py-2 border rounded-lg" placeholder={t.quotePlaceholder} value={tItem.quote} onChange={e => updateArrayItem('sections', 'testimonials', i, 'quote', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg" placeholder={t.authorNamePlaceholder} value={tItem.author} onChange={e => updateArrayItem('sections', 'testimonials', i, 'author', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg" placeholder={t.authorRolePlaceholder} value={tItem.role} onChange={e => updateArrayItem('sections', 'testimonials', i, 'role', e.target.value)} />
             </div>
           ))}
         </div>
@@ -322,9 +322,9 @@ export default function LandingEditor() {
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">Quản lý Bảng giá</span>
+            <span className="font-bold text-sm text-[#5A5CDE]">{t.managePricing}</span>
             <button onClick={() => updateConfig('sections', 'pricing', [...prices, { plan: 'New Plan', price: '$0', features: [] }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
-              <Plus size={14} /> Thêm Gói
+              <Plus size={14} /> {t.addPlan}
             </button>
           </div>
           {prices.map((p: any, i: number) => (
@@ -332,9 +332,9 @@ export default function LandingEditor() {
               <button onClick={() => updateConfig('sections', 'pricing', prices.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
                 <Trash2 size={14} />
               </button>
-              <input className="px-3 py-2 border rounded-lg font-bold" placeholder="Tên gói (e.g. Pro)" value={p.plan} onChange={e => updateArrayItem('sections', 'pricing', i, 'plan', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg text-2xl font-black text-[#5A5CDE]" placeholder="Giá (e.g. $99)" value={p.price} onChange={e => updateArrayItem('sections', 'pricing', i, 'price', e.target.value)} />
-              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder="Tính năng (mỗi dòng 1 tính năng)" value={(p.features || []).join('\n')} onChange={e => updateArrayItem('sections', 'pricing', i, 'features', e.target.value.split('\n'))} />
+              <input className="px-3 py-2 border rounded-lg font-bold" placeholder={t.planNamePlaceholder} value={p.plan} onChange={e => updateArrayItem('sections', 'pricing', i, 'plan', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg text-2xl font-black text-[#5A5CDE]" placeholder={t.pricePlaceholder} value={p.price} onChange={e => updateArrayItem('sections', 'pricing', i, 'price', e.target.value)} />
+              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder={t.featuresPlaceholder} value={(p.features || []).join('\n')} onChange={e => updateArrayItem('sections', 'pricing', i, 'features', e.target.value.split('\n'))} />
             </div>
           ))}
         </div>
@@ -347,9 +347,9 @@ export default function LandingEditor() {
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">Quản lý FAQ</span>
+            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageFaq}</span>
             <button onClick={() => updateConfig('sections', 'faq', [...faqs, { q: 'Câu hỏi?', a: 'Trả lời...' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
-              <Plus size={14} /> Thêm FAQ
+              <Plus size={14} /> {t.addFaq}
             </button>
           </div>
           {faqs.map((faq: any, i: number) => (
@@ -357,8 +357,8 @@ export default function LandingEditor() {
               <button onClick={() => updateConfig('sections', 'faq', faqs.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
                 <Trash2 size={14} />
               </button>
-              <input className="px-3 py-2 border rounded-lg font-bold" placeholder="Câu hỏi" value={faq.q} onChange={e => updateArrayItem('sections', 'faq', i, 'q', e.target.value)} />
-              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder="Câu trả lời" value={faq.a} onChange={e => updateArrayItem('sections', 'faq', i, 'a', e.target.value)} />
+              <input className="px-3 py-2 border rounded-lg font-bold" placeholder={t.faqQuestionPlaceholder} value={faq.q} onChange={e => updateArrayItem('sections', 'faq', i, 'q', e.target.value)} />
+              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder={t.faqAnswerPlaceholder} value={faq.a} onChange={e => updateArrayItem('sections', 'faq', i, 'a', e.target.value)} />
             </div>
           ))}
         </div>

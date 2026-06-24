@@ -161,3 +161,9 @@ export async function signInWithGoogle() {
     redirect(data.url) // Chuyển hướng đến trang đăng nhập Google
   }
 }
+
+export async function clearLoginAttempts() {
+  const cookieStore = await cookies()
+  cookieStore.delete('login_attempts')
+  cookieStore.delete('login_lockout')
+}

@@ -100,11 +100,12 @@ export default function NotificationsPage() {
   }, [fetchNotifications]);
 
   useEffect(() => {
+    let active = true;
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !active) return;
 
       realtimeChannel = supabase
         .channel(`page-user-notifications-${user.id}`)
@@ -133,6 +134,7 @@ export default function NotificationsPage() {
     setupRealtime();
 
     return () => {
+      active = false;
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }

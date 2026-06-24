@@ -131,38 +131,38 @@ const GRASS_FLOWERS = [
    2. EFFECT / BASE DEFINITIONS
    ────────────────────────────────────────── */
 const FRAMES = [
-  { key: 'none',    label: 'frameNone',    icon: '○',  ringClass: '', description: 'Không khung viền' },
-  { key: 'rainbow', label: 'frameRainbow', icon: '🌈', ringClass: 'ring-rainbow', description: 'Cầu vồng xoay 360°' },
-  { key: 'gold',    label: 'frameGold',    icon: '✨', ringClass: 'ring-gold',    description: 'Vàng lấp lánh sang trọng' },
-  { key: 'cyber',   label: 'frameCyber',   icon: '⚡', ringClass: 'ring-cyber',   description: 'Neon Cyberpunk nhấp nháy' },
+  { key: 'none',    label: 'frameNone',    icon: '○',  ringClass: '', descKey: 'profile.frameNoneDesc' },
+  { key: 'rainbow', label: 'frameRainbow', icon: '🌈', ringClass: 'ring-rainbow', descKey: 'profile.frameRainbowDesc' },
+  { key: 'gold',    label: 'frameGold',    icon: '✨', ringClass: 'ring-gold',    descKey: 'profile.frameGoldDesc' },
+  { key: 'cyber',   label: 'frameCyber',   icon: '⚡', ringClass: 'ring-cyber',   descKey: 'profile.frameCyberDesc' },
 ];
 
 const EFFECTS = [
-  { key: 'none',      label: 'Không hiệu ứng',    icon: '❌', desc: 'Ảnh nguyên bản sạch sẽ' },
-  { key: 'rain',      label: 'Mưa rơi tí tách',   icon: '🌧️', desc: 'Hạt mưa rơi nghiêng lãng mạn' },
-  { key: 'snow',      label: 'Tuyết mùa đông',     icon: '❄️', desc: 'Tinh thể tuyết trắng xoay đảo' },
-  { key: 'sunny',     label: 'Nắng ấm ban mai',    icon: '☀️', desc: 'Tia sáng rực rỡ & bụi nắng bay' },
-  { key: 'sakura',    label: 'Hoa anh đào rơi',   icon: '🌸', desc: 'Cánh hoa hồng phấn bay chéo' },
-  { key: 'meteor',    label: 'Mưa sao băng',       icon: '☄️', desc: 'Vệt sáng sao băng xẹt chéo' },
-  { key: 'camp',      label: 'Lửa trại bập bùng',  icon: '🔥', desc: 'Tàn lửa đỏ cam bay bốc lên' },
-  { key: 'bubble',    label: 'Bong bóng đại dương', icon: '🫧', desc: 'Bong bóng trong suốt nổi lên' },
-  { key: 'arcane',    label: 'Bụi phép thuật',     icon: '🔮', desc: 'Hạt ma thuật đổi màu huyền ảo' },
-  { key: 'lightning', label: 'Bão sét chớp nháy',  icon: '⚡', desc: 'Tia chớp neon tím siêu ngầu' },
-  { key: 'autumn',    label: 'Lá thu rơi rụng',    icon: '🍁', desc: 'Lá phong đỏ cam bay theo gió' },
+  { key: 'none',      labelKey: 'profile.weatherNone',    icon: '❌', descKey: 'profile.weatherNoneDesc' },
+  { key: 'rain',      labelKey: 'profile.weatherRain',    icon: '🌧️', descKey: 'profile.weatherRainDesc' },
+  { key: 'snow',      labelKey: 'profile.weatherSnow',    icon: '❄️', descKey: 'profile.weatherSnowDesc' },
+  { key: 'sunny',     labelKey: 'profile.weatherSunny',    icon: '☀️', descKey: 'profile.weatherSunnyDesc' },
+  { key: 'sakura',    labelKey: 'profile.weatherSakura',   icon: '🌸', descKey: 'profile.weatherSakuraDesc' },
+  { key: 'meteor',    labelKey: 'profile.weatherMeteor',   icon: '☄️', descKey: 'profile.weatherMeteorDesc' },
+  { key: 'camp',      labelKey: 'profile.weatherCamp',    icon: '🔥', descKey: 'profile.weatherCampDesc' },
+  { key: 'bubble',    labelKey: 'profile.weatherBubble',   icon: '🫧', descKey: 'profile.weatherBubbleDesc' },
+  { key: 'arcane',    labelKey: 'profile.weatherArcane',   icon: '🔮', descKey: 'profile.weatherArcaneDesc' },
+  { key: 'lightning', labelKey: 'profile.weatherLightning', icon: '⚡', descKey: 'profile.weatherLightningDesc' },
+  { key: 'autumn',    labelKey: 'profile.weatherAutumn',   icon: '🍁', descKey: 'profile.weatherAutumnDesc' },
 ];
 
 const BASES = [
-  { key: 'none',    label: 'Không bệ đỡ',        icon: '❌', desc: 'Cạnh tròn tự nhiên của avatar' },
-  { key: 'grass',   label: 'Bãi cỏ xanh mướt',   icon: '🌱', desc: 'Cỏ xanh lắc lư theo gió nhẹ' },
-  { key: 'beach',   label: 'Bờ cát bãi biển',    icon: '🏖️', desc: 'Cát vàng óng & gợn sóng bọt' },
-  { key: 'ocean',   label: 'Sóng xanh cuộn trào', icon: '🌊', desc: 'Sóng biển xanh dập dềnh liên tục' },
-  { key: 'magma',   label: 'Dung nham rực cháy',  icon: '🌋', desc: 'Nham thạch đỏ rực nhiệt lượng' },
-  { key: 'rose',    label: 'Thảm hoa hồng',       icon: '🌹', desc: 'Bông hồng kiêu sa ôm chân avatar' },
-  { key: 'cloud',   label: 'Mây bồng bềnh',       icon: '☁️', desc: 'Đám mây sương che phủ huyền ảo' },
-  { key: 'stone',   label: 'Bệ đá rêu phong',     icon: '🪨', desc: 'Đá cổ phủ rêu nâng đỡ vững chắc' },
-  { key: 'glacier', label: 'Băng giá vĩnh cửu',   icon: '🏔️', desc: 'Tinh thể băng trắng xanh mát lạnh' },
-  { key: 'smoke',   label: 'Khói Cyberpunk',       icon: '💨', desc: 'Khói neon tím hồng nghệ thuật' },
-  { key: 'gold',    label: 'Đế vàng hoàng gia',   icon: '👑', desc: 'Bệ mạ vàng sang trọng lấp lánh' },
+  { key: 'none',    labelKey: 'profile.baseNone',        icon: '❌', descKey: 'profile.baseNoneDesc' },
+  { key: 'grass',   labelKey: 'profile.baseGrass',       icon: '🌱', descKey: 'profile.baseGrassDesc' },
+  { key: 'beach',   labelKey: 'profile.baseBeach',       icon: '🏖️', descKey: 'profile.baseBeachDesc' },
+  { key: 'ocean',   labelKey: 'profile.baseOcean',       icon: '🌊', descKey: 'profile.baseOceanDesc' },
+  { key: 'magma',   labelKey: 'profile.baseMagma',       icon: '🌋', descKey: 'profile.baseMagmaDesc' },
+  { key: 'rose',    labelKey: 'profile.baseRose',        icon: '🌹', descKey: 'profile.baseRoseDesc' },
+  { key: 'cloud',   labelKey: 'profile.baseCloud',       icon: '☁️', descKey: 'profile.baseCloudDesc' },
+  { key: 'stone',   labelKey: 'profile.baseStone',       icon: '🪨', descKey: 'profile.baseStoneDesc' },
+  { key: 'glacier', labelKey: 'profile.baseGlacier',     icon: '🏔️', descKey: 'profile.baseGlacierDesc' },
+  { key: 'smoke',   labelKey: 'profile.baseSmoke',       icon: '💨', descKey: 'profile.baseSmokeDesc' },
+  { key: 'gold',    labelKey: 'profile.baseGold',        icon: '👑', descKey: 'profile.baseGoldDesc' },
 ];
 
 /* ──────────────────────────────────────────
@@ -492,6 +492,7 @@ function EffectPickerDialog({
   onSelectBase: (key: string) => void;
 }) {
   const [tab, setTab] = useState<'effects' | 'bases'>(defaultTab);
+  const { t } = useLanguage();
 
   useEffect(() => { setTab(defaultTab); }, [defaultTab]);
 
@@ -518,8 +519,8 @@ function EffectPickerDialog({
             {/* Dialog Header */}
             <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-gray-100">
               <div>
-                <h2 className="text-xl font-black text-text">🎨 Bộ sưu tập Hiệu ứng</h2>
-                <p className="text-xs text-text-muted mt-0.5">Chọn hiệu ứng thời tiết hoặc bệ đỡ chân avatar</p>
+                <h2 className="text-xl font-black text-text">🎨 {t('profile.dialogTitle')}</h2>
+                <p className="text-xs text-text-muted mt-0.5">{t('profile.dialogSubtitle')}</p>
               </div>
               {/* Mini live preview */}
               <div className="flex items-center gap-4">
@@ -541,8 +542,8 @@ function EffectPickerDialog({
             {/* Tabs */}
             <div className="flex flex-wrap sm:flex-nowrap gap-1.5 px-4 sm:px-7 pt-5 pb-2">
               {[
-                { key: 'effects', label: '🌦️ Hiệu ứng thời tiết', count: EFFECTS.length - 1 },
-                { key: 'bases',   label: '🏺 Bệ đỡ chân avatar',  count: BASES.length - 1  },
+                { key: 'effects', label: `🌦️ ${t('profile.tabWeather')}`, count: EFFECTS.length - 1 },
+                { key: 'bases',   label: `🏺 ${t('profile.tabPedestals')}`,  count: BASES.length - 1  },
               ].map(t => (
                 <button
                   key={t.key}
@@ -565,7 +566,7 @@ function EffectPickerDialog({
             <div className="flex-1 overflow-y-auto px-7 pb-6">
               {tab === 'effects' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3">
-                  {EFFECTS.map(({ key, label, icon, desc }) => {
+                  {EFFECTS.map(({ key, labelKey, icon, descKey }) => {
                     const active = avatarEffect === key;
                     return (
                       <button key={key} type="button" onClick={() => onSelectEffect(key)}
@@ -576,8 +577,8 @@ function EffectPickerDialog({
                           <span className="text-xl">{icon}</span>
                           {active && <Check size={12} className="text-primary stroke-[3]" />}
                         </div>
-                        <span className={`text-xs font-bold ${active ? 'text-primary' : 'text-text-muted'}`}>{label}</span>
-                        <span className="text-[9px] text-text-muted/70 leading-tight">{desc}</span>
+                        <span className={`text-xs font-bold ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
+                        <span className="text-[9px] text-text-muted/70 leading-tight">{t(descKey as any)}</span>
                       </button>
                     );
                   })}
@@ -585,7 +586,7 @@ function EffectPickerDialog({
               )}
               {tab === 'bases' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3">
-                  {BASES.map(({ key, label, icon, desc }) => {
+                  {BASES.map(({ key, labelKey, icon, descKey }) => {
                     const active = avatarBase === key;
                     return (
                       <button key={key} type="button" onClick={() => onSelectBase(key)}
@@ -596,8 +597,8 @@ function EffectPickerDialog({
                           <span className="text-xl">{icon}</span>
                           {active && <Check size={12} className="text-primary stroke-[3]" />}
                         </div>
-                        <span className={`text-xs font-bold ${active ? 'text-primary' : 'text-text-muted'}`}>{label}</span>
-                        <span className="text-[9px] text-text-muted/70 leading-tight">{desc}</span>
+                        <span className={`text-xs font-bold ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
+                        <span className="text-[9px] text-text-muted/70 leading-tight">{t(descKey as any)}</span>
                       </button>
                     );
                   })}
@@ -610,7 +611,7 @@ function EffectPickerDialog({
               <button onClick={onClose}
                 className="px-6 py-2.5 bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2">
                 <Sparkles size={14} />
-                Xác nhận lựa chọn
+                {t('profile.confirmSelection')}
               </button>
             </div>
           </motion.div>
@@ -630,7 +631,7 @@ const PRESETS = [
 ];
 
 export default function ProfileView() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -722,16 +723,16 @@ export default function ProfileView() {
       const path = `${userId}/avatar.${ext}`;
       const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
       if (error) {
-        setUploadError('Upload thất bại: ' + error.message);
-        setPopup({ isOpen: true, message: 'Upload thất bại: ' + error.message, type: 'error' });
+        setUploadError(t('profile.uploadFailed').replace('{error}', error.message));
+        setPopup({ isOpen: true, message: t('profile.uploadFailed').replace('{error}', error.message), type: 'error' });
         return;
       }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       setAvatarUrl(data.publicUrl + `?t=${Date.now()}`);
-      setPopup({ isOpen: true, message: 'Tải lên ảnh đại diện thành công.', type: 'success' });
+      setPopup({ isOpen: true, message: t('profile.uploadSuccess'), type: 'success' });
     } catch {
-      setUploadError('Lỗi upload, vui lòng thử lại.');
-      setPopup({ isOpen: true, message: 'Lỗi upload, vui lòng thử lại.', type: 'error' });
+      setUploadError(t('profile.uploadFailedGeneric'));
+      setPopup({ isOpen: true, message: t('profile.uploadFailedGeneric'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -758,7 +759,7 @@ export default function ProfileView() {
       });
       if (authUpdateError) throw authUpdateError;
 
-      setPopup({ isOpen: true, message: 'Cập nhật thông tin cá nhân thành công.', type: 'success' });
+      setPopup({ isOpen: true, message: t('profile.saveSuccess'), type: 'success' });
 
       // Gửi thông báo in-app
       try {
@@ -770,15 +771,15 @@ export default function ProfileView() {
           body: JSON.stringify({
             userId,
             type: 'info',
-            title: 'Cập nhật thông tin cá nhân',
-            message: 'Bạn đã cập nhật thông tin hồ sơ cá nhân (tên hiển thị, bộ phận, hoặc ảnh đại diện) thành công.',
+            title: t('profile.saveSuccessTitle'),
+            message: t('profile.saveSuccessMsg'),
           }),
         });
       } catch (err) {
         console.error('Lỗi khi gửi thông báo cập nhật profile:', err);
       }
     } catch (err: any) {
-      setPopup({ isOpen: true, message: err.message || 'Lỗi lưu thông tin cá nhân.', type: 'error' });
+      setPopup({ isOpen: true, message: err.message || t('profile.saveError'), type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -793,8 +794,10 @@ export default function ProfileView() {
     );
   }
 
-  const currentEffectLabel = EFFECTS.find(e => e.key === avatarEffect)?.label ?? 'Không hiệu ứng';
-  const currentBaseLabel   = BASES.find(b => b.key === avatarBase)?.label ?? 'Không bệ đỡ';
+  const currentEffectItem = EFFECTS.find(e => e.key === avatarEffect);
+  const currentEffectLabel = currentEffectItem ? t(currentEffectItem.labelKey as any) : t('profile.weatherNone');
+  const currentBaseItem = BASES.find(b => b.key === avatarBase);
+  const currentBaseLabel = currentBaseItem ? t(currentBaseItem.labelKey as any) : t('profile.baseNone');
 
   return (
     <div className="flex flex-col gap-6">
@@ -804,7 +807,7 @@ export default function ProfileView() {
           <span>{t('profile.title')}</span>
           <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold uppercase tracking-wider">Lumina Engine</span>
         </h1>
-        <p className="text-text-muted">Cá nhân hóa tài khoản với hiệu ứng thời tiết, khung viền và bệ đỡ lung linh.</p>
+        <p className="text-text-muted">{t('profile.subtitle')}</p>
       </div>
 
       <form onSubmit={handleSave} className="grid grid-cols-12 gap-8 items-stretch">
@@ -848,7 +851,7 @@ export default function ProfileView() {
               className="mt-6 w-full py-3 px-4 border border-gray-200 hover:border-primary/50 hover:bg-primary/5 text-slate-700 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2"
             >
               <Key size={14} />
-              <span>Đổi mật khẩu tài khoản</span>
+              <span>{t('profile.changePasswordBtn')}</span>
             </Link>
           </div>
         </div>
@@ -861,19 +864,19 @@ export default function ProfileView() {
               <label className="text-xs font-bold text-text-muted flex items-center gap-1.5"><User size={14} className="text-primary" />{t('profile.displayName')}</label>
               <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
                 className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
-                placeholder="Ví dụ: Trung Lê Hải" />
+                placeholder={t('profile.displayNamePlaceholder')} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted flex items-center gap-1.5"><Briefcase size={14} className="text-primary" />{t('profile.department')}</label>
               <input type="text" value={department} onChange={e => setDepartment(e.target.value)}
                 className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
-                placeholder="Ví dụ: Marketing, Content Creator..." />
+                placeholder={t('profile.departmentPlaceholder')} />
             </div>
           </div>
 
           {/* Avatar Upload */}
           <div className="border-t border-gray-100 pt-6">
-            <h3 className="text-sm font-bold text-text mb-3">🖼️ Tải lên Ảnh Đại diện & GIF</h3>
+            <h3 className="text-sm font-bold text-text mb-3">🖼️ {t('profile.uploadTitle')}</h3>
             <input type="file" ref={fileInputRef} accept="image/gif,image/png,image/jpeg,image/webp" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
             <div
@@ -883,13 +886,13 @@ export default function ProfileView() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center gap-2 ${isDragging ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-gray-200 hover:border-primary/40 hover:bg-gray-50/50'}`}
             >
-              {isUploading ? (<><Loader2 size={24} className="text-primary animate-spin" /><span className="text-xs text-primary font-bold">Đang tải lên hệ thống...</span></>)
-                : (<><Upload size={24} className={isDragging ? 'text-primary' : 'text-gray-400'} /><span className="text-xs font-bold text-text">{isDragging ? 'Thả tệp vào đây!' : 'Kéo thả GIF/ảnh hoặc click để chọn'}</span><span className="text-[10px] text-text-muted">GIF · PNG · JPG · WebP</span></>)}
+              {isUploading ? (<><Loader2 size={24} className="text-primary animate-spin" /><span className="text-xs text-primary font-bold">{t('profile.uploading')}</span></>)
+                : (<><Upload size={24} className={isDragging ? 'text-primary' : 'text-gray-400'} /><span className="text-xs font-bold text-text">{isDragging ? (language === 'vi' ? 'Thả tệp vào đây!' : 'Drop the file here!') : t('profile.dragDropOrClick')}</span><span className="text-[10px] text-text-muted">GIF · PNG · JPG · WebP</span></>)}
             </div>
             {uploadError && <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold mt-2"><X size={14} />{uploadError}</div>}
             <input type="text" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)}
               className="w-full mt-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-medium"
-              placeholder="Hoặc dán link ảnh trực tuyến (https://...)" />
+              placeholder={t('profile.orPasteUrl')} />
             <div className="mt-3 flex gap-2 items-center">
               {PRESETS.map((g, i) => (
                 <button key={i} type="button" onClick={() => setAvatarUrl(g.url)}
@@ -910,7 +913,7 @@ export default function ProfileView() {
           <div className="border-t border-gray-100 pt-6">
             <h3 className="text-sm font-bold text-text mb-3">✨ {t('profile.avatarFrame')}</h3>
             <div className="grid grid-cols-2 gap-2.5">
-              {FRAMES.map(({ key, label, icon, ringClass, description }) => {
+              {FRAMES.map(({ key, label, icon, ringClass, descKey }) => {
                 const active = avatarFrame === key;
                 let cls = 'border-gray-100 hover:bg-gray-50 text-text-muted';
                 if (active) cls = key === 'rainbow' ? 'border-purple-400 bg-purple-50 ring-1 ring-purple-400 text-purple-700' : key === 'gold' ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-400 text-amber-700' : key === 'cyber' ? 'border-cyan-400 bg-cyan-50 ring-1 ring-cyan-400 text-cyan-700' : 'border-primary bg-primary/5 ring-1 ring-primary text-primary';
@@ -924,7 +927,7 @@ export default function ProfileView() {
                       </div>
                       <div>
                         <span className="text-xs font-bold block">{t(`profile.${label}`)}</span>
-                        <span className="text-[9px] text-text-muted/70">{description}</span>
+                        <span className="text-[9px] text-text-muted/70">{t(descKey as any)}</span>
                       </div>
                     </div>
                     {active && <Check size={12} className="stroke-[3] shrink-0" />}
@@ -938,17 +941,17 @@ export default function ProfileView() {
           <div className="border-t border-gray-100 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Effects Column */}
             <div>
-              <h3 className="text-sm font-bold text-text mb-3">🌦️ Hiệu ứng thời tiết</h3>
+              <h3 className="text-sm font-bold text-text mb-3">🌦️ {t('profile.weatherEffectsTitle')}</h3>
               <div className="flex flex-col gap-2">
-                {EFFECTS.slice(0, 3).map(({ key, label, icon, desc }) => {
+                {EFFECTS.slice(0, 3).map(({ key, labelKey, icon, descKey }) => {
                   const active = avatarEffect === key;
                   return (
                     <button key={key} type="button" onClick={() => setAvatarEffect(key)}
                       className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-100 hover:bg-gray-50'}`}>
                       <span className="text-base shrink-0">{icon}</span>
                       <div className="flex-1 min-w-0">
-                        <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{label}</span>
-                        <span className="text-[9px] text-text-muted/70 truncate block">{desc}</span>
+                        <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
+                        <span className="text-[9px] text-text-muted/70 truncate block">{t(descKey as any)}</span>
                       </div>
                       {active && <Check size={11} className="text-primary stroke-[3] shrink-0" />}
                     </button>
@@ -956,7 +959,7 @@ export default function ProfileView() {
                 })}
                 <button type="button" onClick={() => { setDialogTab('effects'); setShowDialog(true); }}
                   className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary text-xs font-bold transition-all group">
-                  <span>Xem thêm {EFFECTS.length - 3} hiệu ứng khác</span>
+                  <span>{t('profile.viewMoreEffects').replace('{count}', String(EFFECTS.length - 3))}</span>
                   <div className="flex items-center gap-1 text-[10px] bg-primary/10 px-2 py-1 rounded-full group-hover:bg-primary/20 transition-colors">
                     {EFFECTS.slice(3, 6).map(e => e.icon).join(' ')} <ChevronRight size={10} />
                   </div>
@@ -965,7 +968,7 @@ export default function ProfileView() {
                 {avatarEffect !== 'none' && (
                   <div className="text-[10px] text-primary font-bold flex items-center gap-1">
                     <Check size={10} className="stroke-[3]" />
-                    Đang dùng: {currentEffectLabel}
+                    {t('profile.currentlyUsing').replace('{name}', currentEffectLabel)}
                   </div>
                 )}
               </div>
@@ -973,17 +976,17 @@ export default function ProfileView() {
 
             {/* Bases Column */}
             <div>
-              <h3 className="text-sm font-bold text-text mb-3">🏺 Bệ đỡ chân avatar</h3>
+              <h3 className="text-sm font-bold text-text mb-3">🏺 {t('profile.pedestalsTitle')}</h3>
               <div className="flex flex-col gap-2">
-                {BASES.slice(0, 3).map(({ key, label, icon, desc }) => {
+                {BASES.slice(0, 3).map(({ key, labelKey, icon, descKey }) => {
                   const active = avatarBase === key;
                   return (
                     <button key={key} type="button" onClick={() => setAvatarBase(key)}
                       className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-100 hover:bg-gray-50'}`}>
                       <span className="text-base shrink-0">{icon}</span>
                       <div className="flex-1 min-w-0">
-                        <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{label}</span>
-                        <span className="text-[9px] text-text-muted/70 truncate block">{desc}</span>
+                        <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
+                        <span className="text-[9px] text-text-muted/70 truncate block">{t(descKey as any)}</span>
                       </div>
                       {active && <Check size={11} className="text-primary stroke-[3] shrink-0" />}
                     </button>
@@ -991,7 +994,7 @@ export default function ProfileView() {
                 })}
                 <button type="button" onClick={() => { setDialogTab('bases'); setShowDialog(true); }}
                   className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary text-xs font-bold transition-all group">
-                  <span>Xem thêm {BASES.length - 3} bệ đỡ khác</span>
+                  <span>{t('profile.viewMoreBases').replace('{count}', String(BASES.length - 3))}</span>
                   <div className="flex items-center gap-1 text-[10px] bg-primary/10 px-2 py-1 rounded-full group-hover:bg-primary/20 transition-colors">
                     {BASES.slice(3, 6).map(b => b.icon).join(' ')} <ChevronRight size={10} />
                   </div>
@@ -999,7 +1002,7 @@ export default function ProfileView() {
                 {avatarBase !== 'none' && (
                   <div className="text-[10px] text-primary font-bold flex items-center gap-1">
                     <Check size={10} className="stroke-[3]" />
-                    Đang dùng: {currentBaseLabel}
+                    {t('profile.currentlyUsing').replace('{name}', currentBaseLabel)}
                   </div>
                 )}
               </div>
@@ -1009,7 +1012,7 @@ export default function ProfileView() {
           {/* Save */}
           <div className="border-t border-gray-100 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-auto">
             <p className="text-[11px] text-text-muted/80 font-medium">
-              * Hiệu ứng lưu vào Supabase Auth — hoạt động trên mọi thiết bị sau khi đăng nhập.
+              {t('profile.syncNote')}
             </p>
             <button type="submit" disabled={isSaving || isUploading}
               className="w-full md:w-auto px-8 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50">

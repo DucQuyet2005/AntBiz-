@@ -146,7 +146,7 @@ export default function SearchView() {
       {/* Results Meta Info */}
       {!loading && query && (
         <div className="text-xs text-text-muted font-bold -mt-2">
-          {t('search.foundResults', { count: totalResults })} cho &quot;{query}&quot;
+          {t('search.foundResults', { count: totalResults })} {language === 'vi' ? 'cho' : 'for'} &quot;{query}&quot;
         </div>
       )}
 
@@ -235,7 +235,7 @@ export default function SearchView() {
                           onClick={() => setActiveTab('articles')}
                           className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
                         >
-                          Xem thêm bài viết <ChevronRight size={14} />
+                          {t('search.viewMoreArticles')} <ChevronRight size={14} />
                         </button>
                       )}
                     </div>
@@ -258,7 +258,7 @@ export default function SearchView() {
                           onClick={() => setActiveTab('captions')}
                           className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
                         >
-                          Xem thêm captions <ChevronRight size={14} />
+                          {t('search.viewMoreCaptions')} <ChevronRight size={14} />
                         </button>
                       )}
                     </div>
@@ -281,7 +281,7 @@ export default function SearchView() {
                           onClick={() => setActiveTab('prompts')}
                           className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
                         >
-                          Xem thêm prompts <ChevronRight size={14} />
+                          {t('search.viewMorePrompts')} <ChevronRight size={14} />
                         </button>
                       )}
                     </div>
@@ -304,7 +304,7 @@ export default function SearchView() {
                           onClick={() => setActiveTab('faqs')}
                           className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
                         >
-                          Xem thêm câu hỏi FAQ <ChevronRight size={14} />
+                          {t('search.viewMoreFaqs')} <ChevronRight size={14} />
                         </button>
                       )}
                     </div>
@@ -358,6 +358,7 @@ export default function SearchView() {
 /* Sub-components forSearchView */
 
 function ArticleCard({ article }: { article: any }) {
+  const { t } = useLanguage();
   return (
     <Link
       href={`/archive/${article.id}`}
@@ -365,10 +366,10 @@ function ArticleCard({ article }: { article: any }) {
     >
       <div>
         <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5 block">
-          BÀI VIẾT GỐC
+          {t('search.originalArticleLabel')}
         </div>
         <h3 className="font-extrabold text-base text-text line-clamp-2 group-hover:text-primary transition-colors mb-2">
-          {article.title || 'Không có tiêu đề'}
+          {article.title || t('search.untitled')}
         </h3>
         {article.description && (
           <p className="text-xs text-text-muted line-clamp-3 leading-relaxed font-medium">
@@ -379,7 +380,7 @@ function ArticleCard({ article }: { article: any }) {
       <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted font-bold">
         <span>{article.crawled_at ? new Date(article.crawled_at).toLocaleDateString() : ''}</span>
         <span className="flex items-center gap-1 text-primary group-hover:underline">
-          Chi tiết <ExternalLink size={10} />
+          {t('search.details')} <ExternalLink size={10} />
         </span>
       </div>
     </Link>
@@ -387,6 +388,7 @@ function ArticleCard({ article }: { article: any }) {
 }
 
 function CaptionRow({ caption }: { caption: any }) {
+  const { t } = useLanguage();
   return (
     <Link
       href={`/archive/${caption.article_id}?captionId=${caption.id}`}
@@ -399,22 +401,23 @@ function CaptionRow({ caption }: { caption: any }) {
           </span>
           {caption.articles?.title && (
             <span className="text-[10px] text-text-muted font-bold line-clamp-1 max-w-sm">
-              Bài viết: {caption.articles.title}
+              {t('search.articlePrefix')}{caption.articles.title}
             </span>
           )}
         </div>
         <span className="text-[10px] font-black text-primary group-hover:underline flex items-center gap-0.5">
-          Xem bài đăng <ChevronRight size={12} />
+          {t('search.viewPost')} <ChevronRight size={12} />
         </span>
       </div>
       <p className="text-xs text-text leading-relaxed font-medium whitespace-pre-wrap bg-gray-50/50 p-3.5 rounded-2xl border border-gray-100/50">
-        {caption.edited_content || caption.ai_content || 'Không có nội dung'}
+        {caption.edited_content || caption.ai_content || t('search.noContent')}
       </p>
     </Link>
   );
 }
 
 function PromptCard({ prompt }: { prompt: any }) {
+  const { t } = useLanguage();
   return (
     <Link
       href={`/prompts?promptId=${prompt.id}`}
@@ -442,13 +445,14 @@ function PromptCard({ prompt }: { prompt: any }) {
         </p>
       </div>
       <div className="flex items-center justify-end text-[10px] font-black text-primary group-hover:underline gap-0.5">
-        Mở trong Thư viện <ExternalLink size={10} />
+        {t('search.openInLibrary')} <ExternalLink size={10} />
       </div>
     </Link>
   );
 }
 
 function FaqCard({ faq }: { faq: any }) {
+  const { t } = useLanguage();
   return (
     <Link
       href={`/faq?key=${faq.key}`}
@@ -471,7 +475,7 @@ function FaqCard({ faq }: { faq: any }) {
         )}
       </div>
       <div className="flex items-center justify-end text-[10px] font-black text-primary group-hover:underline gap-0.5">
-        Xem câu trả lời <ExternalLink size={10} />
+        {t('search.viewAnswer')} <ExternalLink size={10} />
       </div>
     </Link>
   );

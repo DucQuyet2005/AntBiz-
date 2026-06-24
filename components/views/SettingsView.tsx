@@ -58,8 +58,8 @@ export default function SettingsView() {
           body: JSON.stringify({
             userId,
             type: 'info',
-            title: 'Thay đổi màu giao diện',
-            message: `Bạn đã thay đổi màu sắc giao diện hệ thống thành tông màu: ${colorLabel}.`,
+            title: t('settings.notifyThemeChangedTitle'),
+            message: t('settings.notifyThemeChangedMsg').replace('{color}', colorLabel),
           }),
         });
       } catch (err) {
@@ -235,71 +235,71 @@ export default function SettingsView() {
               </div>
             </div>
 
-            {/* Theme Customizer Setting Block */}
-            <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-4">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
-                  <Sliders size={16} className="text-primary" />
-                  {language === 'vi' ? 'Màu sắc giao diện' : 'System Theme Color'}
-                </span>
-                <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                  {language === 'vi' 
-                    ? 'Tùy chọn tông màu chủ đạo cho toàn bộ không gian làm việc của bạn.'
-                    : 'Choose the main accent color for your entire workspace.'}
-                </span>
-              </div>
-
-              {/* Solids Group */}
-              <div className="flex flex-col gap-2">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  {language === 'vi' ? 'Màu đơn sắc' : 'Solid Colors'}
-                </span>
-                <div className="flex flex-wrap gap-2.5">
-                  {[
-                    { id: 'solid-red', color: '#EF4444', labelVi: 'Đỏ', labelEn: 'Red' },
-                    { id: 'solid-orange', color: '#F97316', labelVi: 'Cam', labelEn: 'Orange' },
-                    { id: 'solid-yellow', color: '#F59E0B', labelVi: 'Vàng', labelEn: 'Yellow' },
-                    { id: 'solid-green', color: '#10B981', labelVi: 'Lục', labelEn: 'Green' },
-                    { id: 'solid-blue', color: '#5A5CDE', labelVi: 'Lam', labelEn: 'Blue' },
-                    { id: 'solid-indigo', color: '#6366F1', labelVi: 'Chàm', labelEn: 'Indigo' },
-                    { id: 'solid-purple', color: '#A855F7', labelVi: 'Tím', labelEn: 'Purple' },
-                  ].map((s) => {
-                    const isSelected = theme === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => handleThemeChange(s.id as Theme, language === 'vi' ? s.labelVi : s.labelEn)}
-                        title={language === 'vi' ? s.labelVi : s.labelEn}
-                        className={`w-8 h-8 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative ${
-                          isSelected 
-                            ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
-                            : 'border-white hover:border-slate-300'
-                        }`}
-                        style={{ backgroundColor: s.color }}
-                      >
-                        {isSelected && <Check size={14} className="text-white drop-shadow stroke-[3.5]" />}
-                      </button>
-                    );
-                  })}
+              {/* Theme Customizer Setting Block */}
+              <div className="border-t border-[#E4E6F8] pt-5 flex flex-col gap-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-[#1E293B] flex items-center gap-1.5">
+                    <Sliders size={16} className="text-primary" />
+                    {t('settings.themeColor')}
+                  </span>
+                  <span className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                    {t('settings.themeDesc')}
+                  </span>
                 </div>
-              </div>
+  
+                {/* Solids Group */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    {t('settings.solidColors')}
+                  </span>
+                  <div className="flex flex-wrap gap-2.5">
+                    {[
+                      { id: 'solid-red', color: '#EF4444', labelKey: 'settings.colorRed' },
+                      { id: 'solid-orange', color: '#F97316', labelKey: 'settings.colorOrange' },
+                      { id: 'solid-yellow', color: '#F59E0B', labelKey: 'settings.colorYellow' },
+                      { id: 'solid-green', color: '#10B981', labelKey: 'settings.colorGreen' },
+                      { id: 'solid-blue', color: '#5A5CDE', labelKey: 'settings.colorBlue' },
+                      { id: 'solid-indigo', color: '#6366F1', labelKey: 'settings.colorIndigo' },
+                      { id: 'solid-purple', color: '#A855F7', labelKey: 'settings.colorPurple' },
+                    ].map((s) => {
+                      const isSelected = theme === s.id;
+                      const labelStr = t(s.labelKey as any);
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => handleThemeChange(s.id as Theme, labelStr)}
+                          title={labelStr}
+                          className={`w-8 h-8 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative ${
+                            isSelected 
+                              ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
+                              : 'border-white hover:border-slate-300'
+                          }`}
+                          style={{ backgroundColor: s.color }}
+                        >
+                          {isSelected && <Check size={14} className="text-white drop-shadow stroke-[3.5]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
               {/* Gradients Group */}
               <div className="flex flex-col gap-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  {language === 'vi' ? 'Màu Gradient' : 'Gradient Colors'}
+                  {t('settings.gradientColors')}
                 </span>
                 <div className="grid grid-cols-3 gap-2.5">
                   {[
-                    { id: 'gradient-black-red', gradient: 'linear-gradient(135deg, #1A1A1A 0%, #EF4444 100%)', labelVi: 'Đen đỏ', labelEn: 'Black-Red' },
-                    { id: 'gradient-yellow-black', gradient: 'linear-gradient(135deg, #F59E0B 0%, #1A1A1A 100%)', labelVi: 'Vàng đen', labelEn: 'Yellow-Black' },
-                    { id: 'gradient-black-white', gradient: 'linear-gradient(135deg, #111827 0%, #E5E7EB 100%)', labelVi: 'Đen trắng', labelEn: 'Black-White' },
+                    { id: 'gradient-black-red', gradient: 'linear-gradient(135deg, #1A1A1A 0%, #EF4444 100%)', labelKey: 'settings.colorBlackRed' },
+                    { id: 'gradient-yellow-black', gradient: 'linear-gradient(135deg, #F59E0B 0%, #1A1A1A 100%)', labelKey: 'settings.colorYellowBlack' },
+                    { id: 'gradient-black-white', gradient: 'linear-gradient(135deg, #111827 0%, #E5E7EB 100%)', labelKey: 'settings.colorBlackWhite' },
                   ].map((g) => {
                     const isSelected = theme === g.id;
+                    const labelStr = t(g.labelKey as any);
                     return (
                       <button
                         key={g.id}
-                        onClick={() => handleThemeChange(g.id as Theme, language === 'vi' ? g.labelVi : g.labelEn)}
+                        onClick={() => handleThemeChange(g.id as Theme, labelStr)}
                         className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[38px] ${
                           isSelected 
                             ? 'border-slate-800 scale-[1.02] ring-2 ring-primary/30' 
@@ -307,7 +307,7 @@ export default function SettingsView() {
                         }`}
                         style={{ background: g.gradient }}
                       >
-                        <span className="drop-shadow truncate">{language === 'vi' ? g.labelVi : g.labelEn}</span>
+                        <span className="drop-shadow truncate">{labelStr}</span>
                         {isSelected && <Check size={12} className="text-white drop-shadow stroke-[3.5] shrink-0" />}
                       </button>
                     );
@@ -318,10 +318,10 @@ export default function SettingsView() {
               {/* RGB Rainbow Group */}
               <div className="flex flex-col gap-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  {language === 'vi' ? 'Hiệu ứng RGB' : 'RGB Effects'}
+                  {t('settings.rgbEffects')}
                 </span>
                 <button
-                  onClick={() => handleThemeChange('rgb', language === 'vi' ? 'Cầu vồng 7 sắc' : 'RGB Rainbow')}
+                  onClick={() => handleThemeChange('rgb', t('settings.colorRainbow'))}
                   className={`relative overflow-hidden w-full h-10 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm ${
                     theme === 'rgb' ? 'border-slate-800 scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 hover:border-slate-300'
                   }`}
@@ -334,7 +334,7 @@ export default function SettingsView() {
                   <div className="absolute inset-0 bg-black/15 flex items-center justify-center gap-1.5 hover:bg-black/5 transition-colors">
                     <Sparkles size={13} className="text-white drop-shadow animate-pulse" />
                     <span className="text-white drop-shadow font-extrabold text-[11px] tracking-wide">
-                      {language === 'vi' ? 'Cầu vồng 7 sắc chạy liên tục' : 'Continuous 7-Color Rainbow'}
+                      {t('settings.rgbContinuous')}
                     </span>
                     {theme === 'rgb' && <Check size={13} className="text-white drop-shadow stroke-[3.5]" />}
                   </div>
@@ -346,7 +346,7 @@ export default function SettingsView() {
                 <div className="flex items-center gap-1.5">
                   <Type size={14} className="text-primary shrink-0" />
                   <span className="text-sm font-bold text-[#1E293B]">
-                    {language === 'vi' ? 'Kiểu chữ hệ thống' : 'System Typeface'}
+                    {t('settings.typeface')}
                   </span>
                 </div>
 
@@ -391,7 +391,7 @@ export default function SettingsView() {
                         className="text-sm font-medium text-[#1E293B] leading-snug"
                         style={{ fontFamily: activeFont.family }}
                       >
-                        Aa — Chào mừng đến với AntBiz.
+                        {t('settings.welcomeText')}
                       </p>
                       <p className="mt-1 text-[10px] text-text-muted leading-normal">
                         {language === 'vi' ? activeFont.descriptionVi : activeFont.descriptionEn}
