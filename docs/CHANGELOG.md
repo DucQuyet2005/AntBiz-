@@ -4,6 +4,20 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [1.3.4] - 2026-06-24
+
+### Added
+- **Tài liệu thiết kế Log Caption Prompt**:
+  - Bổ sung tài liệu đặc tả thiết kế log so sánh prompt cũ và prompt mới chọn khi tái sinh caption tại `docs/superpowers/specs/2026-06-24-log-caption-prompt-design.md`.
+
+### Changed
+- **Log so sánh Prompt khi tái sinh Caption (Backend)**:
+  - Cập nhật API route `/api/captions/generate` nhận tham số `oldCaptionId` từ request body.
+  - Tích hợp logic truy vấn thông tin prompt của caption cũ từ cơ sở dữ liệu (Supabase) và tiến hành so sánh với prompt mới được yêu cầu (so sánh theo ID đối với prompt thư viện, hoặc so sánh nội dung text đối với custom prompt).
+  - In log rõ ràng ra Server Console chi tiết trạng thái thay đổi (`ĂN THEO PROMPT CŨ` hoặc `ĂN THEO PROMPT MỚI`) kèm theo ID và tên prompt cũ/mới để phục vụ quá trình debug và kiểm tra tối ưu hóa bản sao AI.
+- **Truyền Caption ID cũ từ Frontend**:
+  - Cập nhật hàm `handleRegenerateVariant` trong `components/views/AiCreatorView.tsx` để lưu lại `captionId` của variant trước khi reset state và truyền `oldCaptionId` lên API tái sinh caption.
+
 ## [1.3.3] - 2026-06-23
 
 ### Changed

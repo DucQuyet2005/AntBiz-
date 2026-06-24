@@ -1,0 +1,40 @@
+Unused files (17)
+.agents/skills/brainstorming/scripts/helper.js                                                  
+.agents/skills/brainstorming/scripts/server.cjs                                                 
+.gemini/antigravity-ide/brain/ac5acf1c-8f85-4767-a261-030987ffb5b7/scratch/list_notifications.js
+components/ActivityList.tsx                                                                     
+components/admin/landing-editor/HeroForm.tsx                                                    
+components/admin/landing-editor/SectionsForm.tsx                                                
+components/ChartPlaceholder.tsx                                                                 
+components/PromptCard.tsx                                                                       
+components/StatCard.tsx                                                                         
+components/views/CaptionsView.tsx                                                               
+debug-gemini.ts                                                                                 
+inspect_body.ts                                                                                 
+inspect_layouts.ts                                                                              
+lib/api/services/articleService.ts                                                              
+lib/api/services/promptService.ts                                                               
+middleware-history.ts                                                                           
+scripts/test_crawl.ts                                                                           
+Unused dependencies (5)
+@sparticuz/chromium  package.json:16:6
+dotenv               package.json:20:6
+playwright-core      package.json:26:6
+ramda                package.json:27:6
+resend               package.json:31:6
+Unused exports (2)
+DEFAULT_CONFIG_VI  components/views/LandingView.tsx:74:14
+PROMPT_PLATFORMS   lib/validations/prompt.ts:4:14        
+Unused exported types (12)
+ExportJob             exportService  interface  lib/api/services/exportService.ts:11:18
+BodyBlock                            interface  lib/crawler/preprocess.ts:10:18        
+ImageBlock                           interface  lib/crawler/preprocess.ts:17:18        
+TranslationsType                     type       lib/i18n/translations.ts:1583:13       
+CaptionStatus                        type       lib/types/api.ts:20:13                 
+CaptionPlatform                      type       lib/types/api.ts:21:13                 
+Caption                              interface  lib/types/api.ts:23:18                 
+CreateCaptionPayload                 interface  lib/types/api.ts:40:18                 
+UpdateCaptionPayload                 interface  lib/types/api.ts:47:18                 
+Article                              interface  lib/types/article.ts:2:18              
+CreatePromptInput                    type       lib/validations/prompt.ts:53:13        
+UpdatePromptInput                    type       lib/validations/prompt.ts:54:13        

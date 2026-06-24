@@ -552,6 +552,9 @@ export default function AiCreatorView() {
     const variantIndex = ['A', 'B', 'C'].indexOf(variantId);
     if (variantIndex === -1) return;
 
+    // Lấy captionId cũ trước khi clear state
+    const oldCaptionId = variants.find((v) => v.id === variantId)?.captionId;
+
     setRegeneratingVariantId(variantId);
 
     // Clear the current content for this variant
@@ -583,6 +586,7 @@ export default function AiCreatorView() {
           platform: selectedPlatform,
           variantGroupId: groupId,
           variantIndex,
+          oldCaptionId,
           ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
             ? { promptId: selectedPrompt.id }
             : {}),

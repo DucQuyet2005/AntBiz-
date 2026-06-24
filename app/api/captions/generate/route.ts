@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
     }
 
-    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex } = body;
+    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId } = body;
 
     if (!promptId && !customPrompt) {
       return NextResponse.json({ error: 'Thiếu promptId' }, { status: 400 });
@@ -181,6 +181,7 @@ export async function POST(request: NextRequest) {
     // 3. Fetch Prompt
     let promptContent = '';
     let dbPromptId: string | null = null;
+    let dbPromptName: string = '';
     let targetPlatform = platform;
 
     if (promptId) {
@@ -202,9 +203,67 @@ export async function POST(request: NextRequest) {
 
       promptContent = promptRecord.content;
       dbPromptId = promptRecord.id;
+      dbPromptName = promptRecord.name || 'N/A';
       targetPlatform = promptRecord.platform;
     } else {
       promptContent = customPrompt;
+    }
+
+    // Compare prompts if regenerating (oldCaptionId is provided)
+    if (oldCaptionId) {
+      try {
+        const { data: oldCaption, error: oldCaptionError } = await userSupabase
+          .from('captions')
+          .select('prompt_id, platform')
+          .eq('id', oldCaptionId)
+          .maybeSingle();
+
+        if (oldCaptionError) {
+          console.error('[Generate API] Error fetching old caption:', oldCaptionError);
+        } else if (oldCaption) {
+          const oldPromptId = oldCaption.prompt_id;
+          let oldPromptContent = '';
+          let oldPromptName = 'N/A';
+
+          if (oldPromptId) {
+            const { data: oldPromptRecord } = await userSupabase
+              .from('prompts')
+              .select('name, content')
+              .eq('id', oldPromptId)
+              .maybeSingle();
+
+            if (oldPromptRecord) {
+              oldPromptContent = oldPromptRecord.content;
+              oldPromptName = oldPromptRecord.name;
+            }
+          }
+
+          let isSamePrompt = false;
+          if (dbPromptId && oldPromptId) {
+            isSamePrompt = dbPromptId === oldPromptId;
+          } else if (!dbPromptId && !oldPromptId) {
+            isSamePrompt = promptContent.trim() === oldPromptContent.trim();
+          }
+
+          console.log('\n=================== CAPTION REGENERATION PROMPT COMPARISON ===================');
+          console.log(`[Regen Log] Caption ID cũ: ${oldCaptionId} | Platform: ${oldCaption.platform}`);
+          console.log(`[Regen Log] Trạng thái: ${isSamePrompt ? 'ĂN THEO PROMPT CŨ (Không thay đổi)' : 'ĂN THEO PROMPT MỚI (Có thay đổi)'}`);
+          if (isSamePrompt) {
+            if (dbPromptId) {
+              console.log(`[Regen Log] Chi tiết: Sử dụng lại Library Prompt ID: ${dbPromptId} ("${dbPromptName}")`);
+            } else {
+              console.log(`[Regen Log] Chi tiết: Sử dụng lại Custom Prompt có nội dung giống cũ.`);
+            }
+          } else {
+            console.log(`[Regen Log] Chi tiết: Prompt thay đổi.`);
+            console.log(`  - Prompt cũ: ID: ${oldPromptId || 'Custom'}, Tên: ${oldPromptName || 'Custom'}`);
+            console.log(`  - Prompt mới: ID: ${dbPromptId || 'Custom'}, Tên: ${dbPromptName || 'Custom'}`);
+          }
+          console.log('==============================================================================\n');
+        }
+      } catch (compareError) {
+        console.error('[Generate API] Error comparing prompts:', compareError);
+      }
     }
 
     // 4. Connect to Gemini API for Streaming
