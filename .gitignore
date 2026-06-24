@@ -51,3 +51,10 @@ next-env.d.ts
 
 # Temporary analysis logs
 *-output-*.txt
+
+# AI Agent customizations (Impeccable, skills, internal configs)
+# Không push các file cấu hình agent nội bộ lên git
+.agents/
+
+# Antigravity IDE app data
+.gemini/
