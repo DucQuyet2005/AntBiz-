@@ -407,6 +407,113 @@ export default function AiCreatorView() {
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
+  // Onboarding Tour state for AI Creator
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  useEffect(() => {
+    const completed = localStorage.getItem('antbiz_creator_onboarded');
+    if (!completed) {
+      const timer = setTimeout(() => {
+        setShowTour(true);
+        setTourStep(1);
+        setTimeout(() => highlightElement(1), 100);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const highlightElement = (stepNumber: number) => {
+    clearHighlights();
+    let targetId = '';
+    if (stepNumber === 1) targetId = 'tour-creator-header';
+    if (stepNumber === 2) targetId = 'tour-creator-url';
+    if (stepNumber === 3) targetId = 'tour-creator-prompt';
+    if (stepNumber === 4) targetId = 'tour-creator-variants';
+    if (stepNumber === 5) targetId = 'tour-creator-scheduler';
+
+    if (targetId) {
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-[65]', 'relative', 'bg-white', 'dark:bg-zinc-900');
+      }
+    }
+  };
+
+  const clearHighlights = () => {
+    const ids = ['tour-creator-header', 'tour-creator-url', 'tour-creator-prompt', 'tour-creator-variants', 'tour-creator-scheduler'];
+    ids.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.classList.remove('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-[65]', 'relative', 'bg-white', 'dark:bg-zinc-900');
+      }
+    });
+  };
+
+  const handleNextStep = () => {
+    const nextStep = tourStep + 1;
+    if (nextStep === 2 || nextStep === 3) {
+      setStep(1);
+    } else if (nextStep === 4) {
+      // Mock variants if currently empty to display something useful
+      if (!variants[0].facebook && !variants[0].threads && !variants[0].instagram) {
+        setVariants([
+          {
+            id: 'A',
+            facebook: '🎉 Thật tuyệt vời khi được đồng hành cùng các bạn! Đây là bài viết mẫu cho kênh A.',
+            threads: 'Thật tuyệt vời khi được đồng hành! Bài viết mẫu kênh A.',
+            instagram: 'Thật tuyệt vời khi được đồng hành! Bài viết mẫu kênh A. #AntBiz',
+            title: 'Bài viết mẫu A',
+            author: 'AntBiz AI',
+            tags: '#Sample'
+          },
+          {
+            id: 'B',
+            facebook: '🔥 Hướng tới tương lai bền vững với giải pháp tự động hóa. Bản thảo A/B Test B.',
+            threads: 'Hướng tới tương lai bền vững! Bản thảo B.',
+            instagram: 'Hướng tới tương lai bền vững! Bản thảo B. #Creative',
+            title: 'Bài viết mẫu B',
+            author: 'AntBiz AI',
+            tags: '#Future'
+          }
+        ]);
+        setSelectedVariantId('A');
+      }
+      setStep(2);
+    } else if (nextStep === 5) {
+      setStep(3);
+    }
+    setTourStep(nextStep);
+    setTimeout(() => highlightElement(nextStep), 100);
+  };
+
+  const handlePrevStep = () => {
+    const prevStep = tourStep - 1;
+    if (prevStep === 2 || prevStep === 3) {
+      setStep(1);
+    } else if (prevStep === 4) {
+      setStep(2);
+    } else if (prevStep === 5) {
+      setStep(3);
+    }
+    setTourStep(prevStep);
+    setTimeout(() => highlightElement(prevStep), 100);
+  };
+
+  const handleSkipTour = () => {
+    localStorage.setItem('antbiz_creator_onboarded', 'true');
+    setShowTour(false);
+    clearHighlights();
+  };
+
+  const handleStartTour = () => {
+    setTourStep(1);
+    setStep(1);
+    setShowTour(true);
+    setTimeout(() => highlightElement(1), 100);
+  };
+
   // State for Social Media Variants (A/B Test copies)
   const [variants, setVariants] = useState<SocialVariant[]>([
     createEmptyVariant('A'),
@@ -2131,8 +2238,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
         {/* Top Header Row */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-2">
-          <div>
-            <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
+          <div id="tour-creator-header" className="transition-all duration-300">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-text tracking-tight">{t('aiCreator.title')}</h1>
+              <button
+                type="button"
+                onClick={handleStartTour}
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 flex items-center justify-center text-xs font-black text-slate-650 dark:text-zinc-300 transition-all border border-slate-200/60 dark:border-zinc-700/80 cursor-pointer active:scale-95 shadow-sm"
+                title={language === 'vi' ? 'Hướng dẫn sử dụng' : 'User Guide'}
+                aria-label="User Guide"
+              >
+                ?
+              </button>
+            </div>
             <p className="text-sm text-text-muted mt-1">{t('aiCreator.subtitle')}</p>
           </div>
 
@@ -2236,7 +2354,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               className="lg:col-span-8 flex flex-col gap-6 order-1"
             >
               {/* URL Context Importer */}
-              <div className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+              <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
@@ -2292,6 +2410,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
               {/* ─── AI PROMPT CONFIGURATION BAR ─── */}
               <button
+                id="tour-creator-prompt"
                 type="button"
                 onClick={() => setIsAiPromptDialogOpen(true)}
                 className="bg-white border border-slate-200/80 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:border-primary/40 hover:shadow-lg cursor-pointer transition-all duration-300 group text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
@@ -3017,13 +3136,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           {/* STEP 2: Right column A/B testing variants workspace */}
           {step === 2 && (
             <motion.div
+              id="tour-creator-variants"
               layout
               key="step2-variants"
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="lg:col-span-8 flex flex-col gap-6 order-2"
+              className="lg:col-span-8 flex flex-col gap-6 order-2 transition-all duration-300"
             >
               {/* Platform Selector */}
               <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -3465,12 +3585,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
           {step === 3 && (
             <motion.div
+              id="tour-creator-scheduler"
               key="step3-scheduler"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 30 }}
               transition={{ duration: 0.4 }}
-              className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full"
+              className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full transition-all duration-300"
             >
               {/* Left Column - Decoupled Schedulers Form (col-span-4) */}
               <div className="lg:col-span-4 flex flex-col gap-6">
@@ -4602,6 +4723,82 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   )}
                 </div>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Onboarding Tour Backdrop Overlay */}
+        <AnimatePresence>
+          {showTour && tourStep > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-[1.5px] z-[60] pointer-events-auto cursor-default"
+              onClick={handleSkipTour}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Onboarding Tour Dialog Popover */}
+        <AnimatePresence>
+          {showTour && tourStep > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="fixed bottom-6 left-6 right-6 md:left-auto md:right-12 md:w-[380px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-2xl z-[70] flex flex-col gap-4 font-sans"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] bg-primary/10 text-primary font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Quick Guide · {tourStep}/5
+                </span>
+                <button
+                  onClick={handleSkipTour}
+                  className="text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+                  title="Close Guide"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <h4 className="text-base font-extrabold text-slate-800 dark:text-zinc-100 flex items-center gap-2">
+                  <Sparkles size={16} className="text-primary animate-pulse" />
+                  {t(`aiCreator.tourStep${tourStep}Title` as any)}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-semibold">
+                  {t(`aiCreator.tourStep${tourStep}Desc` as any)}
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-zinc-800">
+                <button
+                  onClick={handleSkipTour}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all cursor-pointer"
+                >
+                  {t('aiCreator.tourSkip' as any)}
+                </button>
+
+                <div className="flex gap-2">
+                  {tourStep > 1 && (
+                    <button
+                      onClick={handlePrevStep}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      {t('aiCreator.tourPrev' as any)}
+                    </button>
+                  )}
+                  <button
+                    onClick={tourStep === 5 ? handleSkipTour : handleNextStep}
+                    className="bg-primary hover:bg-primary-hover text-white px-5 py-2 rounded-xl text-xs font-black shadow-md shadow-primary/25 transition-all cursor-pointer"
+                  >
+                    {tourStep === 5 ? t('aiCreator.tourFinish' as any) : t('aiCreator.tourNext' as any)}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

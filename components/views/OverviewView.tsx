@@ -377,7 +377,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </button>
           )}
 
-          <div className="flex gap-2 relative z-10 shrink-0">
+          <div className="flex relative z-10 shrink-0">
             <button
               onClick={handleRestartTour}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white !text-white px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2"
@@ -385,20 +385,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               <Sparkles size={13} />
               <span>{t('overview.tourGuide')}</span>
             </button>
-
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200/50 text-slate-700 hover:text-indigo-605 px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer relative z-10"
-            >
-              {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
-            </button>
           </div>
         </div>
+      </div>
 
-        {/* Stats Cards Row */}
-        <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300">
+      {/* Stats Cards Row */}
+      <div id="tour-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300">
 
           {/* Stat Card 1: Ingestion & Copywriting (Rose/Violet Theme) */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[240px] relative overflow-hidden group">
