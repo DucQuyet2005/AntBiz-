@@ -1687,6 +1687,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   // Add a new variant copy dynamically
   const handleAddVariant = () => {
+    if (variants.length >= variantCount) {
+      return;
+    }
     const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
     const firstTags = variants[0]?.tags || '';
     const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
@@ -2111,15 +2114,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                      Cấu hình AI Prompt &amp; Nội dung
+                      {t('aiCreator.promptConfigBarTitle')}
                       <span className="text-[9px] bg-primary/10 text-primary font-black px-2 py-0.5 rounded-full">AI Powered</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5 font-semibold">
                       {selectedPrompt
-                        ? `Đang dùng: [${selectedPrompt.platform?.toUpperCase()}] ${selectedPrompt.name}`
+                        ? t('aiCreator.promptConfigBarUsing', { platform: selectedPrompt.platform?.toUpperCase(), name: selectedPrompt.name })
                         : activePrompt
-                          ? 'Đã soạn câu lệnh tùy chỉnh · Nhấn để chỉnh sửa'
-                          : 'Nhấp để chọn Prompt từ thư viện hoặc tự soạn câu lệnh AI'
+                          ? t('aiCreator.promptConfigBarCustom')
+                          : t('aiCreator.promptConfigBarDefault')
                       }
                     </p>
                   </div>
@@ -2127,11 +2130,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 <div className="flex items-center gap-2 shrink-0">
                   {(selectedPrompt || activePrompt) && (
                     <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
-                      Đã thiết lập
+                      {t('aiCreator.promptConfigBarSetupBadge')}
                     </span>
                   )}
                   <span className="bg-primary/10 text-primary px-4 py-2.5 rounded-xl text-xs font-black group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                    {selectedPrompt ? 'Thay đổi' : 'Cấu hình'}
+                    {selectedPrompt ? t('aiCreator.promptConfigBarChange') : t('aiCreator.promptConfigBarConfigure')}
                   </span>
                 </div>
               </button>
@@ -2715,26 +2718,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 {/* Next step button */}
                 {step === 1 && (
                   <div className="flex flex-col gap-2">
-                    {/* Variant count segmented control */}
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-xs font-bold text-text-muted">
-                        {language === 'vi' ? 'Số biến thể' : 'Variant count'}
-                      </span>
-                      <div className="flex bg-sidebar rounded-full p-0.5 border border-gray-200 shadow-inner">
-                        {([2, 3] as const).map((count) => (
-                          <button
-                            key={count}
-                            onClick={() => setVariantCount(count)}
-                            className={`text-xs font-extrabold px-4 py-1.5 rounded-full transition-all duration-200 ${variantCount === count
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'text-text-muted hover:text-text'
-                              }`}
-                          >
-                            {count}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <motion.button
                       layout
                       onClick={handleProceedToABTest}
@@ -3147,20 +3130,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </AnimatePresence>
 
                 {/* Add Variant Card */}
-                <motion.button
-                  onClick={handleAddVariant}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
-                    <Plus size={24} />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
-                    <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
-                  </div>
-                </motion.button>
+                {variants.length < variantCount && (
+                  <motion.button
+                    onClick={handleAddVariant}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
+                      <Plus size={24} />
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
+                      <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
+                    </div>
+                  </motion.button>
+                )}
               </div>
 
               {/* Bottom Actions Row */}
@@ -4127,8 +4112,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h2 className="text-base font-black text-slate-800">Cấu hình AI Prompt &amp; Nội dung</h2>
-                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Tùy chỉnh câu lệnh AI và sinh nội dung theo ý muốn</p>
+                      <h2 className="text-base font-black text-slate-800">{t('aiCreator.promptConfigBarTitle')}</h2>
+                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigDialogSubtitle')}</p>
                     </div>
                   </div>
                   <button
@@ -4143,8 +4128,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 {/* Tab Bar */}
                 <div className="flex border-b border-gray-100 px-7 shrink-0 bg-gray-50/60">
                   {[
-                    { key: 'editor' as const, label: 'AI Prompt Editor', icon: Wand2 },
-                    { key: 'generator' as const, label: 'Sinh Prompt bằng mẫu', icon: Sparkles }
+                    { key: 'editor' as const, label: t('aiCreator.promptConfigTabEditor'), icon: Wand2 },
+                    { key: 'generator' as const, label: t('aiCreator.promptConfigTabLibrary'), icon: Sparkles }
                   ].map(({ key, label, icon: Icon }) => (
                     <button
                       key={key}
@@ -4165,7 +4150,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <>
                       {/* Platform selector */}
                       <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng mạng xã hội</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigSocialPlatform')}</label>
                         <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
                           {(['facebook', 'threads', 'instagram'] as const).map((p) => (
                             <button key={p} type="button" onClick={() => setPromptPlatform(p)}
@@ -4179,9 +4164,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                       {/* Custom prompt title */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên Prompt (tùy chọn)</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigNameOptional')}</label>
                         <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
-                          placeholder="Đặt tên cho Prompt này..."
+                          placeholder={t('aiCreator.promptConfigNamePlaceholder')}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
                         />
                       </div>
@@ -4189,15 +4174,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       {/* Textarea for prompt */}
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nội dung Prompt</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
                           <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
                             className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 text-primary text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 cursor-pointer">
                             <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
-                            Tạo Prompt thông minh
+                            {t('aiCreator.promptConfigSmartPromptBtn')}
                           </button>
                         </div>
                         <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
-                          placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
+                          placeholder={t('aiCreator.promptConfigSmartPromptPlaceholder')} rows={16}
                           className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
                         />
                       </div>
@@ -4210,8 +4195,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <Layers size={15} />
                         </div>
                         <div>
-                          <p className="text-xs font-black text-slate-800">Thư viện Prompt mẫu</p>
-                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Chọn một prompt để tự động điền vào Tab Editor</p>
+                          <p className="text-xs font-black text-slate-800">{t('aiCreator.promptConfigLibTitle')}</p>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigLibSubtitle')}</p>
                         </div>
                       </div>
 
@@ -4219,7 +4204,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <div className="relative">
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
-                          placeholder="Tìm theo tên hoặc nội dung..."
+                          placeholder={t('aiCreator.promptConfigLibSearchPlaceholder')}
                           className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
                         />
                       </div>
@@ -4228,12 +4213,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                         {loadingPrompts ? (
                           <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
-                            <Loader2 size={16} className="animate-spin text-primary" /> Đang tải thư viện...
+                            <Loader2 size={16} className="animate-spin text-primary" /> {t('aiCreator.promptConfigLibLoading')}
                           </div>
                         ) : filteredPromptsForModal.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 gap-2">
+                           <div className="flex flex-col items-center justify-center py-12 gap-2">
                             <Layers size={24} className="text-slate-200" />
-                            <p className="text-xs text-slate-400 font-semibold">Không tìm thấy prompt nào</p>
+                            <p className="text-xs text-slate-400 font-semibold">{t('aiCreator.promptConfigLibNoPrompts')}</p>
                           </div>
                         ) : (
                           filteredPromptsForModal.map((p) => {
@@ -4270,14 +4255,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="border-t border-gray-100 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
+                <div className="border-t border-gray-150 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
                     <>
                       <button
                         type="button"
                         onClick={() => {
                           if (!activePrompt) return;
-                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
@@ -4285,7 +4270,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         disabled={!activePrompt}
                         className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
                       >
-                        Chỉ sử dụng
+                        {t('aiCreator.promptConfigBtnUseOnly')}
                       </button>
 
                       <button
@@ -4293,7 +4278,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         onClick={async () => {
                           if (!activePrompt) return;
                           const savedPrompt = await handleSaveCurrentPrompt();
-                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
@@ -4302,7 +4287,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
                       >
                         {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
-                        Lưu &amp; Sử dụng Prompt
+                        {t('aiCreator.promptConfigBtnSaveUse')}
                       </button>
                     </>
                   ) : (
@@ -4316,7 +4301,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       disabled={!selectedPrompt}
                       className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
                     >
-                      Sử dụng Prompt này
+                      {t('aiCreator.promptConfigBtnUseThis')}
                     </button>
                   )}
                 </div>

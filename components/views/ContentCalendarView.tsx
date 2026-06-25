@@ -448,8 +448,8 @@ export default function ContentCalendarView() {
             
             <div className="grid grid-cols-7 gap-y-1.5 text-center text-[10px] text-slate-400 font-bold">
               {language === 'vi' 
-                ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(d => <div key={d} className="py-0.5">{d}</div>)
-                : ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d} className="py-0.5">{d}</div>)
+                ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, idx) => <div key={idx} className="py-0.5">{d}</div>)
+                : ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => <div key={idx} className="py-0.5">{d}</div>)
               }
               {miniCalendarDays.map((d, idx) => {
                 const today = new Date();
