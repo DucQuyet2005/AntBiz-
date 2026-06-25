@@ -98,6 +98,7 @@ export default function ArchiveView() {
               images
             )
           `)
+          .neq('status', 'draft')
           .order('created_at', { ascending: false });
         if (!error && data) {
           setCaptions(data);
@@ -616,7 +617,6 @@ export default function ArchiveView() {
             <table className="w-full text-left text-[11px] border-collapse min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">ID</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Article Title'}</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nền tảng' : 'Platform'}</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nội dung AI' : 'AI Content'}</th>
@@ -627,19 +627,18 @@ export default function ArchiveView() {
               <tbody className="divide-y divide-gray-100">
                 {isFetchingPreview ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center">
+                    <td colSpan={5} className="px-4 py-10 text-center">
                       <Loader2 className="animate-spin inline-block mr-2" size={16} />
                       <span className="font-bold">{t('common.loading')}</span>
                     </td>
                   </tr>
                 ) : previewData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-text-muted italic">No data found.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-text-muted italic">No data found.</td>
                   </tr>
                 ) : (
                   previewData.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-gray-400">{row.id.substring(0, 8)}...</td>
                       <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
                         <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 font-black text-[9px]">{row.platform}</span>

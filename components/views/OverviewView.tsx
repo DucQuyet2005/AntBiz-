@@ -16,7 +16,8 @@ import {
   ArrowUpRight,
   Facebook,
   Instagram,
-  Globe
+  Globe,
+  Shield
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -27,7 +28,12 @@ const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?:
   </svg>
 );
 
-export default function OverviewView() {
+interface OverviewViewProps {
+  isAdmin?: boolean;
+  onSwitchView?: () => void;
+}
+
+export default function OverviewView({ isAdmin = false, onSwitchView }: OverviewViewProps = {}) {
   const { language } = useLanguage();
   const supabase = createClient();
 
@@ -234,14 +240,26 @@ export default function OverviewView() {
           </p>
         </div>
 
-        <button 
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200/50 text-slate-700 hover:text-indigo-605 px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer relative z-10"
-        >
-          {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3 relative z-10 w-full md:w-auto">
+          {isAdmin && onSwitchView && (
+            <button 
+              onClick={onSwitchView}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-750 text-white px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer shadow-lg shadow-indigo-600/20"
+            >
+              <Shield size={13} />
+              <span>{language === 'vi' ? 'Chuyển sang giao diện Admin' : 'Switch to Admin View'}</span>
+            </button>
+          )}
+
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200/50 text-slate-700 hover:text-indigo-605 px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer relative z-10"
+          >
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards Row */}

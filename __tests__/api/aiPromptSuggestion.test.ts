@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { POST as generateSmart } from '@/app/api/prompts/generate-smart/route';
 import { POST as generateContent } from '@/app/api/prompts/generate/route';
 import { NextRequest } from 'next/server';

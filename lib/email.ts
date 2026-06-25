@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+const supabase = supabaseUrl ? createClient(supabaseUrl, serviceRoleKey) : null;
 
 export interface EmailOptions {
   to: string;
@@ -119,6 +119,9 @@ export async function logAndNotifyPublishResult(
 
   // 2. Lưu lịch sử ghi nhận vào database audit_logs
   try {
+    if (!supabase) {
+      throw new Error('Supabase client is not initialized due to missing NEXT_PUBLIC_SUPABASE_URL');
+    }
     await supabase.from('audit_logs').insert({
       actor_id: userId,
       action: status === 'success' ? 'publish_post_success' : 'publish_post_failed',
