@@ -87,10 +87,15 @@ export async function login(formData: FormData) {
     await supabase.auth.signOut()
     return { error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' }
   } else {
-    // Cập nhật đăng nhập cuối
+    // Cập nhật đăng nhập cuối và kích hoạt tài khoản nếu đang ở trạng thái pending
+    const updatePayload: any = { last_login_at: new Date().toISOString() }
+    if (userProfile.status === 'pending') {
+      updatePayload.status = 'active'
+    }
+
     await adminSupabase
       .from('users')
-      .update({ last_login_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', signInData.user.id)
   }
 
