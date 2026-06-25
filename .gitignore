@@ -51,3 +51,4 @@ next-env.d.ts
 
 # Temporary analysis logs
 *-output-*.txt
+next-env.d.ts
