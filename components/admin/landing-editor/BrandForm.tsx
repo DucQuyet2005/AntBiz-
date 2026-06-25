@@ -21,10 +21,10 @@ export default function BrandForm({ config, onChange }: Props) {
   const t = translations[language].landingEditor;
 
   const fontFamilies = [
-    { label: t.fontInter || 'Inter (Hiện đại, tối giản)', value: 'Inter' },
-    { label: t.fontRoboto || 'Roboto (Chuẩn mực)', value: 'Roboto' },
-    { label: t.fontMontserrat || 'Montserrat (Đậm đà, cá tính)', value: 'Montserrat' },
-    { label: t.fontBeVietnam || 'Be Vietnam Pro (Bản địa hóa)', value: 'Be Vietnam Pro' }
+    { label: t.fontInter, value: 'Inter' },
+    { label: t.fontRoboto, value: 'Roboto' },
+    { label: t.fontMontserrat, value: 'Montserrat' },
+    { label: t.fontBeVietnam, value: 'Be Vietnam Pro' }
   ];
 
   return (
@@ -48,10 +48,10 @@ export default function BrandForm({ config, onChange }: Props) {
 
       <div>
         <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
-          {t.typography || 'Typography'}
+          {t.typography}
         </h3>
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold text-slate-500 uppercase">{t.fontFamilyLabel || 'Font chữ chủ đạo'}</label>
+          <label className="text-xs font-bold text-slate-500 uppercase">{t.fontFamilyLabel}</label>
           <select 
             value={config.fontFamily}
             onChange={(e) => onChange('fontFamily', e.target.value)}
@@ -66,7 +66,7 @@ export default function BrandForm({ config, onChange }: Props) {
 
       <div>
         <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
-          {t.colorPalette || 'Bảng màu (Palette)'}
+          {t.colorPalette}
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">

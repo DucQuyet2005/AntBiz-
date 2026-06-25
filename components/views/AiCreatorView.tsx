@@ -2902,7 +2902,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-indigo-550 to-purple-550"></div>
+                      <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-80"></div>
                     )}
                     {postData.category && (
                       <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -3807,7 +3807,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       className="grid border-b border-gray-200 pb-2 mb-1 text-center text-[10px] font-extrabold"
                       style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}
                     >
-                      <span className="text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">H</span>
+                      <span className="text-text-muted uppercase tracking-wider text-left pl-3 flex items-center">
+                        {language === 'vi' ? 'Giờ' : 'Hr'}
+                      </span>
                       {weekDays.slice(activeWeek * 7, activeWeek * 7 + 7).map((day) => (
                         <div key={day.date} className={`flex flex-col items-center py-1 rounded-lg ${facebookDate === day.date || threadsDate === day.date ? 'text-primary bg-primary/5' : 'text-text-muted'}`}>
                           <span>{getDayLabel(day.name).substring(0, 3)}</span>
@@ -3925,7 +3927,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 >
                                   <div className="flex items-center justify-between gap-1 select-none">
                                     <span className="text-[7.5px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-200/60 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-lg">
-                                      {count} bài
+                                      {count} {language === 'vi' ? 'bài' : 'posts'}
                                     </span>
                                     <div className="flex gap-0.5 items-center">
                                       {cellPosts.map((cp: any, idx: number) => {
@@ -4397,14 +4399,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-200 dark:border-zinc-800/80 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden focus-visible:outline-none"
               >
                 {/* Dialog Header */}
-                <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 dark:border-zinc-800/60 px-7 py-5 flex items-center justify-between shrink-0">
+                <div className="bg-gray-50/50 dark:bg-zinc-900/40 border-b border-gray-100 dark:border-zinc-800/60 px-7 py-5 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h2 className="text-base font-black text-slate-800">{t('aiCreator.promptConfigBarTitle')}</h2>
-                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigDialogSubtitle')}</p>
+                      <h2 className="text-base font-black text-slate-800 dark:text-zinc-100">{t('aiCreator.promptConfigBarTitle')}</h2>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.promptConfigDialogSubtitle')}</p>
                     </div>
                   </div>
                   <button
@@ -4442,11 +4444,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       {/* Platform selector */}
                       <div className="flex flex-col gap-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigSocialPlatform')}</label>
-                        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
+                        <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800/80 w-fit">
                           {(['facebook', 'threads', 'instagram'] as const).map((p) => (
                             <button key={p} type="button" onClick={() => setPromptPlatform(p)}
-                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p ? 'bg-white dark:bg-zinc-800 text-primary dark:text-zinc-100 shadow-sm border border-slate-200 dark:border-zinc-700/60' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                }`}>
+                              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                promptPlatform === p
+                                  ? 'bg-white dark:bg-zinc-800 text-primary dark:text-primary shadow-sm border border-zinc-200/50 dark:border-zinc-700/50'
+                                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                              }`}>
                               {p}
                             </button>
                           ))}
@@ -4546,7 +4551,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="border-t border-gray-150 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
+                <div className="border-t border-gray-150 dark:border-zinc-800/60 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
                     <>
                       <button

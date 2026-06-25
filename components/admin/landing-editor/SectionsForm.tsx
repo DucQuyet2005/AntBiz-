@@ -161,7 +161,7 @@ export default function SectionsForm({ config, onChange }: Props) {
       {/* 3. Footer Section */}
       <div>
         <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
-          Footer
+          {t.footerSection}
         </h3>
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold text-slate-500 uppercase">{t.copyrightLabel}</label>
