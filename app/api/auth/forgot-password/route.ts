@@ -17,7 +17,12 @@ export async function POST(request: Request) {
     }
 
     const { email } = validated.data;
-    const { origin } = new URL(request.url);
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host');
+    
+    const externalHost = forwardedHost || host;
+    const origin = externalHost ? `${forwardedProto}://${externalHost}` : new URL(request.url).origin;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
 
     // 2. Tạo link khôi phục qua Supabase Admin client

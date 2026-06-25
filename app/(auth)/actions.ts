@@ -146,9 +146,11 @@ export async function signup(formData: FormData) {
 export async function signInWithGoogle() {
   const supabase = createClient()
   const headersList = await headers()
+  const forwardedHost = headersList.get('x-forwarded-host')
   const host = headersList.get('host')
+  const externalHost = forwardedHost || host
   const protocol = headersList.get('x-forwarded-proto') || 'http'
-  const origin = `${protocol}://${host}`
+  const origin = `${protocol}://${externalHost}`
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
 
   const { data, error } = await supabase.auth.signInWithOAuth({
