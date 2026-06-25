@@ -18,6 +18,7 @@ export async function POST(request: Request) {
 
     const { email } = validated.data;
     const { origin } = new URL(request.url);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
 
     // 2. Tạo link khôi phục qua Supabase Admin client
     const supabaseAdmin = createAdminClient();
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const hashedToken = data.properties.hashed_token;
-    const actionLink = `${origin}/api/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=/reset-password`;
+    const actionLink = `${siteUrl}/api/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=/reset-password`;
 
 
 
