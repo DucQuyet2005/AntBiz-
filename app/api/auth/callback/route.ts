@@ -42,9 +42,14 @@ export async function GET(request: Request) {
         await supabase.auth.signOut()
         return NextResponse.redirect(`${siteUrl}/login?error=locked`)
       } else {
+        const updatePayload: any = { last_login_at: new Date().toISOString() }
+        if (profile.status === 'pending') {
+          updatePayload.status = 'active'
+        }
+
         await adminSupabase
           .from('users')
-          .update({ last_login_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('id', data.user.id)
       }
 
