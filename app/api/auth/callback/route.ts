@@ -9,7 +9,11 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/overview'
 
   // Sử dụng biến môi trường NEXT_PUBLIC_SITE_URL nếu có, nếu không thì fallback về origin (cho local)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'http'
+  const host = request.headers.get('host')
+  const externalHost = forwardedHost || host
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (externalHost ? `${forwardedProto}://${externalHost}` : origin)
 
   if (code) {
     const supabase = createClient()
@@ -42,9 +46,14 @@ export async function GET(request: Request) {
         await supabase.auth.signOut()
         return NextResponse.redirect(`${siteUrl}/login?error=locked`)
       } else {
+        const updatePayload: any = { last_login_at: new Date().toISOString() }
+        if (profile.status === 'pending') {
+          updatePayload.status = 'active'
+        }
+
         await adminSupabase
           .from('users')
-          .update({ last_login_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('id', data.user.id)
       }
 

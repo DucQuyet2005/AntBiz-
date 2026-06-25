@@ -7,8 +7,14 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/reset-password'
-  const redirectTo = request.nextUrl.clone()
-  redirectTo.pathname = next
+  
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'http'
+  const host = request.headers.get('host')
+  const externalHost = forwardedHost || host
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (externalHost ? `${forwardedProto}://${externalHost}` : request.nextUrl.origin)
+  
+  const redirectTo = new URL(next, siteUrl)
 
   if (token_hash && type) {
     const supabase = createClient()

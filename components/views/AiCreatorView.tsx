@@ -166,8 +166,8 @@ const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads'
 
 // Module-level variables to share state/handlers with EditableText without unmounting it
 let _editState: any = null;
-let _setEditState: any = () => {};
-let _handleUpdateVariantField: any = () => {};
+let _setEditState: any = () => { };
+let _handleUpdateVariantField: any = () => { };
 let _isGeneratingAB: boolean = false;
 
 interface EditableTextContextProps {
@@ -276,7 +276,7 @@ const EditableText = ({
                 </div>
                 {value.length > charLimit && (
                   <div className="text-[8px] text-rose-600 font-extrabold text-right">
-                    {language === 'vi' 
+                    {language === 'vi'
                       ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
                       : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
                   </div>
@@ -385,7 +385,7 @@ const EditableText = ({
             </div>
             {value.length > charLimit && (
               <div className="text-[8px] text-rose-600 font-extrabold text-right">
-                {language === 'vi' 
+                {language === 'vi'
                   ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
                   : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
               </div>
@@ -1552,8 +1552,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const activeEl = document.activeElement;
         const isInputFocused = activeEl && (
-          activeEl.tagName === 'INPUT' || 
-          activeEl.tagName === 'TEXTAREA' || 
+          activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
           activeEl.getAttribute('contenteditable') === 'true'
         );
         if (!isInputFocused) {
@@ -1820,7 +1820,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setToggles(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-
+  // Add a new variant copy dynamically
+  const handleAddVariant = () => {
+    if (variants.length >= variantCount) {
+      return;
+    }
+    const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
+    const firstTags = variants[0]?.tags || '';
+    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+    const newVariant: SocialVariant = {
+      id: nextLetter,
+      facebook: targetPlatforms.includes('facebook') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      threads: targetPlatforms.includes('threads') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      instagram: targetPlatforms.includes('instagram') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
+      title: postData.title,
+      author: postData.author,
+      tags: firstTags
+    };
+    setVariants([...variants, newVariant]);
+  };
 
   // Update variant field state on inline edit
   const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
@@ -1961,11 +1979,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const finalCompiledContent = compileFinalMessage(selectedVariant);
-    
+
     const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
       selectedPlatform === 'threads' ? 'threadsCaptionId' :
         'instagramCaptionId';
-    
+
     // Platform-specific caption ID fallback
     const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
 
@@ -2122,16 +2140,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           <div className="flex flex-col gap-2 w-full md:w-auto select-none">
             {/* Smooth SVG/Motion Progress Bar */}
             <div className="h-1 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden w-full relative">
-              <motion.div 
+              <motion.div
                 className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-[#22D3EE]"
                 initial={{ width: '33.3%' }}
-                animate={{ 
-                  width: step === 1 ? '33.3%' : step === 2 ? '66.6%' : '100%' 
+                animate={{
+                  width: step === 1 ? '33.3%' : step === 2 ? '66.6%' : '100%'
                 }}
                 transition={{ type: 'spring', stiffness: 180, damping: 22 }}
               />
             </div>
-            
+
             <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-black/60 rounded-2xl p-1.5 border border-slate-200/70 dark:border-white/5 shadow-sm">
               <button
                 type="button"
@@ -2140,13 +2158,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
                   }`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
-                  step === 1 
-                    ? 'bg-white/20 text-white' 
-                    : (articleId || postData.title) 
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' 
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 1
+                    ? 'bg-white/20 text-white'
+                    : (articleId || postData.title)
+                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
                       : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                }`}>
+                  }`}>
                   {(articleId || postData.title) && step !== 1 ? (
                     <Check size={10} strokeWidth={3.5} />
                   ) : (
@@ -2155,7 +2172,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </span>
                 {t('aiCreator.step1')}
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => changeStep(2)}
@@ -2163,13 +2180,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
                   }`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
-                  step === 2 
-                    ? 'bg-white/20 text-white' 
-                    : selectedVariantId 
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' 
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 2
+                    ? 'bg-white/20 text-white'
+                    : selectedVariantId
+                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
                       : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                }`}>
+                  }`}>
                   {selectedVariantId && step !== 2 ? (
                     <Check size={10} strokeWidth={3.5} />
                   ) : (
@@ -2178,22 +2194,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </span>
                 {t('aiCreator.step2')}
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => { if (selectedVariantId) changeStep(3); }}
                 disabled={!selectedVariantId}
                 aria-current={step === 3 ? "step" : undefined}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
-                    selectedVariantId ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' :
-                      'text-slate-500 dark:text-slate-500 cursor-not-allowed'
+                  selectedVariantId ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' :
+                    'text-slate-500 dark:text-slate-500 cursor-not-allowed'
                   }`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
-                  step === 3 
-                    ? 'bg-white/20 text-white' 
+                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 3
+                    ? 'bg-white/20 text-white'
                     : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                }`}>
+                  }`}>
                   {step === 3 && (typeof isScheduled !== 'undefined' && isScheduled) ? (
                     <Check size={10} strokeWidth={3.5} />
                   ) : (
@@ -2287,15 +2302,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                      Cấu hình AI Prompt &amp; Nội dung
+                      {t('aiCreator.promptConfigBarTitle')}
                       <span className="text-[9px] bg-primary/10 text-primary font-black px-2 py-0.5 rounded-full">AI Powered</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5 font-semibold">
                       {selectedPrompt
-                        ? `Đang dùng: [${selectedPrompt.platform?.toUpperCase()}] ${selectedPrompt.name}`
+                        ? t('aiCreator.promptConfigBarUsing', { platform: selectedPrompt.platform?.toUpperCase(), name: selectedPrompt.name })
                         : activePrompt
-                          ? 'Đã soạn câu lệnh tùy chỉnh · Nhấn để chỉnh sửa'
-                          : 'Nhấp để chọn Prompt từ thư viện hoặc tự soạn câu lệnh AI'
+                          ? t('aiCreator.promptConfigBarCustom')
+                          : t('aiCreator.promptConfigBarDefault')
                       }
                     </p>
                   </div>
@@ -2303,11 +2318,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 <div className="flex items-center gap-2 shrink-0">
                   {(selectedPrompt || activePrompt) && (
                     <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl font-bold">
-                      Đã thiết lập
+                      {t('aiCreator.promptConfigBarSetupBadge')}
                     </span>
                   )}
                   <span className="bg-primary/10 text-primary px-4 py-2.5 rounded-xl text-xs font-black group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                    {selectedPrompt ? 'Thay đổi' : 'Cấu hình'}
+                    {selectedPrompt ? t('aiCreator.promptConfigBarChange') : t('aiCreator.promptConfigBarConfigure')}
                   </span>
                 </div>
               </button>
@@ -2416,8 +2431,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             key={p}
                             onClick={() => setPromptPlatform(p)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${promptPlatform === p
-                                ? 'bg-white text-primary shadow-sm border border-gray-200'
-                                : 'text-text-muted hover:text-text'
+                              ? 'bg-white text-primary shadow-sm border border-gray-200'
+                              : 'text-text-muted hover:text-text'
                               }`}
                           >
                             {p}
@@ -2528,11 +2543,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <button
                       type="button"
                       onClick={() => { setSelectedModel('gpt4'); setGenerateError(null); }}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
-                        selectedModel === 'gpt4'
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gpt4'
                           ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
                           : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
-                      }`}
+                        }`}
                     >
                       <Sparkles size={12} className={selectedModel === 'gpt4' ? 'text-white' : 'text-primary'} />
                       <span>GPT-4o</span>
@@ -2540,11 +2554,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <button
                       type="button"
                       onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
-                        selectedModel === 'gemini'
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gemini'
                           ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
                           : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
-                      }`}
+                        }`}
                     >
                       <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
                       <span>Gemini</span>
@@ -2552,11 +2565,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <button
                       type="button"
                       onClick={() => { setSelectedModel('claude'); setGenerateError(null); }}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
-                        selectedModel === 'claude'
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'claude'
                           ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
                           : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
-                      }`}
+                        }`}
                     >
                       <Wand2 size={12} className={selectedModel === 'claude' ? 'text-white' : 'text-amber-500'} />
                       <span>Claude</span>
@@ -2579,12 +2591,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         </span>
                         <span className="text-[11px] text-red-700 leading-relaxed font-medium">
                           {generateError.includes("prompt") || generateError.includes("Prompt")
-                            ? (language === 'vi' 
-                                ? 'Vui lòng chọn một mẫu prompt hợp lệ trước khi bắt đầu tạo nội dung.' 
-                                : 'Please select a valid prompt first before initiating caption creation.')
+                            ? (language === 'vi'
+                              ? 'Vui lòng chọn một mẫu prompt hợp lệ trước khi bắt đầu tạo nội dung.'
+                              : 'Please select a valid prompt first before initiating caption creation.')
                             : (language === 'vi'
-                                ? `Không thể kết nối với dịch vụ AI. Chi tiết: "${generateError}". Vui lòng kiểm tra lại cấu hình API key trong mục Cài đặt hoặc thử lại sau.`
-                                : `Could not connect to the AI service. Details: "${generateError}". Please check your API key configuration in Settings or try again later.`)}
+                              ? `Không thể kết nối với dịch vụ AI. Chi tiết: "${generateError}". Vui lòng kiểm tra lại cấu hình API key trong mục Cài đặt hoặc thử lại sau.`
+                              : `Could not connect to the AI service. Details: "${generateError}". Please check your API key configuration in Settings or try again later.`)}
                         </span>
                       </div>
                       <button
@@ -2623,11 +2635,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`relative bg-white border rounded-2xl p-4 overflow-hidden transition-all duration-500 ${
-                        generateDone 
-                          ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20" 
+                      className={`relative bg-white border rounded-2xl p-4 overflow-hidden transition-all duration-500 ${generateDone
+                          ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20"
                           : "border-primary/30"
-                      }`}
+                        }`}
                     >
                       {/* Shimmer bar while generating */}
                       {isGenerating && (
@@ -2977,26 +2988,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 {/* Next step button */}
                 {step === 1 && (
                   <div className="flex flex-col gap-2">
-                    {/* Variant count segmented control */}
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-xs font-bold text-text-muted">
-                        {language === 'vi' ? 'Số biến thể' : 'Variant count'}
-                      </span>
-                      <div className="flex bg-sidebar rounded-full p-0.5 border border-gray-200 shadow-inner">
-                        {([2, 3] as const).map((count) => (
-                          <button
-                            key={count}
-                            onClick={() => setVariantCount(count)}
-                            className={`text-xs font-extrabold px-4 py-1.5 rounded-full transition-all duration-200 ${variantCount === count
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'text-text-muted hover:text-text'
-                              }`}
-                          >
-                            {count}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <motion.button
                       layout
                       onClick={handleProceedToABTest}
@@ -3102,8 +3093,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
                         style={isCardSelected ? { borderColor: 'var(--color-primary)' } : undefined}
                         className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
-                            ? 'bg-card dark:bg-slate-800 border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
-                            : 'bg-card dark:bg-slate-900 border border-gray-200/80 dark:border-white/10 hover:border-primary/30 dark:hover:border-primary/50 hover:shadow-lg shadow-sm'
+                          ? 'bg-card dark:bg-slate-800 border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
+                          : 'bg-card dark:bg-slate-900 border border-gray-200/80 dark:border-white/10 hover:border-primary/30 dark:hover:border-primary/50 hover:shadow-lg shadow-sm'
                           }`}
                       >
                         {/* Variant Badge & Platform Header */}
@@ -3409,7 +3400,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   })}
                 </AnimatePresence>
 
-
+                {/* Add Variant Card */}
+                {variants.length < variantCount && (
+                  <motion.button
+                    onClick={handleAddVariant}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
+                      <Plus size={24} />
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
+                      <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
+                    </div>
+                  </motion.button>
+                )}
               </div>
 
               {/* Bottom Actions Row */}
@@ -3432,8 +3439,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     onClick={() => { if (selectedVariantId) changeStep(3); }}
                     disabled={!selectedVariantId}
                     className={`py-3.5 px-8 rounded-2xl font-extrabold flex items-center gap-2 transition-all text-xs ${selectedVariantId
-                        ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 cursor-pointer'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                      ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 cursor-pointer'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                       }`}
                   >
                     {selectedVariantId ? (
@@ -4231,9 +4238,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             </span>
                           ) : (
                             <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
-                                post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
-                                  post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
-                                    'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                              post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
+                                post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
+                                  'bg-indigo-50 text-indigo-700 border-indigo-200/60'
                               }`}>
                               {language === 'vi'
                                 ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
@@ -4396,8 +4403,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h2 className="text-base font-black text-slate-800 dark:text-zinc-100">{t('aiCreator.promptConfigTitle')}</h2>
-                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.promptConfigSubtitle')}</p>
+                      <h2 className="text-base font-black text-slate-800">{t('aiCreator.promptConfigBarTitle')}</h2>
+                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigDialogSubtitle')}</p>
                     </div>
                   </div>
                   <button
@@ -4412,8 +4419,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 {/* Tab Bar */}
                 <div className="flex border-b border-gray-100 dark:border-zinc-800/80 px-7 shrink-0 bg-gray-50/60 dark:bg-zinc-900/30">
                   {[
-                    { key: 'editor' as const, label: t('aiCreator.tabPromptEditor'), icon: Wand2 },
-                    { key: 'generator' as const, label: t('aiCreator.tabPromptTemplate'), icon: Sparkles }
+                    { key: 'editor' as const, label: t('aiCreator.promptConfigTabEditor'), icon: Wand2 },
+                    { key: 'generator' as const, label: t('aiCreator.promptConfigTabLibrary'), icon: Sparkles }
                   ].map(({ key, label, icon: Icon }) => (
                     <button
                       key={key}
@@ -4434,8 +4441,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <>
                       {/* Platform selector */}
                       <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelSocialPlatform')}</label>
-                        <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-zinc-900/60 p-1.5 rounded-2xl border border-slate-200/60 dark:border-zinc-800/60 w-fit">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigSocialPlatform')}</label>
+                        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
                           {(['facebook', 'threads', 'instagram'] as const).map((p) => (
                             <button key={p} type="button" onClick={() => setPromptPlatform(p)}
                               className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p ? 'bg-white dark:bg-zinc-800 text-primary dark:text-zinc-100 shadow-sm border border-slate-200 dark:border-zinc-700/60' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
@@ -4448,26 +4455,26 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                       {/* Custom prompt title */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelPromptTitle')}</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigNameOptional')}</label>
                         <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
-                          placeholder={t('aiCreator.placeholderPromptTitle')}
-                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                          placeholder={t('aiCreator.promptConfigNamePlaceholder')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
                         />
                       </div>
 
                       {/* Textarea for prompt */}
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelPromptContent')}</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
                           <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
                             className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
                             <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
-                            {t('aiCreator.buttonSmartPrompt')}
+                            {t('aiCreator.promptConfigSmartPromptBtn')}
                           </button>
                         </div>
-                        <DebouncedTextarea value={activePrompt} onChange={setActivePrompt}
-                          placeholder={t('aiCreator.placeholderPromptContent')} rows={16}
-                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl px-5 py-4 text-sm text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500 font-medium custom-scrollbar"
+                        <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
+                          placeholder={t('aiCreator.promptConfigSmartPromptPlaceholder')} rows={16}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
                         />
                       </div>
                     </>
@@ -4479,8 +4486,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <Layers size={15} />
                         </div>
                         <div>
-                          <p className="text-xs font-black text-slate-800 dark:text-zinc-255">{t('aiCreator.labelPromptLibrary')}</p>
-                          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.descPromptLibrary')}</p>
+                          <p className="text-xs font-black text-slate-800">{t('aiCreator.promptConfigLibTitle')}</p>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigLibSubtitle')}</p>
                         </div>
                       </div>
 
@@ -4488,21 +4495,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <div className="relative text-slate-400 dark:text-zinc-500">
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
-                          placeholder={t('aiCreator.placeholderPromptSearch')}
-                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                          placeholder={t('aiCreator.promptConfigLibSearchPlaceholder')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
                         />
                       </div>
 
                       {/* Library Results as cards */}
                       <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                         {loadingPrompts ? (
-                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 dark:text-zinc-500 gap-2">
-                            <Loader2 size={16} className="animate-spin text-primary" /> {t('aiCreator.statusLoadingLibrary')}
+                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
+                            <Loader2 size={16} className="animate-spin text-primary" /> {t('aiCreator.promptConfigLibLoading')}
                           </div>
                         ) : filteredPromptsForModal.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 gap-2">
                             <Layers size={24} className="text-slate-200" />
-                            <p className="text-xs text-slate-400 dark:text-zinc-500 font-semibold">{t('aiCreator.statusNoLibraryResults')}</p>
+                            <p className="text-xs text-slate-400 font-semibold">{t('aiCreator.promptConfigLibNoPrompts')}</p>
                           </div>
                         ) : (
                           filteredPromptsForModal.map((p) => {
@@ -4539,14 +4546,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="border-t border-gray-100 dark:border-zinc-800/80 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/30 flex items-center justify-end gap-3 shrink-0">
+                <div className="border-t border-gray-150 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
                     <>
                       <button
                         type="button"
                         onClick={() => {
                           if (!activePrompt) return;
-                          const finalTitle = customPromptTitle.trim() || (language === 'vi' ? `Prompt Tùy chỉnh ${new Date().toLocaleDateString('vi-VN')}` : `Custom Prompt ${new Date().toLocaleDateString('en-US')}`);
+                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
@@ -4554,7 +4561,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         disabled={!activePrompt}
                         className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
                       >
-                        {t('aiCreator.buttonUseOnly')}
+                        {t('aiCreator.promptConfigBtnUseOnly')}
                       </button>
 
                       <button
@@ -4562,7 +4569,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         onClick={async () => {
                           if (!activePrompt) return;
                           const savedPrompt = await handleSaveCurrentPrompt();
-                          const finalTitle = customPromptTitle.trim() || (language === 'vi' ? `AI Sinh tự động - ${new Date().toLocaleDateString('vi-VN')}` : `AI Generated - ${new Date().toLocaleDateString('en-US')}`);
+                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
@@ -4571,7 +4578,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
                       >
                         {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
-                        {t('aiCreator.buttonSaveAndUse')}
+                        {t('aiCreator.promptConfigBtnSaveUse')}
                       </button>
                     </>
                   ) : (
@@ -4585,7 +4592,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       disabled={!selectedPrompt}
                       className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
                     >
-                      {t('aiCreator.buttonUseThisPrompt')}
+                      {t('aiCreator.promptConfigBtnUseThis')}
                     </button>
                   )}
                 </div>

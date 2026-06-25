@@ -64,3 +64,4 @@ next-env.d.ts
 # GitHub-stored skills and hooks (Impeccable, agent tools)
 .github/skills/
 .github/hooks/
+next-env.d.ts

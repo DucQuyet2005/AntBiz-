@@ -11,14 +11,52 @@ export interface EmailOptions {
   html?: string;
 }
 
-/**
- * Gửi thông báo qua email. Sẽ ghi log ra console nếu SMTP chưa được cấu hình.
- */
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
   console.log(`\n📧 [Email Service] Đang gửi email tới ${options.to}`);
   console.log(`   Tiêu đề: ${options.subject}`);
-  console.log(`   Nội dung: ${options.text}`);
 
+  const brevoApiKey = process.env.BREVO_API_KEY;
+
+  // ==========================================
+  // PHƯƠNG ÁN 1: GỬI QUA BREVO API (CỔNG 443 HTTPS)
+  // ==========================================
+  if (brevoApiKey) {
+    try {
+      const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.EMAIL_FROM || 'no-reply@antbiz.vn';
+      const fromName = process.env.BREVO_FROM_NAME || 'AntBiz';
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: options.to }],
+          subject: options.subject,
+          htmlContent: options.html || options.text.replace(/\n/g, '<br/>'),
+          textContent: options.text
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || `Brevo API error: ${response.status}`);
+      }
+
+      console.log(`   ✅ Gửi email thành công qua Brevo API (HTTPS)!`);
+      return { success: true };
+    } catch (err: any) {
+      console.error(`   ❌ Gửi email qua Brevo API thất bại:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // ==========================================
+  // PHƯƠNG ÁN 2: SMTP FALLBACK (NODEMAILER)
+  // ==========================================
   try {
     const smtpHost = process.env.SMTP_HOST;
     const smtpUser = process.env.SMTP_USER;
@@ -26,7 +64,6 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
 
     if (smtpHost && smtpUser && smtpPass) {
       try {
-        // Import nodemailer động để tránh lỗi lúc khởi động nếu không cài thư viện
         const nodemailer = await import('nodemailer');
         const transporter = nodemailer.createTransport({
           host: smtpHost,
@@ -48,11 +85,11 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
 
         console.log(`   ✅ Gửi email thành công qua SMTP!`);
       } catch (err: any) {
-        console.error(`   ❌ Gửi email qua SMTP thất bại (Nodemailer error):`, err.message);
+        console.error(`   ❌ Gửi email qua SMTP thất bại:`, err.message);
         return { success: false, error: err.message };
       }
     } else {
-      console.log(`   ℹ️ Chưa cấu hình SMTP. Email được ghi tạm ra console.`);
+      console.log(`   ℹ️ Chưa cấu hình API Key hay SMTP. Email ghi tạm ra console.`);
     }
 
     return { success: true };
