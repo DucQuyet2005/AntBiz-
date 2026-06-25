@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { forgotPasswordSchema } from '@/lib/validations/auth';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -37,16 +37,7 @@ export async function POST(request: Request) {
     const hashedToken = data.properties.hashed_token;
     const actionLink = `${origin}/api/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=/reset-password`;
 
-    // 3. Gửi email qua Nodemailer
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_PORT === '465', // true cho 465, false cho các cổng khác
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    });
+
 
     const emailTemplate = `
       <!DOCTYPE html>
@@ -164,12 +155,21 @@ export async function POST(request: Request) {
       </html>
     `;
 
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Bento Studio" <noreply@bentostudio.com>',
+    // 3. Gửi email khôi phục qua sendEmail (Brevo API / SMTP fallback)
+    const emailResult = await sendEmail({
       to: email,
       subject: 'Đặt lại mật khẩu tài khoản Bento Studio của bạn',
       html: emailTemplate,
+      text: `Xin chào,\n\nChúng tôi đã nhận được yêu cầu đặt lại mật khẩu từ tài khoản Bento Studio của bạn. Vui lòng bấm vào liên kết dưới đây để thiết lập mật khẩu mới:\n\n${actionLink}\n\nNếu bạn không yêu cầu thay đổi mật khẩu, vui lòng bỏ qua email này.\n\nTrân trọng,\nĐội ngũ Bento Studio`,
     });
+
+    if (!emailResult.success) {
+      console.error('Lỗi khi gửi email khôi phục mật khẩu:', emailResult.error);
+      return NextResponse.json(
+        { error: 'Không thể gửi email khôi phục mật khẩu. Vui lòng thử lại sau.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       message: 'Nếu tài khoản tồn tại trên hệ thống, email hướng dẫn đặt lại mật khẩu đã được gửi đi.',
