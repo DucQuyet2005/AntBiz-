@@ -37,11 +37,11 @@ export default function PopupDialog({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-emerald-600" />;
+        return <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-450" />;
       case 'error':
-        return <AlertTriangle className="w-5 h-5 text-rose-600" />;
+        return <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-450" />;
       case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-amber-600" />;
+        return <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-450" />;
       case 'info':
       default:
         return <Info className="w-5 h-5 text-primary" />;

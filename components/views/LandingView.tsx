@@ -13,6 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export const DEFAULT_CONFIG = {
   brand: {
@@ -138,6 +139,14 @@ interface Props {
 export default function LandingView({ initialConfig, isPreview = false, isEditor = false, onEditClick }: Props) {
   const { t, language, setLanguage } = useLanguage();
   
+  let isDark = false;
+  try {
+    const themeContext = useTheme();
+    isDark = themeContext ? themeContext.isDark : false;
+  } catch (e) {
+    // Fallback if rendered outside ThemeProvider
+  }
+  
   // Merge initialConfig with defaults
   const [rawConfig, setRawConfig] = useState(() => {
     if (!initialConfig || Object.keys(initialConfig).length === 0) return DEFAULT_CONFIG;
@@ -254,8 +263,8 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
   const dynamicStyles = {
     '--color-primary': config.brand.primaryColor,
     '--color-primary-hover': config.brand.secondaryColor,
-    '--color-bg': config.brand.bgColor,
-    '--color-text': config.brand.textColor,
+    '--color-bg': isDark ? '#0F1117' : config.brand.bgColor,
+    '--color-text': isDark ? '#E2E8F0' : config.brand.textColor,
     fontFamily: config.brand.fontFamily,
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
@@ -291,7 +300,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
       >
         <div className="absolute -inset-2 border-2 border-dashed border-primary bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none z-20 flex items-start justify-end p-1">
           <div className="bg-primary text-white p-1 rounded-sm shadow-md flex items-center justify-center gap-1 text-[10px] font-bold uppercase">
-            <Edit2 size={12} /> Sửa
+            <Edit2 size={12} /> {t('common.edit')}
           </div>
         </div>
         <div className="relative z-10 pointer-events-none">
@@ -332,13 +341,13 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
 
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
-              {language === 'vi' ? 'Trang chủ' : 'Home'}
+              {t('common.home')}
             </Link>
             <a href="#what-we-do" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
-              {language === 'vi' ? 'Tính năng' : 'Features'}
+              {t('common.features')}
             </a>
             <Link href="/faq" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
-              {language === 'vi' ? 'Hỗ trợ & FAQ' : 'FAQ & Support'}
+              {t('common.faqSupport')}
             </Link>
           </nav>
 
@@ -350,10 +359,10 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
 
             <div className="flex items-center gap-2">
               <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
-                {language === 'vi' ? 'Đăng nhập' : 'Login'}
+                {t('common.login')}
               </Link>
               <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
-                {language === 'vi' ? 'Đăng ký' : 'Register'}
+                {t('common.register')}
               </Link>
             </div>
           </div>
@@ -407,14 +416,14 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             <button 
               onClick={handlePrevSlide}
               className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-              title={language === 'vi' ? 'Slide trước' : 'Previous Slide'}
+              title={t('landingEditor.slidePrev')}
             >
               <ChevronLeft size={24} />
             </button>
             <button 
               onClick={handleNextSlide}
               className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-              title={language === 'vi' ? 'Slide sau' : 'Next Slide'}
+              title={t('landingEditor.slideNext')}
             >
               <ChevronRight size={24} />
             </button>
@@ -426,9 +435,9 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             <button 
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditClick?.('heroSlides', 'slideConfig'); }}
-              className="bg-white hover:bg-slate-50 text-primary px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
+              className="bg-[#ffffff] hover:bg-[#f8fafc] text-primary px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
             >
-              <Edit2 size={16} /> {language === 'vi' ? 'Chỉnh sửa Banners' : 'Edit Banners'}
+              <Edit2 size={16} /> {t('landingEditor.editBanners')}
             </button>
           </div>
         )}

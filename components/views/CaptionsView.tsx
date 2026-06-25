@@ -180,10 +180,10 @@ export default function CaptionsView() {
             <button
               key={p}
               onClick={() => setPlatformFilter(p)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all select-none border border-gray-200/40 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all select-none border border-gray-200/40 dark:border-white/5 shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                 platformFilter === p
                   ? "bg-primary text-white"
-                  : "bg-white text-text-muted hover:text-text hover:bg-gray-50"
+                  : "bg-white dark:bg-black text-text-muted hover:text-text hover:bg-gray-50 dark:hover:bg-white/5"
               }`}
             >
               {p === "All Platforms" ? t.allPlatforms : p}
@@ -229,10 +229,10 @@ export default function CaptionsView() {
                     <div className="flex justify-between items-start gap-2 mb-3">
                       {/* Platform & Status */}
                       <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                        <div className="p-2 rounded-xl bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-white/5 flex items-center justify-center">
                           {getPlatformIcon(cap.platform)}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-text-muted">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-text-muted">
                           {t[cap.status as keyof typeof t] || cap.status}
                         </span>
                       </div>
@@ -242,8 +242,8 @@ export default function CaptionsView() {
                         onClick={() => handleCopy(displayContent, cap.id)}
                         className={`p-2 rounded-xl border transition-all duration-100 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
                           copiedId === cap.id
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm shadow-emerald-100"
-                            : "bg-white border-gray-200 hover:bg-gray-50 text-text-muted hover:text-text"
+                            ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-450 shadow-sm shadow-emerald-100"
+                            : "bg-white dark:bg-black border-gray-200 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 text-text-muted hover:text-text"
                         }`}
                         title={t.copyButton}
                       >

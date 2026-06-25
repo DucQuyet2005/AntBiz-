@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/lib/i18n/translations';
 
 interface HeroConfig {
   tagline: string;
@@ -13,42 +15,45 @@ interface Props {
 }
 
 export default function HeroForm({ config, onChange }: Props) {
+  const { language } = useLanguage();
+  const t = translations[language].landingEditor;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
-          Nội dung Hero
+          {t.heroContent}
         </h3>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Tagline (Tiêu đề chính)</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">{t.taglineLabel}</label>
             <textarea 
               value={config.tagline}
               onChange={(e) => onChange('tagline', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-none h-20"
-              placeholder="Nhập tiêu đề chính..."
+              placeholder={t.taglinePlaceholder}
             />
-            <p className="text-[10px] text-slate-400 font-medium text-right">{config.tagline.length}/80 ký tự</p>
+            <p className="text-[10px] text-slate-400 font-medium text-right">{config.tagline.length}/80 {t.characters}</p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Description (Mô tả phụ)</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">{t.descriptionLabel}</label>
             <textarea 
               value={config.description}
               onChange={(e) => onChange('description', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none resize-none h-24"
-              placeholder="Nhập đoạn mô tả ngắn gọn..."
+              placeholder={t.descriptionPlaceholder}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Text nút Call-To-Action</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">{t.ctaTextLabel}</label>
             <input 
               type="text" 
               value={config.ctaText}
               onChange={(e) => onChange('ctaText', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-              placeholder="VD: Trải Nghiệm Ngay"
+              placeholder={t.ctaTextPlaceholder}
             />
           </div>
         </div>
@@ -56,7 +61,7 @@ export default function HeroForm({ config, onChange }: Props) {
 
       <div>
         <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
-          Hình ảnh Hero (Background)
+          {t.heroImage}
         </h3>
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold text-slate-500 uppercase">Image URL</label>
@@ -67,7 +72,7 @@ export default function HeroForm({ config, onChange }: Props) {
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             placeholder="https://..."
           />
-          <div className="mt-2 w-full h-32 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden relative group">
+          <div className="mt-2 w-full h-32 rounded-2xl bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 overflow-hidden relative group">
             {config.bgImageUrl ? (
               <img 
                 src={config.bgImageUrl} 
@@ -75,12 +80,12 @@ export default function HeroForm({ config, onChange }: Props) {
                 className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium">
-                Không có ảnh
+              <div className="w-full h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs font-medium">
+                {t.noImage}
               </div>
             )}
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">Nhập URL ảnh nền Hero. Khuyến nghị tỷ lệ 16:9, độ phân giải cao (ví dụ: 1920x1080).</p>
+          <p className="text-[10px] text-slate-400 font-medium">{t.bgImageUrlDesc}</p>
         </div>
       </div>
     </div>

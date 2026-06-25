@@ -5,6 +5,17 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.5.1] - 2026-06-25
+
+### Fixed
+- **Sửa lỗi hiển thị lịch đăng bài (Calendar Stack Bug)**: Sửa lỗi thiếu hậu tố đơn vị `px` trong thuộc tính định vị `topOffset` của các thẻ bài đăng dạng xếp chồng (stacked post cards), giúp hiển thị đúng khung giờ dự kiến thay vì mặc định dồn về 12 AM.
+- **Tối ưu hóa Giao diện Lịch và Khung phân loại (Calendar & Category UI)**:
+  - Cập nhật khung lịch tháng thu nhỏ (Mini Monthly Calendar) có màu nền đen tuyền và viền xám tối (`dark:bg-black dark:border-zinc-800`).
+  - Thiết lập màu chữ rõ ràng cho ngày trong tháng: chữ trắng đối với các ngày trong tháng hiện tại (`dark:text-white`) và chữ xám đối với ngày thuộc tháng trước/sau (`dark:text-slate-500`).
+  - Cung cấp khung viền màu xám rõ nét (`dark:border-zinc-600` qua lớp `.platform-filter-btn`) cho từng nút phân loại mạng xã hội (Facebook, Instagram, Threads) trong phần "Lịch của tôi" ở chế độ Dark Mode.
+- **Tắt trạng thái Hover khi dùng Dark Mode**:
+  - Vô hiệu hóa màu nền hover sáng màu (`bg-slate-50`, `bg-gray-50`, `bg-slate-50/50`, etc.) bằng quy tắc CSS toàn cục `background-color: transparent !important` khi giao diện ở chế độ Dark Mode (`.dark`), giúp loại bỏ hiện tượng chói mắt/mất chữ khi rê chuột qua các dòng bảng và thẻ danh sách.
+
 ## [1.5.0] - 2026-06-24
 
 ### Added

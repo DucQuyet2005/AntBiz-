@@ -15,6 +15,8 @@ import {
   Loader2,
   AlertCircle,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { Prompt, PromptPlatform } from "@/lib/types/prompt";
 
@@ -25,9 +27,9 @@ const PLATFORM_OPTIONS: { value: PromptPlatform; label: string }[] = [
 ];
 
 const PLATFORM_BADGE_CLASS: Record<PromptPlatform, string> = {
-  facebook: "bg-[#E7F0FE] text-[#1877F2]",
-  thread: "bg-[#F3E5CD] text-[#5D4E3C]",
-  instagram: "bg-[#FCE7F3] text-[#C026D3]",
+  facebook: "bg-[#E7F0FE] dark:bg-blue-950/40 text-[#1877F2] dark:text-blue-400",
+  thread: "bg-[#F3E5CD] dark:bg-black border dark:border-white/5 text-[#5D4E3C] dark:text-slate-200",
+  instagram: "bg-[#FCE7F3] dark:bg-pink-950/40 text-[#C026D3] dark:text-pink-400",
 };
 
 const PLATFORM_LABEL: Record<PromptPlatform, string> = {
@@ -87,7 +89,7 @@ function parseTagsText(tagsText: string): string[] {
 }
 
 export default function PromptsView() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const promptIdParam = searchParams?.get("promptId");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -99,7 +101,8 @@ export default function PromptsView() {
   const [platformFilter, setPlatformFilter] = useState<PromptPlatform | "">("");
   const [tagsFilter, setTagsFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(6);
+  const [pageSize] = useState(5);
+  const totalPages = Math.ceil(total / pageSize) || 1;
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [allDbTags, setAllDbTags] = useState<string[]>([]);
 
@@ -550,7 +553,7 @@ export default function PromptsView() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div style={{ minHeight: totalPages > 1 ? '930px' : undefined }} className="flex flex-col gap-4">
           {prompts.map((prompt) => (
             <div
               key={prompt.id}
@@ -581,8 +584,8 @@ export default function PromptsView() {
                         }
                         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
                           isSelected
-                            ? "bg-[#C4F0E1] text-[#1F4C3F] ring-1 ring-[#1F4C3F]/30"
-                            : "bg-[#C4F0E1]/50 text-[#1F4C3F] hover:bg-[#C4F0E1]"
+                            ? "bg-[#C4F0E1] dark:bg-emerald-900/40 text-[#1F4C3F] dark:text-emerald-400 ring-1 ring-[#1F4C3F]/30 dark:ring-emerald-800/30"
+                            : "bg-[#C4F0E1]/50 dark:bg-emerald-950/20 text-[#1F4C3F] dark:text-emerald-400 hover:bg-[#C4F0E1] dark:hover:bg-emerald-900/30"
                         }`}
                       >
                         {tag}
@@ -638,25 +641,44 @@ export default function PromptsView() {
       )}
 
       {/* Pagination Footer */}
-      {!loading && prompts.length > 0 && (
-        <div className="flex items-center justify-between mt-6 border-t border-gray-100 pt-6">
-          <span className="text-xs text-text-muted">
-            {t("prompts.paginationInfo", { count: prompts.length, total: total, page: page, totalPages: Math.ceil(total / pageSize) || 1 })}
-          </span>
-          <div className="flex gap-2">
+      {!loading && prompts.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-gray-100 dark:border-zinc-800 pt-6 mt-6 select-none">
+          <div className="text-xs text-text-muted font-bold">
+            {t('prompts.showingPrompts', {
+              start: total === 0 ? 0 : (page - 1) * pageSize + 1,
+              end: Math.min(page * pageSize, total),
+              total: total
+            })}
+          </div>
+          <div className="flex items-center gap-2">
             <button
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+              className="p-2.5 border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
             >
-              {t("prompts.prev")}
+              <ChevronLeft size={16} />
             </button>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  page === p
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+
             <button
-              disabled={page >= Math.ceil(total / pageSize)}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2 bg-card border border-gray-200/70 rounded-full text-xs font-bold text-text-muted hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={page === totalPages}
+              className="p-2.5 border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
             >
-              {t("prompts.next")}
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>

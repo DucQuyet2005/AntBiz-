@@ -624,7 +624,7 @@ export default function ChangePasswordView() {
                       type={showCurrent ? 'text' : 'password'}
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 dark:bg-black/50 hover:bg-gray-50 dark:hover:bg-slate-950 border border-gray-200 dark:border-white/5 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Nhập mật khẩu hiện tại"
                     />
                     <button
@@ -645,7 +645,7 @@ export default function ChangePasswordView() {
                       type={showNew ? 'text' : 'password'}
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 dark:bg-black/50 hover:bg-gray-50 dark:hover:bg-slate-955 border border-gray-200 dark:border-white/5 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Nhập mật khẩu mới"
                     />
                     <button
@@ -666,7 +666,7 @@ export default function ChangePasswordView() {
                       type={showConfirm ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
+                      className="w-full bg-gray-50/50 dark:bg-black/50 hover:bg-gray-50 dark:hover:bg-slate-955 border border-gray-200 dark:border-white/5 rounded-2xl pl-4 pr-11 py-3.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                       placeholder="Xác nhận mật khẩu mới"
                     />
                     <button
@@ -682,7 +682,7 @@ export default function ChangePasswordView() {
 
               {/* Validation strength indicators */}
               {newPassword.length > 0 && (
-                <div className="bg-gray-50 border border-gray-200/50 rounded-2xl p-4 flex flex-col gap-2.5">
+                <div className="bg-gray-50 dark:bg-zinc-900/40 border border-gray-200/50 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-2.5">
                   <span className="text-xs font-bold text-text">Yêu cầu bảo mật mật khẩu mới:</span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                     {[
@@ -695,20 +695,20 @@ export default function ChangePasswordView() {
                       const met = requirements[req.key as keyof typeof requirements];
                       return (
                         <div key={req.key} className="flex items-center gap-1.5">
-                          <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${met ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${met ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-450' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'}`}>
                             {met ? <Check size={10} className="stroke-[3]" /> : <span className="text-[9px] font-black">×</span>}
                           </div>
-                          <span className={`text-[10px] font-semibold ${met ? 'text-emerald-700' : 'text-rose-700'}`}>{req.label}</span>
+                          <span className={`text-[10px] font-semibold ${met ? 'text-emerald-700 dark:text-emerald-450' : 'text-rose-700 dark:text-rose-400'}`}>{req.label}</span>
                         </div>
                       );
                     })}
                   </div>
                   {confirmPassword.length > 0 && (
-                    <div className="border-t border-gray-200/60 pt-2 flex items-center gap-1.5">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${passwordsMatch ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                    <div className="border-t border-gray-200/60 dark:border-white/5 pt-2 flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${passwordsMatch ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-450' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'}`}>
                         {passwordsMatch ? <Check size={10} className="stroke-[3]" /> : <span className="text-[9px] font-black">×</span>}
                       </div>
-                      <span className={`text-[10px] font-semibold ${passwordsMatch ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      <span className={`text-[10px] font-semibold ${passwordsMatch ? 'text-emerald-700 dark:text-emerald-450' : 'text-rose-700 dark:text-rose-400'}`}>
                         {passwordsMatch ? 'Mật khẩu xác nhận trùng khớp' : 'Mật khẩu xác nhận không khớp'}
                       </span>
                     </div>

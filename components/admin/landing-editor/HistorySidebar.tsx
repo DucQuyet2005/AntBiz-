@@ -71,8 +71,8 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-y-0 right-0 w-[300px] bg-white border-l border-slate-200 shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+    <div className="absolute inset-y-0 right-0 w-[300px] bg-white dark:bg-zinc-950 border-l border-slate-200 dark:border-zinc-800 shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
+      <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50 dark:bg-zinc-900">
         <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm tracking-tight uppercase">
           <Clock size={16} className="text-primary" />
           <h3>{t.historyTitle}</h3>
@@ -89,21 +89,21 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
           <div className="text-xs text-slate-500 font-medium text-center py-8">{t.noHistory}</div>
         ) : (
           history.map((record) => (
-            <div key={record.id} className="border border-slate-200 rounded-2xl p-3 hover:border-primary/30 transition-colors bg-white">
+            <div key={record.id} className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg uppercase">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg uppercase">
                   {new Date(record.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                 </span>
               </div>
-              <p className="text-xs text-slate-700 font-medium mb-1">
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1">
                 {record.note || t.autoSaved}
               </p>
-              <p className="text-[10px] text-slate-400 mb-3">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">
                 {t.by}: {record.users?.email || 'Unknown'}
               </p>
               <button
                 onClick={() => handleRollback(record.id, record.config_snapshot)}
-                className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all duration-100 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all duration-100 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 <RotateCcw size={12} /> {t.restore}
               </button>

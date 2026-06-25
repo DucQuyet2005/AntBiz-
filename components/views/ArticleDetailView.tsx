@@ -628,7 +628,7 @@ export default function ArticleDetailView() {
               {activeArticle.category}
             </div>
 
-            <h1 className="text-4xl font-extrabold text-[#1E293B] leading-[1.15] tracking-tight pr-10">
+            <h1 className="text-4xl font-extrabold text-text leading-[1.15] tracking-tight pr-10">
               {activeArticle.title}
             </h1>
 
@@ -649,7 +649,7 @@ export default function ArticleDetailView() {
           {/* High-Fidelity Platform Mockup Viewport */}
           <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
-              <h3 className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-xs font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles size={16} className="text-primary" />
                 {language === 'vi' ? 'Bản xem trước mạng xã hội' : 'Social Media Preview'}
               </h3>
@@ -729,7 +729,7 @@ export default function ArticleDetailView() {
                   <div className="px-4 pb-4 pt-1 text-xs text-text leading-relaxed flex flex-col gap-2">
                     {/* Title & Category block */}
                     <div className="font-extrabold text-[13px] text-text mb-0.5">
-                      🏠 [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                      [{activeArticle.category.replace('#', '')}] {activeArticle.title}
                     </div>
 
                     {/* Caption content */}
@@ -828,7 +828,7 @@ export default function ArticleDetailView() {
                   <div className="flex gap-3.5 items-stretch">
                     <div className="flex flex-col items-center shrink-0">
                       <div className="relative w-9 h-9">
-                        <div className="w-9 h-9 rounded-full bg-[#1E293B] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                        <div className="w-9 h-9 rounded-full bg-[#1E293B] dark:bg-black flex items-center justify-center text-white dark:text-slate-100 font-extrabold text-sm shadow-sm select-none">
                           T
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
@@ -847,7 +847,7 @@ export default function ArticleDetailView() {
                       <div className="text-xs text-text leading-relaxed flex flex-col gap-2">
                         {/* Title & Category block */}
                         <div className="font-extrabold text-[12px] text-text">
-                          🏠 [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                          [{activeArticle.category.replace('#', '')}] {activeArticle.title}
                         </div>
 
                         {/* Caption content */}
@@ -937,7 +937,7 @@ export default function ArticleDetailView() {
                   {/* Threads Post 2/2 */}
                   <div className="flex gap-3.5 items-stretch">
                     <div className="flex flex-col items-center shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-[#1E293B] flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                      <div className="w-9 h-9 rounded-full bg-[#1E293B] dark:bg-black flex items-center justify-center text-white dark:text-slate-100 font-extrabold text-sm shadow-sm select-none">
                         T
                       </div>
                     </div>
@@ -1009,7 +1009,7 @@ export default function ArticleDetailView() {
           {Array.isArray(activeArticle.body) && activeArticle.body.length > 0 ? (
             <div className="bg-white border border-gray-200/80 rounded-2xl p-8 shadow-sm flex flex-col gap-5">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg">
+                <div className="flex items-center gap-2 text-text font-bold text-lg">
                   <span className="text-2xl">📄</span>
                   <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
                 </div>
@@ -1072,7 +1072,7 @@ export default function ArticleDetailView() {
           ) : activeArticle.full_text ? (
             /* Fallback: hiển thị full_text nếu không có body */
             <div className="bg-white border border-gray-200/80 rounded-2xl p-8 shadow-sm flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-[#1E293B] font-bold text-lg border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2 text-text font-bold text-lg border-b border-gray-100 pb-4">
                 <span className="text-2xl">📄</span>
                 <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
               </div>
@@ -1108,7 +1108,7 @@ export default function ArticleDetailView() {
           {/* Image Gallery */}
           {activeArticle.images && activeArticle.images.length > 0 && (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-[#1E293B] font-bold text-base">
+              <div className="flex items-center gap-2 text-text font-bold text-base">
                 <span className="text-xl">🖼️</span>
                 <h2>{language === 'vi' ? 'Hình ảnh bài viết' : 'Article Images'}</h2>
               </div>
@@ -1160,27 +1160,27 @@ export default function ArticleDetailView() {
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
 
           {/* Performance Metrics Card */}
-          <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-7 shadow-sm">
-            <h3 className="text-[11px] font-bold tracking-[0.1em] text-amber-850/60 uppercase mb-5">
+          <div className="bg-amber-50/20 dark:bg-amber-950/15 border border-amber-200/30 dark:border-amber-900/20 rounded-2xl p-7 shadow-sm">
+            <h3 className="text-[11px] font-bold tracking-[0.1em] text-amber-800 dark:text-amber-400 uppercase mb-5">
               {t('articleDetail.performanceMetrics')}
             </h3>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-200/50 flex items-center justify-between mb-6">
-              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-5 shadow-sm border border-amber-200/30 dark:border-white/5 flex items-center justify-between mb-6">
+              <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <Eye size={24} />
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews')}</span>
                 {/* Lấy phần số từ chuỗi views thô (ví dụ: "1.0K lượt xem" → "1.0K", "996 lượt xem" → "996") */}
-                <span className="text-3xl font-extrabold text-[#1E293B]">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
+                <span className="text-3xl font-extrabold text-text">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="w-full bg-gray-200/50 h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-800/70 w-[85%] h-full rounded-full"></div>
+              <div className="w-full bg-gray-200/50 dark:bg-black h-2 rounded-full overflow-hidden">
+                <div className="bg-amber-600 dark:bg-amber-500 w-[85%] h-full rounded-full"></div>
               </div>
-              <p className="text-[10px] font-bold text-amber-800/60 text-right mt-1">
+              <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 text-right mt-1">
                 {t('articleDetail.topPercent')}
               </p>
             </div>
@@ -1188,7 +1188,7 @@ export default function ArticleDetailView() {
 
           {/* Checkpoint Version History Card */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-            <h3 className="text-[11px] font-bold tracking-[0.1em] text-[#1E293B]/60 uppercase border-b border-gray-100 pb-3 flex items-center gap-1.5 select-none">
+            <h3 className="text-[11px] font-bold tracking-[0.1em] text-text-muted uppercase border-b border-gray-100 pb-3 flex items-center gap-1.5 select-none">
               <RotateCcw size={13} className="text-primary" />
               {language === 'vi' ? 'Lịch sử Checkpoint' : 'Checkpoint History'}
             </h3>
@@ -1245,7 +1245,7 @@ export default function ArticleDetailView() {
 
           {/* Metadata Tags Card */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-7 shadow-sm">
-            <div className="flex items-center gap-2 text-[#1E293B] font-bold text-sm mb-5">
+            <div className="flex items-center gap-2 text-text font-bold text-sm mb-5">
               <Tag size={18} className="text-text-muted" />
               <h3>{t('articleDetail.metadataTags')}</h3>
             </div>

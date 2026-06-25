@@ -259,9 +259,9 @@ export default function NotificationsPage() {
   return (
     <div className="flex flex-col gap-6 font-sans">
       {/* Header View */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/8">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#1E293B] leading-none">
+          <h1 className="text-3xl font-extrabold text-text dark:text-white leading-none">
             {t('notifications.infoTitle')}
           </h1>
         </div>
@@ -281,7 +281,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100/80 w-fit select-none">
+      <div className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-white/5 p-1.5 rounded-2xl border border-slate-100/80 dark:border-white/8 w-fit select-none">
         {[
           { key: 'all' as const, label: language === 'vi' ? 'Tất cả' : 'All', icon: null, activeClass: 'bg-primary text-white shadow-sm shadow-primary/25' },
           { key: 'bai-dang' as const, label: language === 'vi' ? 'Bài đăng' : 'Posts', icon: Send, activeClass: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' },
@@ -298,7 +298,7 @@ export default function NotificationsPage() {
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border-0 active:scale-95 ${
                 isActive
                   ? activeClass
-                  : 'text-slate-550 hover:text-slate-800 hover:bg-white/80 bg-transparent'
+                  : 'text-slate-600 dark:text-white/50 hover:text-slate-800 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/8 bg-transparent'
               }`}
             >
               {Icon && <Icon size={13} />}
@@ -311,7 +311,7 @@ export default function NotificationsPage() {
 
 
       {/* Main List */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
+      <div className="bg-white dark:bg-black border border-gray-200/80 dark:border-white/8 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 my-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -342,8 +342,8 @@ export default function NotificationsPage() {
                     tabIndex={0}
                     className={`p-4 rounded-2xl border transition-all flex items-start gap-4 cursor-pointer relative overflow-hidden focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
                       !n.is_read
-                        ? 'bg-primary/5 border-primary/20 hover:bg-primary/8'
-                        : 'bg-white border-gray-150 hover:bg-gray-50'
+                        ? 'bg-primary/5 dark:bg-primary/8 border-primary/20 dark:border-primary/25 hover:bg-primary/8 dark:hover:bg-primary/12'
+                        : 'bg-white dark:bg-transparent border-gray-150 dark:border-white/8 hover:bg-gray-50 dark:hover:bg-white/4'
                     }`}
                   >
                     {/* Icon */}
@@ -355,7 +355,7 @@ export default function NotificationsPage() {
                     <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm text-gray-900 ${!n.is_read ? 'font-black' : 'font-semibold'}`}>
+                          <span className={`text-sm text-gray-900 dark:text-white ${!n.is_read ? 'font-black' : 'font-semibold'}`}>
                             {translated.title}
                           </span>
                           {!n.is_read && (
@@ -364,13 +364,13 @@ export default function NotificationsPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed max-w-3xl">
+                        <p className="text-xs text-gray-500 dark:text-white/60 mt-1 leading-relaxed max-w-3xl">
                           {translated.message}
                         </p>
                       </div>
  
                       <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
-                        <span className="text-[10px] text-gray-400 font-bold select-none whitespace-nowrap">
+                        <span className="text-[10px] text-gray-400 dark:text-white/40 font-bold select-none whitespace-nowrap">
                           {formatTimeAgo(n.created_at)}
                         </span>
                       </div>
@@ -384,7 +384,7 @@ export default function NotificationsPage() {
  
         {/* Unified Premium Pagination Controls */}
         {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-white/8 pt-6 mt-6 select-none">
             <div className="text-xs text-text-muted font-bold">
               {t('notifications.showingInfo')
                 .replace('{from}', String(Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalCount)))
@@ -395,7 +395,7 @@ export default function NotificationsPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                className="p-2.5 border border-gray-200/80 dark:border-white/8 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted dark:text-white/50 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -407,7 +407,7 @@ export default function NotificationsPage() {
                   className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
                     currentPage === page
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'border border-gray-200/80 text-text hover:bg-gray-50'
+                      : 'border border-gray-200/80 dark:border-white/8 text-text dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/5'
                   }`}
                 >
                   {page}
@@ -417,7 +417,7 @@ export default function NotificationsPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-2.5 border border-gray-200/80 rounded-2xl hover:bg-gray-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                className="p-2.5 border border-gray-200/80 dark:border-white/8 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted dark:text-white/50 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
               >
                 <ChevronRight size={16} />
               </button>

@@ -23,15 +23,15 @@ export function Toast({ message, type = "success", duration = 5000, onClose }: T
   }, [duration, onClose]);
 
   const icons = {
-    success: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
-    error: <AlertCircle className="h-5 w-5 text-red-500" />,
-    info: <Info className="h-5 w-5 text-blue-500" />,
+    success: <CheckCircle2 className="h-5 w-5 text-emerald-500 dark:text-emerald-450" />,
+    error: <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-450" />,
+    info: <Info className="h-5 w-5 text-blue-500 dark:text-blue-450" />,
   };
 
   const bgColors = {
-    success: "bg-emerald-50 border-emerald-100",
-    error: "bg-red-50 border-red-100",
-    info: "bg-blue-50 border-blue-100",
+    success: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/30",
+    error: "bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/30",
+    info: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/30",
   };
 
   return (
@@ -42,10 +42,10 @@ export function Toast({ message, type = "success", duration = 5000, onClose }: T
       className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg max-w-md ${bgColors[type]}`}
     >
       <div className="flex-shrink-0">{icons[type]}</div>
-      <p className="text-sm font-medium text-gray-800 pr-4">{message}</p>
+      <p className="text-sm font-medium text-gray-800 dark:text-slate-200 pr-4">{message}</p>
       <button
         onClick={onClose}
-        className="ml-auto flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded"
+        className="ml-auto flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded"
       >
         <X className="h-4 w-4" />
       </button>

@@ -1820,22 +1820,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     setToggles(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Add a new variant copy dynamically
-  const handleAddVariant = () => {
-    const nextLetter = String.fromCharCode(65 + variants.length); // C, D, E...
-    const firstTags = variants[0]?.tags || '';
-    const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
-    const newVariant: SocialVariant = {
-      id: nextLetter,
-      facebook: targetPlatforms.includes('facebook') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
-      threads: targetPlatforms.includes('threads') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
-      instagram: targetPlatforms.includes('instagram') ? `[Phiên bản đặc biệt ${nextLetter}] ${postData.description}` : "",
-      title: postData.title,
-      author: postData.author,
-      tags: firstTags
-    };
-    setVariants([...variants, newVariant]);
-  };
+
 
   // Update variant field state on inline edit
   const handleUpdateVariantField = (variantId: string, field: keyof SocialVariant, value: string) => {
@@ -1937,8 +1922,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     if (toggles.showTitle && variant.title) {
       const categoryClean = postData.category.replace('#', '').trim();
       const titleLine = categoryClean
-        ? `🏠 [${categoryClean}] ${variant.title}`
-        : `🏠 ${variant.title}`;
+        ? `[${categoryClean}] ${variant.title}`
+        : `${variant.title}`;
       parts.push(titleLine);
     }
 
@@ -1951,7 +1936,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     const metaParts: string[] = [];
     if (toggles.showAuthor && variant.author) {
-      const authorPrefix = `🎥 ${language === 'vi' ? 'Tác giả:' : 'Author:'} `;
+      const authorPrefix = `${language === 'vi' ? 'Tác giả:' : 'Author:'} `;
       metaParts.push(`${authorPrefix}${variant.author.trim()}`);
     }
     if (toggles.showTags && variant.tags) {
@@ -2136,7 +2121,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           {/* Step Indicator Wizard */}
           <div className="flex flex-col gap-2 w-full md:w-auto select-none">
             {/* Smooth SVG/Motion Progress Bar */}
-            <div className="h-1 bg-slate-100 rounded-full overflow-hidden w-full relative">
+            <div className="h-1 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden w-full relative">
               <motion.div 
                 className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-[#22D3EE]"
                 initial={{ width: '33.3%' }}
@@ -2147,20 +2132,20 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               />
             </div>
             
-            <div className="flex items-center gap-1 bg-slate-100/90 rounded-2xl p-1.5 border border-slate-200/70 shadow-sm">
+            <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-black/60 rounded-2xl p-1.5 border border-slate-200/70 dark:border-white/5 shadow-sm">
               <button
                 type="button"
                 onClick={() => changeStep(1)}
                 aria-current={step === 1 ? "step" : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
                   }`}
               >
                 <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
                   step === 1 
                     ? 'bg-white/20 text-white' 
                     : (articleId || postData.title) 
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-250' 
-                      : 'bg-slate-200 text-slate-500'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' 
+                      : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
                 }`}>
                   {(articleId || postData.title) && step !== 1 ? (
                     <Check size={10} strokeWidth={3.5} />
@@ -2175,15 +2160,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 type="button"
                 onClick={() => changeStep(2)}
                 aria-current={step === 2 ? "step" : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
                   }`}
               >
                 <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
                   step === 2 
                     ? 'bg-white/20 text-white' 
                     : selectedVariantId 
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-250' 
-                      : 'bg-slate-200 text-slate-500'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' 
+                      : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
                 }`}>
                   {selectedVariantId && step !== 2 ? (
                     <Check size={10} strokeWidth={3.5} />
@@ -2200,14 +2185,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 disabled={!selectedVariantId}
                 aria-current={step === 3 ? "step" : undefined}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
-                    selectedVariantId ? 'text-slate-500 hover:text-slate-800 hover:bg-white/70 cursor-pointer' :
-                      'text-slate-300 cursor-not-allowed'
+                    selectedVariantId ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' :
+                      'text-slate-500 dark:text-slate-500 cursor-not-allowed'
                   }`}
               >
                 <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${
                   step === 3 
                     ? 'bg-white/20 text-white' 
-                    : 'bg-slate-200 text-slate-500'
+                    : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
                 }`}>
                   {step === 3 && (typeof isScheduled !== 'undefined' && isScheduled) ? (
                     <Check size={10} strokeWidth={3.5} />
@@ -2361,18 +2346,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         onChange={setActivePrompt}
                         placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
                         rows={8}
-                        className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-2xl px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-2xl px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
                       />
                       <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {saveSuccess && (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 animate-in fade-in slide-in-from-right-2">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-900/30 animate-in fade-in slide-in-from-right-2">
                             {language === 'vi' ? 'Đã lưu!' : 'Saved!'}
                           </span>
                         )}
                         <button
                           onClick={handleSaveCurrentPrompt}
                           disabled={isSavingPrompt}
-                          className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-primary hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
+                          className="p-2.5 rounded-xl bg-white dark:bg-black border border-gray-200 dark:border-white/5 text-gray-400 dark:text-slate-400 hover:text-primary hover:border-primary/30 dark:hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
                           title="Lưu prompt này vào thư viện"
                         >
                           {isSavingPrompt ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -2535,7 +2520,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* AI Model Selection Switcher (craft/shape) */}
-                <div className="flex flex-col gap-2 bg-[#F8F9FE] border border-[#E4E6F8] rounded-2xl p-4">
+                <div className="flex flex-col gap-2 bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-2xl p-4">
                   <label className="text-[10px] font-black text-text uppercase tracking-widest">
                     {language === 'vi' ? 'Engine AI (Mẫu ngôn ngữ)' : 'AI Engine (Language Model)'}
                   </label>
@@ -2723,7 +2708,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.title}
                       onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                       placeholder={t('aiCreator.labelTitle')}
                     />
                   </div>
@@ -2734,7 +2719,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.category}
                       onChange={(e) => setPostData({ ...postData, category: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -2743,7 +2728,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.author}
                       onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
@@ -2753,7 +2738,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.published_at}
                       onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -2762,7 +2747,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.views}
                       onChange={(e) => setPostData({ ...postData, views: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
@@ -2772,7 +2757,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       value={postData.imageUrl}
                       onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
                       rows={3}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
                       placeholder="Nhập mỗi URL hình ảnh trên một dòng..."
                     />
                   </div>
@@ -2783,7 +2768,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       type="text"
                       value={postData.tags}
                       onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
@@ -2793,7 +2778,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       value={postData.full_text}
                       onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
                       rows={10}
-                      className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
+                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
                     />
                   </div>
                 </div>
@@ -2853,7 +2838,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
               {/* 2. Prompt Selector Section (Prompt sử dụng) - ONLY in Step 2 (as a standalone card) */}
               {step === 2 && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
                   <div className="flex items-center justify-between font-sans">
                     <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-sans">
                       📝 Prompt {language === 'vi' ? 'sử dụng' : 'in use'}
@@ -2867,7 +2852,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     </button>
                   </div>
                   {selectedPrompt ? (
-                    <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-gray-150 dark:border-white/5 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
                       <div className="flex items-center justify-between font-sans">
                         <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
                         <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
@@ -2877,7 +2862,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       </p>
                     </div>
                   ) : (
-                    <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                    <div className="border border-dashed border-gray-200 dark:border-white/10 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
                       {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
                     </div>
                   )}
@@ -2885,8 +2870,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               )}
 
               {/* 3. Article Live Preview Card (Bài viết gốc) */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
                   <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
                     <Smartphone size={16} className="text-primary" />
                     {t('aiCreator.articlePreview')}
@@ -2972,7 +2957,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       </button>
                     </div>
                     {selectedPrompt ? (
-                      <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 border border-gray-150 dark:border-white/5 rounded-2xl p-3.5 flex flex-col gap-1.5 font-sans">
                         <div className="flex items-center justify-between font-sans">
                           <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{selectedPrompt.name}</span>
                           <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{selectedPrompt.platform}</span>
@@ -2982,7 +2967,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         </p>
                       </div>
                     ) : (
-                      <div className="border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
+                      <div className="border border-dashed border-gray-200 dark:border-white/10 rounded-2xl p-4 text-center text-xs text-text-muted font-sans font-semibold">
                         {language === 'vi' ? 'Chưa chọn Prompt' : 'No prompt selected'}
                       </div>
                     )}
@@ -3115,9 +3100,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
                         onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
+                        style={isCardSelected ? { borderColor: 'var(--color-primary)' } : undefined}
                         className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
-                            ? 'bg-white border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
-                            : 'bg-white border border-gray-200/80 hover:border-primary/30 hover:shadow-lg shadow-sm'
+                            ? 'bg-card dark:bg-slate-800 border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
+                            : 'bg-card dark:bg-slate-900 border border-gray-200/80 dark:border-white/10 hover:border-primary/30 dark:hover:border-primary/50 hover:shadow-lg shadow-sm'
                           }`}
                       >
                         {/* Variant Badge & Platform Header */}
@@ -3186,7 +3172,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
                                   {toggles.showTitle && (
                                     <div className="font-extrabold text-xs text-text">
-                                      🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                      [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                                     </div>
                                   )}
 
@@ -3207,7 +3193,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
                                       {toggles.showAuthor && (
                                         <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                          <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                          <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                           <EditableText variantId={v.id} field="author" value={v.author} />
                                         </div>
                                       )}
@@ -3312,7 +3298,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                               {toggles.showTitle && (
                                 <div className="font-extrabold text-xs text-text">
-                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                  [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                                 </div>
                               )}
 
@@ -3331,7 +3317,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                               {toggles.showAuthor && (
                                 <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
-                                  <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                  <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                   <EditableText variantId={v.id} field="author" value={v.author} />
                                 </div>
                               )}
@@ -3365,7 +3351,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
                               {toggles.showTitle && (
                                 <div className="font-extrabold text-xs text-text mb-0.5">
-                                  🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                  [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                                 </div>
                               )}
 
@@ -3385,7 +3371,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
                                   {toggles.showAuthor && (
                                     <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                      <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                      <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                       <EditableText variantId={v.id} field="author" value={v.author} />
                                     </div>
                                   )}
@@ -3423,21 +3409,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   })}
                 </AnimatePresence>
 
-                {/* Add Variant Card */}
-                <motion.button
-                  onClick={handleAddVariant}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
-                    <Plus size={24} />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
-                    <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
-                  </div>
-                </motion.button>
+
               </div>
 
               {/* Bottom Actions Row */}
@@ -3565,7 +3537,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
                                 {toggles.showTitle && (
                                   <div className="font-extrabold text-xs text-text">
-                                    🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                    [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                                   </div>
                                 )}
                                 {toggles.showDescription && (
@@ -3578,7 +3550,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                   <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
                                     {toggles.showAuthor && (
                                       <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                        <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                        <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                         <EditableText variantId={v.id} field="author" value={v.author} />
                                       </div>
                                     )}
@@ -3639,7 +3611,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
                             {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text">
-                                🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
                             {toggles.showDescription && (
@@ -3650,7 +3622,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             )}
                             {toggles.showAuthor && (
                               <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
-                                <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                 <EditableText variantId={v.id} field="author" value={v.author} />
                               </div>
                             )}
@@ -3682,7 +3654,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
                             {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text mb-0.5">
-                                🏠 [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
                             {toggles.showDescription && (
@@ -3694,7 +3666,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
                                 {toggles.showAuthor && (
                                   <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                    <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                    <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                     <EditableText variantId={v.id} field="author" value={v.author} />
                                   </div>
                                 )}
@@ -3737,40 +3709,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           <span>Facebook</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
                         </div>
                         {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
                       </div>
                     )}
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
-                      <div className="border border-gray-200 bg-gray-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-bold text-xs text-black">
-                          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center text-white">
+                      <div className="border border-gray-200 dark:border-white/5 bg-gray-50/10 dark:bg-white/3 rounded-2xl p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-black dark:text-white">
+                          <div className="w-5 h-5 rounded-full bg-black dark:bg-zinc-900 flex items-center justify-center text-white">
                             <ThreadsIcon size={10} />
                           </div>
                           <span>Threads</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
                         </div>
                         {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
                       </div>
                     )}
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
-                      <div className="border border-pink-100 bg-pink-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-bold text-xs text-pink-600">
+                      <div className="border border-pink-100 dark:border-pink-900/30 bg-pink-50/10 dark:bg-pink-950/10 rounded-2xl p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-pink-600 dark:text-pink-400">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
                             <Instagram size={10} />
                           </div>
                           <span>Instagram</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white border border-[#E4E6F8] rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                          <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
                         </div>
                         {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
                       </div>
@@ -3895,12 +3867,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                     <motion.div
                                       key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
                                       drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
-                                      className="absolute p-1.5 rounded-xl bg-white border-2 border-black shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
+                                      className="absolute p-1.5 rounded-xl bg-white dark:bg-black border-2 border-black dark:border-white shadow-lg flex flex-col justify-center cursor-grab active:cursor-grabbing z-20 overflow-hidden"
                                       style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                                     >
                                       <div className="flex items-center gap-1.5">
-                                        <ThreadsIcon size={10} className="shrink-0" />
-                                        <span className="text-[8px] font-black text-black uppercase truncate">TR {threadsTime}</span>
+                                        <ThreadsIcon size={10} className="shrink-0 text-black dark:text-white" />
+                                        <span className="text-[8px] font-black text-black dark:text-white uppercase truncate">TR {threadsTime}</span>
                                       </div>
                                     </motion.div>
                                   );
@@ -3941,11 +3913,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                 <div
                                   key={`multiple-${dayDate}-${hr}`}
                                   onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
-                                  className="absolute p-1.5 rounded-xl bg-gradient-to-tr from-indigo-50 to-indigo-100/50 border border-indigo-200/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
+                                  className="absolute p-1.5 rounded-xl bg-gradient-to-tr from-indigo-50 to-indigo-100/50 dark:from-indigo-950/30 dark:to-indigo-900/20 border border-indigo-200/80 dark:border-indigo-800/80 shadow-md flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-[0.5px] active:scale-[0.98] transition-all z-20 group"
                                   style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(${(100) / 7}% - 4px)`, height: `calc(${(100) / 24}% - 4px)` }}
                                 >
                                   <div className="flex items-center justify-between gap-1 select-none">
-                                    <span className="text-[7.5px] font-black text-indigo-700 bg-indigo-200/60 px-1.5 py-0.5 rounded-lg">
+                                    <span className="text-[7.5px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-200/60 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-lg">
                                       {count} bài
                                     </span>
                                     <div className="flex gap-0.5 items-center">
@@ -3953,7 +3925,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                         if (cp.platform === 'facebook') {
                                           return <Facebook key={idx} size={7} className="text-[#1877F2] fill-[#1877F2]" />;
                                         } else if (cp.platform === 'threads' || cp.platform === 'thread') {
-                                          return <ThreadsIcon key={idx} size={7} className="text-black" />;
+                                          return <ThreadsIcon key={idx} size={7} className="text-black dark:text-white" />;
                                         } else if (cp.platform === 'instagram') {
                                           return <Instagram key={idx} size={7} className="text-pink-600" />;
                                         }
@@ -3961,7 +3933,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                       })}
                                     </div>
                                   </div>
-                                  <span className="text-[7px] text-indigo-500 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 truncate">
+                                  <span className="text-[7px] text-indigo-500 dark:text-indigo-400 font-extrabold tracking-wide uppercase select-none group-hover:text-indigo-700 dark:group-hover:text-indigo-300 truncate">
                                     {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
                                   </span>
                                 </div>
@@ -4130,7 +4102,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </p>
                 </div>
 
-                <div className="bg-[#F8FAFC] border border-gray-150 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
+                <div className="bg-slate-50 border border-gray-150 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
                   <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
                     {language === 'vi' ? 'Thông tin xuất bản' : 'Publication details'}
                   </div>
@@ -4226,15 +4198,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     if (post.platform === 'facebook') {
                       platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
                       platLabel = 'Facebook';
-                      platBg = 'bg-blue-50 text-[#1877F2] border-blue-100/60';
+                      platBg = 'bg-blue-50 dark:bg-blue-950/40 text-[#1877F2] dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30';
                     } else if (post.platform === 'threads' || post.platform === 'thread') {
-                      platIcon = <ThreadsIcon size={11} className="text-black" />;
+                      platIcon = <ThreadsIcon size={11} className="text-black dark:text-white" />;
                       platLabel = 'Threads';
-                      platBg = 'bg-slate-50 text-slate-900 border-slate-200/65';
+                      platBg = 'bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 border border-slate-200/65 dark:border-slate-750';
                     } else if (post.platform === 'instagram') {
                       platIcon = <Instagram size={11} className="text-pink-650" />;
                       platLabel = 'Instagram';
-                      platBg = 'bg-pink-50 text-pink-650 border-pink-100/60';
+                      platBg = 'bg-pink-50 dark:bg-pink-950/40 text-pink-650 dark:text-pink-400 border border-pink-100/60 dark:border-pink-900/30';
                     }
 
                     return (
@@ -4345,7 +4317,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     value={promptSearch}
                     onChange={(e) => setPromptSearch(e.target.value)}
                     placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
-                    className="w-full bg-[#F8F9FE] border border-[#E4E6F8] rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
                   />
                 </div>
 
@@ -4415,39 +4387,39 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 role="dialog"
                 aria-modal="true"
                 tabIndex={-1}
-                className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden focus-visible:outline-none"
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-200 dark:border-zinc-800/80 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden focus-visible:outline-none"
               >
                 {/* Dialog Header */}
-                <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 px-7 py-5 flex items-center justify-between shrink-0">
+                <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border-b border-gray-100 dark:border-zinc-800/60 px-7 py-5 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h2 className="text-base font-black text-slate-800">Cấu hình AI Prompt &amp; Nội dung</h2>
-                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Tùy chỉnh câu lệnh AI và sinh nội dung theo ý muốn</p>
+                      <h2 className="text-base font-black text-slate-800 dark:text-zinc-100">{t('aiCreator.promptConfigTitle')}</h2>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.promptConfigSubtitle')}</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsAiPromptDialogOpen(false)}
-                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer border-none"
+                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-750 text-gray-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer border-none"
                   >
                     <X size={17} />
                   </button>
                 </div>
 
                 {/* Tab Bar */}
-                <div className="flex border-b border-gray-100 px-7 shrink-0 bg-gray-50/60">
+                <div className="flex border-b border-gray-100 dark:border-zinc-800/80 px-7 shrink-0 bg-gray-50/60 dark:bg-zinc-900/30">
                   {[
-                    { key: 'editor' as const, label: 'AI Prompt Editor', icon: Wand2 },
-                    { key: 'generator' as const, label: 'Sinh Prompt bằng mẫu', icon: Sparkles }
+                    { key: 'editor' as const, label: t('aiCreator.tabPromptEditor'), icon: Wand2 },
+                    { key: 'generator' as const, label: t('aiCreator.tabPromptTemplate'), icon: Sparkles }
                   ].map(({ key, label, icon: Icon }) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setActiveAiTab(key)}
-                      className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeAiTab === key ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'
+                      className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeAiTab === key ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                         }`}
                     >
                       <Icon size={13} />
@@ -4462,11 +4434,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     <>
                       {/* Platform selector */}
                       <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng mạng xã hội</label>
-                        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
+                        <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelSocialPlatform')}</label>
+                        <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-zinc-900/60 p-1.5 rounded-2xl border border-slate-200/60 dark:border-zinc-800/60 w-fit">
                           {(['facebook', 'threads', 'instagram'] as const).map((p) => (
                             <button key={p} type="button" onClick={() => setPromptPlatform(p)}
-                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p ? 'bg-white text-primary shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800'
+                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p ? 'bg-white dark:bg-zinc-800 text-primary dark:text-zinc-100 shadow-sm border border-slate-200 dark:border-zinc-700/60' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
                                 }`}>
                               {p}
                             </button>
@@ -4476,61 +4448,61 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                       {/* Custom prompt title */}
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên Prompt (tùy chọn)</label>
+                        <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelPromptTitle')}</label>
                         <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
-                          placeholder="Đặt tên cho Prompt này..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
+                          placeholder={t('aiCreator.placeholderPromptTitle')}
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                         />
                       </div>
 
                       {/* Textarea for prompt */}
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nội dung Prompt</label>
+                          <label className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">{t('aiCreator.labelPromptContent')}</label>
                           <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
-                            className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 text-primary text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 cursor-pointer">
+                            className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
                             <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
-                            Tạo Prompt thông minh
+                            {t('aiCreator.buttonSmartPrompt')}
                           </button>
                         </div>
                         <DebouncedTextarea value={activePrompt} onChange={setActivePrompt}
-                          placeholder="Nhập câu lệnh hướng dẫn AI tạo nội dung..." rows={16}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
+                          placeholder={t('aiCreator.placeholderPromptContent')} rows={16}
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl px-5 py-4 text-sm text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500 font-medium custom-scrollbar"
                         />
                       </div>
                     </>
                   ) : (
                     /* ─── TAB 2: SINH PROMPT BẰNG MẪU (Thư viện) ─── */
                     <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-3 bg-primary/5 border border-primary/15 rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-3 bg-primary/5 dark:bg-primary/10 border border-primary/15 dark:border-primary/30 rounded-2xl px-4 py-3">
                         <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
                           <Layers size={15} />
                         </div>
                         <div>
-                          <p className="text-xs font-black text-slate-800">Thư viện Prompt mẫu</p>
-                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Chọn một prompt để tự động điền vào Tab Editor</p>
+                          <p className="text-xs font-black text-slate-800 dark:text-zinc-255">{t('aiCreator.labelPromptLibrary')}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.descPromptLibrary')}</p>
                         </div>
                       </div>
 
                       {/* Search */}
-                      <div className="relative">
-                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <div className="relative text-slate-400 dark:text-zinc-500">
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
-                          placeholder="Tìm theo tên hoặc nội dung..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
+                          placeholder={t('aiCreator.placeholderPromptSearch')}
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                         />
                       </div>
 
                       {/* Library Results as cards */}
                       <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                         {loadingPrompts ? (
-                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
-                            <Loader2 size={16} className="animate-spin text-primary" /> Đang tải thư viện...
+                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 dark:text-zinc-500 gap-2">
+                            <Loader2 size={16} className="animate-spin text-primary" /> {t('aiCreator.statusLoadingLibrary')}
                           </div>
                         ) : filteredPromptsForModal.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 gap-2">
                             <Layers size={24} className="text-slate-200" />
-                            <p className="text-xs text-slate-400 font-semibold">Không tìm thấy prompt nào</p>
+                            <p className="text-xs text-slate-400 dark:text-zinc-500 font-semibold">{t('aiCreator.statusNoLibraryResults')}</p>
                           </div>
                         ) : (
                           filteredPromptsForModal.map((p) => {
@@ -4546,13 +4518,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                   setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
                                 }}
                                 className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSel
-                                  ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
-                                  : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
+                                  ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm'
+                                  : 'border-gray-150 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:border-gray-200 dark:hover:border-zinc-700'
                                   }`}
                               >
                                 <div className="flex items-center justify-between w-full font-sans">
                                   <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
-                                  <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                                  <span className="text-[8px] bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
                                 </div>
                                 <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
                                   "{p.content}"
@@ -4567,22 +4539,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="border-t border-gray-100 px-7 py-4 bg-gray-50/50 flex items-center justify-end gap-3 shrink-0">
+                <div className="border-t border-gray-100 dark:border-zinc-800/80 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/30 flex items-center justify-end gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
                     <>
                       <button
                         type="button"
                         onClick={() => {
                           if (!activePrompt) return;
-                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString('vi-VN')}`;
+                          const finalTitle = customPromptTitle.trim() || (language === 'vi' ? `Prompt Tùy chỉnh ${new Date().toLocaleDateString('vi-VN')}` : `Custom Prompt ${new Date().toLocaleDateString('en-US')}`);
                           const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
                         }}
                         disabled={!activePrompt}
-                        className="bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                        className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
                       >
-                        Chỉ sử dụng
+                        {t('aiCreator.buttonUseOnly')}
                       </button>
 
                       <button
@@ -4590,7 +4562,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         onClick={async () => {
                           if (!activePrompt) return;
                           const savedPrompt = await handleSaveCurrentPrompt();
-                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString('vi-VN')}`;
+                          const finalTitle = customPromptTitle.trim() || (language === 'vi' ? `AI Sinh tự động - ${new Date().toLocaleDateString('vi-VN')}` : `AI Generated - ${new Date().toLocaleDateString('en-US')}`);
                           const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
                           setIsAiPromptDialogOpen(false);
@@ -4599,7 +4571,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
                       >
                         {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
-                        Lưu &amp; Sử dụng Prompt
+                        {t('aiCreator.buttonSaveAndUse')}
                       </button>
                     </>
                   ) : (
@@ -4613,7 +4585,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       disabled={!selectedPrompt}
                       className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
                     >
-                      Sử dụng Prompt này
+                      {t('aiCreator.buttonUseThisPrompt')}
                     </button>
                   )}
                 </div>

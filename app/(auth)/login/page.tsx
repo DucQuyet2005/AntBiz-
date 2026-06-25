@@ -363,9 +363,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 flex items-center">
-          <div className="flex-1 border-t border-gray-200"></div>
-          <span className="px-4 text-xs text-gray-400 bg-white">{t("login.orContinueWith")}</span>
-          <div className="flex-1 border-t border-gray-200"></div>
+          <div className="flex-1 border-t border-gray-200 dark:border-zinc-800"></div>
+          <span className="px-4 text-xs text-gray-400 bg-white dark:bg-[#0F0F12]">{t("login.orContinueWith")}</span>
+          <div className="flex-1 border-t border-gray-200 dark:border-zinc-800"></div>
         </div>
 
         <div className="mt-6">
@@ -373,7 +373,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLockedOut}
-            className="w-full bg-[#F3F4F6] hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="w-full bg-[#F3F4F6] dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-slate-200 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4">
               <path
@@ -410,14 +410,14 @@ export default function LoginPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute -inset-2 z-40 flex flex-col items-center justify-center bg-white/98 backdrop-blur-md p-6 rounded-2xl border border-gray-100/60 shadow-xl text-center"
+              className="absolute -inset-2 z-40 flex flex-col items-center justify-center bg-white/98 dark:bg-[#0F0F12]/98 backdrop-blur-md p-6 rounded-2xl border border-gray-100/60 dark:border-white/5 shadow-xl text-center"
             >
-              <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-2">
+              <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/20 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center mb-2">
                 <ShieldAlert className="w-5 h-5" />
               </div>
               
-              <h3 className="text-base font-bold text-gray-950 mb-0.5">{t("login.matrixTitle")}</h3>
-              <p className="text-xs text-gray-500 leading-normal max-w-xs">{t("login.matrixSubtitle")}</p>
+              <h3 className="text-base font-bold text-gray-950 dark:text-slate-100 mb-0.5">{t("login.matrixTitle")}</h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400 leading-normal max-w-xs">{t("login.matrixSubtitle")}</p>
 
               {/* Matrix grid */}
               <motion.div
@@ -435,8 +435,8 @@ export default function LoginPage() {
                       disabled={nextNumber > 9}
                       className={`h-12 w-12 text-base font-bold rounded-xl flex items-center justify-center transition-all select-none border focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none active:scale-95 ${
                         isClicked
-                          ? "bg-emerald-500 text-white border-emerald-600 shadow-inner scale-95"
-                          : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-gray-800 border-gray-200/60"
+                          ? "bg-emerald-500 text-white border-emerald-600 dark:border-emerald-500 shadow-inner scale-95"
+                          : "bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-white/8 active:bg-gray-200 dark:active:bg-white/12 text-gray-800 dark:text-slate-200 border-gray-200/60 dark:border-white/5"
                       }`}
                     >
                       {num}

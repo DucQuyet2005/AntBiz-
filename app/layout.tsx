@@ -14,6 +14,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AntBiz - Hệ thống Sáng tạo & Lên lịch Đăng bài AI",
   description: "Tối ưu hóa quy trình sản xuất nội dung, sáng tạo ý tưởng và tự động hóa lịch đăng bài đa kênh hiệu quả cùng trí tuệ nhân tạo.",
+  icons: {
+    icon: "/images/logo.png",
+    shortcut: "/images/logo.png",
+    apple: "/images/logo.png",
+  }
 };
 
 export default async function RootLayout({

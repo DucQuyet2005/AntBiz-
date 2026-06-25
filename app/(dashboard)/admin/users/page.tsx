@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Users List */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden relative">
+      <div style={{ minHeight: totalPages > 1 ? '855px' : undefined }} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden relative flex flex-col">
         {/* Loading overlay when refreshing and we already have data */}
         {loading && users.length > 0 && (
           <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-extrabold">
@@ -275,7 +275,7 @@ export default function AdminUsersPage() {
               ) : (
                 <>
                   {users.map(user => (
-                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group h-[61px]">
+                    <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-transparent transition-colors group h-[61px]">
                       <td className="p-5 pl-6 font-bold text-slate-800 text-sm">
                         {user.email}
                       </td>
@@ -302,10 +302,14 @@ export default function AdminUsersPage() {
                       <td className="p-5 pr-6 text-right">
                         <button 
                           onClick={() => handleStatusToggle(user)}
-                          className={`p-2 rounded-xl transition-all focus-visible:ring-2 focus-visible:outline-none ${user.status === 'locked' ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 focus-visible:ring-emerald-500' : 'bg-rose-100 text-rose-600 hover:bg-rose-200 focus-visible:ring-rose-500'}`}
+                          className={`group p-2 rounded-xl transition-all duration-150 cursor-pointer focus-visible:ring-2 focus-visible:outline-none ${user.status === 'locked' 
+                            ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/30 hover:scale-110 hover:shadow-md hover:shadow-emerald-500/30 focus-visible:ring-emerald-500' 
+                            : 'bg-rose-100 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900/30 hover:scale-110 hover:shadow-md hover:shadow-rose-500/40 focus-visible:ring-rose-500'}`}
                           title={user.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
                         >
-                          {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}
+                          <span className="block transition-all duration-150 group-hover:brightness-125 group-hover:drop-shadow-[0_0_4px_currentColor]">
+                            {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}
+                          </span>
                         </button>
                       </td>
                     </tr>
@@ -323,8 +327,8 @@ export default function AdminUsersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="border-t border-slate-100 p-6 flex items-center justify-between select-none">
-            <div className="text-xs text-slate-500 font-bold ml-2">
+          <div className="border-t border-gray-100 dark:border-zinc-800/80 p-6 flex items-center justify-between select-none">
+            <div className="text-xs text-text-muted font-bold ml-2">
               {language === 'vi' 
                 ? `Hiển thị ${totalUsers === 0 ? 0 : (page - 1) * 10 + 1} - ${Math.min(page * 10, totalUsers)} trong tổng số ${totalUsers} người dùng`
                 : `Showing ${totalUsers === 0 ? 0 : (page - 1) * 10 + 1} - ${Math.min(page * 10, totalUsers)} of ${totalUsers} users`
@@ -334,7 +338,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1}
-                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                className="p-2.5 border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -343,10 +347,10 @@ export default function AdminUsersPage() {
                 <button
                   key={p}
                   onClick={() => setPage(p)}
-                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none ${
+                  className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
                     page === p
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800'
                   }`}
                 >
                   {p}
@@ -356,7 +360,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={page === totalPages}
-                className="p-2.5 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-30 disabled:pointer-events-none text-slate-500 active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                className="p-2.5 border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
               >
                 <ChevronRight size={16} />
               </button>

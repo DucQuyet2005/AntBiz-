@@ -29,11 +29,11 @@ const PLATFORM_LABEL: Record<string, string> = {
 };
 
 const PLATFORM_BADGE_CLASS: Record<string, string> = {
-  facebook: 'bg-[#E7F0FE] text-[#1877F2]',
-  threads: 'bg-[#F3E5CD] text-[#5D4E3C]',
-  thread: 'bg-[#F3E5CD] text-[#5D4E3C]',
-  instagram: 'bg-[#FCE7F3] text-[#C026D3]',
-  blog: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+  facebook: 'bg-[#E7F0FE] dark:bg-blue-950/40 text-[#1877F2] dark:text-blue-400',
+  threads: 'bg-[#F3E5CD] dark:bg-black border dark:border-white/5 text-[#5D4E3C] dark:text-slate-200',
+  thread: 'bg-[#F3E5CD] dark:bg-black border dark:border-white/5 text-[#5D4E3C] dark:text-slate-200',
+  instagram: 'bg-[#FCE7F3] dark:bg-pink-950/40 text-[#C026D3] dark:text-pink-400',
+  blog: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30',
 };
 
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -43,9 +43,9 @@ const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
 );
 
 function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number }) {
-  if (platform === 'facebook') return <Facebook size={size} className="fill-[#1877F2] text-[#1877F2]" />;
-  if (platform === 'instagram') return <Instagram size={size} className="text-[#C026D3]" />;
-  if (platform === 'blog') return <Globe size={size} className="text-emerald-600" />;
+  if (platform === 'facebook') return <Facebook size={size} className="fill-[#1877F2] text-[#1877F2] dark:fill-blue-400 dark:text-blue-400" />;
+  if (platform === 'instagram') return <Instagram size={size} className="text-[#C026D3] dark:text-pink-400" />;
+  if (platform === 'blog') return <Globe size={size} className="text-emerald-600 dark:text-emerald-400" />;
   return <ThreadsIcon size={size} />;
 }
 
@@ -190,13 +190,13 @@ export default function SearchView() {
             <p className="font-bold text-sm">{t('common.loading')}</p>
           </div>
         ) : error ? (
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-5 py-4 rounded-2xl">
+          <div className="flex items-center gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium px-5 py-4 rounded-2xl">
             <AlertCircle size={20} className="shrink-0" />
             {error}
           </div>
         ) : totalResults === 0 ? (
           <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-16 flex flex-col items-center text-center gap-3 max-w-xl mx-auto mt-6">
-            <div className="w-16 h-16 rounded-3xl bg-blue-50 flex items-center justify-center text-blue-500">
+            <div className="w-16 h-16 rounded-3xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500 dark:text-blue-400">
               <Search size={32} />
             </div>
             <p className="font-extrabold text-lg text-text">
@@ -368,7 +368,7 @@ function highlightText(text: string, query: string) {
     <>
       {parts.map((part, i) => 
         regex.test(part) ? (
-          <mark key={i} className="bg-amber-100 text-amber-950 px-0.5 rounded font-extrabold">
+          <mark key={i} className="bg-amber-100 dark:bg-amber-500/20 text-amber-950 dark:text-amber-300 px-0.5 rounded font-extrabold">
             {part}
           </mark>
         ) : (

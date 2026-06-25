@@ -17,10 +17,10 @@ const ActivityList = () => {
         <div 
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); }}
-          className="bg-white rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-gray-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="bg-white dark:bg-card/40 rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-gray-100 dark:border-white/5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
            {/* Placeholder for actual image */}
-           <div className="w-full h-full bg-gray-200">
+           <div className="w-full h-full bg-gray-200 dark:bg-slate-800">
              <img src="https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=400&auto=format&fit=crop" alt="Workspace" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
            </div>
         </div>
@@ -28,9 +28,9 @@ const ActivityList = () => {
         <div 
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); }}
-          className="bg-white rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-gray-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="bg-white dark:bg-card/40 rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-gray-100 dark:border-white/5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
-           <div className="w-full h-full bg-gray-200">
+           <div className="w-full h-full bg-gray-200 dark:bg-slate-800">
              <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop" alt="Mobile App" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
            </div>
         </div>
@@ -38,13 +38,13 @@ const ActivityList = () => {
         <div 
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); }}
-          className="bg-primary/10 rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-primary/20 flex items-center justify-center p-6 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="bg-primary/10 dark:bg-primary/20 rounded-2xl overflow-hidden aspect-square shadow-sm relative group cursor-pointer border border-primary/20 dark:border-primary/30 flex items-center justify-center p-6 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
            <div className="flex flex-wrap gap-2 justify-center items-center opacity-80 group-hover:opacity-100 transition-opacity">
               <div className="w-6 h-6 rounded-full bg-mint"></div>
               <div className="w-8 h-8 bg-peach rounded-md"></div>
               <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center"><div className="w-6 h-6 rounded-full bg-primary"></div></div>
-              <div className="w-6 h-6 bg-white rotate-45"></div>
+              <div className="w-6 h-6 bg-[#FFFFFF] dark:bg-slate-800 rotate-45"></div>
            </div>
         </div>
 

@@ -347,7 +347,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
               }
             }}
             placeholder={t('header.searchPlaceholder')}
-            className="w-full bg-sidebar/50 rounded-full py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-transparent focus:border-gray-200"
+            className="w-full bg-sidebar/50 rounded-full py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-transparent focus:border-gray-200 dark:focus:border-white/10 text-text"
           />
           {isSearchLoading && (
             <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-primary w-4 h-4 animate-spin" />
@@ -355,7 +355,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
           {/* Suggestions Dropdown */}
           {isSearchOpen && (
-            <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white border border-gray-200 rounded-2xl shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
+            <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-2xl shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
               {isSearchLoading && !hasSuggestions ? (
                 <div className="flex items-center justify-center py-8 text-xs text-text-muted gap-2">
                   <Loader2 className="animate-spin text-primary" size={14} />
@@ -376,10 +376,10 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                       <div className="flex flex-col">
                         {suggestions.articles.slice(0, 3).map((art) => (
                           <Link
-                            key={art.id}
-                            href={`/archive/${art.id}`}
-                            onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                             key={art.id}
+                             href={`/archive/${art.id}`}
+                             onClick={() => setIsSearchOpen(false)}
+                             className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="text-xs font-extrabold text-text line-clamp-1">{art.title}</div>
                             {art.description && (
@@ -400,10 +400,10 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                       <div className="flex flex-col">
                         {suggestions.captions.slice(0, 3).map((cap) => (
                           <Link
-                            key={cap.id}
-                            href={`/archive/${cap.article_id}?captionId=${cap.id}`}
-                            onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                             key={cap.id}
+                             href={`/archive/${cap.article_id}?captionId=${cap.id}`}
+                             onClick={() => setIsSearchOpen(false)}
+                             className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase">
@@ -436,16 +436,16 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={p.id}
                             href={`/prompts?promptId=${p.id}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase">
+                              <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 text-[8px] font-black uppercase">
                                 {p.platform}
                               </span>
                               {p.tags?.slice(0, 2).map((tag: string) => (
                                 <span
                                   key={tag}
-                                  className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[8px] font-black"
+                                  className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 text-[8px] font-black"
                                 >
                                   {tag}
                                 </span>
@@ -470,7 +470,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             key={faq.key}
                             href={`/faq?key=${faq.key}`}
                             onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           >
                             <div className="text-xs font-extrabold text-text line-clamp-1">{faq.question}</div>
                             {faq.answer && (
@@ -485,7 +485,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                   {/* Footer Action */}
                   <button
                     onClick={triggerSearch}
-                    className="w-full text-center text-xs font-black text-primary hover:underline border-t border-gray-100 pt-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl"
+                    className="w-full text-center text-xs font-black text-primary hover:underline border-t border-gray-100 dark:border-white/5 pt-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl"
                   >
                     {t('search.seeAll')} &quot;{searchQuery}&quot;
                   </button>
@@ -503,7 +503,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
               router.push('/ai-creator');
               window.dispatchEvent(new CustomEvent('ai-creator-go-to-step-1'));
             }}
-            className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-medium transition-colors shadow-md shadow-primary/20 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-2 font-black transition-colors shadow-md shadow-primary/20 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <Plus size={18} />
             <span className="hidden sm:inline">{t('header.addPost')}</span>
@@ -519,7 +519,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           >
             <Bell size={24} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 bg-rose-500 rounded-full border-2 border-white text-white text-[10px] font-black flex items-center justify-center animate-pulse">
+              <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -532,11 +532,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl border border-gray-200/80 shadow-2xl z-50 flex flex-col overflow-hidden origin-top-right"
+                className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-black rounded-2xl border border-gray-200/80 dark:border-white/8 shadow-2xl z-50 flex flex-col overflow-hidden origin-top-right"
               >
                 {/* Header */}
-                <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <span className="text-sm font-black text-gray-900">
+                <div className="px-4 py-3.5 border-b border-gray-100 dark:border-white/8 flex items-center justify-between bg-gray-50/50 dark:bg-white/3">
+                  <span className="text-sm font-black text-gray-900 dark:text-text">
                     {language === 'vi' ? 'Thông báo gần đây' : 'Recent Notifications'}
                   </span>
                   {unreadCount > 0 && (
@@ -576,23 +576,23 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                               router.push('/notifications');
                             }
                           }}
-                          className={`px-4 py-3.5 flex gap-3 cursor-pointer hover:bg-slate-50 transition-colors border-b border-gray-100/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${!n.is_read ? 'bg-primary/5' : ''
+                          className={`px-4 py-3.5 flex gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-gray-100/60 dark:border-white/5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${!n.is_read ? 'bg-primary/5 dark:bg-primary/10' : ''
                             }`}
                         >
                           {getNotificationIcon(n.type, n.title)}
                           <div className="flex-1 flex flex-col gap-0.5 min-w-0">
                             <div className="flex items-start justify-between gap-1">
-                              <span className={`text-xs text-gray-900 truncate ${!n.is_read ? 'font-black' : 'font-semibold'}`}>
+                              <span className={`text-xs text-gray-900 dark:text-text truncate ${!n.is_read ? 'font-black' : 'font-semibold'}`}>
                                 {translated.title}
                               </span>
                               {!n.is_read && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                               )}
                             </div>
-                            <span className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                            <span className="text-[11px] text-gray-500 dark:text-text-muted line-clamp-2 leading-relaxed">
                               {translated.message}
                             </span>
-                            <span className="text-[9px] text-gray-400 mt-1 select-none">
+                            <span className="text-[9px] text-gray-400 dark:text-white/45 mt-1 select-none">
                               {formatTimeAgo(n.created_at)}
                             </span>
                           </div>
@@ -608,7 +608,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                     setIsOpen(false);
                     router.push('/notifications');
                   }}
-                  className="px-4 py-3 text-center text-xs font-bold text-primary hover:bg-slate-50 transition-colors border-t border-gray-100 flex items-center justify-center gap-1 cursor-pointer w-full bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                  className="px-4 py-3 text-center text-xs font-bold text-primary hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/8 flex items-center justify-center gap-1 cursor-pointer w-full bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                 >
                   {language === 'vi' ? 'Xem tất cả thông báo' : 'View all notifications'}
                   <ExternalLink size={12} />

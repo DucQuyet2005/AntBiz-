@@ -7,7 +7,7 @@ const ChartPlaceholder = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+    <div className="bg-white dark:bg-card/40 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-white/5">
       <div className="flex justify-between items-start mb-8">
         <div>
           <h2 className="text-xl font-bold text-text mb-1">{t('overview.performanceOverview')}</h2>
@@ -30,7 +30,7 @@ const ChartPlaceholder = () => {
       </div>
       
       {/* Chart Area */}
-      <div className="h-[200px] w-full mt-4 flex items-end justify-between px-2 pb-2 gap-2 sm:gap-4 border-b border-slate-100">
+      <div className="h-[200px] w-full mt-4 flex items-end justify-between px-2 pb-2 gap-2 sm:gap-4 border-b border-slate-100 dark:border-white/5">
         {[
           { day: 'Mon', indigo: 'h-[65%]', peach: 'h-[45%]', mint: 'h-[30%]' },
           { day: 'Tue', indigo: 'h-[80%]', peach: 'h-[55%]', mint: 'h-[40%]' },

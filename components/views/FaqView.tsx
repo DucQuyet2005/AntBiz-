@@ -62,8 +62,8 @@ export default function FaqView() {
       id: 'harvesting',
       title: t('faq.categories.harvesting.title'),
       icon: <Rocket size={18} />,
-      accentClass: 'text-indigo-600 bg-indigo-50 border-indigo-100/50',
-      borderClass: 'hover:border-indigo-200/50 focus-within:border-indigo-300',
+      accentClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100/50 dark:border-indigo-900/30',
+      borderClass: 'hover:border-indigo-200/50 dark:hover:border-indigo-800/40 focus-within:border-indigo-300 dark:focus-within:border-indigo-600',
       questions: [
         { q: t('faq.categories.harvesting.q1'), a: t('faq.categories.harvesting.a1'), key: 'harvesting_1' },
         { q: t('faq.categories.harvesting.q2'), a: t('faq.categories.harvesting.a2'), key: 'harvesting_2' },
@@ -76,8 +76,8 @@ export default function FaqView() {
       id: 'aiPrompts',
       title: t('faq.categories.aiPrompts.title'),
       icon: <Lightbulb size={18} />,
-      accentClass: 'text-emerald-600 bg-emerald-50 border-emerald-100/50',
-      borderClass: 'hover:border-emerald-200/50 focus-within:border-emerald-300',
+      accentClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100/50 dark:border-emerald-900/30',
+      borderClass: 'hover:border-emerald-200/50 dark:hover:border-emerald-800/40 focus-within:border-emerald-300 dark:focus-within:border-emerald-600',
       questions: [
         { q: t('faq.categories.aiPrompts.q1'), a: t('faq.categories.aiPrompts.a1'), key: 'aiPrompts_1' },
         { q: t('faq.categories.aiPrompts.q2'), a: t('faq.categories.aiPrompts.a2'), key: 'aiPrompts_2' },
@@ -90,8 +90,8 @@ export default function FaqView() {
       id: 'scheduling',
       title: t('faq.categories.scheduling.title'),
       icon: <Cpu size={18} />,
-      accentClass: 'text-violet-600 bg-violet-50 border-violet-100/50',
-      borderClass: 'hover:border-violet-200/50 focus-within:border-violet-300',
+      accentClass: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-100/50 dark:border-violet-900/30',
+      borderClass: 'hover:border-violet-200/50 dark:hover:border-violet-800/40 focus-within:border-violet-300 dark:focus-within:border-violet-600',
       questions: [
         { q: t('faq.categories.scheduling.q1'), a: t('faq.categories.scheduling.a1'), key: 'scheduling_1' },
         { q: t('faq.categories.scheduling.q2'), a: t('faq.categories.scheduling.a2'), key: 'scheduling_2' },
@@ -104,8 +104,8 @@ export default function FaqView() {
       id: 'customization',
       title: t('faq.categories.customization.title'),
       icon: <HelpCircle size={18} />,
-      accentClass: 'text-rose-600 bg-rose-50 border-rose-100/50',
-      borderClass: 'hover:border-rose-200/50 focus-within:border-rose-300',
+      accentClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-100/50 dark:border-rose-900/30',
+      borderClass: 'hover:border-rose-200/50 dark:hover:border-rose-800/40 focus-within:border-rose-300 dark:focus-within:border-rose-600',
       questions: [
         { q: t('faq.categories.customization.q1'), a: t('faq.categories.customization.a1'), key: 'customization_1' },
         { q: t('faq.categories.customization.q2'), a: t('faq.categories.customization.a2'), key: 'customization_2' },
@@ -177,7 +177,7 @@ export default function FaqView() {
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${category.accentClass}`}>
                      {category.icon}
                   </div>
-                  <h2 className="text-md font-black text-slate-800 tracking-tight">{category.title}</h2>
+                  <h2 className="text-md font-black text-slate-800 dark:text-white tracking-tight">{category.title}</h2>
                 </div>
 
                 {/* Accordion Questions */}
@@ -191,12 +191,12 @@ export default function FaqView() {
                           onClick={() => toggleItem(item.key)}
                           aria-expanded={isOpen}
                           aria-controls={`faq-content-${item.key}`}
-                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-lg group cursor-pointer select-none"
+                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors hover:text-primary dark:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-lg group cursor-pointer select-none"
                         >
                           <span className="pr-4 leading-tight">{item.q}</span>
                           <ChevronDown 
                             size={16} 
-                            className={`text-slate-400 group-hover:text-primary transition-transform duration-300 shrink-0 mt-0.5 ${isOpen ? 'rotate-180' : ''}`} 
+                            className={`text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-primary transition-transform duration-300 shrink-0 mt-0.5 ${isOpen ? 'rotate-180' : ''}`} 
                           />
                         </button>
                         
@@ -211,7 +211,7 @@ export default function FaqView() {
                             pointerEvents: isOpen ? 'auto' : 'none'
                           }}
                         >
-                          <p className="text-xs leading-relaxed text-slate-600 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80">
+                          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80 dark:border-white/5">
                             {item.a}
                           </p>
                         </div>

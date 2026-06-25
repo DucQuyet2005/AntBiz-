@@ -101,40 +101,40 @@ export default function SettingsView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column: API Integrations (Theme-Aware Color Card) */}
-        <div className="col-span-12 lg:col-span-7 bg-primary border border-primary/20 rounded-2xl p-8 flex flex-col gap-6 text-white justify-between">
+        <div className="col-span-12 lg:col-span-7 bg-primary dark:bg-card/40 border border-primary/20 dark:border-white/5 rounded-2xl p-8 flex flex-col gap-6 text-white dark:text-text justify-between">
           
           <div>
             {/* Header */}
-            <div className="flex items-center gap-3 font-bold text-lg text-white">
+            <div className="flex items-center gap-3 font-bold text-lg text-white dark:text-text">
               <PlugIcon size={20} />
               <h2>{t('settings.apiIntegrations')}</h2>
             </div>
             
             {/* Subtitle */}
-            <p className="text-xs font-medium text-white/90 mt-2">
+            <p className="text-xs font-medium text-white/90 dark:text-text-muted mt-2">
               {t('settings.apiSubtitle')}
             </p>
             
             {/* Integration connections list */}
             <div className="flex flex-col gap-4 mt-6">
                   {/* OpenAI GPT-4 connection */}
-              <div className="bg-white rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100">
+              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#EDE9FE] text-[#6366F1] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#EDE9FE] dark:bg-indigo-950/40 text-[#6366F1] dark:text-indigo-400 flex items-center justify-center shrink-0">
                     <MessageSquare size={20} />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">OpenAI GPT-4</h3>
                     <span className="text-[10px] font-bold block mt-[2px]">
                       {openaiLoading ? (
-                        <span className="text-slate-400 flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
                           <Loader2 size={10} className="animate-spin" />
-                          {language === 'vi' ? 'Đang cập nhật...' : 'Updating...'}
+                          {t('common.updating')}
                         </span>
                       ) : openaiConnected ? (
-                        <span className="text-emerald-600">{t('settings.connected')}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
                       ) : (
-                        <span className="text-text-muted">{language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}</span>
+                        <span className="text-text-muted">{t('common.notConnected')}</span>
                       )}
                     </span>
                   </div>
@@ -142,10 +142,10 @@ export default function SettingsView() {
                 <button 
                   onClick={handleToggleOpenai}
                   disabled={openaiLoading}
-                  className={`text-xs font-bold transition-colors px-3 py-1.5 cursor-pointer select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
                     openaiConnected 
-                      ? 'text-red-500 hover:text-red-700 focus-visible:ring-red-500' 
-                      : 'text-primary hover:opacity-80 focus-visible:ring-primary'
+                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
                   }`}
                 >
                   {openaiLoading && <Loader2 size={11} className="animate-spin" />}
@@ -154,23 +154,23 @@ export default function SettingsView() {
               </div>
 
               {/* Midjourney connection */}
-              <div className="bg-white rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100">
+              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-black text-gray-400 dark:text-slate-400 flex items-center justify-center shrink-0 border dark:border-white/5">
                     <ImageIcon size={20} />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">Midjourney API</h3>
                     <span className="text-[10px] font-bold block mt-[2px]">
                       {midjourneyLoading ? (
-                        <span className="text-slate-400 flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
                           <Loader2 size={10} className="animate-spin" />
-                          {language === 'vi' ? 'Đang cập nhật...' : 'Updating...'}
+                          {t('common.updating')}
                         </span>
                       ) : midjourneyConnected ? (
-                        <span className="text-emerald-600">{t('settings.connected')}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
                       ) : (
-                        <span className="text-text-muted">{language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}</span>
+                        <span className="text-text-muted">{t('common.notConnected')}</span>
                       )}
                     </span>
                   </div>
@@ -178,10 +178,10 @@ export default function SettingsView() {
                 <button 
                   onClick={handleToggleMidjourney}
                   disabled={midjourneyLoading}
-                  className={`text-xs font-bold transition-colors px-3 py-1.5 cursor-pointer select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
                     midjourneyConnected 
-                      ? 'text-red-500 hover:text-red-700 focus-visible:ring-red-500' 
-                      : 'text-primary hover:opacity-80 focus-visible:ring-primary'
+                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
                   }`}
                 >
                   {midjourneyLoading && <Loader2 size={11} className="animate-spin" />}
@@ -193,7 +193,7 @@ export default function SettingsView() {
         </div>
 
         {/* Right Column: Notifications & Language (Theme-Adapted Lavender/Sidebar Card) */}
-        <div className="col-span-12 lg:col-span-5 bg-sidebar/50 border border-primary/10 rounded-2xl p-8 flex flex-col gap-6 text-text">
+        <div className="col-span-12 lg:col-span-5 bg-sidebar/50 dark:bg-black/40 border border-primary/10 dark:border-white/5 rounded-2xl p-8 flex flex-col gap-6 text-text">
           
           {/* Header Notifications */}
           <div className="flex items-center gap-3 font-bold text-lg text-primary">
@@ -222,7 +222,7 @@ export default function SettingsView() {
                   className="sr-only peer" 
                 />
                 <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  aiGenNotify ? 'bg-primary' : 'bg-gray-200'
+                  aiGenNotify ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
                 }`}></div>
               </label>
             </div>
@@ -245,7 +245,7 @@ export default function SettingsView() {
                   className="sr-only peer" 
                 />
                 <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  weeklyDigest ? 'bg-primary' : 'bg-gray-200'
+                  weeklyDigest ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
                 }`}></div>
               </label>
             </div>
@@ -322,10 +322,10 @@ export default function SettingsView() {
                         onClick={() => handleThemeChange(s.id as Theme, labelStr)}
                         title={labelStr}
                         aria-label={labelStr}
-                        className={`w-10 h-10 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
+                        className={`w-10 h-10 rounded-full border transition-all active:scale-90 cursor-pointer flex items-center justify-center shadow-sm relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 dark:focus-visible:ring-white focus-visible:ring-offset-2 ${
                           isSelected 
-                            ? 'border-slate-800 scale-110 ring-2 ring-primary/30' 
-                            : 'border-white hover:border-slate-300'
+                            ? 'border-slate-800 dark:border-white scale-110 ring-2 ring-primary/30' 
+                            : 'border-white dark:border-transparent hover:border-slate-300 dark:hover:border-slate-600'
                         }`}
                         style={{ backgroundColor: s.color }}
                       >
@@ -354,10 +354,10 @@ export default function SettingsView() {
                         key={g.id}
                         onClick={() => handleThemeChange(g.id as Theme, labelStr)}
                         aria-label={labelStr}
-                        className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
+                        className={`px-3 py-2 rounded-xl border text-white font-extrabold text-[10px] transition-all active:scale-95 cursor-pointer shadow-sm relative flex items-center justify-center gap-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 dark:focus-visible:ring-white focus-visible:ring-offset-2 ${
                           isSelected 
-                            ? 'border-slate-800 scale-[1.02] ring-2 ring-primary/30' 
-                            : 'border-slate-200 hover:border-slate-300'
+                            ? 'border-slate-800 dark:border-white scale-[1.02] ring-2 ring-primary/30' 
+                            : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
                         }`}
                         style={{ background: g.gradient }}
                       >
@@ -377,8 +377,8 @@ export default function SettingsView() {
                 <button
                   onClick={() => handleThemeChange('rgb', t('settings.colorRainbow'))}
                   aria-label={t('settings.colorRainbow')}
-                  className={`relative overflow-hidden w-full h-11 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 ${
-                    theme === 'rgb' ? 'border-slate-800 scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 hover:border-slate-300'
+                  className={`relative overflow-hidden w-full h-11 rounded-xl border text-white font-extrabold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 dark:focus-visible:ring-white focus-visible:ring-offset-2 ${
+                    theme === 'rgb' ? 'border-slate-800 dark:border-white scale-[1.01] ring-2 ring-primary/30' : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
                   }`}
                   style={{
                     background: 'linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #00ffff, #0000ff, #8a00ff, #ff0000)',
@@ -442,14 +442,17 @@ export default function SettingsView() {
                 const activeFont = fonts.find(f => f.id === font);
                 if (!activeFont) return null;
                 return (
-                  <div className="bg-white/70 border border-primary/10 rounded-xl px-3 py-2.5">
+                  <div 
+                    className="bg-black rounded-xl px-3 py-2.5"
+                    style={{ border: '1.5px solid var(--color-primary)' }}
+                  >
                     <p
-                      className="text-sm font-medium text-text leading-snug"
+                      className="text-sm font-medium text-white leading-snug"
                       style={{ fontFamily: activeFont.family }}
                     >
                       {t('settings.welcomeText')}
                     </p>
-                    <p className="mt-1 text-[10px] text-text-muted leading-normal">
+                    <p className="mt-1 text-[10px] text-zinc-400 leading-normal">
                       {language === 'vi' ? activeFont.descriptionVi : activeFont.descriptionEn}
                     </p>
                   </div>

@@ -15,9 +15,9 @@ interface StatCardProps {
 
 const StatCard = ({ title, value, subtitle, trend, icon, variant = 'purple', className = '', children, sparklineData }: StatCardProps) => {
   const bgColors = {
-    purple: 'bg-primary/10 border border-primary/20',
-    mint: 'bg-[#C4F0E1]',
-    peach: 'bg-[#EED7C8]'
+    purple: 'bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30',
+    mint: 'bg-[#C4F0E1] dark:bg-emerald-950/20 border border-transparent dark:border-emerald-900/30',
+    peach: 'bg-[#EED7C8] dark:bg-amber-950/20 border border-transparent dark:border-amber-900/30'
   };
 
   const sparklineColor = {
@@ -78,7 +78,7 @@ const StatCard = ({ title, value, subtitle, trend, icon, variant = 'purple', cla
       <div className="flex justify-between items-start z-10 relative">
         <h3 className="font-semibold text-text text-lg">{title}</h3>
         {icon && (
-          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-text shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-[#ffffff] dark:bg-white/10 flex items-center justify-center text-text shadow-sm">
             {icon}
           </div>
         )}

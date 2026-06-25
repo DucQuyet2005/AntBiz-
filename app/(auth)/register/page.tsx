@@ -137,14 +137,14 @@ export default function RegisterPage() {
         <p className="text-gray-500 text-sm mb-8">{t("register.subtitle")}</p>
 
         {serverError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-start gap-2">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium flex items-start gap-2">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <span>{serverError}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-xl text-sm font-medium flex items-start gap-2">
+          <div className="mb-4 p-3 bg-green-50 dark:bg-emerald-950/20 border border-green-200 dark:border-emerald-900/30 text-green-600 dark:text-emerald-450 rounded-xl text-sm font-medium flex items-start gap-2">
             <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
             <span>{success}</span>
           </div>

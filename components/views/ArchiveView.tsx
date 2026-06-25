@@ -364,7 +364,7 @@ export default function ArchiveView() {
               <div className="relative">
                 <button 
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
                   <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
                   <ChevronDown size={16} className="text-text-muted" />
@@ -378,7 +378,7 @@ export default function ArchiveView() {
                           setPlatformFilter(p);
                           setShowPlatformDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {p === 'All Platforms' ? t('archive.allPlatforms') : p}
                       </button>
@@ -391,7 +391,7 @@ export default function ArchiveView() {
               <div className="relative">
                 <button 
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
                   <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
@@ -406,7 +406,7 @@ export default function ArchiveView() {
                           setSortBy(s);
                           setShowSortDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 font-medium focus-visible:outline-none focus-visible:bg-gray-50 ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {s === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}
                       </button>
@@ -420,12 +420,12 @@ export default function ArchiveView() {
           </div>
 
           {/* 3-Column Grid Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 ${totalPages > 1 ? 'min-h-[3000px] md:min-h-[1488px] lg:min-h-[984px]' : ''}`}>
             {paginatedItems.map((item) => (
               <Link
                 href={item.link}
                 key={item.id}
-                className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
 
                 {/* Top Visual Banner */}
@@ -475,7 +475,7 @@ export default function ArchiveView() {
                 </div>
 
                 {/* Card Content Area */}
-                <div className="p-6 flex-1 flex flex-col justify-between gap-6">
+                <div className="p-6 flex-1 flex flex-col justify-between gap-4">
 
                   {/* Title & Desc */}
                   <div>
@@ -484,32 +484,11 @@ export default function ArchiveView() {
                         {item.nodeType}
                       </span>
                     )}
-                    <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors">
+                    <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted leading-relaxed font-medium whitespace-pre-wrap">
-                      {(() => {
-                        const isExpanded = expandedIds.has(item.id);
-                        const shouldTruncate = item.description.length > 150;
-                        const displayedText = shouldTruncate && !isExpanded 
-                          ? `${item.description.slice(0, 150)}...` 
-                          : item.description;
-                        return (
-                          <>
-                            {displayedText}
-                            {shouldTruncate && (
-                              <button
-                                onClick={(e) => toggleExpand(item.id, e)}
-                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded inline-block"
-                              >
-                                {isExpanded 
-                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Show less') 
-                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
-                              </button>
-                            )}
-                          </>
-                        );
-                      })()}
+                    <p className="text-xs text-text-muted leading-relaxed font-semibold line-clamp-3 min-h-[4.5rem]">
+                      {item.description}
                     </p>
                   </div>
 
@@ -642,7 +621,7 @@ export default function ArchiveView() {
                       <td className="px-4 py-3 font-mono text-slate-500">{row.id.substring(0, 8)}...</td>
                       <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
-                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 font-black text-[9px]">{row.platform}</span>
+                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">{row.platform}</span>
                       </td>
                       <td className="px-4 py-3 text-text-muted truncate max-w-[250px]">{row.ai_content}</td>
                       <td className="px-4 py-3 font-black text-[10px]">{row.status}</td>
@@ -720,11 +699,11 @@ export default function ArchiveView() {
             </table>
           </div>
  
-          <div className="flex items-center gap-3 p-5 bg-blue-50/50 border border-blue-100 rounded-2xl">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+          <div className="flex items-center gap-3 p-5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <Clock size={20} />
             </div>
-            <p className="text-xs text-blue-800 leading-relaxed font-medium">
+            <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
               {language === 'vi'
                 ? 'Các yêu cầu xuất dữ liệu lớn (>1000 dòng) được xử lý dưới nền. Link tải sẽ được gửi qua email sau khi hoàn tất và tồn tại trong 24h.'
                 : 'Large export requests (>1000 rows) are processed in the background. Download links will be sent via email once finished and expire after 24 hours.'}

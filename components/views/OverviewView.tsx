@@ -28,7 +28,7 @@ const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?:
 );
 
 export default function OverviewView() {
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -333,7 +333,7 @@ export default function OverviewView() {
       <div className="h-[400px] flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-primary" size={36} />
         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {language === 'vi' ? 'Đang tải số liệu thống kê...' : 'Loading statistics...'}
+          {t('overview.loadingStats')}
         </span>
       </div>
     );
@@ -342,42 +342,40 @@ export default function OverviewView() {
   return (
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
       
-      {/* Dynamic Greeting Hero Banner - White Theme */}
-      <div id="tour-welcome" className="relative overflow-hidden bg-white border border-slate-200/60 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all duration-300">
+      {/* Dynamic Greeting Hero Banner - Theme Colored */}
+      <div id="tour-welcome" className="relative overflow-hidden bg-primary border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all duration-300">
         {/* Background neon ambient graphic */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-primary/5 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
-        <div className="absolute -left-10 -bottom-10 w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-emerald-500/5 to-transparent blur-2xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-white/5 via-white/5 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-white/5 to-transparent blur-2xl pointer-events-none" />
 
         <div className="flex flex-col gap-2 relative z-10">
-          <span className="text-[10px] text-primary font-mono tracking-widest uppercase font-extrabold flex items-center gap-1.5">
-            {language === 'vi' ? 'Hệ điều hành xuất bản tự động' : 'AUTOMATED PUBLISHING PIPELINE'}
+          <span className="text-[10px] text-zinc-300 !text-zinc-300 font-mono tracking-widest uppercase font-extrabold flex items-center gap-1.5">
+            {t('overview.automatedPipeline')}
           </span>
-          <h1 className="text-3xl font-black tracking-tight leading-tight text-slate-800">
-            {language === 'vi' ? `Chào mừng trở lại, ${userName}!` : `Welcome back, ${userName}!`}
+          <h1 className="text-3xl font-black tracking-tight leading-tight text-white !text-white">
+            {t('overview.welcomeUser', { name: userName })}
           </h1>
-          <p className="text-slate-500 text-sm font-medium max-w-xl leading-relaxed">
-            {language === 'vi' 
-              ? 'Hệ thống đang chạy ngầm tối ưu hóa chiến dịch của bạn. Tất cả các dữ liệu đã sẵn sàng để vận hành.'
-              : 'The system is continuously active and optimizing your copy variants in the background.'}
+          <p className="text-zinc-200 !text-zinc-200 text-sm font-medium max-w-xl leading-relaxed">
+            {t('overview.greetingDesc')}
           </p>
         </div>
 
         <div className="flex gap-2 relative z-10 shrink-0">
           <button
             onClick={handleRestartTour}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-primary/10 border border-slate-200/50 text-slate-700 hover:text-primary px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white !text-white px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2"
           >
             <Sparkles size={13} />
-            <span>{language === 'vi' ? 'Hướng dẫn' : 'Tour Guide'}</span>
+            <span>{t('overview.tourGuide')}</span>
           </button>
 
           <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-primary/10 border border-slate-200/50 text-slate-700 hover:text-primary px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white !text-white px-4 py-3 rounded-xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2"
           >
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            <span>{language === 'vi' ? 'Làm mới số liệu' : 'Refresh Metrics'}</span>
+            <span>{t('overview.refreshMetrics')}</span>
           </button>
         </div>
       </div>
@@ -392,10 +390,10 @@ export default function OverviewView() {
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
-                {language === 'vi' ? 'Tiến độ Crawl & Soạn thảo' : 'Ingestion & Copywriting'}
+                {t('overview.ingestionTitle')}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
-                {language === 'vi' ? 'Nội dung tích lũy' : 'Ingested Content'}
+                {t('overview.ingestedContent')}
               </h2>
             </div>
           </div>
@@ -403,10 +401,10 @@ export default function OverviewView() {
           <div className="flex items-end justify-between mt-4">
             <div className="flex flex-col">
               <span className="text-4xl font-black text-slate-900 tracking-tight">
-                {stats.articlesCount} <span className="text-sm text-slate-500 font-bold">{language === 'vi' ? 'bài báo' : 'articles'}</span>
+                {stats.articlesCount} <span className="text-sm text-slate-500 font-bold">{t('overview.articlesLabel')}</span>
               </span>
               <span className="text-[10px] text-emerald-600 font-black tracking-wide flex items-center gap-0.5 mt-1">
-                <ArrowUpRight size={10} /> +12% {language === 'vi' ? 'tuần này' : 'this week'}
+                <ArrowUpRight size={10} /> +12% {t('overview.thisWeekTrend')}
               </span>
             </div>
             
@@ -432,16 +430,16 @@ export default function OverviewView() {
                     points={sparklinePoints.map(p => `${p.x},${p.y}`).join(' ')}
                   />
                 </svg>
-                <span className="text-[7px] text-slate-400 font-black tracking-wider uppercase">{language === 'vi' ? '7 ngày qua' : '7-day trend'}</span>
+                <span className="text-[7px] text-slate-400 font-black tracking-wider uppercase">{t('overview.last7Days')}</span>
               </div>
             )}
 
             <div className="flex flex-col text-right">
               <span className="text-sm font-black text-primary bg-primary/10 px-2.5 py-1 rounded-xl border border-primary/20">
-                {stats.captionsCount} {language === 'vi' ? 'Caption' : 'Captions'}
+                {stats.captionsCount} {t('overview.captionLabel')}
               </span>
               <span className="text-[9px] text-slate-500 font-bold mt-1">
-                {stats.pendingCount} {language === 'vi' ? 'bài chờ đăng' : 'pending in queue'}
+                {stats.pendingCount} {t('overview.pendingQueue')}
               </span>
             </div>
           </div>
@@ -457,10 +455,10 @@ export default function OverviewView() {
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
-                {language === 'vi' ? 'Độ phủ trên mạng xã hội' : 'Cross-Platform Cover'}
+                {t('overview.socialCoverage')}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
-                {language === 'vi' ? 'Phân bổ bài đăng kênh' : 'Platform Publication Share'}
+                {t('overview.platformShare')}
               </h2>
             </div>
           </div>
@@ -492,19 +490,19 @@ export default function OverviewView() {
 
             {/* Threads Column */}
             <div className="flex flex-col items-center flex-1 h-full justify-end gap-1">
-              <span className="text-[9px] font-black text-slate-800">{getPercent(stats.platformShare.threads)}%</span>
-              <div className="w-3 rounded-full bg-slate-100 h-full relative overflow-hidden">
+              <span className="text-[9px] font-black text-slate-800 dark:text-slate-200">{getPercent(stats.platformShare.threads)}%</span>
+              <div className="w-3 rounded-full bg-slate-100 dark:bg-zinc-800 h-full relative overflow-hidden">
                 <div 
                   className="absolute bottom-0 left-0 right-0 rounded-full bg-gradient-to-t from-slate-900 to-slate-600 transition-all duration-700" 
                   style={{ height: `${getPercent(stats.platformShare.threads)}%`, minHeight: '8px' }}
                 />
               </div>
-              <ThreadsIcon size={12} className="text-black mt-1" />
+              <ThreadsIcon size={12} className="text-black dark:text-white mt-1" />
             </div>
           </div>
 
           <div className="flex justify-between items-center text-[8.5px] text-slate-500 font-bold border-t border-slate-100/60 pt-2">
-            <span>{language === 'vi' ? 'Tổng số bài:' : 'Total scheduled:'} <strong className="text-slate-700">{totalShares}</strong></span>
+            <span>{t('overview.totalScheduled')} <strong className="text-slate-700 dark:text-slate-350">{totalShares}</strong></span>
           </div>
         </div>
 
@@ -514,30 +512,30 @@ export default function OverviewView() {
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-500 font-mono tracking-wider font-extrabold uppercase">
-                {language === 'vi' ? 'Đo lường Vận hành' : 'Publication Status'}
+                {t('overview.operationalMetrics')}
               </span>
               <h2 className="text-base font-extrabold text-slate-800 mt-0.5">
-                {language === 'vi' ? 'Trạng thái xuất bản' : 'Publication Status'}
+                {t('overview.publicationStatus')}
               </h2>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-1.5">
-            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2.5 flex flex-col">
-              <span className="text-[9px] text-emerald-700 font-black uppercase">{language === 'vi' ? 'Thành công' : 'Posted'}</span>
-              <span className="text-2xl font-black text-emerald-800 mt-0.5">{stats.publishedCount}</span>
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-2.5 flex flex-col">
+              <span className="text-[9px] text-emerald-700 dark:text-emerald-450 font-black uppercase">{t('overview.statusPosted')}</span>
+              <span className="text-2xl font-black text-emerald-800 dark:text-emerald-300 mt-0.5">{stats.publishedCount}</span>
             </div>
-            <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-2.5 flex flex-col">
-              <span className="text-[9px] text-amber-700 font-black uppercase">{language === 'vi' ? 'Chờ đăng' : 'Pending'}</span>
-              <span className="text-2xl font-black text-amber-800 mt-0.5">{stats.pendingCount}</span>
+            <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-2.5 flex flex-col">
+              <span className="text-[9px] text-amber-700 dark:text-amber-450 font-black uppercase">{t('overview.statusPending')}</span>
+              <span className="text-2xl font-black text-amber-800 dark:text-amber-300 mt-0.5">{stats.pendingCount}</span>
             </div>
-            <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-2.5 flex flex-col">
-              <span className="text-[9px] text-rose-700 font-black uppercase">{language === 'vi' ? 'Lỗi/Thất bại' : 'Failed'}</span>
-              <span className="text-2xl font-black text-rose-800 mt-0.5">{stats.failedCount}</span>
+            <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl p-2.5 flex flex-col">
+              <span className="text-[9px] text-rose-700 dark:text-rose-450 font-black uppercase">{t('overview.statusFailed')}</span>
+              <span className="text-2xl font-black text-rose-800 dark:text-rose-300 mt-0.5">{stats.failedCount}</span>
             </div>
-            <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col">
-              <span className="text-[9px] text-slate-550 font-black uppercase">{language === 'vi' ? 'Đã hủy' : 'Cancelled'}</span>
-              <span className="text-2xl font-black text-slate-650 mt-0.5">{stats.cancelledCount}</span>
+            <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800 rounded-2xl p-2.5 flex flex-col">
+              <span className="text-[9px] text-slate-550 dark:text-slate-400 font-black uppercase">{t('overview.statusCancelled')}</span>
+              <span className="text-2xl font-black text-slate-650 dark:text-slate-300 mt-0.5">{stats.cancelledCount}</span>
             </div>
           </div>
         </div>
@@ -551,12 +549,10 @@ export default function OverviewView() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 pb-4">
           <div className="flex flex-col">
             <span className="text-[10px] text-primary font-mono tracking-wider font-extrabold uppercase">
-              {language === 'vi' ? 'Biểu đồ xuất bản' : 'Publication Chart'}
+              {t('overview.publicationChart')}
             </span>
             <h2 className="text-lg font-extrabold text-slate-800 mt-0.5">
-              {language === 'vi' 
-                ? `Số lượng bài đăng ${chartTimeframe === 'week' ? '7 ngày qua' : '30 ngày qua'}` 
-                : `Publications Last ${chartTimeframe === 'week' ? '7' : '30'} Days`}
+              {chartTimeframe === 'week' ? t('overview.chartTitleWeek') : t('overview.chartTitleMonth')}
             </h2>
           </div>
 
@@ -572,7 +568,7 @@ export default function OverviewView() {
                     : 'text-slate-550 hover:text-slate-800'
                 }`}
               >
-                {language === 'vi' ? '7 Ngày' : '7 Days'}
+                {t('overview.chart7Days')}
               </button>
               <button
                 type="button"
@@ -583,7 +579,7 @@ export default function OverviewView() {
                     : 'text-slate-550 hover:text-slate-800'
                 }`}
               >
-                {language === 'vi' ? '30 Ngày' : '30 Days'}
+                {t('overview.chart30Days')}
               </button>
             </div>
 
@@ -598,12 +594,12 @@ export default function OverviewView() {
                     : 'text-slate-550 hover:text-slate-800'
                 }`}
               >
-                {language === 'vi' ? 'Tất cả' : 'All'}
+                {t('overview.chartAll')}
               </button>
               <button
                 type="button"
                 onClick={() => setChartPlatform('facebook')}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                   chartPlatform === 'facebook'
                     ? 'bg-white text-primary shadow-sm'
                     : 'text-slate-550 hover:text-slate-800'
@@ -615,7 +611,7 @@ export default function OverviewView() {
               <button
                 type="button"
                 onClick={() => setChartPlatform('instagram')}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                   chartPlatform === 'instagram'
                     ? 'bg-white text-primary shadow-sm'
                     : 'text-slate-550 hover:text-slate-800'
@@ -627,7 +623,7 @@ export default function OverviewView() {
               <button
                 type="button"
                 onClick={() => setChartPlatform('threads')}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-15 ${
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                   chartPlatform === 'threads'
                     ? 'bg-white text-primary shadow-sm'
                     : 'text-slate-550 hover:text-slate-800'
@@ -640,7 +636,7 @@ export default function OverviewView() {
 
             <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
               <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-[#22D3EE]" />
-              <span>{language === 'vi' ? 'Tổng số bài' : 'Total volume'}</span>
+              <span>{t('overview.totalVolume')}</span>
             </div>
           </div>
         </div>
@@ -667,7 +663,7 @@ export default function OverviewView() {
                 {/* Tooltip on hover */}
                 <div className="absolute bottom-[calc(100%+8px)] bg-slate-800 text-white text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-md z-30 flex items-center gap-1 whitespace-nowrap">
                   <span>{d.count}</span>
-                  <span>{language === 'vi' ? 'bài' : 'posts'}</span>
+                  <span>{t('overview.postsLabel')}</span>
                   <span className="text-slate-400 font-normal">({d.dateString})</span>
                 </div>
                 
@@ -704,36 +700,32 @@ export default function OverviewView() {
         <div className="flex justify-between items-center pb-3 border-b border-slate-100/60">
           <div className="flex flex-col">
             <h2 className="text-lg font-extrabold text-slate-800">
-              {language === 'vi' ? 'Nhật ký Hoạt động Bài đăng Gần đây' : 'Recent Posts Activity Log'}
+              {t('overview.recentActivityLog')}
             </h2>
-            <p className="text-xs text-slate-550 font-medium leading-normal">
-              {language === 'vi' 
-                ? 'Hình ảnh minh họa trực quan cùng trạng thái của các bài đăng mới nhất trong cơ sở dữ liệu.' 
-                : 'Visual images and live statuses of the latest campaign publications.'}
+            <p className="text-xs text-slate-500 font-medium leading-normal">
+              {t('overview.recentActivitySubtitle')}
             </p>
           </div>
           <Link 
             href="/content-calendar" 
             className="flex items-center gap-1 text-xs font-black text-primary bg-primary/10 hover:bg-primary/20 px-3.5 py-2 rounded-xl transition-all cursor-pointer decoration-none border-0 active:scale-95 animate-fade-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <span>{language === 'vi' ? 'Xem lịch đăng bài' : 'View Calendar'}</span>
+            <span>{t('overview.viewCalendar')}</span>
             <ChevronRight size={13} />
           </Link>
         </div>
 
         {stats.recentPosts.length === 0 ? (
-          <div className="bg-[#F8F9FE] border border-dashed border-[#E4E6F8] rounded-2xl py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
+          <div className="bg-[#F8F9FE] dark:bg-black/40 border border-dashed border-[#E4E6F8] dark:border-slate-900 rounded-2xl py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary animate-pulse">
               <Globe size={20} />
             </div>
             <div className="flex flex-col gap-1">
-              <p className="font-bold text-slate-700 text-sm">
-                {language === 'vi' ? 'Không có bài đăng nào' : 'No posts recorded'}
+              <p className="font-bold text-slate-700 dark:text-slate-200 text-sm">
+                {t('overview.noPostsRecorded')}
               </p>
-              <p className="text-slate-500 text-xs max-w-sm leading-relaxed">
-                {language === 'vi' 
-                  ? 'Cơ sở dữ liệu của bạn đang trống sạch sẽ. Hãy điều hướng sang AI Creator để tạo bài viết đầu tiên!' 
-                  : 'Your database is currently empty. Go to the AI Creator view to publish your first post!'}
+              <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm leading-relaxed">
+                {t('overview.noPostsRecordedSubtitle')}
               </p>
             </div>
           </div>
@@ -741,18 +733,18 @@ export default function OverviewView() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {stats.recentPosts.map((post) => {
               let platIcon = <Globe size={13} />;
-              let platBg = 'bg-slate-100 text-slate-700';
+              let platBg = 'bg-slate-100 dark:bg-black text-slate-700 dark:text-slate-350 border dark:border-white/5';
 
               const platform = post.platform?.toLowerCase();
               if (platform === 'facebook') {
                 platIcon = <Facebook size={11} className="fill-[#1877F2] text-[#1877F2]" />;
-                platBg = 'bg-blue-50 text-[#1877F2] border border-blue-100/35';
+                platBg = 'bg-blue-50 dark:bg-blue-950/40 text-[#1877F2] dark:text-blue-400 border border-blue-100/35 dark:border-blue-900/30';
               } else if (platform === 'instagram') {
                 platIcon = <Instagram size={11} className="text-pink-500" />;
-                platBg = 'bg-pink-50 text-pink-500 border border-pink-100/35';
+                platBg = 'bg-pink-50 dark:bg-pink-950/40 text-pink-500 dark:text-pink-400 border border-pink-100/35 dark:border-pink-900/30';
               } else if (platform === 'threads' || platform === 'thread') {
-                platIcon = <ThreadsIcon size={11} className="text-black" />;
-                platBg = 'bg-slate-50 text-black border border-slate-200/35';
+                platIcon = <ThreadsIcon size={11} className="text-black dark:text-white" />;
+                platBg = 'bg-slate-50 dark:bg-black text-black dark:text-white border border-slate-200/35 dark:border-slate-800';
               }
 
               const timeStr = new Date(post.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date(post.scheduled_at).toLocaleDateString([], { day: 'numeric', month: 'numeric' });
@@ -785,9 +777,9 @@ export default function OverviewView() {
                         post.status === 'failed' ? 'bg-rose-500 text-white' :
                         post.status === 'cancelled' ? 'bg-slate-500 text-white' : 'bg-amber-500 text-white'
                       }`}>
-                        {language === 'vi' 
-                          ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
-                          : post.status}
+                        {post.status === 'posted' ? t('overview.statusPosted') :
+                         post.status === 'failed' ? t('overview.statusFailed') :
+                         post.status === 'cancelled' ? t('overview.statusCancelled') : t('overview.statusPending')}
                       </span>
                     </div>
 
@@ -836,48 +828,36 @@ export default function OverviewView() {
               <div className="flex justify-between items-center select-none">
                 <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
                   {tourStep === 0 
-                    ? (language === 'vi' ? 'Chào mừng' : 'Welcome')
+                    ? t('overview.welcome')
                     : tourStep === 5 
-                    ? (language === 'vi' ? 'Hoàn tất' : 'Finished')
-                    : `${language === 'vi' ? 'Bước' : 'Step'} ${tourStep} / 4`}
+                    ? t('overview.finished')
+                    : `${t('overview.step')} ${tourStep} / 4`}
                 </span>
                 <button
                   onClick={handleSkipTour}
                   className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
                 >
-                  {language === 'vi' ? 'Bỏ qua ✕' : 'Skip ✕'}
+                  {t('overview.skip')}
                 </button>
               </div>
 
               {/* Step content */}
               <div className="flex flex-col gap-2">
                 <h3 className="text-base font-extrabold text-slate-800 leading-snug">
-                  {tourStep === 0 && (language === 'vi' ? 'Khám phá AntBiz! 👋' : 'Welcome to AntBiz! 👋')}
-                  {tourStep === 1 && (language === 'vi' ? 'Bảng Chào Mừng & Đồng Bộ' : 'Greeting Banner & Sync')}
-                  {tourStep === 2 && (language === 'vi' ? 'Thống Kê Số Liệu Thực Tế' : 'Live Ingestion Metrics')}
-                  {tourStep === 3 && (language === 'vi' ? 'Biểu Đồ Vận Hành 7 Ngày' : '7-Day Publication Volume')}
-                  {tourStep === 4 && (language === 'vi' ? 'Nhật Ký Ảnh Bài Đăng Gần Đây' : 'Recent Publication Logs')}
-                  {tourStep === 5 && (language === 'vi' ? 'Sẵn sàng tự động hóa! 🚀' : 'Ready to Automate! 🚀')}
+                  {tourStep === 0 && t('overview.welcomeTourTitle')}
+                  {tourStep === 1 && t('overview.tourStep1Title')}
+                  {tourStep === 2 && t('overview.tourStep2Title')}
+                  {tourStep === 3 && t('overview.tourStep3Title')}
+                  {tourStep === 4 && t('overview.tourStep4Title')}
+                  {tourStep === 5 && t('overview.tourStep5Title')}
                 </h3>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {tourStep === 0 && (language === 'vi' 
-                    ? 'Chào mừng bạn đến với AntBiz. Hãy cùng dạo quanh nhanh các khu vực cốt lõi trên màn hình Tổng quan để tối ưu hóa chiến dịch AI của bạn.' 
-                    : 'Welcome to AntBiz. Let’s take a quick tour around the core widgets on your Overview dashboard to optimize your AI campaigns.')}
-                  {tourStep === 1 && (language === 'vi' 
-                    ? 'Khu vực chào mừng hiển thị tên tài khoản cùng trạng thái hệ thống. Sử dụng nút "Làm mới số liệu" để đồng bộ dữ liệu thời gian thực.' 
-                    : 'The greeting card displays your profile and automated scheduler status. Click "Refresh Metrics" to sync database changes in real-time.')}
-                  {tourStep === 2 && (language === 'vi' 
-                    ? 'Xem số lượng bài viết AI tích lũy, biểu đồ tỷ lệ phân phối đa kênh (Facebook/Instagram/Threads) và đo lường tỷ lệ lỗi/thành công.' 
-                    : 'Track your total AI copywriting volume, platform share ratios, and real-time success/failure metrics at a single glance.')}
-                  {tourStep === 3 && (language === 'vi' 
-                    ? 'Biểu đồ trực quan hóa số lượng bài viết đã đăng trong 7 ngày qua. Hãy di chuột lên từng cột để xem số lượng bài viết chi tiết.' 
-                    : 'Interactive bar chart showing actual published counts over the past week. Hover on any column to see the exact post volume.')}
-                  {tourStep === 4 && (language === 'vi' 
-                    ? 'Bản xem trước hình ảnh trực quan cùng trạng thái đăng thực tế của các bài đăng gần nhất giúp marketer phát hiện nhanh các bài lỗi.' 
-                    : 'Visual list of recent posts displaying thumbnail previews and direct platform publication statuses for quick verification.')}
-                  {tourStep === 5 && (language === 'vi' 
-                    ? 'Bạn đã sẵn sàng để sáng tạo! Hãy di chuyển sang mục AI Creator trên Sidebar bên trái để viết bài viết AI đầu tiên nhé!' 
-                    : 'You are now ready to create content! Navigate to the "AI Creator" on the left Sidebar to write your first automated post!')}
+                <p className="text-xs text-slate-655 font-medium leading-relaxed">
+                  {tourStep === 0 && t('overview.tourStep0Desc')}
+                  {tourStep === 1 && t('overview.tourStep1Desc')}
+                  {tourStep === 2 && t('overview.tourStep2Desc')}
+                  {tourStep === 3 && t('overview.tourStep3Desc')}
+                  {tourStep === 4 && t('overview.tourStep4Desc')}
+                  {tourStep === 5 && t('overview.tourStep5Desc')}
                 </p>
               </div>
 
@@ -888,7 +868,7 @@ export default function OverviewView() {
                     onClick={handlePrevStep}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    {language === 'vi' ? 'Quay lại' : 'Back'}
+                    {t('overview.back')}
                   </button>
                 ) : (
                   <div />
@@ -900,15 +880,15 @@ export default function OverviewView() {
                     className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
                     {tourStep === 0 
-                      ? (language === 'vi' ? 'Bắt đầu khám phá' : 'Start Tour') 
-                      : (language === 'vi' ? 'Tiếp tục' : 'Next')}
+                      ? t('overview.startTour') 
+                      : t('overview.next')}
                   </button>
                 ) : (
                   <button
                     onClick={handleSkipTour}
                     className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
-                    {language === 'vi' ? 'Hoàn tất hướng dẫn' : 'Finish Tour'}
+                    {t('overview.finishTour')}
                   </button>
                 )}
               </div>
