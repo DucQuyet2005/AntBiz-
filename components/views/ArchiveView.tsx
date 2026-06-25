@@ -98,6 +98,7 @@ export default function ArchiveView() {
               images
             )
           `)
+          .neq('status', 'draft')
           .order('created_at', { ascending: false });
         if (!error && data) {
           setCaptions(data);
@@ -271,8 +272,8 @@ export default function ArchiveView() {
   const filteredItems = archiveItems
     .filter(item => {
       const matchesPlatform = platformFilter === 'All Platforms' || item.platform.toLowerCase() === platformFilter.toLowerCase();
-      const matchesSearch = searchQuery === '' || 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch = searchQuery === '' ||
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesPlatform && matchesSearch;
     })
@@ -362,7 +363,7 @@ export default function ArchiveView() {
 
               {/* Platform Filter */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
                   className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
@@ -389,7 +390,7 @@ export default function ArchiveView() {
 
               {/* Sort By */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
                   className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
@@ -452,11 +453,10 @@ export default function ArchiveView() {
                     </span>
 
                     {/* Publish Status Badge */}
-                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
-                      item.status === 'posted'
+                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
                         ? 'bg-emerald-600/80 border border-emerald-500/30'
                         : 'bg-amber-600/80 border border-amber-500/30'
-                    }`}>
+                      }`}>
                       {item.status === 'posted'
                         ? (language === 'vi' ? 'Đã đăng' : 'Published')
                         : (language === 'vi' ? 'Chưa đăng' : 'Draft')
@@ -538,7 +538,7 @@ export default function ArchiveView() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
               <div className="text-xs text-text-muted font-bold">
-                {language === 'vi' 
+                {language === 'vi'
                   ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} trong tổng số ${filteredItems.length} bài đăng`
                   : `Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} posts`
                 }
@@ -551,16 +551,15 @@ export default function ArchiveView() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
-                      currentPage === page
+                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'border border-gray-200/80 text-text hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -595,7 +594,6 @@ export default function ArchiveView() {
             <table className="w-full text-left text-[11px] border-collapse min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">ID</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Article Title'}</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nền tảng' : 'Platform'}</th>
                   <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nội dung AI' : 'AI Content'}</th>
@@ -606,19 +604,18 @@ export default function ArchiveView() {
               <tbody className="divide-y divide-gray-100">
                 {isFetchingPreview ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center">
+                    <td colSpan={5} className="px-4 py-10 text-center">
                       <Loader2 className="animate-spin inline-block mr-2" size={16} />
                       <span className="font-bold">{t('common.loading')}</span>
                     </td>
                   </tr>
                 ) : previewData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-text-muted italic">No data found.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-text-muted italic">No data found.</td>
                   </tr>
                 ) : (
                   previewData.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-slate-500">{row.id.substring(0, 8)}...</td>
                       <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
                         <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">{row.platform}</span>
@@ -698,7 +695,7 @@ export default function ArchiveView() {
               </tbody>
             </table>
           </div>
- 
+
           <div className="flex items-center gap-3 p-5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
             <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <Clock size={20} />
