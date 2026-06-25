@@ -71,6 +71,7 @@ export const translations = {
     },
     profile: {
       title: "Hồ sơ của bạn",
+      editProfile: "Chỉnh sửa Profile",
       displayName: "Tên hiển thị",
       emailAddress: "Địa chỉ Email",
       department: "Bộ phận",
@@ -1078,6 +1079,7 @@ export const translations = {
     },
     profile: {
       title: "Your Profile",
+      editProfile: "Edit Profile",
       displayName: "Display Name",
       emailAddress: "Email Address",
       department: "Department",

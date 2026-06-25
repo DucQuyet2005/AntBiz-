@@ -66,12 +66,16 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   useEffect(() => {
     const fetchRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
-        if (data) {
-          setUserRole(data.role);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+          if (data) {
+            setUserRole(data.role);
+          }
         }
+      } catch (err) {
+        console.warn('Error fetching user role in Header:', err);
       }
     };
     fetchRole();
@@ -142,8 +146,8 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       suggestions.faqs.length > 0);
 
   // Fetch Notifications
-  const fetchNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -169,10 +173,14 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       if (!countRes.error) {
         setUnreadCount(countRes.count || 0);
       }
-    } catch (err) {
-      console.error('Error fetching notifications in Header:', err);
+    } catch (err: any) {
+      if (err?.message === 'Failed to fetch' || err instanceof TypeError) {
+        console.warn('Network issue fetching notifications in Header (Failed to fetch).');
+      } else {
+        console.error('Error fetching notifications in Header:', err);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -183,36 +191,40 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !active) return;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !active) return;
 
-      realtimeChannel = supabase
-        .channel(`user-notifications-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('Realtime notification update received in Header:', payload);
-            fetchNotifications();
-          }
-        )
-        .subscribe((status, err) => {
-          if (status !== 'SUBSCRIBED') {
-            console.warn(`Supabase Realtime notification channel status for user-notifications-${user.id}:`, status, err);
-          } else {
-            console.log(`Supabase Realtime notification channel active for user-notifications-${user.id}`);
-          }
-        });
+        realtimeChannel = supabase
+          .channel(`user-notifications-${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              console.log('Realtime notification update received in Header:', payload);
+              fetchNotifications(true); // silent fetch
+            }
+          )
+          .subscribe((status, err) => {
+            if (status !== 'SUBSCRIBED') {
+              console.warn(`Supabase Realtime notification channel status for user-notifications-${user.id}:`, status, err);
+            } else {
+              console.log(`Supabase Realtime notification channel active for user-notifications-${user.id}`);
+            }
+          });
+      } catch (err) {
+        console.warn('Error setting up Supabase Realtime in Header:', err);
+      }
     };
 
     setupRealtime();
 
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(() => fetchNotifications(true), 30000); // silent fetch
 
     return () => {
       active = false;
@@ -568,6 +580,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                         <div
                           key={n.id}
                           tabIndex={0}
+                          onClick={() => {
+                            handleMarkAsRead(n.id, n.is_read);
+                            setIsOpen(false);
+                            router.push('/notifications');
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();

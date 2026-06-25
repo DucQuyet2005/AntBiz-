@@ -567,7 +567,7 @@ export default function UserProfileDropdown() {
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md shadow-primary/10 transition-all text-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-offset-2"
                 >
                   <User size={13} />
-                  <span>Chỉnh sửa Profile</span>
+                  <span>{t('profile.editProfile')}</span>
                 </Link>
 
                 {/* Footer Actions */}

@@ -70,8 +70,8 @@ export default function NotificationsPage() {
     });
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
+  const fetchNotifications = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       // Gọi API route với param category — server tự build query Supabase đúng chuẩn
       const params = new URLSearchParams({
@@ -92,7 +92,7 @@ export default function NotificationsPage() {
     } catch (err) {
       console.error('Error loading notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [currentPage, filterCategory]);
 
@@ -120,7 +120,7 @@ export default function NotificationsPage() {
           },
           (payload) => {
             console.log('Realtime notification update received on page:', payload);
-            fetchNotifications();
+            fetchNotifications(true); // silent fetch
           }
         )
         .subscribe((status, err) => {
@@ -312,7 +312,7 @@ export default function NotificationsPage() {
 
       {/* Main List */}
       <div className="bg-white dark:bg-black border border-gray-200/80 dark:border-white/8 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
-        {loading ? (
+        {loading && notifications.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400 my-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <span className="text-sm font-medium">{t('common.loading')}</span>
