@@ -329,7 +329,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.message).toContain('Đã hủy lịch đăng bài');
@@ -342,7 +342,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('Không thể hủy lịch đăng bài ở trạng thái: posted');
@@ -353,7 +353,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp1/cancel', {
       method: 'POST',
     });
-    const res = await cancelScheduledPost(req, { params: { id: 'sp1' } });
+    const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
     expect(res.status).toBe(404);
   });
 

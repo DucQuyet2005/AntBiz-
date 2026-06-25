@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
 import { GET as getNotifications, POST as postNotification } from '@/app/api/notifications/route';
 import { PUT as readSingleNotification } from '@/app/api/notifications/[id]/read/route';
 import { PUT as readAllNotifications } from '@/app/api/notifications/read-all/route';
@@ -63,7 +64,7 @@ describe('Notifications API Routes', () => {
         unauthorized: { status: 401, json: async () => ({ error: 'Unauthorized' }) },
       });
 
-      const req = new Request('http://localhost/api/notifications?page=1&limit=10');
+      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10');
       const res = await getNotifications(req);
       expect(res.status).toBe(401);
     });
@@ -80,7 +81,7 @@ describe('Notifications API Routes', () => {
       ];
       mockRange.mockResolvedValue({ data: mockData, error: null, count: 1 });
 
-      const req = new Request('http://localhost/api/notifications?page=1&limit=10&type=info');
+      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10&type=info');
       const res = await getNotifications(req);
 
       expect(res.status).toBe(200);
@@ -98,7 +99,7 @@ describe('Notifications API Routes', () => {
       });
       mockRange.mockResolvedValue({ data: null, error: { message: 'DB Read Error' }, count: 0 });
 
-      const req = new Request('http://localhost/api/notifications?page=1&limit=10');
+      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10');
       const res = await getNotifications(req);
       expect(res.status).toBe(500);
       const json = await res.json();
@@ -114,7 +115,7 @@ describe('Notifications API Routes', () => {
         unauthorized: { status: 401, json: async () => ({ error: 'Unauthorized' }) },
       });
 
-      const req = new Request('http://localhost/api/notifications', {
+      const req = new NextRequest('http://localhost/api/notifications', {
         method: 'POST',
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
@@ -126,7 +127,7 @@ describe('Notifications API Routes', () => {
       const mockNotif = { id: 'n1', user_id: 'u1', type: 'info', title: 'Test', message: 'Msg' };
       mockCreateNotification.mockResolvedValue(mockNotif);
 
-      const req = new Request('http://localhost/api/notifications', {
+      const req = new NextRequest('http://localhost/api/notifications', {
         method: 'POST',
         headers: {
           authorization: 'Bearer sb_secret_CmYMg8R7IAQzj_RyuKBDxQ_98WXMt0G',
@@ -150,7 +151,7 @@ describe('Notifications API Routes', () => {
         unauthorized: null,
       });
 
-      const req = new Request('http://localhost/api/notifications', {
+      const req = new NextRequest('http://localhost/api/notifications', {
         method: 'POST',
         body: JSON.stringify({ userId: 'u1', title: 'Test' }),
       });
@@ -169,7 +170,7 @@ describe('Notifications API Routes', () => {
       });
       mockCreateNotification.mockRejectedValue(new Error('Insert DB failed'));
 
-      const req = new Request('http://localhost/api/notifications', {
+      const req = new NextRequest('http://localhost/api/notifications', {
         method: 'POST',
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
@@ -193,7 +194,7 @@ describe('Notifications API Routes', () => {
       mockSingle.mockResolvedValue({ data: mockSingleNotif, error: null });
 
       const res = await readSingleNotification(
-        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+        new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
         { params: Promise.resolve({ id: 'n1' }) }
       );
 
@@ -212,7 +213,7 @@ describe('Notifications API Routes', () => {
       mockSingle.mockResolvedValue({ data: null, error: { message: 'Update failed' } });
 
       const res = await readSingleNotification(
-        new Request('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+        new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
         { params: Promise.resolve({ id: 'n1' }) }
       );
 
@@ -234,7 +235,7 @@ describe('Notifications API Routes', () => {
       mockSelect.mockResolvedValue({ data: mockUpdatedList, error: null });
 
       const res = await readAllNotifications(
-        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' })
+        new NextRequest('http://localhost/api/notifications/read-all', { method: 'PUT' })
       );
 
       expect(res.status).toBe(200);
@@ -255,7 +256,7 @@ describe('Notifications API Routes', () => {
       mockSelect.mockResolvedValue({ data: null, error: { message: 'Batch update failed' } });
 
       const res = await readAllNotifications(
-        new Request('http://localhost/api/notifications/read-all', { method: 'PUT' })
+        new NextRequest('http://localhost/api/notifications/read-all', { method: 'PUT' })
       );
 
       expect(res.status).toBe(500);

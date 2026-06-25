@@ -184,8 +184,8 @@ describe('suggestPrompts – fallback strategy', () => {
     const result = await suggestPrompts(mockSupabase, { category: 'Bất động sản', confidence: 0.9 }, 3);
     // If fallback, should be sorted by usage_count
     if (result.isFallback && result.suggestions.length >= 2) {
-      expect(result.suggestions[0].prompt.usage_count ?? 0)
-        .toBeGreaterThanOrEqual(result.suggestions[1].prompt.usage_count ?? 0);
+      expect((result.suggestions[0].prompt as any).usage_count ?? 0)
+        .toBeGreaterThanOrEqual((result.suggestions[1].prompt as any).usage_count ?? 0);
     }
   });
 });

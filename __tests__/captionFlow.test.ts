@@ -147,16 +147,16 @@ describe('Restore flow – ai_content preserved', () => {
 describe('Autosave – debounce and content diff check', () => {
   it('does not save if content equals lastSaved', () => {
     // Simulate the autosave guard: only save if newValue !== lastSaved
-    const lastSaved = 'existing content';
-    const newValue = 'existing content'; // same
+    const lastSaved: string = 'existing content';
+    const newValue: string = 'existing content'; // same
 
     const shouldSave = newValue !== lastSaved;
     expect(shouldSave).toBe(false);
   });
 
   it('saves when content differs from lastSaved', () => {
-    const lastSaved = 'existing content';
-    const newValue = 'updated content';
+    const lastSaved: string = 'existing content';
+    const newValue: string = 'updated content';
 
     const shouldSave = newValue !== lastSaved;
     expect(shouldSave).toBe(true);
@@ -164,8 +164,8 @@ describe('Autosave – debounce and content diff check', () => {
 
   it('does not save when captionId is undefined', () => {
     const captionId: string | undefined = undefined;
-    const newValue = 'any content';
-    const lastSaved = '';
+    const newValue: string = 'any content';
+    const lastSaved: string = '';
 
     // Guard: only save if captionId exists AND content changed
     const shouldSave = !!captionId && newValue !== lastSaved;
