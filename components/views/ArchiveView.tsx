@@ -317,24 +317,24 @@ export default function ArchiveView() {
       </div>
 
       {/* Tabs Control */}
-      <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 whitespace-nowrap">
+      <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 dark:border-zinc-800 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('posts')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text dark:hover:text-zinc-100'}`}
         >
           {t('archive.tabPosts')}
           {activeTab === 'posts' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('preview')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text dark:hover:text-zinc-100'}`}
         >
           {t('archive.tabPreview')}
           {activeTab === 'preview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text dark:hover:text-zinc-100'}`}
         >
           {t('archive.tabHistory')}
           {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
@@ -354,7 +354,7 @@ export default function ArchiveView() {
                 placeholder={t('archive.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+                className="w-full bg-sidebar/50 dark:bg-zinc-950/20 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-text-muted dark:text-zinc-200 dark:placeholder:text-zinc-550 border border-gray-200/50 dark:border-zinc-800 shadow-sm"
               />
             </div>
 
@@ -365,13 +365,13 @@ export default function ArchiveView() {
               <div className="relative">
                 <button
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
+                  className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0"
                 >
                   <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
                 {showPlatformDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
+                  <div className="absolute right-0 mt-2 w-48 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 py-2">
                     {['All Platforms', 'facebook', 'instagram', 'blog', 'threads'].map((p) => (
                       <button
                         key={p}
@@ -379,7 +379,7 @@ export default function ArchiveView() {
                           setPlatformFilter(p);
                           setShowPlatformDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800/50 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-zinc-800/50 ${platformFilter === p ? 'text-primary font-bold' : 'text-text dark:text-zinc-300'}`}
                       >
                         {p === 'All Platforms' ? t('archive.allPlatforms') : p}
                       </button>
@@ -392,14 +392,14 @@ export default function ArchiveView() {
               <div className="relative">
                 <button
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
+                  className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
                   <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
                 {showSortDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
+                  <div className="absolute right-0 mt-2 w-48 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 py-2">
                     {['Publish Date', 'Oldest First'].map((s) => (
                       <button
                         key={s}
@@ -407,7 +407,7 @@ export default function ArchiveView() {
                           setSortBy(s);
                           setShowSortDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800/50 font-medium focus-visible:outline-none focus-visible:bg-gray-55 dark:focus-visible:bg-zinc-800/50 ${sortBy === s ? 'text-primary font-bold' : 'text-text dark:text-zinc-300'}`}
                       >
                         {s === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}
                       </button>
@@ -419,18 +419,17 @@ export default function ArchiveView() {
             </div>
 
           </div>
-
           {/* 3-Column Grid Cards */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 ${totalPages > 1 ? 'min-h-[3000px] md:min-h-[1488px] lg:min-h-[984px]' : ''}`}>
             {paginatedItems.map((item) => (
               <Link
                 href={item.link}
                 key={item.id}
-                className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200/60 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
 
                 {/* Top Visual Banner */}
-                <div className="h-44 w-full relative shrink-0 bg-gray-100">
+                <div className="h-44 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
 
                   {/* Image if available */}
                   {item.image ? (
@@ -484,10 +483,10 @@ export default function ArchiveView() {
                         {item.nodeType}
                       </span>
                     )}
-                    <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+                    <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-2 hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted leading-relaxed font-semibold line-clamp-3 min-h-[4.5rem]">
+                    <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-3 min-h-[4.5rem]">
                       {item.description}
                     </p>
                   </div>
@@ -495,35 +494,42 @@ export default function ArchiveView() {
                   {/* Metrics & Reactions */}
                   <div>
                     {/* Horizontal divider */}
-                    <div className="border-t border-gray-100/80 my-4"></div>
+                    <div className="border-t border-gray-100/80 dark:border-zinc-800/60 my-4"></div>
 
                     {/* Reach & Conversions */}
                     <div className="flex gap-10">
                       <div>
-                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
-                        <span className="text-sm font-extrabold text-text flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
+                        <span className="text-sm font-extrabold text-text dark:text-zinc-200 flex items-center gap-1">
                           <TrendingUp size={14} className="text-emerald-500" />
                           {item.reach}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-0.5">{t('archive.conversions')}</span>
-                        <span className="text-sm font-extrabold text-text">
+                        <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.conversions')}</span>
+                        <span className="text-sm font-extrabold text-text dark:text-zinc-200">
                           {item.conversions}
                         </span>
                       </div>
                     </div>
 
-                    {/* Bottom Reactions */}
-                    <div className="flex items-center gap-4 text-xs font-semibold text-text-muted mt-5">
-                      <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
-                        <Heart size={14} className="text-rose-400 fill-rose-50" />
-                        <span>{item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)}k` : item.likes}</span>
+                    {/* Bottom Reactions & Publish Date */}
+                    <div className="flex items-center justify-between text-xs font-semibold text-text-muted dark:text-zinc-500 mt-5">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
+                          <Heart size={14} className="text-rose-400 fill-rose-50 dark:fill-rose-950/20" />
+                          <span>{item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)}k` : item.likes}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                          <MessageSquare size={14} />
+                          <span>{item.comments}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                        <MessageSquare size={14} />
-                        <span>{item.comments}</span>
-                      </div>
+                      {item.created_at && (
+                        <span className="text-[10px] text-text-muted dark:text-zinc-500 font-medium select-none">
+                          {new Date(item.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                        </span>
+                      )}
                     </div>
 
                   </div>
@@ -590,39 +596,39 @@ export default function ArchiveView() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white/85 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-[11px] border-collapse min-w-[800px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-55/50 dark:bg-zinc-950/40 border-b border-gray-200 dark:border-zinc-800">
                 <tr>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Article Title'}</th>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nền tảng' : 'Platform'}</th>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Nội dung AI' : 'AI Content'}</th>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Trạng thái' : 'Status'}</th>
-                  <th className="px-4 py-3 font-black text-text-muted uppercase tracking-wider">{language === 'vi' ? 'Ngày tạo' : 'Created At'}</th>
+                  <th className="px-4 py-3 font-black text-text-muted dark:text-zinc-400 uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Article Title'}</th>
+                  <th className="px-4 py-3 font-black text-text-muted dark:text-zinc-400 uppercase tracking-wider">{language === 'vi' ? 'Nền tảng' : 'Platform'}</th>
+                  <th className="px-4 py-3 font-black text-text-muted dark:text-zinc-400 uppercase tracking-wider">{language === 'vi' ? 'Nội dung AI' : 'AI Content'}</th>
+                  <th className="px-4 py-3 font-black text-text-muted dark:text-zinc-400 uppercase tracking-wider">{language === 'vi' ? 'Trạng thái' : 'Status'}</th>
+                  <th className="px-4 py-3 font-black text-text-muted dark:text-zinc-400 uppercase tracking-wider">{language === 'vi' ? 'Ngày tạo' : 'Created At'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/80">
                 {isFetchingPreview ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center">
                       <Loader2 className="animate-spin inline-block mr-2" size={16} />
-                      <span className="font-bold">{t('common.loading')}</span>
+                      <span className="font-bold dark:text-zinc-300">{t('common.loading')}</span>
                     </td>
                   </tr>
                 ) : previewData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-text-muted italic">No data found.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-text-muted dark:text-zinc-505 italic">No data found.</td>
                   </tr>
                 ) : (
                   previewData.map((row) => (
-                    <tr key={row.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
+                    <tr key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
+                      <td className="px-4 py-3 font-bold text-text dark:text-zinc-200 truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
                         <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">{row.platform}</span>
                       </td>
-                      <td className="px-4 py-3 text-text-muted truncate max-w-[250px]">{row.ai_content}</td>
-                      <td className="px-4 py-3 font-black text-[10px]">{row.status}</td>
-                      <td className="px-4 py-3 text-slate-500">{new Date(row.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-text-muted dark:text-zinc-400 truncate max-w-[250px]">{row.ai_content}</td>
+                      <td className="px-4 py-3 font-black text-[10px] text-text dark:text-zinc-200">{row.status}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-zinc-400">{new Date(row.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))
                 )}
@@ -633,21 +639,21 @@ export default function ArchiveView() {
       ) : (
         /* Export History Tab */
         <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white/85 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse min-w-[600px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-55/50 dark:bg-zinc-950/40 border-b border-gray-200 dark:border-zinc-800">
                 <tr>
-                  <th className="px-6 py-4 font-extrabold text-text-muted uppercase text-[10px] tracking-wider">{t('archive.jobId')}</th>
-                  <th className="px-6 py-4 font-extrabold text-text-muted uppercase text-[10px] tracking-wider">{t('archive.jobStatus')}</th>
-                  <th className="px-6 py-4 font-extrabold text-text-muted uppercase text-[10px] tracking-wider">{t('archive.jobCreated')}</th>
-                  <th className="px-6 py-4 font-extrabold text-text-muted uppercase text-[10px] tracking-wider text-right">{t('archive.jobDownload')}</th>
+                  <th className="px-6 py-4 font-extrabold text-text-muted dark:text-zinc-400 uppercase text-[10px] tracking-wider">{t('archive.jobId')}</th>
+                  <th className="px-6 py-4 font-extrabold text-text-muted dark:text-zinc-400 uppercase text-[10px] tracking-wider">{t('archive.jobStatus')}</th>
+                  <th className="px-6 py-4 font-extrabold text-text-muted dark:text-zinc-400 uppercase text-[10px] tracking-wider">{t('archive.jobCreated')}</th>
+                  <th className="px-6 py-4 font-extrabold text-text-muted dark:text-zinc-400 uppercase text-[10px] tracking-wider text-right">{t('archive.jobDownload')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/80">
                 {isLoadingJobs ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-10 text-center">
-                      <div className="flex flex-col items-center gap-2 text-text-muted">
+                      <div className="flex flex-col items-center gap-2 text-text-muted dark:text-zinc-400">
                         <Loader2 className="animate-spin" size={24} />
                         <span className="font-bold">{t('common.loading')}</span>
                       </div>
@@ -655,21 +661,21 @@ export default function ArchiveView() {
                   </tr>
                 ) : exportJobs.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-text-muted italic font-medium">
+                    <td colSpan={4} className="px-6 py-10 text-center text-text-muted dark:text-zinc-505 italic font-medium">
                       {language === 'vi' ? 'Chưa có yêu cầu xuất dữ liệu nào.' : 'No export requests yet.'}
                     </td>
                   </tr>
                 ) : (
                   exportJobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-mono text-[11px] text-text-muted">{job.id}</td>
+                    <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4 font-mono text-[11px] text-text-muted dark:text-zinc-550">{job.id}</td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 font-extrabold text-xs">
+                        <div className="flex items-center gap-2 font-extrabold text-xs dark:text-zinc-200">
                           {getStatusIcon(job.status)}
                           <span>{getStatusLabel(job.status)}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs font-semibold text-text-muted">
+                      <td className="px-6 py-4 text-xs font-semibold text-text-muted dark:text-zinc-400">
                         {new Date(job.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">

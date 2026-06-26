@@ -64,6 +64,75 @@ const articleData = {
   ]
 };
 
+function parseCustomDate(dateStr: any): Date {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  
+  // Try default constructor first
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  
+  // Match dd/mm/yyyy hh:mm or dd/mm/yyyy, hh:mm
+  const match = String(dateStr).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // 0-indexed
+    const year = parseInt(match[3], 10);
+    const hour = match[4] ? parseInt(match[4], 10) : 0;
+    const minute = match[5] ? parseInt(match[5], 10) : 0;
+    const second = match[6] ? parseInt(match[6], 10) : 0;
+    return new Date(year, month, day, hour, minute, second);
+  }
+  
+  return new Date();
+}
+
+function formatRelativeTime(dateInput: any, lang: string, platform: 'facebook' | 'threads') {
+  if (!dateInput) {
+    return lang === 'vi' ? 'Vừa xong' : 'Just now';
+  }
+  
+  const date = parseCustomDate(dateInput);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) {
+    return lang === 'vi' ? 'Vừa xong' : 'Just now';
+  }
+  if (diffMin < 60) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffMin} phút` : `${diffMin} mins`;
+    } else {
+      return lang === 'vi' ? `${diffMin} phút trước` : `${diffMin}m ago`;
+    }
+  }
+  if (diffHr < 24) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffHr} giờ` : `${diffHr} hrs`;
+    } else {
+      return lang === 'vi' ? `${diffHr} giờ trước` : `${diffHr}h ago`;
+    }
+  }
+  if (diffDay < 7) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffDay} ngày` : `${diffDay} days`;
+    } else {
+      return lang === 'vi' ? `${diffDay} ngày trước` : `${diffDay}d ago`;
+    }
+  }
+  return date.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
 export default function ArticleDetailView() {
   const { t, language } = useLanguage();
   const params = useParams();
@@ -77,6 +146,7 @@ export default function ArticleDetailView() {
   const [userId, setUserId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<any>(articleData);
   const [captions, setCaptions] = useState<any[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
@@ -110,8 +180,23 @@ export default function ArticleDetailView() {
     const threadsText = "10 năm mua vàng mua nhà: Hành trình thoát cảnh đi thuê trọ của vợ chồng trẻ. 🏠\n\nTừ hai bàn tay trắng, tích lũy từng chỉ vàng mỗi tháng làm quỹ mua nhà. Sau một thập kỷ kiên trì, giấc mơ an cư đã thành hiện thực. Bạn có đang tích lũy vàng để mua nhà không?";
 
     setCaptions([
-      { id: 'mock-fb', platform: 'facebook', content: fbText },
-      { id: 'mock-threads', platform: 'threads', content: threadsText }
+      { id: 'mock-fb', platform: 'facebook', content: fbText, created_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() },
+      { id: 'mock-threads', platform: 'threads', content: threadsText, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }
+    ]);
+
+    setScheduledPosts([
+      {
+        caption_id: 'mock-fb',
+        status: 'posted',
+        posted_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+        scheduled_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        caption_id: 'mock-threads',
+        status: 'pending',
+        posted_at: null,
+        scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+      }
     ]);
 
     setActiveArticle(articleData);
@@ -227,6 +312,16 @@ export default function ArticleDetailView() {
 
         if (dbCaptions && dbCaptions.length > 0) {
           setCaptions(dbCaptions);
+          
+          // 4. Fetch scheduled posts for these captions
+          const captionIds = dbCaptions.map(c => c.id);
+          const { data: schedData } = await supabase
+            .from('scheduled_posts')
+            .select('*')
+            .in('caption_id', captionIds);
+          if (schedData) {
+            setScheduledPosts(schedData);
+          }
         } else {
           loadMockData();
         }
@@ -314,6 +409,29 @@ export default function ArticleDetailView() {
       return firstCap.edited_content || firstCap.ai_content || firstCap.content || '';
     }
     return '';
+  };
+
+  const getMockupDisplayTime = () => {
+    if (selectedCheckpoint) {
+      return formatRelativeTime(selectedCheckpoint.created_at, language, selectedPlatform);
+    }
+    const activeCap = captions.find(c => c.platform === selectedPlatform);
+    if (!activeCap) {
+      return language === 'vi' ? 'Chưa đăng' : 'Not published';
+    }
+    const sched = scheduledPosts.find(s => s.caption_id === activeCap.id);
+    if (sched) {
+      if (sched.status === 'posted') {
+        const postTime = sched.posted_at || sched.scheduled_at || activeCap.created_at;
+        return formatRelativeTime(postTime, language, selectedPlatform);
+      } else {
+        return language === 'vi' ? 'Chưa đăng' : 'Not published';
+      }
+    }
+    if (activeCap.status === 'posted') {
+      return formatRelativeTime(activeCap.created_at, language, selectedPlatform);
+    }
+    return language === 'vi' ? 'Chưa đăng' : 'Not published';
   };
 
   const isPublished = captions.some(c => c.status === 'posted');
@@ -721,7 +839,7 @@ export default function ArticleDetailView() {
                           AntBiz Official
                           <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
                         </span>
-                        <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                        <span className="text-[9px] text-text-muted">{getMockupDisplayTime()} · 🌍</span>
                       </div>
                     </div>
                   </div>
@@ -841,7 +959,7 @@ export default function ArticleDetailView() {
                     <div className="flex-1 flex flex-col gap-2.5 min-w-0 pb-4">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-text select-none">antbiz_official</span>
-                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                        <span className="text-[10px] text-text-muted select-none">{getMockupDisplayTime()}</span>
                       </div>
 
                       <div className="text-xs text-text leading-relaxed flex flex-col gap-2">
@@ -945,7 +1063,7 @@ export default function ArticleDetailView() {
                     <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-text select-none">antbiz_official</span>
-                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                        <span className="text-[10px] text-text-muted select-none">{getMockupDisplayTime()}</span>
                       </div>
 
                       <div className="text-xs text-text leading-relaxed mt-0.5">
