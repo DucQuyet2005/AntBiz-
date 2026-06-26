@@ -1954,6 +1954,159 @@ body {
   background: #94a3b8;
 }
 
+/* ══════════════════════════════════
+   LANDING PAGE HEADER STYLING
+   ══════════════════════════════════ */
+/* Light Mode (default style) */
+.landing-header {
+  background-color: #ffffff !important;
+  color: #1c1e2a !important;
+  border-color: rgba(226, 232, 240, 0.6) !important;
+}
+
+/* Nav container */
+.landing-header nav.landing-nav {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.landing-header nav.landing-nav a {
+  color: #475569 !important; /* text-slate-600 */
+}
+
+.landing-header nav.landing-nav a:hover {
+  color: var(--color-primary) !important;
+}
+
+/* Brand text */
+.landing-header .brand-text {
+  color: #1c1e2a !important;
+}
+
+/* Language selector container */
+.landing-header .lang-selector {
+  background-color: rgba(226, 232, 240, 0.6) !important; /* bg-slate-200/60 */
+  border-color: #cbd5e1 !important; /* border-slate-300 */
+}
+
+/* Inactive language button */
+.landing-header .lang-selector button.text-slate-500 {
+  color: #64748b !important; /* text-slate-500 */
+  background-color: transparent !important;
+}
+
+.landing-header .lang-selector button.text-slate-500:hover {
+  color: #1e293b !important; /* text-slate-800 */
+}
+
+/* Active language button */
+.landing-header .lang-selector button.text-white {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Login button */
+.landing-header .btn-login {
+  background-color: transparent !important;
+  color: #334155 !important; /* text-slate-700 */
+  border-color: #cbd5e1 !important; /* border-slate-300 */
+}
+
+.landing-header .btn-login:hover {
+  background-color: #f1f5f9 !important; /* bg-slate-100 */
+}
+
+/* Register button */
+.landing-header .btn-register {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.landing-header .btn-register:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+
+/* Dark Mode overrides */
+.dark .landing-header {
+  background-color: #0F1117 !important; /* matches page bg in dark mode */
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .landing-header .brand-text {
+  color: #ffffff !important;
+}
+
+.dark .landing-header nav.landing-nav a {
+  color: #94a3b8 !important; /* text-slate-400 equivalent for dark mode */
+}
+
+.dark .landing-header nav.landing-nav a:hover {
+  color: var(--color-primary) !important;
+}
+
+.dark .landing-header .lang-selector {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.dark .landing-header .lang-selector button.text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .landing-header .lang-selector button.text-slate-500:hover {
+  color: #ffffff !important;
+}
+
+.dark .landing-header .btn-login {
+  background-color: transparent !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.dark .landing-header .btn-login:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .landing-header .btn-register {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+/* ══════════════════════════════════
+   CTA BUTTON STYLING
+   ══════════════════════════════════ */
+.cta-button,
+.dark .cta-button {
+  background-color: #ffffff !important;
+  color: var(--color-primary) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.cta-button:hover,
+.dark .cta-button:hover {
+  background-color: #f1f5f9 !important; /* light gray hover background */
+  color: var(--color-primary-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ══════════════════════════════════
+   FAQ CARD STYLING
+   ══════════════════════════════════ */
+.faq-card {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.6) !important;
+}
+
+.dark .faq-card {
+  background-color: #1A1D27 !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+
 /* Hide scrollbar completely utility (MUST BE AT THE END TO OVERRIDE GLOBAL SCROLLBARS) */
 .no-scrollbar::-webkit-scrollbar {
   display: none !important;

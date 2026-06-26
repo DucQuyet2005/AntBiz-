@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,6 +71,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
   // Onboarding Tour state
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [tourRect, setTourRect] = useState<DOMRect | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Only run on client side
@@ -82,8 +89,43 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     }
   }, []);
 
+  // Track target element rect for the SVG cutout mask
+  useEffect(() => {
+    if (!showTour || tourStep === 0 || tourStep === 5) {
+      setTourRect(null);
+      return;
+    }
+
+    const updateRect = () => {
+      let targetId = '';
+      if (tourStep === 1) targetId = 'tour-welcome';
+      if (tourStep === 2) targetId = 'tour-stats';
+      if (tourStep === 3) targetId = 'tour-chart';
+      if (tourStep === 4) targetId = 'tour-recent';
+
+      if (targetId) {
+        const el = document.getElementById(targetId);
+        if (el) {
+          setTourRect(el.getBoundingClientRect());
+        }
+      }
+    };
+
+    // Update immediately and also after a short delay to allow scrollIntoView to settle
+    updateRect();
+    const timer = setTimeout(updateRect, 300);
+    
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true); // true for capture phase
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [showTour, tourStep]);
+
   const highlightElement = (step: number) => {
-    clearHighlights();
     let targetId = '';
     if (step === 1) targetId = 'tour-welcome';
     if (step === 2) targetId = 'tour-stats';
@@ -94,19 +136,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       const element = document.getElementById(targetId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
       }
     }
   };
 
   const clearHighlights = () => {
-    const ids = ['tour-welcome', 'tour-stats', 'tour-chart', 'tour-recent'];
-    ids.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.classList.remove('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
-      }
-    });
+    // No-op since we removed the aggressive highlighting classes that break layouts
   };
 
   const handleNextStep = () => {
@@ -526,16 +561,25 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
 
       {/* Split-Layout Greeting Hero Banner - Theme-Aware with Gradient Fade and Team Background */}
-      <div 
+      <motion.div 
         id="tour-welcome" 
-        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300 bg-cover bg-center"
+        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300"
         style={{ 
-          backgroundColor: 'var(--color-primary)',
-          backgroundImage: "url('/images/welcome-team.jpg')" 
+          backgroundColor: 'var(--color-primary)'
         }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
+        {/* Background Team Photo */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center z-0"
+          style={{ backgroundImage: "url('/images/welcome-team.jpg')" }}
+        />
         {/* Saturated theme color on the left, fading completely to transparent on the right to show the team photo clearly */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" />
+        <div 
+          className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" 
+        />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-white/10 via-white/5 to-transparent blur-3xl pointer-events-none z-0" />
 
         {/* Left Column: Greeting details */}
@@ -600,17 +644,24 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
  
       {/* 4 horizontal stats columns */}
-      <div 
+      <motion.div 
         id="tour-stats" 
         className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hôm nay' : 'Today'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2 lg:text-2xl xl:text-3xl">{todayValue}</span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{todaySubtext}</span>
+          <span className="text-xl sm:text-2xl md:text-lg lg:text-base xl:text-xl font-extrabold text-[#1C1E2A] dark:text-white mt-2.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todayValue}>
+            {todayValue}
+          </span>
+          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todaySubtext}>
+            {todaySubtext}
+          </span>
         </div>
         
         <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
@@ -632,10 +683,16 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
           <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{nextPostTimeStr}</span>
           <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{nextPostSubtext}</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Featured Posts ("BÀI ĐĂNG NỔI BẬT") */}
-      <div id="tour-chart" className="flex flex-col gap-4">
+      <motion.div 
+        id="tour-chart" 
+        className="flex flex-col gap-4"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+      >
         <div className="flex justify-between items-center">
           <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">
             {language === 'vi' ? 'BÀI ĐĂNG NỔI BẬT' : 'FEATURED POSTS'}
@@ -794,14 +851,24 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             )}
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none"
+          >
             {language === 'vi' ? 'Chưa có bài đăng nổi bật' : 'No featured posts available'}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* Post Log and Upcoming Schedule side by side */}
-      <div id="tour-recent" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div 
+        id="tour-recent" 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.24, ease: "easeOut" }}
+      >
         
         {/* Left Column: Publication Chart */}
         <div className="lg:col-span-2 flex flex-col gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm">
@@ -994,104 +1061,135 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Onboarding Tour Overlay */}
-      <AnimatePresence>
-        {showTour && (
-          <>
-            {/* Backdrop */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showTour && (
             <motion.div
+              key="tour-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[1.5px] z-40 pointer-events-auto"
-              onClick={handleSkipTour}
-            />
-
-            {/* Tour Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", bounce: 0.1, duration: 0.4 }}
-              className={`fixed z-50 bg-white border border-slate-200/85 shadow-2xl rounded-2xl p-6 flex flex-col gap-4 ${tourStep === 0 || tourStep === 5
-                  ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[calc(100vw-2rem)]'
-                  : 'bottom-6 right-6 w-[360px] max-w-[calc(100vw-2rem)]'
-                }`}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[9999] pointer-events-none"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center select-none">
-                <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
-                  {tourStep === 0
-                    ? t('overview.welcome')
-                    : tourStep === 5
-                      ? t('overview.finished')
-                      : `${t('overview.step')} ${tourStep} / 4`}
-                </span>
-                <button
+              {/* SVG Mask Backdrop - dims screen but cuts a hole for the active element */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <defs>
+                  <mask id="tour-mask" maskUnits="userSpaceOnUse">
+                    <rect x="-100" y="-100" width="10000" height="10000" fill="white" />
+                    {tourRect && (
+                      <rect
+                        x={tourRect.x - 2}
+                        y={tourRect.y + 2}
+                        width={tourRect.width}
+                        height={tourRect.height}
+                        rx={16}
+                        fill="black"
+                        className="transition-all duration-300 ease-in-out"
+                      />
+                    )}
+                  </mask>
+                </defs>
+                <rect 
+                  x="-100"
+                  y="-100"
+                  width="10000" 
+                  height="10000" 
+                  fill="currentColor" 
+                  mask="url(#tour-mask)" 
+                  className="pointer-events-auto cursor-pointer text-black/60 dark:text-black/80"
                   onClick={handleSkipTour}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
-                >
-                  {t('overview.skip')}
-                </button>
-              </div>
+                />
+              </svg>
 
-              {/* Step content */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-base font-extrabold text-slate-800 leading-snug">
-                  {tourStep === 0 && t('overview.welcomeTourTitle')}
-                  {tourStep === 1 && t('overview.tourStep1Title')}
-                  {tourStep === 2 && t('overview.tourStep2Title')}
-                  {tourStep === 3 && t('overview.tourStep3Title')}
-                  {tourStep === 4 && t('overview.tourStep4Title')}
-                  {tourStep === 5 && t('overview.tourStep5Title')}
-                </h3>
-                <p className="text-xs text-slate-655 font-medium leading-relaxed">
-                  {tourStep === 0 && t('overview.tourStep0Desc')}
-                  {tourStep === 1 && t('overview.tourStep1Desc')}
-                  {tourStep === 2 && t('overview.tourStep2Desc')}
-                  {tourStep === 3 && t('overview.tourStep3Desc')}
-                  {tourStep === 4 && t('overview.tourStep4Desc')}
-                  {tourStep === 5 && t('overview.tourStep5Desc')}
-                </p>
-              </div>
+              {/* Tour Card - pointer-events re-enabled only on card */}
+              <div
+                className={[
+                  'absolute transition-all duration-300 ease-in-out pointer-events-auto',
+                  tourStep === 0 || tourStep === 5
+                    ? 'inset-0 flex items-center justify-center'
+                    : 'bottom-6 right-6 flex items-end justify-end'
+                ].join(' ')}
+              >
+                <div className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl rounded-2xl p-6 flex flex-col gap-4 w-[420px] max-w-[calc(100vw-2rem)]">
+                  {/* Header */}
+                  <div className="flex justify-between items-center select-none">
+                    <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
+                      {tourStep === 0
+                        ? t('overview.welcome')
+                        : tourStep === 5
+                          ? t('overview.finished')
+                          : `${t('overview.step')} ${tourStep} / 4`}
+                    </span>
+                    <button
+                      onClick={handleSkipTour}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
+                    >
+                      {t('overview.skip')}
+                    </button>
+                  </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center mt-2 pt-4 border-t border-slate-100">
-                {tourStep > 0 ? (
-                  <button
-                    onClick={handlePrevStep}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {t('overview.back')}
-                  </button>
-                ) : (
-                  <div />
-                )}
+                  {/* Step content */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-base font-extrabold text-slate-800 dark:text-white leading-snug">
+                      {tourStep === 0 && t('overview.welcomeTourTitle')}
+                      {tourStep === 1 && t('overview.tourStep1Title')}
+                      {tourStep === 2 && t('overview.tourStep2Title')}
+                      {tourStep === 3 && t('overview.tourStep3Title')}
+                      {tourStep === 4 && t('overview.tourStep4Title')}
+                      {tourStep === 5 && t('overview.tourStep5Title')}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                      {tourStep === 0 && t('overview.tourStep0Desc')}
+                      {tourStep === 1 && t('overview.tourStep1Desc')}
+                      {tourStep === 2 && t('overview.tourStep2Desc')}
+                      {tourStep === 3 && t('overview.tourStep3Desc')}
+                      {tourStep === 4 && t('overview.tourStep4Desc')}
+                      {tourStep === 5 && t('overview.tourStep5Desc')}
+                    </p>
+                  </div>
 
-                {tourStep < 5 ? (
-                  <button
-                    onClick={handleNextStep}
-                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    {tourStep === 0
-                      ? t('overview.startTour')
-                      : t('overview.next')}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSkipTour}
-                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    {t('overview.finishTour')}
-                  </button>
-                )}
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center mt-2 pt-4 border-t border-slate-100 dark:border-white/8">
+                    {tourStep > 0 ? (
+                      <button
+                        onClick={handlePrevStep}
+                        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {t('overview.back')}
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    {tourStep < 5 ? (
+                      <button
+                        onClick={handleNextStep}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        {tourStep === 0
+                          ? t('overview.startTour')
+                          : t('overview.next')}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSkipTour}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        {t('overview.finishTour')}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

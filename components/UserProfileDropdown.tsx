@@ -569,26 +569,6 @@ export default function UserProfileDropdown() {
                   <User size={13} />
                   <span>{t('profile.editProfile')}</span>
                 </Link>
-
-                {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-gray-100 dark:border-white/5 text-[10px]">
-                  <Link
-                    href="/settings"
-                    onClick={() => setIsOpen(false)}
-                    className="text-text-muted hover:text-text flex items-center gap-1.5 transition-colors font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded px-1"
-                  >
-                    <Settings size={12} />
-                    <span>{t('sidebar.settings')}</span>
-                  </Link>
-
-                  <button
-                    onClick={handleLogout}
-                    className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-0 p-0 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none rounded px-1"
-                  >
-                    <LogOut size={12} />
-                    <span>{t('sidebar.logout')}</span>
-                  </button>
-                </div>
               </div>
             )}
           </motion.div>
