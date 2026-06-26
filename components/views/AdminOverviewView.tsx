@@ -10,7 +10,6 @@ import {
   Settings, 
   Activity, 
   FileText, 
-  RefreshCw, 
   CheckCircle2, 
   Loader2, 
   ChevronRight, 
@@ -46,7 +45,6 @@ export default function AdminOverviewView({ onSwitchView, userName }: AdminOverv
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'audit' | 'pipeline'>('audit');
 
   // Stats state for Admin
@@ -233,7 +231,6 @@ export default function AdminOverviewView({ onSwitchView, userName }: AdminOverv
       console.error('Failed to load admin overview metrics:', err);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -241,10 +238,7 @@ export default function AdminOverviewView({ onSwitchView, userName }: AdminOverv
     fetchAdminDashboardData();
   }, []);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchAdminDashboardData();
-  };
+
 
   const getPercent = (value: number) => {
     const total = adminStats.postMetrics.totalShare;
@@ -295,15 +289,7 @@ export default function AdminOverviewView({ onSwitchView, userName }: AdminOverv
             <Activity size={13} />
             <span>{t('overview.admin.switchToUserView')}</span>
           </button>
-          
-          <button 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-55 border border-slate-200/50 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 dark:bg-zinc-900 dark:hover:bg-zinc-800 hover:text-indigo-650 dark:hover:text-indigo-400 px-5 py-3 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            <span>{t('overview.admin.refreshBtn')}</span>
-          </button>
+
         </div>
       </div>
 

@@ -29,6 +29,7 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
@@ -44,6 +45,9 @@ export default function ContentCalendarView() {
   const { t, language } = useLanguage();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const searchParams = useSearchParams();
+  const targetPostId = searchParams.get('postId');
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
 
   const showPopup = useCallback((message: string, type: PopupType = 'info') => {
@@ -136,6 +140,29 @@ export default function ContentCalendarView() {
     sunday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(sunday);
   }, []);
+
+  useEffect(() => {
+    if (targetPostId && posts.length > 0) {
+      const post = posts.find(p => p.id === targetPostId);
+      if (post) {
+        const date = new Date(post.scheduled_at);
+        setSelectedCell({
+          date,
+          hour: date.getHours(),
+          posts: [post]
+        });
+        
+        // Auto navigate to the week of this post
+        const day = date.getDay();
+        const diff = date.getDate() - day; // Sunday is 0
+        const sunday = new Date(date);
+        sunday.setDate(diff);
+        sunday.setHours(0, 0, 0, 0);
+        setCurrentWeekStart(sunday);
+        setHighlightedDate(date);
+      }
+    }
+  }, [targetPostId, posts]);
 
   useEffect(() => {
     if (scrollRef.current && !loading) {
@@ -677,9 +704,9 @@ export default function ContentCalendarView() {
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full transition-all ${selectedPlatforms.includes('threads') ? 'bg-black dark:bg-black scale-110 shadow-sm' : 'bg-slate-300 dark:bg-zinc-600'
+                  <span className={`w-3 h-3 rounded-full transition-all ${selectedPlatforms.includes('threads') ? 'bg-black dark:bg-white scale-110 shadow-sm' : 'bg-slate-300 dark:bg-zinc-600'
                     }`} />
-                  <span className={`text-xs font-bold ${selectedPlatforms.includes('threads') ? 'text-zinc-900 dark:text-black font-extrabold' : 'text-slate-500 dark:text-zinc-400'}`}>Threads</span>
+                  <span className={`text-xs font-bold ${selectedPlatforms.includes('threads') ? 'text-zinc-900 dark:text-white font-extrabold' : 'text-slate-500 dark:text-zinc-400'}`}>Threads</span>
                 </div>
                 <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors cursor-pointer ${selectedPlatforms.includes('threads') ? 'bg-slate-400 dark:bg-zinc-500' : 'bg-slate-200 dark:bg-zinc-700'
                   }`}>
@@ -758,7 +785,7 @@ export default function ContentCalendarView() {
                 <div className="grid grid-cols-[80px_1fr] relative h-[1440px] overflow-x-visible">
 
                   {/* Hours Left Column */}
-                  <div className="border-r border-slate-100 dark:border-white/5 bg-black flex flex-col z-20">
+                  <div className="border-r border-slate-100 dark:border-white/5 bg-white dark:bg-black flex flex-col z-20">
                     {hoursArray.map(hour => (
                       <div key={hour} className="h-[60px] flex items-center justify-end pr-4 text-[10px] text-slate-400 font-bold select-none">
                         {hour > 0 ? formatHour(hour) : ''}
@@ -986,6 +1013,7 @@ export default function ContentCalendarView() {
                               onDragEnd={handleDragEnd}
                               onDragOver={(e) => e.preventDefault()}
                               onDrop={(e) => handleDrop(e, dayIndex, weekDates[dayIndex])}
+                              onClick={() => setSelectedCell({ date: new Date(post.scheduled_at), hour: new Date(post.scheduled_at).getHours(), posts: [post] })}
                               style={{
                                 gridColumnStart: dayIndex + 1,
                                 gridColumnEnd: dayIndex + 2,

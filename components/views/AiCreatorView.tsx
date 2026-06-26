@@ -3212,7 +3212,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
                         onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
                         style={isCardSelected ? { borderColor: 'var(--color-primary)' } : undefined}
-                        className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden cursor-pointer select-none transition-all duration-300 ${isCardSelected
+                        className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-visible cursor-pointer select-none transition-all duration-300 ${isCardSelected
                           ? 'bg-card dark:bg-slate-800 border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
                           : 'bg-card dark:bg-slate-900 border border-gray-200/80 dark:border-white/10 hover:border-primary/30 dark:hover:border-primary/50 hover:shadow-lg shadow-sm'
                           }`}
@@ -3231,18 +3231,35 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                             {regeneratingVariantId === v.id ? (
                               <Loader2 size={12} className="animate-spin text-primary" />
                             ) : (
-                              <button
-                                type="button"
-                                disabled={isGeneratingAB || !!regeneratingVariantId}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRegenerateVariant(v.id);
-                                }}
-                                className="p-1.5 rounded-xl hover:bg-primary/10 text-primary transition-all cursor-pointer disabled:opacity-50 border-0 bg-transparent flex items-center justify-center"
-                                title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
-                              >
-                                <RefreshCw size={12} />
-                              </button>
+                              <div className="relative group">
+                                <button
+                                  type="button"
+                                  disabled={isGeneratingAB || !!regeneratingVariantId}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRegenerateVariant(v.id);
+                                  }}
+                                  className="p-1.5 rounded-xl hover:bg-primary/10 text-primary transition-all cursor-pointer disabled:opacity-50 border-0 bg-transparent flex items-center justify-center"
+                                  title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
+                                >
+                                  <RefreshCw size={12} />
+                                </button>
+
+                                {/* Custom Hover Popup */}
+                                <div className="absolute right-0 bottom-full mb-2 w-[260px] p-3.5 bg-white dark:bg-slate-950/95 text-slate-800 dark:text-white rounded-xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-sm transition-all duration-200 opacity-0 scale-95 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 group-hover:pointer-events-auto flex flex-col gap-1.5 z-[100] text-left select-none">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-black tracking-widest text-[#F97316] uppercase font-mono">
+                                    <Sparkles size={11} className="text-[#F97316]" />
+                                    <span>{language === 'vi' ? 'Tái tạo phiên bản AI' : 'Regenerate AI Variant'}</span>
+                                  </div>
+                                  <p className="text-[10.5px] leading-relaxed text-slate-600 dark:text-slate-200 font-semibold font-sans">
+                                    {language === 'vi'
+                                      ? 'Sử dụng Gemini AI để phân tích lại nội dung gốc và sinh ra phiên bản mới cho riêng kênh này, giữ nguyên các biến thể khác.'
+                                      : 'Use Gemini AI to re-analyze the source content and generate a new version specifically for this channel, leaving other variants unchanged.'}
+                                  </p>
+                                  {/* Tiny arrow */}
+                                  <div className="absolute bottom-[-5px] right-3.5 w-2.5 h-2.5 bg-white dark:bg-slate-950 rotate-45 border-r border-b border-slate-200/80 dark:border-slate-800/80 pointer-events-none" />
+                                </div>
+                              </div>
                             )}
 
                             <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
