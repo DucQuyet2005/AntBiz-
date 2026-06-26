@@ -155,9 +155,9 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-4 px-4 py-3 text-text-muted hover:text-text font-medium transition-colors w-full text-left bg-transparent border-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-xl"
+          className="flex items-center gap-4 px-4 py-3 text-red-500 hover:text-red-650 dark:text-red-400 dark:hover:text-red-300 font-bold transition-colors w-full text-left bg-transparent border-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none rounded-xl"
         >
-          <LogOut size={20} />
+          <LogOut size={20} className="text-red-550 dark:text-red-400" />
           {t("sidebar.logout")}
         </button>
       </div>

@@ -561,16 +561,25 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
 
       {/* Split-Layout Greeting Hero Banner - Theme-Aware with Gradient Fade and Team Background */}
-      <div 
+      <motion.div 
         id="tour-welcome" 
-        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300 bg-cover bg-center"
+        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300"
         style={{ 
-          backgroundColor: 'var(--color-primary)',
-          backgroundImage: "url('/images/welcome-team.jpg')" 
+          backgroundColor: 'var(--color-primary)'
         }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
+        {/* Background Team Photo */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center z-0"
+          style={{ backgroundImage: "url('/images/welcome-team.jpg')" }}
+        />
         {/* Saturated theme color on the left, fading completely to transparent on the right to show the team photo clearly */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" />
+        <div 
+          className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" 
+        />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-white/10 via-white/5 to-transparent blur-3xl pointer-events-none z-0" />
 
         {/* Left Column: Greeting details */}
@@ -635,12 +644,15 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
  
       {/* 4 horizontal stats columns */}
-      <div 
+      <motion.div 
         id="tour-stats" 
         className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       >
         <div className="flex flex-col min-w-0">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hôm nay' : 'Today'}</span>
@@ -671,10 +683,16 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
           <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{nextPostTimeStr}</span>
           <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{nextPostSubtext}</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Featured Posts ("BÀI ĐĂNG NỔI BẬT") */}
-      <div id="tour-chart" className="flex flex-col gap-4">
+      <motion.div 
+        id="tour-chart" 
+        className="flex flex-col gap-4"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+      >
         <div className="flex justify-between items-center">
           <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">
             {language === 'vi' ? 'BÀI ĐĂNG NỔI BẬT' : 'FEATURED POSTS'}
@@ -833,14 +851,24 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             )}
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none"
+          >
             {language === 'vi' ? 'Chưa có bài đăng nổi bật' : 'No featured posts available'}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* Post Log and Upcoming Schedule side by side */}
-      <div id="tour-recent" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div 
+        id="tour-recent" 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.24, ease: "easeOut" }}
+      >
         
         {/* Left Column: Publication Chart */}
         <div className="lg:col-span-2 flex flex-col gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm">
@@ -1033,7 +1061,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Onboarding Tour Overlay */}
       {mounted && createPortal(
@@ -1050,15 +1078,15 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               {/* SVG Mask Backdrop - dims screen but cuts a hole for the active element */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
                 <defs>
-                  <mask id="tour-mask">
-                    <rect width="100%" height="100%" fill="white" />
+                  <mask id="tour-mask" maskUnits="userSpaceOnUse">
+                    <rect x="-100" y="-100" width="10000" height="10000" fill="white" />
                     {tourRect && (
                       <rect
-                        x={tourRect.x - 8}
-                        y={tourRect.y - 8}
-                        width={tourRect.width + 16}
-                        height={tourRect.height + 16}
-                        rx={24}
+                        x={tourRect.x - 2}
+                        y={tourRect.y + 2}
+                        width={tourRect.width}
+                        height={tourRect.height}
+                        rx={16}
                         fill="black"
                         className="transition-all duration-300 ease-in-out"
                       />
@@ -1066,8 +1094,10 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                   </mask>
                 </defs>
                 <rect 
-                  width="100%" 
-                  height="100%" 
+                  x="-100"
+                  y="-100"
+                  width="10000" 
+                  height="10000" 
                   fill="currentColor" 
                   mask="url(#tour-mask)" 
                   className="pointer-events-auto cursor-pointer text-black/60 dark:text-black/80"
