@@ -528,12 +528,22 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       {/* Split-Layout Greeting Hero Banner - Theme-Aware with Gradient Fade and Team Background */}
       <div 
         id="tour-welcome" 
-        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300 bg-cover bg-center"
+        className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300"
         style={{ 
-          backgroundColor: 'var(--color-primary)',
-          backgroundImage: "url('/images/welcome-team.jpg')" 
+          backgroundColor: 'var(--color-primary)'
         }}
       >
+        {/* Right-aligned team photo - displayed in correct aspect ratio, blended with the theme background */}
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-1/2 z-0 pointer-events-none overflow-hidden select-none">
+          <img 
+            src="/images/welcome-team.jpg" 
+            alt="AntBiz Team" 
+            className="w-full h-full object-cover object-center opacity-65 lg:opacity-100" 
+          />
+          {/* Subtle fade to blend with primary color on the left */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/30 to-transparent pointer-events-none" />
+        </div>
+
         {/* Saturated theme color on the left, fading completely to transparent on the right to show the team photo clearly */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-white/10 via-white/5 to-transparent blur-3xl pointer-events-none z-0" />
