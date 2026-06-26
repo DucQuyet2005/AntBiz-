@@ -114,7 +114,16 @@ Trả về JSON với format chính xác (không có markdown):
     const json = await res.json();
     const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    const parsed = JSON.parse(text) as { category: string; confidence: number };
+    // Strip markdown code fences nếu Gemini trả về ```json ... ```
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    let parsed: { category: string; confidence: number };
+    try {
+      parsed = JSON.parse(cleaned) as { category: string; confidence: number };
+    } catch {
+      console.warn('[classifyArticle] Gemini không trả về JSON hợp lệ, dùng fallback. Raw:', text.substring(0, 100));
+      return fallbackClassify(title, content);
+    }
 
     // Validate category nằm trong danh sách hợp lệ
     const validCategory = VALID_CATEGORIES.includes(parsed.category as ValidCategory)
