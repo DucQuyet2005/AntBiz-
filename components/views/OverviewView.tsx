@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,6 +71,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
   // Onboarding Tour state
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [tourRect, setTourRect] = useState<DOMRect | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Only run on client side
@@ -82,8 +89,43 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     }
   }, []);
 
+  // Track target element rect for the SVG cutout mask
+  useEffect(() => {
+    if (!showTour || tourStep === 0 || tourStep === 5) {
+      setTourRect(null);
+      return;
+    }
+
+    const updateRect = () => {
+      let targetId = '';
+      if (tourStep === 1) targetId = 'tour-welcome';
+      if (tourStep === 2) targetId = 'tour-stats';
+      if (tourStep === 3) targetId = 'tour-chart';
+      if (tourStep === 4) targetId = 'tour-recent';
+
+      if (targetId) {
+        const el = document.getElementById(targetId);
+        if (el) {
+          setTourRect(el.getBoundingClientRect());
+        }
+      }
+    };
+
+    // Update immediately and also after a short delay to allow scrollIntoView to settle
+    updateRect();
+    const timer = setTimeout(updateRect, 300);
+
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true); // true for capture phase
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [showTour, tourStep]);
+
   const highlightElement = (step: number) => {
-    clearHighlights();
     let targetId = '';
     if (step === 1) targetId = 'tour-welcome';
     if (step === 2) targetId = 'tour-stats';
@@ -94,19 +136,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       const element = document.getElementById(targetId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
       }
     }
   };
 
   const clearHighlights = () => {
-    const ids = ['tour-welcome', 'tour-stats', 'tour-chart', 'tour-recent'];
-    ids.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.classList.remove('ring-4', 'ring-primary', 'ring-offset-4', 'scale-[1.01]', 'z-45', 'relative');
-      }
-    });
+    // No-op since we removed the aggressive highlighting classes that break layouts
   };
 
   const handleNextStep = () => {
@@ -394,7 +429,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     const dateNum = String(d.getDate()).padStart(2, '0');
     const monthNum = String(d.getMonth() + 1).padStart(2, '0');
     const yearNum = d.getFullYear();
-    
+
     return {
       todayValue: language === 'vi' ? `${dayName}, ${dateNum}/${monthNum}` : `${dayName}, ${monthNum}/${dateNum}`,
       todaySubtext: language === 'vi' ? `Ngày ${dateNum} tháng ${monthNum}, ${yearNum}` : `${dayName}, ${monthNum}/${dateNum}/${yearNum}`
@@ -428,9 +463,9 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     return stats.recentPosts.slice(0, 3).map((post, i) => {
       const time = new Date(post.scheduled_at);
       let timeLabel = '';
-      
+
       if (i === 0) {
-        timeLabel = language === 'vi' 
+        timeLabel = language === 'vi'
           ? `Hôm nay ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`
           : `Today ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
       } else if (i === 1) {
@@ -477,7 +512,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     const pendingPosts = allPosts
       .filter(p => p.status === 'pending')
       .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-    
+
     const colors = [
       'bg-[#C4F0E1]/40 border-emerald-100 text-emerald-805 dark:bg-emerald-950/10 dark:border-emerald-900/20',
       'bg-[#EED7C8]/40 border-orange-100 text-orange-900 dark:bg-orange-950/10 dark:border-orange-900/20',
@@ -526,26 +561,31 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     <div className="flex flex-col gap-6 font-sans select-none pb-12">
 
       {/* Split-Layout Greeting Hero Banner - Theme-Aware with Gradient Fade and Team Background */}
-      <div 
-        id="tour-welcome" 
+      <motion.div
+        id="tour-welcome"
         className="relative overflow-hidden border border-primary/20 rounded-2xl p-6 md:p-10 shadow-sm flex flex-col lg:flex-row justify-between items-stretch gap-6 transition-all duration-300"
-        style={{ 
+        style={{
           backgroundColor: 'var(--color-primary)'
         }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
         {/* Right-aligned team photo - displayed in correct aspect ratio, blended with the theme background */}
         <div className="absolute right-0 top-0 bottom-0 w-full lg:w-1/2 z-0 pointer-events-none overflow-hidden select-none">
-          <img 
-            src="/images/welcome-team.jpg" 
-            alt="AntBiz Team" 
-            className="w-full h-full object-cover object-center opacity-65 lg:opacity-100" 
+          <img
+            src="/images/welcome-team.jpg"
+            alt="AntBiz Team"
+            className="w-full h-full object-cover object-center opacity-65 lg:opacity-100"
           />
           {/* Subtle fade to blend with primary color on the left */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/30 to-transparent pointer-events-none" />
         </div>
 
         {/* Saturated theme color on the left, fading completely to transparent on the right to show the team photo clearly */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0" />
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-primary via-primary via-[30%] to-transparent to-[75%] pointer-events-none z-0"
+        />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-white/10 via-white/5 to-transparent blur-3xl pointer-events-none z-0" />
 
         {/* Left Column: Greeting details */}
@@ -585,7 +625,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
         {/* Right Column: In-banner Metrics */}
         <div className="flex flex-col lg:justify-center flex-[1] lg:pl-8 border-t lg:border-t-0 lg:border-l border-white/20 pt-6 lg:pt-0 relative z-10">
-          <div 
+          <div
             className="grid grid-cols-3 lg:grid-cols-1 gap-4 lg:gap-6 bg-black/25 backdrop-blur-[2px] rounded-xl p-4 lg:p-6 border border-white/10"
           >
             {/* Metric 1 */}
@@ -594,14 +634,14 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               <span className="text-[10px] text-white/90 font-bold mt-1.5">{language === 'vi' ? 'Bài đã đăng' : 'Posts published'}</span>
               <span className="text-[9px] text-emerald-350 font-semibold mt-0.5">+12% {language === 'vi' ? 'tuần' : 'week'}</span>
             </div>
-            
+
             {/* Metric 2 */}
             <div className="flex flex-col">
               <span className="text-3xl font-black text-white leading-none">{stats.captionsCount}</span>
               <span className="text-[10px] text-white/90 font-bold mt-1.5">{language === 'vi' ? 'Caption sẵn sàng' : 'Captions ready'}</span>
               <span className="text-[9px] text-white/70 mt-0.5">{language === 'vi' ? '0 chờ duyệt' : '0 pending'}</span>
             </div>
- 
+
             {/* Metric 3 */}
             <div className="flex flex-col">
               <span className="text-3xl font-black text-white leading-none">{stats.pendingCount}</span>
@@ -610,19 +650,26 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           </div>
         </div>
-      </div>
- 
+      </motion.div>
+
       {/* 4 horizontal stats columns */}
-      <div 
-        id="tour-stats" 
+      <motion.div
+        id="tour-stats"
         className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hôm nay' : 'Today'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2 lg:text-2xl xl:text-3xl">{todayValue}</span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{todaySubtext}</span>
+          <span className="text-xl sm:text-2xl md:text-lg lg:text-base xl:text-xl font-extrabold text-[#1C1E2A] dark:text-white mt-2.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todayValue}>
+            {todayValue}
+          </span>
+          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todaySubtext}>
+            {todaySubtext}
+          </span>
         </div>
-        
+
         <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Bài đã tạo' : 'Articles created'}</span>
           <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{stats.articlesCount}</span>
@@ -642,10 +689,16 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
           <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{nextPostTimeStr}</span>
           <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{nextPostSubtext}</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Featured Posts ("BÀI ĐĂNG NỔI BẬT") */}
-      <div id="tour-chart" className="flex flex-col gap-4">
+      <motion.div
+        id="tour-chart"
+        className="flex flex-col gap-4"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+      >
         <div className="flex justify-between items-center">
           <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">
             {language === 'vi' ? 'BÀI ĐĂNG NỔI BẬT' : 'FEATURED POSTS'}
@@ -662,13 +715,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left card - Large, takes 2 columns on lg */}
             {featuredPosts[0] && (
-              <Link 
+              <Link
                 href={`/content-calendar?postId=${featuredPosts[0].id}`}
-                className={`lg:col-span-2 rounded-2xl border p-6 flex flex-col justify-between h-[320px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${
-                  featuredPosts[0].imgUrl 
-                    ? 'text-white border-slate-200/80 dark:border-white/5' 
+                className={`lg:col-span-2 rounded-2xl border p-6 flex flex-col justify-between h-[320px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${featuredPosts[0].imgUrl
+                    ? 'text-white border-slate-200/80 dark:border-white/5'
                     : featuredPosts[0].bgColor
-                }`}
+                  }`}
               >
                 <div className="absolute top-4 right-4 z-10">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${featuredPosts[0].badgeColor}`}>
@@ -679,10 +731,10 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                 {featuredPosts[0].imgUrl ? (
                   <>
                     <div className="absolute inset-0 z-0">
-                      <img 
-                        src={featuredPosts[0].imgUrl} 
-                        alt="Post preview" 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                      <img
+                        src={featuredPosts[0].imgUrl}
+                        alt="Post preview"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
                       />
                     </div>
                     {/* Dark gradient overlay to guarantee text readability */}
@@ -717,13 +769,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               <div className="flex flex-col gap-6 lg:col-span-1">
                 {/* Top item */}
                 {featuredPosts[1] && (
-                  <Link 
+                  <Link
                     href={`/content-calendar?postId=${featuredPosts[1].id}`}
-                    className={`flex-1 rounded-2xl border p-6 flex flex-col justify-between h-[148px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${
-                      featuredPosts[1].imgUrl 
-                        ? 'text-white border-slate-200/80 dark:border-white/5' 
+                    className={`flex-1 rounded-2xl border p-6 flex flex-col justify-between h-[148px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${featuredPosts[1].imgUrl
+                        ? 'text-white border-slate-200/80 dark:border-white/5'
                         : featuredPosts[1].bgColor
-                    }`}
+                      }`}
                   >
                     <div className="absolute top-4 right-4 z-10">
                       <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${featuredPosts[1].badgeColor}`}>
@@ -734,10 +785,10 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                     {featuredPosts[1].imgUrl ? (
                       <>
                         <div className="absolute inset-0 z-0">
-                          <img 
-                            src={featuredPosts[1].imgUrl} 
-                            alt="Post preview" 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                          <img
+                            src={featuredPosts[1].imgUrl}
+                            alt="Post preview"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
                           />
                         </div>
                         {/* Dark gradient overlay to guarantee text readability */}
@@ -760,13 +811,12 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
                 {/* Bottom item */}
                 {featuredPosts[2] && (
-                  <Link 
+                  <Link
                     href={`/content-calendar?postId=${featuredPosts[2].id}`}
-                    className={`flex-1 rounded-2xl border p-6 flex flex-col justify-between h-[148px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${
-                      featuredPosts[2].imgUrl 
-                        ? 'text-white border-slate-200/80 dark:border-white/5' 
+                    className={`flex-1 rounded-2xl border p-6 flex flex-col justify-between h-[148px] relative overflow-hidden group hover:shadow-md transition-all cursor-pointer decoration-none ${featuredPosts[2].imgUrl
+                        ? 'text-white border-slate-200/80 dark:border-white/5'
                         : featuredPosts[2].bgColor
-                    }`}
+                      }`}
                   >
                     <div className="absolute top-4 right-4 z-10">
                       <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${featuredPosts[2].badgeColor}`}>
@@ -777,10 +827,10 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                     {featuredPosts[2].imgUrl ? (
                       <>
                         <div className="absolute inset-0 z-0">
-                          <img 
-                            src={featuredPosts[2].imgUrl} 
-                            alt="Post preview" 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                          <img
+                            src={featuredPosts[2].imgUrl}
+                            alt="Post preview"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
                           />
                         </div>
                         {/* Dark gradient overlay to guarantee text readability */}
@@ -804,15 +854,25 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             )}
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="h-40 flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest select-none"
+          >
             {language === 'vi' ? 'Chưa có bài đăng nổi bật' : 'No featured posts available'}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* Post Log and Upcoming Schedule side by side */}
-      <div id="tour-recent" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+      <motion.div
+        id="tour-recent"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.24, ease: "easeOut" }}
+      >
+
         {/* Left Column: Publication Chart */}
         <div className="lg:col-span-2 flex flex-col gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm">
           {/* Header */}
@@ -822,7 +882,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                 {language === 'vi' ? 'BIỂU ĐỒ XUẤT BẢN' : 'PUBLICATION CHART'}
               </span>
               <h4 className="text-lg font-black text-slate-800 dark:text-white leading-tight">
-                {chartTimeframe === 'week' 
+                {chartTimeframe === 'week'
                   ? (language === 'vi' ? 'Số lượng bài đăng 7 ngày qua' : 'Post volume in last 7 days')
                   : (language === 'vi' ? 'Số lượng bài đăng 30 ngày qua' : 'Post volume in last 30 days')
                 }
@@ -835,21 +895,19 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/50 dark:border-white/5">
                 <button
                   onClick={() => setChartTimeframe('week')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    chartTimeframe === 'week'
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartTimeframe === 'week'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   {language === 'vi' ? '7 Ngày' : '7 Days'}
                 </button>
                 <button
                   onClick={() => setChartTimeframe('month')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    chartTimeframe === 'month'
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartTimeframe === 'month'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   {language === 'vi' ? '30 Ngày' : '30 Days'}
                 </button>
@@ -859,43 +917,39 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/50 dark:border-white/5">
                 <button
                   onClick={() => setChartPlatform('all')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    chartPlatform === 'all'
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${chartPlatform === 'all'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   {language === 'vi' ? 'Tất cả' : 'All'}
                 </button>
                 <button
                   onClick={() => setChartPlatform('facebook')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                    chartPlatform === 'facebook'
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${chartPlatform === 'facebook'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Facebook size={11} />
                   <span>FB</span>
                 </button>
                 <button
                   onClick={() => setChartPlatform('instagram')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                    chartPlatform === 'instagram'
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${chartPlatform === 'instagram'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Instagram size={11} />
                   <span>IG</span>
                 </button>
                 <button
                   onClick={() => setChartPlatform('threads')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                    chartPlatform === 'threads'
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${chartPlatform === 'threads'
                       ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <ThreadsIcon size={11} />
                   <span>Threads</span>
@@ -916,7 +970,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             <div className="absolute inset-0 flex justify-between items-end px-2 select-none">
               {dailyVolume.map((item, idx) => {
                 const heightPct = maxPostVolume > 0 ? (item.count / maxPostVolume) * 100 : 0;
-                
+
                 // For month view, display every 5th day label to avoid overlapping text
                 const showLabel = chartTimeframe === 'week' ? true : idx % 5 === 0 || idx === dailyVolume.length - 1;
 
@@ -930,7 +984,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                     {/* Capsule container */}
                     <div className={`${chartTimeframe === 'week' ? 'w-6 md:w-8' : 'w-1.5 md:w-2.5'} bg-[#F4F5F9] dark:bg-slate-800 rounded-full h-24 flex items-end overflow-hidden`}>
                       {/* Filled progress bar with gradient */}
-                      <div 
+                      <div
                         className="w-full bg-gradient-to-t from-[#F97316] to-[#22D3EE] rounded-full transition-all duration-500 ease-out"
                         style={{ height: `${heightPct}%` }}
                       />
@@ -988,9 +1042,9 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {item.dots.map((color, index) => (
-                      <span 
+                      <span
                         key={index}
-                        className="w-2.5 h-2.5 rounded-full" 
+                        className="w-2.5 h-2.5 rounded-full"
                         style={{ backgroundColor: color }}
                       />
                     ))}
@@ -1004,104 +1058,135 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Onboarding Tour Overlay */}
-      <AnimatePresence>
-        {showTour && (
-          <>
-            {/* Backdrop */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showTour && (
             <motion.div
+              key="tour-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[1.5px] z-40 pointer-events-auto"
-              onClick={handleSkipTour}
-            />
-
-            {/* Tour Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", bounce: 0.1, duration: 0.4 }}
-              className={`fixed z-50 bg-white border border-slate-200/85 shadow-2xl rounded-2xl p-6 flex flex-col gap-4 ${tourStep === 0 || tourStep === 5
-                  ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[calc(100vw-2rem)]'
-                  : 'bottom-6 right-6 w-[360px] max-w-[calc(100vw-2rem)]'
-                }`}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[9999] pointer-events-none"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center select-none">
-                <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
-                  {tourStep === 0
-                    ? t('overview.welcome')
-                    : tourStep === 5
-                      ? t('overview.finished')
-                      : `${t('overview.step')} ${tourStep} / 4`}
-                </span>
-                <button
+              {/* SVG Mask Backdrop - dims screen but cuts a hole for the active element */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <defs>
+                  <mask id="tour-mask" maskUnits="userSpaceOnUse">
+                    <rect x="-100" y="-100" width="10000" height="10000" fill="white" />
+                    {tourRect && (
+                      <rect
+                        x={tourRect.x - 2}
+                        y={tourRect.y + 2}
+                        width={tourRect.width}
+                        height={tourRect.height}
+                        rx={16}
+                        fill="black"
+                        className="transition-all duration-300 ease-in-out"
+                      />
+                    )}
+                  </mask>
+                </defs>
+                <rect
+                  x="-100"
+                  y="-100"
+                  width="10000"
+                  height="10000"
+                  fill="currentColor"
+                  mask="url(#tour-mask)"
+                  className="pointer-events-auto cursor-pointer text-black/60 dark:text-black/80"
                   onClick={handleSkipTour}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
-                >
-                  {t('overview.skip')}
-                </button>
-              </div>
+                />
+              </svg>
 
-              {/* Step content */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-base font-extrabold text-slate-800 leading-snug">
-                  {tourStep === 0 && t('overview.welcomeTourTitle')}
-                  {tourStep === 1 && t('overview.tourStep1Title')}
-                  {tourStep === 2 && t('overview.tourStep2Title')}
-                  {tourStep === 3 && t('overview.tourStep3Title')}
-                  {tourStep === 4 && t('overview.tourStep4Title')}
-                  {tourStep === 5 && t('overview.tourStep5Title')}
-                </h3>
-                <p className="text-xs text-slate-655 font-medium leading-relaxed">
-                  {tourStep === 0 && t('overview.tourStep0Desc')}
-                  {tourStep === 1 && t('overview.tourStep1Desc')}
-                  {tourStep === 2 && t('overview.tourStep2Desc')}
-                  {tourStep === 3 && t('overview.tourStep3Desc')}
-                  {tourStep === 4 && t('overview.tourStep4Desc')}
-                  {tourStep === 5 && t('overview.tourStep5Desc')}
-                </p>
-              </div>
+              {/* Tour Card - pointer-events re-enabled only on card */}
+              <div
+                className={[
+                  'absolute transition-all duration-300 ease-in-out pointer-events-auto',
+                  tourStep === 0 || tourStep === 5
+                    ? 'inset-0 flex items-center justify-center'
+                    : 'bottom-6 right-6 flex items-end justify-end'
+                ].join(' ')}
+              >
+                <div className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl rounded-2xl p-6 flex flex-col gap-4 w-[420px] max-w-[calc(100vw-2rem)]">
+                  {/* Header */}
+                  <div className="flex justify-between items-center select-none">
+                    <span className="text-[10px] text-primary font-mono font-extrabold uppercase tracking-widest">
+                      {tourStep === 0
+                        ? t('overview.welcome')
+                        : tourStep === 5
+                          ? t('overview.finished')
+                          : `${t('overview.step')} ${tourStep} / 4`}
+                    </span>
+                    <button
+                      onClick={handleSkipTour}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-0.5"
+                    >
+                      {t('overview.skip')}
+                    </button>
+                  </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center mt-2 pt-4 border-t border-slate-100">
-                {tourStep > 0 ? (
-                  <button
-                    onClick={handlePrevStep}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {t('overview.back')}
-                  </button>
-                ) : (
-                  <div />
-                )}
+                  {/* Step content */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-base font-extrabold text-slate-800 dark:text-white leading-snug">
+                      {tourStep === 0 && t('overview.welcomeTourTitle')}
+                      {tourStep === 1 && t('overview.tourStep1Title')}
+                      {tourStep === 2 && t('overview.tourStep2Title')}
+                      {tourStep === 3 && t('overview.tourStep3Title')}
+                      {tourStep === 4 && t('overview.tourStep4Title')}
+                      {tourStep === 5 && t('overview.tourStep5Title')}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                      {tourStep === 0 && t('overview.tourStep0Desc')}
+                      {tourStep === 1 && t('overview.tourStep1Desc')}
+                      {tourStep === 2 && t('overview.tourStep2Desc')}
+                      {tourStep === 3 && t('overview.tourStep3Desc')}
+                      {tourStep === 4 && t('overview.tourStep4Desc')}
+                      {tourStep === 5 && t('overview.tourStep5Desc')}
+                    </p>
+                  </div>
 
-                {tourStep < 5 ? (
-                  <button
-                    onClick={handleNextStep}
-                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    {tourStep === 0
-                      ? t('overview.startTour')
-                      : t('overview.next')}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSkipTour}
-                    className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  >
-                    {t('overview.finishTour')}
-                  </button>
-                )}
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center mt-2 pt-4 border-t border-slate-100 dark:border-white/8">
+                    {tourStep > 0 ? (
+                      <button
+                        onClick={handlePrevStep}
+                        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {t('overview.back')}
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    {tourStep < 5 ? (
+                      <button
+                        onClick={handleNextStep}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        {tourStep === 0
+                          ? t('overview.startTour')
+                          : t('overview.next')}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSkipTour}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-md shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        {t('overview.finishTour')}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

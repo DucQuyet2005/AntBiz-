@@ -7,7 +7,11 @@ import {
   ChevronRight,
   Edit2,
   Check,
-  Plus
+  Plus,
+  ChevronDown,
+  HelpCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,9 +144,11 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
   const { t, language, setLanguage } = useLanguage();
   
   let isDark = false;
+  let toggleDarkMode = () => {};
   try {
     const themeContext = useTheme();
     isDark = themeContext ? themeContext.isDark : false;
+    toggleDarkMode = themeContext ? themeContext.toggleDarkMode : () => {};
   } catch (e) {
     // Fallback if rendered outside ThemeProvider
   }
@@ -227,6 +233,43 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
   };
 
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  const landingFaqs = language === 'vi' ? [
+    {
+      q: 'AntBiz hoạt động như thế nào?',
+      a: 'AntBiz tối ưu hóa toàn bộ luồng công việc sáng tạo của biên tập viên bằng cách kết hợp thu thập dữ liệu bằng Cheerio, sinh caption AI bằng Gemini, và lên lịch trực quan chống trùng giờ.'
+    },
+    {
+      q: 'Tôi có thể xuất bản bài viết lên các kênh nào?',
+      a: 'Hiện tại hệ điều hành AntBiz hỗ trợ phân phối và xuất bản bài viết đa kênh đồng thời lên các nền tảng Facebook, Instagram và Threads.'
+    },
+    {
+      q: 'Mô hình Gemini AI hỗ trợ viết caption như thế nào?',
+      a: 'Gemini AI tự động phân tích bài viết gốc để sinh ra nhiều biến thể caption tối ưu, điều chỉnh độ dài, giọng văn, định dạng hashtag và ngôn ngữ phù hợp riêng biệt cho từng mạng xã hội.'
+    },
+    {
+      q: 'Cơ chế chống xung đột lịch đăng bài hoạt động ra sao?',
+      a: 'Hệ thống lịch biểu Gantt 2D trực quan tích hợp cơ chế Collision Lock tự động phát hiện và ngăn chặn việc lên lịch trùng giờ hoặc đăng bài quá sát nhau trên cùng một kênh.'
+    }
+  ] : [
+    {
+      q: 'How does AntBiz work?',
+      a: 'AntBiz optimizes the entire editorial workflow by combining Cheerio data scraping, Gemini AI variant copywriting, and a 2D drag-and-drop Gantt calendar with automatic collision prevention.'
+    },
+    {
+      q: 'Which platforms can I publish to?',
+      a: 'Currently, the AntBiz multi-channel AI publishing hub supports content scaling and scheduling across Facebook, Instagram, and Threads.'
+    },
+    {
+      q: 'How does Gemini AI assist with copywriting?',
+      a: 'Gemini AI analyzes your source article and generates optimized caption variants, tailoring length, tone of voice, hashtags, and language style for each platform.'
+    },
+    {
+      q: 'How does the collision lock scheduling work?',
+      a: 'Our visual 2D Gantt calendar features a Collision Lock mechanism that automatically detects and prevents overlapping or conflicting schedules on the same channel.'
+    }
+  ];
 
   // Auto-play Carousel (only if not in editor mode)
   useEffect(() => {
@@ -326,7 +369,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
     <div className="min-h-screen antialiased flex flex-col selection:bg-[var(--color-primary)]/20" style={dynamicStyles}>
       
       {/* 1. STANDALONE HEADER */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--color-primary)] transition-all">
+      <header className="landing-header sticky top-0 z-50 bg-white/95 dark:bg-[#0F1117]/95 border-b border-slate-200/60 dark:border-slate-800/80 shadow-sm before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--color-primary)] transition-all backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <EditableField section="brand" field="logoUrl">
@@ -335,33 +378,69 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
               </div>
             </EditableField>
             <div>
-              <span className="font-extrabold text-lg tracking-tight block leading-none" style={{ color: 'var(--color-text)' }}>AntBiz</span>
+              <span className="brand-text font-extrabold text-lg tracking-tight block leading-none text-slate-800 dark:text-white">AntBiz</span>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
+          <nav className="landing-nav hidden md:flex items-center gap-8">
+            <a 
+              href="#" 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                window.scrollTo({ top: 0, behavior: 'smooth' }); 
+              }} 
+              className="text-slate-600 dark:text-slate-400 hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5"
+            >
               {t('common.home')}
-            </Link>
-            <a href="#what-we-do" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
+            </a>
+            <a 
+              href="#what-we-do" 
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById('what-we-do');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-slate-600 dark:text-slate-400 hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5"
+            >
               {t('common.features')}
             </a>
-            <Link href="/faq" className="text-slate-600 hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5">
+            <a 
+              href="#faq-section" 
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById('faq-section');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-slate-600 dark:text-slate-400 hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5"
+            >
               {t('common.faqSupport')}
-            </Link>
+            </a>
           </nav>
 
           <div className="flex items-center gap-4">
-            <div className="flex gap-0.5 bg-slate-200/60 p-0.5 rounded-lg border border-slate-300">
-              <button onClick={() => setLanguage("vi")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "vi" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>VN</button>
-              <button onClick={() => setLanguage("en")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "en" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 bg-transparent"}`}>EN</button>
+            <div className="lang-selector flex gap-0.5 bg-slate-200/60 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-300 dark:border-slate-700">
+              <button onClick={() => setLanguage("vi")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "vi" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 bg-transparent"}`}>VN</button>
+              <button onClick={() => setLanguage("en")} className={`px-2 py-0.5 rounded font-bold transition-all text-[10px] cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${language === "en" ? "bg-[var(--color-primary)] text-white shadow-sm" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 bg-transparent"}`}>EN</button>
             </div>
 
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="theme-toggle-btn p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer border-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
             <div className="flex items-center gap-2">
-              <Link href="/login" className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-300 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/login" className="btn-login bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {t('common.login')}
               </Link>
-              <Link href="/register" className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
+              <Link href="/register" className="btn-register bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white py-2 rounded-full font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer decoration-none border-0 w-24 text-center inline-block focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none" onClick={isEditor ? (e) => e.preventDefault() : undefined}>
                 {t('common.register')}
               </Link>
             </div>
@@ -391,10 +470,21 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow">
             {currentHero?.description}
           </motion.p>
-          <motion.button key={`btn-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">
-            <span>{currentHero?.ctaText}</span>
-            <ArrowRight size={14} />
-          </motion.button>
+          <motion.div
+            key={`btn-${currentSlide}`}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Link
+              href="/login"
+              className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 decoration-none inline-flex focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
+              onClick={isEditor ? (e) => e.preventDefault() : undefined}
+            >
+              <span>{currentHero?.ctaText}</span>
+              <ArrowRight size={14} />
+            </Link>
+          </motion.div>
         </div>
 
         {/* Dots Indicator */}
@@ -508,17 +598,102 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
         </div>
       </section>
 
+      {/* 9. FAQ & SUPPORT SECTION */}
+      <section id="faq-section" className="py-20 border-b border-slate-100 bg-slate-50 dark:bg-[#0F1117]/50 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-extrabold uppercase tracking-wider text-slate-800 dark:text-white mb-4">
+              {language === 'vi' ? 'Câu hỏi thường gặp' : 'Frequently Asked Questions'}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 font-semibold max-w-xl mx-auto">
+              {language === 'vi' 
+                ? 'Tìm câu trả lời nhanh chóng cho các thắc mắc phổ biến về AntBiz' 
+                : 'Find quick answers to common questions about AntBiz'}
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="space-y-4 max-w-3xl mx-auto mb-16"
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={{
+              hidden: {},
+              show: {
+                transition: {
+                  staggerChildren: 0.08
+                }
+              }
+            }}
+          >
+            {landingFaqs.map((faq, idx) => {
+              const isOpen = activeFaq === idx;
+              return (
+                <motion.div 
+                  key={idx} 
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+                  }}
+                  className="faq-card border rounded-2xl overflow-hidden shadow-sm transition-all duration-300"
+                >
+                  <button
+                    onClick={() => setActiveFaq(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between p-6 text-left font-bold text-slate-800 dark:text-white hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)] transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <span>{faq.q}</span>
+                    <motion.div
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-slate-400 dark:text-slate-500"
+                    >
+                      <ChevronDown size={20} />
+                    </motion.div>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </section>
+
       {/* 10. CTA BANNER */}
       <section className="py-20 bg-gradient-to-br from-primary to-primary-hover text-center px-6">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <EditableField section="sections" field="ctaBannerTitle">
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-6 uppercase tracking-tight">{config.sections.ctaBannerTitle}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-6 uppercase tracking-tight md:whitespace-nowrap">{config.sections.ctaBannerTitle}</h2>
           </EditableField>
           <EditableField section="sections" field="ctaBannerText">
             <p className="text-white/80 font-semibold mb-10">{config.sections.ctaBannerText}</p>
           </EditableField>
           <EditableField section="sections" field="ctaBannerBtn">
-            <button className="bg-white text-primary hover:bg-slate-50 px-10 py-4 rounded-full font-extrabold text-sm uppercase shadow-2xl transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">{config.sections.ctaBannerBtn}</button>
+            <Link 
+              href="/login" 
+              className="cta-button inline-block bg-white text-primary px-10 py-4 rounded-full font-extrabold text-sm uppercase shadow-2xl transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
+              onClick={isEditor ? (e) => e.preventDefault() : undefined}
+            >
+              {config.sections.ctaBannerBtn}
+            </Link>
           </EditableField>
         </div>
       </section>
