@@ -20,10 +20,17 @@ const PromptCard = ({
   return (
     <div 
       onClick={() => onSelect(prompt)}
-      className={`group relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden ${
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(prompt);
+        }
+      }}
+      className={`group relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
         isSelected 
-          ? 'bg-primary/5 border-primary shadow-md ring-1 ring-primary/20' 
-          : 'bg-white border-gray-100 hover:border-primary/40 hover:shadow-sm'
+          ? 'bg-primary/5 dark:bg-primary/10 border-primary shadow-md ring-1 ring-primary/20' 
+          : 'bg-white dark:bg-card/40 border-gray-100 dark:border-white/5 hover:border-primary/40 dark:hover:border-primary/40 hover:shadow-sm'
       } ${className}`}
     >
       {/* Background Sparkle Decoration */}
@@ -37,7 +44,7 @@ const PromptCard = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+              isSelected ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
             }`}>
               {isSelected ? <Check size={14} /> : <ThumbsUp size={12} />}
             </div>
@@ -49,7 +56,7 @@ const PromptCard = ({
           </div>
           
           {relevanceScore !== undefined && relevanceScore > 0 && (
-            <div className="text-[10px] bg-amber-50 text-amber-600 font-bold px-2 py-0.5 rounded-full border border-amber-200">
+            <div className="text-[10px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/20">
               {Math.round(relevanceScore * 100)}% Match
             </div>
           )}
@@ -65,15 +72,15 @@ const PromptCard = ({
               key={idx} 
               className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${
                 isSelected 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'bg-gray-50 text-gray-400'
+                  ? 'bg-primary/10 dark:bg-primary/20 text-primary' 
+                  : 'bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-400'
               }`}
             >
               #{tag.replace('#', '')}
             </span>
           ))}
           {prompt.tags.length > 3 && (
-            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-400">
+            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-400">
               +{prompt.tags.length - 3}
             </span>
           )}

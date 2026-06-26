@@ -119,7 +119,7 @@ describe('Notifications API Routes', () => {
         method: 'POST',
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(401);
     });
 
@@ -137,7 +137,7 @@ describe('Notifications API Routes', () => {
 
       process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_CmYMg8R7IAQzj_RyuKBDxQ_98WXMt0G';
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(201);
       const json = await res.json();
       expect(json.success).toBe(true);
@@ -156,7 +156,7 @@ describe('Notifications API Routes', () => {
         body: JSON.stringify({ userId: 'u1', title: 'Test' }),
       });
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toContain('Thiếu các trường bắt buộc');
@@ -175,7 +175,7 @@ describe('Notifications API Routes', () => {
         body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
       });
 
-      const res = await postNotification(req);
+      const res = await postNotification(req as any);
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.error).toBe('Insert DB failed');
@@ -242,7 +242,7 @@ describe('Notifications API Routes', () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.count).toBe(2);
-      
+
       // Reset select back to builder for other tests
       mockSelect.mockReturnValue(mockQueryBuilder);
     });
@@ -262,7 +262,7 @@ describe('Notifications API Routes', () => {
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.error).toBe('Không thể đánh dấu tất cả thông báo đã đọc');
-      
+
       mockSelect.mockReturnValue(mockQueryBuilder);
     });
   });

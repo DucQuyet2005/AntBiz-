@@ -29,11 +29,11 @@ const PLATFORM_LABEL: Record<string, string> = {
 };
 
 const PLATFORM_BADGE_CLASS: Record<string, string> = {
-  facebook: 'bg-[#E7F0FE] text-[#1877F2]',
-  threads: 'bg-[#F3E5CD] text-[#5D4E3C]',
-  thread: 'bg-[#F3E5CD] text-[#5D4E3C]',
-  instagram: 'bg-[#FCE7F3] text-[#C026D3]',
-  blog: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+  facebook: 'bg-[#E7F0FE] dark:bg-blue-950/40 text-[#1877F2] dark:text-blue-400',
+  threads: 'bg-[#F3E5CD] dark:bg-black border dark:border-white/5 text-[#5D4E3C] dark:text-slate-200',
+  thread: 'bg-[#F3E5CD] dark:bg-black border dark:border-white/5 text-[#5D4E3C] dark:text-slate-200',
+  instagram: 'bg-[#FCE7F3] dark:bg-pink-950/40 text-[#C026D3] dark:text-pink-400',
+  blog: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30',
 };
 
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -43,9 +43,9 @@ const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
 );
 
 function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number }) {
-  if (platform === 'facebook') return <Facebook size={size} className="fill-[#1877F2] text-[#1877F2]" />;
-  if (platform === 'instagram') return <Instagram size={size} className="text-[#C026D3]" />;
-  if (platform === 'blog') return <Globe size={size} className="text-emerald-600" />;
+  if (platform === 'facebook') return <Facebook size={size} className="fill-[#1877F2] text-[#1877F2] dark:fill-blue-400 dark:text-blue-400" />;
+  if (platform === 'instagram') return <Instagram size={size} className="text-[#C026D3] dark:text-pink-400" />;
+  if (platform === 'blog') return <Globe size={size} className="text-emerald-600 dark:text-emerald-400" />;
   return <ThreadsIcon size={size} />;
 }
 
@@ -132,12 +132,12 @@ export default function SearchView() {
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             placeholder={t('search.placeholder')}
-            className="w-full bg-white border border-gray-200/80 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted shadow-sm"
+            className="w-full bg-white border border-gray-200/80 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted shadow-sm"
           />
         </div>
         <button
           type="submit"
-          className="bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+          className="bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
         >
           {t('common.search')}
         </button>
@@ -162,7 +162,7 @@ export default function SearchView() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-6 py-3 text-sm font-extrabold relative transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-text-muted hover:text-text'
+            className={`px-6 py-3 text-sm font-extrabold relative transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded-t-xl ${activeTab === tab.id ? 'text-primary' : 'text-text-muted hover:text-text'
               }`}
           >
             <span className="flex items-center gap-1.5">
@@ -190,13 +190,13 @@ export default function SearchView() {
             <p className="font-bold text-sm">{t('common.loading')}</p>
           </div>
         ) : error ? (
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-5 py-4 rounded-2xl">
+          <div className="flex items-center gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium px-5 py-4 rounded-2xl">
             <AlertCircle size={20} className="shrink-0" />
             {error}
           </div>
         ) : totalResults === 0 ? (
-          <div className="bg-[#F8F9FD] border border-[#E9ECF8] rounded-[32px] p-16 flex flex-col items-center text-center gap-3 max-w-xl mx-auto mt-6">
-            <div className="w-16 h-16 rounded-3xl bg-blue-50 flex items-center justify-center text-blue-500">
+          <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-16 flex flex-col items-center text-center gap-3 max-w-xl mx-auto mt-6">
+            <div className="w-16 h-16 rounded-3xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500 dark:text-blue-400">
               <Search size={32} />
             </div>
             <p className="font-extrabold text-lg text-text">
@@ -227,7 +227,7 @@ export default function SearchView() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {results.articles.slice(0, 4).map((art) => (
-                          <ArticleCard key={art.id} article={art} />
+                          <ArticleCard key={art.id} article={art} query={query} />
                         ))}
                       </div>
                       {results.articles.length > 4 && (
@@ -250,7 +250,7 @@ export default function SearchView() {
                       </div>
                       <div className="flex flex-col gap-3">
                         {results.captions.slice(0, 3).map((cap) => (
-                          <CaptionRow key={cap.id} caption={cap} />
+                          <CaptionRow key={cap.id} caption={cap} query={query} />
                         ))}
                       </div>
                       {results.captions.length > 3 && (
@@ -273,7 +273,7 @@ export default function SearchView() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {results.prompts.slice(0, 4).map((p) => (
-                          <PromptCard key={p.id} prompt={p} />
+                          <PromptCard key={p.id} prompt={p} query={query} />
                         ))}
                       </div>
                       {results.prompts.length > 4 && (
@@ -296,7 +296,7 @@ export default function SearchView() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {results.faqs.slice(0, 4).map((faq) => (
-                          <FaqCard key={faq.key} faq={faq} />
+                          <FaqCard key={faq.key} faq={faq} query={query} />
                         ))}
                       </div>
                       {results.faqs.length > 4 && (
@@ -316,7 +316,7 @@ export default function SearchView() {
               {activeTab === 'articles' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {results.articles.map((art) => (
-                    <ArticleCard key={art.id} article={art} />
+                    <ArticleCard key={art.id} article={art} query={query} />
                   ))}
                 </div>
               )}
@@ -325,7 +325,7 @@ export default function SearchView() {
               {activeTab === 'captions' && (
                 <div className="flex flex-col gap-4">
                   {results.captions.map((cap) => (
-                    <CaptionRow key={cap.id} caption={cap} />
+                    <CaptionRow key={cap.id} caption={cap} query={query} />
                   ))}
                 </div>
               )}
@@ -334,7 +334,7 @@ export default function SearchView() {
               {activeTab === 'prompts' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {results.prompts.map((p) => (
-                    <PromptCard key={p.id} prompt={p} />
+                    <PromptCard key={p.id} prompt={p} query={query} />
                   ))}
                 </div>
               )}
@@ -343,7 +343,7 @@ export default function SearchView() {
               {activeTab === 'faqs' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {results.faqs.map((faq) => (
-                    <FaqCard key={faq.key} faq={faq} />
+                    <FaqCard key={faq.key} faq={faq} query={query} />
                   ))}
                 </div>
               )}
@@ -357,23 +357,45 @@ export default function SearchView() {
 
 /* Sub-components forSearchView */
 
-function ArticleCard({ article }: { article: any }) {
+function highlightText(text: string, query: string) {
+  if (!query || !query.trim() || !text) return text;
+  
+  const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => 
+        regex.test(part) ? (
+          <mark key={i} className="bg-amber-100 dark:bg-amber-500/20 text-amber-950 dark:text-amber-300 px-0.5 rounded font-extrabold">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
+const ArticleCard = React.memo(function ArticleCard({ article, query = '' }: { article: any; query?: string; key?: any }) {
   const { t } = useLanguage();
   return (
     <Link
       href={`/archive/${article.id}`}
-      className="bg-white border border-gray-200/60 p-6 rounded-[28px] hover:shadow-md transition-all group flex flex-col justify-between gap-4 cursor-pointer"
+      className="bg-white border border-gray-200/60 p-6 rounded-2xl hover:shadow-md transition-all group flex flex-col justify-between gap-4 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
     >
       <div>
         <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5 block">
           {t('search.originalArticleLabel')}
         </div>
         <h3 className="font-extrabold text-base text-text line-clamp-2 group-hover:text-primary transition-colors mb-2">
-          {article.title || t('search.untitled')}
+          {highlightText(article.title || t('search.untitled'), query)}
         </h3>
         {article.description && (
           <p className="text-xs text-text-muted line-clamp-3 leading-relaxed font-medium">
-            {article.description}
+            {highlightText(article.description, query)}
           </p>
         )}
       </div>
@@ -385,14 +407,14 @@ function ArticleCard({ article }: { article: any }) {
       </div>
     </Link>
   );
-}
+});
 
-function CaptionRow({ caption }: { caption: any }) {
+const CaptionRow = React.memo(function CaptionRow({ caption, query = '' }: { caption: any; query?: string; key?: any }) {
   const { t } = useLanguage();
   return (
     <Link
       href={`/archive/${caption.article_id}?captionId=${caption.id}`}
-      className="bg-white border border-gray-200/60 p-5 rounded-[24px] hover:shadow-sm transition-all flex flex-col gap-3 group cursor-pointer"
+      className="bg-white border border-gray-200/60 p-5 rounded-2xl hover:shadow-sm transition-all flex flex-col gap-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
@@ -401,7 +423,7 @@ function CaptionRow({ caption }: { caption: any }) {
           </span>
           {caption.articles?.title && (
             <span className="text-[10px] text-text-muted font-bold line-clamp-1 max-w-sm">
-              {t('search.articlePrefix')}{caption.articles.title}
+              {t('search.articlePrefix')}{highlightText(caption.articles.title, query)}
             </span>
           )}
         </div>
@@ -410,18 +432,18 @@ function CaptionRow({ caption }: { caption: any }) {
         </span>
       </div>
       <p className="text-xs text-text leading-relaxed font-medium whitespace-pre-wrap bg-gray-50/50 p-3.5 rounded-2xl border border-gray-100/50">
-        {caption.edited_content || caption.ai_content || t('search.noContent')}
+        {highlightText(caption.edited_content || caption.ai_content || t('search.noContent'), query)}
       </p>
     </Link>
   );
-}
+});
 
-function PromptCard({ prompt }: { prompt: any }) {
+const PromptCard = React.memo(function PromptCard({ prompt, query = '' }: { prompt: any; query?: string; key?: any }) {
   const { t } = useLanguage();
   return (
     <Link
       href={`/prompts?promptId=${prompt.id}`}
-      className="bg-white border border-gray-200/60 p-6 rounded-[28px] hover:shadow-md transition-all flex flex-col justify-between gap-4 group cursor-pointer"
+      className="bg-white border border-gray-200/60 p-6 rounded-2xl hover:shadow-md transition-all flex flex-col justify-between gap-4 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
     >
       <div>
         <div className="flex items-center justify-between gap-3 mb-2.5">
@@ -438,10 +460,10 @@ function PromptCard({ prompt }: { prompt: any }) {
           </div>
         </div>
         <h3 className="font-extrabold text-base text-text line-clamp-1 group-hover:text-primary transition-colors mb-2">
-          {prompt.name}
+          {highlightText(prompt.name, query)}
         </h3>
         <p className="text-xs text-text-muted line-clamp-3 leading-relaxed font-medium whitespace-pre-line">
-          {prompt.content}
+          {highlightText(prompt.content, query)}
         </p>
       </div>
       <div className="flex items-center justify-end text-[10px] font-black text-primary group-hover:underline gap-0.5">
@@ -449,14 +471,14 @@ function PromptCard({ prompt }: { prompt: any }) {
       </div>
     </Link>
   );
-}
+});
 
-function FaqCard({ faq }: { faq: any }) {
+const FaqCard = React.memo(function FaqCard({ faq, query = '' }: { faq: any; query?: string; key?: any }) {
   const { t } = useLanguage();
   return (
     <Link
       href={`/faq?key=${faq.key}`}
-      className="bg-white border border-gray-200/60 p-6 rounded-[28px] hover:shadow-md transition-all flex flex-col justify-between gap-4 group cursor-pointer"
+      className="bg-white border border-gray-200/60 p-6 rounded-2xl hover:shadow-md transition-all flex flex-col justify-between gap-4 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
     >
       <div>
         <div className="flex items-center gap-1.5 mb-2.5">
@@ -466,11 +488,11 @@ function FaqCard({ faq }: { faq: any }) {
           </span>
         </div>
         <h3 className="font-extrabold text-base text-text line-clamp-2 group-hover:text-primary transition-colors mb-2">
-          {faq.question}
+          {highlightText(faq.question, query)}
         </h3>
         {faq.answer && (
           <p className="text-xs text-text-muted line-clamp-3 leading-relaxed font-medium">
-            {faq.answer}
+            {highlightText(faq.answer, query)}
           </p>
         )}
       </div>
@@ -479,4 +501,4 @@ function FaqCard({ faq }: { faq: any }) {
       </div>
     </Link>
   );
-}
+});

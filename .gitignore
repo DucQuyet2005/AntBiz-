@@ -51,4 +51,17 @@ next-env.d.ts
 
 # Temporary analysis logs
 *-output-*.txt
+
+# AI Agent customizations (Impeccable, skills, internal configs)
+# Không push các file cấu hình agent nội bộ lên git
+.agents/skills/impeccable/
+.impeccable/
+.codex/
+
+# Antigravity IDE app data
+.gemini/
+
+# GitHub-stored skills and hooks (Impeccable, agent tools)
+.github/skills/
+.github/hooks/
 next-env.d.ts

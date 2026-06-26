@@ -18,7 +18,7 @@ export default function AdminAccessDenied() {
       </p>
       <Link 
         href="/overview"
-        className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-slate-900/20"
+        className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-lg shadow-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
       >
         {t('admin.returnDashboard')}
       </Link>

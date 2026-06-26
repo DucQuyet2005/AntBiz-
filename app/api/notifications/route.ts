@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUser } from '@/lib/api/auth';
 import { createNotification, NotificationType } from '@/lib/services/notificationService';
 
+// Từ khóa nhận diện theo từng danh mục (mirror với client-side classifyNotification)
+const PROMPT_KEYWORDS = ['prompt'];
+const LICH_KEYWORDS = ['lịch', 'lich', 'schedule', 'scheduled', 'đăng bài', 'lên lịch', 'dời lịch', 'hủy lịch', 'thay đổi lịch'];
+
+/**
+ * Xây dựng filter OR cho Supabase theo từ khóa trong title hoặc message.
+ * Supabase PostgREST syntax: "title.ilike.%keyword%,message.ilike.%keyword%"
+ */
+function buildKeywordOrFilter(keywords: string[]): string {
+  return keywords
+    .flatMap(kw => [
+      `title.ilike.%${kw}%`,
+      `message.ilike.%${kw}%`,
+    ])
+    .join(',');
+}
+
 // GET /api/notifications - Lấy danh sách thông báo của user hiện tại
 export async function GET(request: NextRequest) {
   const { user, supabase, unauthorized } = await requireUser();
@@ -11,65 +28,83 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1', 10);
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-    const typeFilter = url.searchParams.get('type') || 'all';
+    // Nhận param 'category' mới; fallback về 'type' cũ để tương thích ngược
+    const category = url.searchParams.get('category') || url.searchParams.get('type') || 'all';
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const rolePromise = supabase
+    // Lấy role user để xác định quyền truy cập
+    const { data: roleData } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
+    const userRole = roleData?.role || 'marketer';
 
-    let data, error, count;
-    let userRole = 'marketer';
+    // Base query
+    let query = supabase
+      .from('notifications')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (typeFilter !== 'all') {
-      const [roleRes, queryRes] = await Promise.all([
-        rolePromise,
-        supabase
-          .from('notifications')
-          .select('*', { count: 'exact' })
-          .eq('user_id', user.id)
-          .eq('type', typeFilter)
-          .order('created_at', { ascending: false })
-          .range(from, to)
-      ]);
-      userRole = roleRes.data?.role || 'marketer';
-
-      if (userRole === 'admin' && ['post_success', 'post_failed', 'ab_test_complete'].includes(typeFilter)) {
-        return NextResponse.json({
-          data: [],
-          count: 0,
-          page,
-          limit,
-          totalPages: 0,
-        });
-      }
-
-      data = queryRes.data;
-      error = queryRes.error;
-      count = queryRes.count;
-    } else {
-      const roleRes = await rolePromise;
-      userRole = roleRes.data?.role || 'marketer';
-
-      let query = supabase
-        .from('notifications')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (userRole === 'admin') {
-        query = query.eq('type', 'info');
-      }
-
-      const queryRes = await query.range(from, to);
-      data = queryRes.data;
-      error = queryRes.error;
-      count = queryRes.count;
+    // Admin chỉ thấy type = 'info'
+    if (userRole === 'admin') {
+      query = query.eq('type', 'info');
     }
+
+    // Áp dụng filter theo category
+    switch (category) {
+      case 'bai-dang':
+        if (userRole === 'admin') {
+          // Admin không có bài đăng — trả về rỗng
+          return NextResponse.json({ data: [], count: 0, page, limit, totalPages: 0 });
+        }
+        query = (query as any).in('type', ['post_success', 'post_failed']);
+        break;
+
+      case 'prompt': {
+        // type = 'info' (đã áp với admin) + title/message chứa "prompt"
+        const promptFilter = buildKeywordOrFilter(PROMPT_KEYWORDS);
+        query = query.eq('type', 'info').or(promptFilter);
+        break;
+      }
+
+      case 'lich': {
+        if (userRole === 'admin') {
+          // Admin: chỉ info với từ khóa lịch
+          const lichFilter = buildKeywordOrFilter(LICH_KEYWORDS);
+          query = query.eq('type', 'info').or(lichFilter);
+        } else {
+          // Marketer: ab_test_complete + info với từ khóa lịch
+          const lichKeywordFilter = buildKeywordOrFilter(LICH_KEYWORDS);
+          query = (query as any).or(
+            `type.eq.ab_test_complete,and(type.eq.info,or(${lichKeywordFilter}))`
+          );
+        }
+        break;
+      }
+
+      case 'he-thong': {
+        // type = 'info' KHÔNG chứa từ khóa prompt hay lịch
+        const allExcludeKeywords = [...PROMPT_KEYWORDS, ...LICH_KEYWORDS];
+        let heThongQuery = query.eq('type', 'info');
+        for (const kw of allExcludeKeywords) {
+          heThongQuery = (heThongQuery as any)
+            .not('title', 'ilike', `%${kw}%`)
+            .not('message', 'ilike', `%${kw}%`);
+        }
+        query = heThongQuery;
+        break;
+      }
+
+      // 'all' hoặc không nhận diện được — không thêm filter
+      default:
+        break;
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
       console.error('[GET /api/notifications] Supabase error:', error);
@@ -88,6 +123,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
 
 // POST /api/notifications - Tạo thông báo mới (internal hoặc authorized)
 export async function POST(request: NextRequest) {

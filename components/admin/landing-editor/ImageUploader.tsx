@@ -25,12 +25,12 @@ export default function ImageUploader({ value, onChange }: Props) {
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setPopupInfo({ isOpen: true, message: 'Vui lòng chọn file hình ảnh (JPG, PNG, GIF, WEBP)', type: 'error' });
+      setPopupInfo({ isOpen: true, message: t.uploadErrorImgOnly, type: 'error' });
       return;
     }
     // Set a reasonable limit like 3MB since we're using base64
     if (file.size > 3 * 1024 * 1024) {
-      setPopupInfo({ isOpen: true, message: 'Kích thước ảnh tối đa là 3MB. Vui lòng nén ảnh lại.', type: 'error' });
+      setPopupInfo({ isOpen: true, message: t.uploadErrorSizeLimit, type: 'error' });
       return;
     }
     
@@ -81,19 +81,19 @@ export default function ImageUploader({ value, onChange }: Props) {
         {/* Old Image */}
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase">{t.imageCurrent}</span>
-          <div className="w-full h-32 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden relative flex items-center justify-center">
+          <div className="w-full h-32 bg-[#F8F9FA] dark:bg-[#1A1D27] rounded-2xl border border-[#E2E8F0] dark:border-white/10 overflow-hidden relative flex items-center justify-center">
             {value ? (
               <img src={value} alt="Old" className="w-full h-full object-cover opacity-80" />
             ) : (
-              <ImageIcon className="text-slate-300" size={24} />
+              <ImageIcon className="text-slate-300 dark:text-slate-600" size={24} />
             )}
           </div>
         </div>
 
         {/* New Image Preview */}
         <div className="flex flex-col gap-1 relative">
-          <span className="text-[10px] font-bold text-[#5A5CDE] uppercase">{t.imageNew}</span>
-          <div className="w-full h-32 bg-[#5A5CDE]/5 rounded-lg border-2 border-[#5A5CDE]/30 overflow-hidden relative flex items-center justify-center">
+          <span className="text-[10px] font-bold text-primary uppercase">{t.imageNew}</span>
+          <div className="w-full h-32 bg-primary/5 rounded-2xl border-2 border-primary/30 overflow-hidden relative flex items-center justify-center">
             {newImage ? (
               <img src={newImage} alt="New" className="w-full h-full object-cover" />
             ) : (
@@ -102,21 +102,21 @@ export default function ImageUploader({ value, onChange }: Props) {
               </div>
             )}
           </div>
-          <div className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 bg-white rounded-full shadow-sm p-0.5 border border-slate-100">
-            <ArrowRight size={14} className="text-[#5A5CDE]" />
+          <div className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 bg-[#ffffff] dark:bg-[#1A1D27] rounded-full shadow-sm p-0.5 border border-[#E2E8F0] dark:border-white/10">
+            <ArrowRight size={14} className="text-primary" />
           </div>
 
           {newImage && (
             <div className="flex gap-2 w-full mt-2">
               <button 
                 onClick={() => setNewImage(null)}
-                className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[10px] uppercase transition-colors"
+                className="flex-1 px-4 py-2 bg-[#F1F3F5] dark:bg-white/5 hover:bg-[#E9ECEF] dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-[10px] uppercase transition-all duration-100 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 {t.cancelNewImage}
               </button>
               <button 
                 onClick={() => { onChange(newImage); setNewImage(null); }}
-                className="flex-1 px-4 py-2 bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white rounded-lg font-bold text-[10px] uppercase shadow-md transition-colors"
+                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-[10px] uppercase shadow-md transition-all duration-100 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-offset-2"
               >
                 {t.useThisImage}
               </button>
@@ -126,22 +126,29 @@ export default function ImageUploader({ value, onChange }: Props) {
       </div>
 
       <div className="text-center text-xs font-bold text-slate-400 uppercase my-2 relative">
-        <span className="bg-white px-2 relative z-10">{t.dragDrop}</span>
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-100" />
+        <span className="bg-[#ffffff] dark:bg-[#0F0F12] px-2 relative z-10">{t.dragDrop}</span>
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-[#E2E8F0] dark:bg-white/5" />
       </div>
 
       {/* Dropzone */}
       <div 
-        className={`w-full p-6 rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${dragActive ? 'border-[#5A5CDE] bg-[#5A5CDE]/5' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'}`}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        className={`w-full p-6 rounded-2xl border-2 border-dashed transition-all duration-100 active:scale-[0.99] cursor-pointer flex flex-col items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${dragActive ? 'border-primary bg-primary/5' : 'border-slate-300 dark:border-white/10 bg-[#F8F9FA] dark:bg-[#1A1D27] hover:bg-[#F1F3F5] dark:hover:bg-[#252A37] hover:border-slate-400 dark:hover:border-white/20'}`}
         onDragEnter={onDrag}
         onDragLeave={onDrag}
         onDragOver={onDrag}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <UploadCloud size={24} className={dragActive ? 'text-[#5A5CDE]' : 'text-slate-400'} />
-        <p className="text-xs font-bold text-slate-600">{t.dragDropOrClick}</p>
-        <p className="text-[10px] text-slate-400 font-medium">{t.supportFormat}</p>
+        <UploadCloud size={24} className={dragActive ? 'text-primary' : 'text-slate-400'} />
+        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{t.dragDropOrClick}</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{t.supportFormat}</p>
         <input 
           type="file" 
           ref={fileInputRef}
@@ -154,8 +161,8 @@ export default function ImageUploader({ value, onChange }: Props) {
       </div>
 
       <div className="text-center text-xs font-bold text-slate-400 uppercase my-2 relative">
-        <span className="bg-white px-2 relative z-10">{t.orUrl}</span>
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-100" />
+        <span className="bg-[#ffffff] dark:bg-[#0F0F12] px-2 relative z-10">{t.orUrl}</span>
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-[#E2E8F0] dark:bg-white/5" />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -164,7 +171,7 @@ export default function ImageUploader({ value, onChange }: Props) {
           placeholder="https://example.com/image.png"
           value={newImage || value}
           onChange={handleUrlInput}
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#5A5CDE]/50"
+          className="w-full px-3 py-2 bg-[#ffffff] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
         />
       </div>
 

@@ -375,7 +375,7 @@ function AvatarDisplay({
       )}
       {/* Avatar ở trên */}
       <div
-        className="absolute inset-0 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 border-2 border-white shadow-sm"
+        className="absolute inset-0 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 dark:bg-slate-800 border-2 border-white dark:border-slate-850 shadow-sm"
         style={{ zIndex: 1 }}
       >
         {avatarUrl ? (
@@ -386,7 +386,7 @@ function AvatarDisplay({
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
-          <span className="text-gray-600 font-bold select-none" style={{ fontSize: size * 0.35 }}>
+          <span className="text-gray-600 dark:text-slate-400 font-bold select-none" style={{ fontSize: size * 0.35 }}>
             {initials}
           </span>
         )}
@@ -502,7 +502,7 @@ export default function UserProfileDropdown() {
       {/* ── Trigger Button ── */}
       <button
         onClick={() => setIsOpen(v => !v)}
-        className="flex items-center gap-1.5 focus:outline-none group"
+        className="flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded-full group"
       >
         <div className="transition-transform duration-300 group-hover:scale-105">
           <AvatarDisplay 
@@ -528,7 +528,7 @@ export default function UserProfileDropdown() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-0 mt-3 w-[260px] bg-white/95 backdrop-blur-xl border border-gray-200/60 rounded-2xl shadow-xl z-50 p-4 text-left"
+            className="absolute right-0 mt-3 w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200/60 dark:border-white/5 rounded-2xl shadow-xl z-50 p-4 text-left"
           >
             {isLoading ? (
               <div className="flex items-center justify-center py-6 gap-2">
@@ -538,7 +538,7 @@ export default function UserProfileDropdown() {
             ) : (
               <div className="flex flex-col gap-3.5">
                 {/* User Info Header */}
-                <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-white/5">
                   <AvatarDisplay 
                     avatarUrl={avatarUrl} 
                     initials={getInitials()} 
@@ -553,7 +553,7 @@ export default function UserProfileDropdown() {
                     </p>
                     <p className="text-[10px] text-text-muted truncate mt-0.5">{email}</p>
                     <div className="mt-1">
-                      <span className="inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
+                      <span className="inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary uppercase tracking-wider">
                         {role.replace('marketer_', '')}
                       </span>
                     </div>
@@ -564,18 +564,18 @@ export default function UserProfileDropdown() {
                 <Link
                   href="/profile"
                   onClick={() => setIsOpen(false)}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md shadow-primary/10 transition-all text-center"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md shadow-primary/10 transition-all text-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-offset-2"
                 >
                   <User size={13} />
-                  <span>Chỉnh sửa Profile</span>
+                  <span>{t('profile.editProfile')}</span>
                 </Link>
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-gray-100 text-[10px]">
+                <div className="flex items-center justify-between pt-2.5 border-t border-gray-100 dark:border-white/5 text-[10px]">
                   <Link
                     href="/settings"
                     onClick={() => setIsOpen(false)}
-                    className="text-text-muted hover:text-text flex items-center gap-1.5 transition-colors font-medium"
+                    className="text-text-muted hover:text-text flex items-center gap-1.5 transition-colors font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded px-1"
                   >
                     <Settings size={12} />
                     <span>{t('sidebar.settings')}</span>
@@ -583,7 +583,7 @@ export default function UserProfileDropdown() {
 
                   <button
                     onClick={handleLogout}
-                    className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-0 p-0"
+                    className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-0 p-0 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none rounded px-1"
                   >
                     <LogOut size={12} />
                     <span>{t('sidebar.logout')}</span>

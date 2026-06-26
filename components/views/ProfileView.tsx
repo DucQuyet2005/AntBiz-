@@ -433,14 +433,16 @@ function AvatarPreview({
       )}
       {/* Avatar surface */}
       <div
-        className="absolute inset-0 rounded-full overflow-hidden flex items-center justify-center bg-gray-200"
-        style={{ zIndex: 1, border: size > 80 ? '4px solid white' : '2px solid white', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.1)' }}
+        className={`absolute inset-0 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 dark:bg-black ${
+          size > 80 ? 'border-4' : 'border-2'
+        } border-white dark:border-black`}
+        style={{ zIndex: 1, boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.1)' }}
       >
         {avatarUrl ? (
           <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         ) : (
-          <span className="text-gray-500 font-extrabold select-none" style={{ fontSize: size * 0.35 }}>
+          <span className="text-gray-500 dark:text-gray-400 font-extrabold select-none" style={{ fontSize: size * 0.35 }}>
             {initials}
           </span>
         )}
@@ -513,11 +515,11 @@ function EffectPickerDialog({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.9, y: 20, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-white rounded-[28px] w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden"
+            className="bg-white dark:bg-black border dark:border-white/5 rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden"
             style={{ maxHeight: '85vh' }}
           >
             {/* Dialog Header */}
-            <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-gray-100">
+            <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-gray-100 dark:border-white/5">
               <div>
                 <h2 className="text-xl font-black text-text">🎨 {t('profile.dialogTitle')}</h2>
                 <p className="text-xs text-text-muted mt-0.5">{t('profile.dialogSubtitle')}</p>
@@ -533,7 +535,7 @@ function EffectPickerDialog({
                   size={64}
                 />
                 <button onClick={onClose}
-                  className="w-9 h-9 rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors text-text-muted hover:text-text">
+                  className="w-9 h-9 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-black flex items-center justify-center transition-colors text-text-muted hover:text-text focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
                   <X size={16} />
                 </button>
               </div>
@@ -548,15 +550,15 @@ function EffectPickerDialog({
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key as 'effects' | 'bases')}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
                     tab === t.key
                       ? 'bg-primary text-white shadow-md shadow-primary/20'
-                      : 'text-text-muted hover:bg-gray-50 hover:text-text'
+                      : 'text-text-muted hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-text'
                   }`}
                 >
                   {t.label}
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                    tab === t.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-text-muted'
+                    tab === t.key ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-slate-800 text-text-muted'
                   }`}>{t.count}</span>
                 </button>
               ))}
@@ -570,8 +572,8 @@ function EffectPickerDialog({
                     const active = avatarEffect === key;
                     return (
                       <button key={key} type="button" onClick={() => onSelectEffect(key)}
-                        className={`text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-1.5 ${
-                          active ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm' : 'border-gray-100 hover:bg-gray-50 hover:border-gray-200'
+                        className={`text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
+                          active ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm' : 'border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:border-gray-200 dark:hover:border-white/10'
                         }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-xl">{icon}</span>
@@ -590,8 +592,8 @@ function EffectPickerDialog({
                     const active = avatarBase === key;
                     return (
                       <button key={key} type="button" onClick={() => onSelectBase(key)}
-                        className={`text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-1.5 ${
-                          active ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm' : 'border-gray-100 hover:bg-gray-50 hover:border-gray-200'
+                        className={`text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${
+                          active ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm' : 'border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:border-gray-200 dark:hover:border-white/10'
                         }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-xl">{icon}</span>
@@ -607,9 +609,9 @@ function EffectPickerDialog({
             </div>
 
             {/* Footer */}
-            <div className="px-7 py-5 border-t border-gray-100 flex justify-end">
+            <div className="px-7 py-5 border-t border-gray-100 dark:border-white/5 flex justify-end">
               <button onClick={onClose}
-                className="px-6 py-2.5 bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2">
+                className="px-6 py-2.5 bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-sm rounded-xl shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">
                 <Sparkles size={14} />
                 {t('profile.confirmSelection')}
               </button>
@@ -802,7 +804,7 @@ export default function ProfileView() {
 
       <form onSubmit={handleSave} className="grid grid-cols-12 gap-8 items-stretch">
         {/* ── LEFT: Live Preview ── */}
-        <div className="col-span-12 lg:col-span-4 bg-white border border-gray-200/60 rounded-[32px] p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-card/40 border border-gray-200/60 dark:border-white/5 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-transparent pointer-events-none" />
           <div className="relative z-10 flex flex-col items-center">
             <div className="mb-8">
@@ -820,25 +822,25 @@ export default function ProfileView() {
               <Mail size={12} className="text-gray-400" />{email}
             </p>
             {department && (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#F3F4FD] text-primary border border-primary/10 text-xs font-bold rounded-full mb-6">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 dark:bg-primary/20 text-primary border border-primary/10 dark:border-primary/20 text-xs font-bold rounded-full mb-6">
                 <Briefcase size={12} />{department}
               </span>
             )}
-            <div className="w-full border-t border-gray-100 pt-6 flex flex-col gap-3">
+            <div className="w-full border-t border-gray-100 dark:border-white/5 pt-6 flex flex-col gap-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-text-muted flex items-center gap-1.5 font-medium"><Shield size={13} className="text-gray-400" />{t('profile.roleLabel')}:</span>
-                <span className="font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px]">{role.replace('marketer_', '')}</span>
+                <span className="font-bold text-primary bg-primary/10 dark:bg-primary/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px]">{role.replace('marketer_', '')}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-text-muted flex items-center gap-1.5 font-medium"><UserCheck size={13} className="text-gray-400" />{t('profile.statusLabel')}:</span>
-                <span className={`font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px] ${status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{status}</span>
+                <span className={`font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px] ${status === 'active' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'}`}>{status}</span>
               </div>
             </div>
 
             {/* Đổi mật khẩu button */}
             <Link
               href="/profile/change-password"
-              className="mt-6 w-full py-3 px-4 border border-gray-200 hover:border-primary/50 hover:bg-primary/5 text-slate-700 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2"
+              className="mt-6 w-full py-3 px-4 border border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 text-slate-700 dark:text-slate-300 hover:text-primary font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
             >
               <Key size={14} />
               <span>{t('profile.changePasswordBtn')}</span>
@@ -847,52 +849,54 @@ export default function ProfileView() {
         </div>
 
         {/* ── RIGHT: Edit Form ── */}
-        <div className="col-span-12 lg:col-span-8 bg-white border border-gray-200/60 rounded-[32px] p-8 shadow-sm flex flex-col gap-6">
+        <div className="col-span-12 lg:col-span-8 bg-white dark:bg-card/40 border border-gray-200/60 dark:border-white/5 rounded-2xl p-8 shadow-sm flex flex-col gap-6">
           {/* Name + Department */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted flex items-center gap-1.5"><User size={14} className="text-primary" />{t('profile.displayName')}</label>
               <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
-                className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
+                className="w-full bg-gray-50/50 dark:bg-black/50 hover:bg-gray-50 dark:hover:bg-slate-950 border border-gray-200 dark:border-white/5 rounded-2xl px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                 placeholder={t('profile.displayNamePlaceholder')} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted flex items-center gap-1.5"><Briefcase size={14} className="text-primary" />{t('profile.department')}</label>
               <input type="text" value={department} onChange={e => setDepartment(e.target.value)}
-                className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-semibold transition-all"
+                className="w-full bg-gray-50/50 dark:bg-black/50 hover:bg-gray-50 dark:hover:bg-slate-955 border border-gray-200 dark:border-white/5 rounded-2xl px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-semibold transition-all"
                 placeholder={t('profile.departmentPlaceholder')} />
             </div>
           </div>
 
           {/* Avatar Upload */}
-          <div className="border-t border-gray-100 pt-6">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-6">
             <h3 className="text-sm font-bold text-text mb-3">🖼️ {t('profile.uploadTitle')}</h3>
             <input type="file" ref={fileInputRef} accept="image/gif,image/png,image/jpeg,image/webp" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
             <div
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
               onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) uploadFile(f); }}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center gap-2 ${isDragging ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-gray-200 hover:border-primary/40 hover:bg-gray-50/50'}`}
+              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${isDragging ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-gray-200 dark:border-white/10 hover:border-primary/40 hover:bg-gray-50/50 dark:hover:bg-slate-950/50'}`}
             >
               {isUploading ? (<><Loader2 size={24} className="text-primary animate-spin" /><span className="text-xs text-primary font-bold">{t('profile.uploading')}</span></>)
-                : (<><Upload size={24} className={isDragging ? 'text-primary' : 'text-gray-400'} /><span className="text-xs font-bold text-text">{isDragging ? (language === 'vi' ? 'Thả tệp vào đây!' : 'Drop the file here!') : t('profile.dragDropOrClick')}</span><span className="text-[10px] text-text-muted">GIF · PNG · JPG · WebP</span></>)}
+                : (<><Upload size={24} className={isDragging ? 'text-primary' : 'text-gray-400'} /><span className="text-xs font-bold text-text">{isDragging ? t('profile.dropHere') : t('profile.dragDropOrClick')}</span><span className="text-[10px] text-text-muted">GIF · PNG · JPG · WebP</span></>)}
             </div>
             {uploadError && <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold mt-2"><X size={14} />{uploadError}</div>}
             <input type="text" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)}
-              className="w-full mt-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-text font-medium"
+              className="w-full mt-3 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/5 rounded-xl px-3 py-2 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-text font-medium"
               placeholder={t('profile.orPasteUrl')} />
             <div className="mt-3 flex gap-2 items-center">
               {PRESETS.map((g, i) => (
                 <button key={i} type="button" onClick={() => setAvatarUrl(g.url)}
-                  className={`w-11 h-11 rounded-xl overflow-hidden border-2 transition-all hover:scale-110 ${avatarUrl === g.url ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200 hover:border-primary/50'}`}>
+                  className={`w-11 h-11 rounded-xl overflow-hidden border-2 transition-all hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${avatarUrl === g.url ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200 dark:border-white/10 hover:border-primary/50'}`}>
                   <img src={g.url} alt={g.name} className="w-full h-full object-cover" />
                 </button>
               ))}
               {avatarUrl && (
                 <button type="button" onClick={() => setAvatarUrl('')}
-                  className="w-11 h-11 rounded-xl border-2 border-dashed border-gray-200 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-all group">
+                  className="w-11 h-11 rounded-xl border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center justify-center transition-all group focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
                   <X size={15} className="text-gray-400 group-hover:text-red-400" />
                 </button>
               )}
@@ -900,18 +904,18 @@ export default function ProfileView() {
           </div>
 
           {/* Frame selector */}
-          <div className="border-t border-gray-100 pt-6">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-6">
             <h3 className="text-sm font-bold text-text mb-3">✨ {t('profile.avatarFrame')}</h3>
             <div className="grid grid-cols-2 gap-2.5">
               {FRAMES.map(({ key, label, icon, ringClass, descKey }) => {
                 const active = avatarFrame === key;
-                let cls = 'border-gray-100 hover:bg-gray-50 text-text-muted';
-                if (active) cls = key === 'rainbow' ? 'border-purple-400 bg-purple-50 ring-1 ring-purple-400 text-purple-700' : key === 'gold' ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-400 text-amber-700' : key === 'cyber' ? 'border-cyan-400 bg-cyan-50 ring-1 ring-cyan-400 text-cyan-700' : 'border-primary bg-primary/5 ring-1 ring-primary text-primary';
+                let cls = 'border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-slate-900 text-text-muted';
+                if (active) cls = key === 'rainbow' ? 'border-purple-400 bg-purple-50 dark:bg-purple-950/20 ring-1 ring-purple-400 text-purple-700 dark:text-purple-300' : key === 'gold' ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-400 text-amber-700 dark:text-amber-300' : key === 'cyber' ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-950/20 ring-1 ring-cyan-400 text-cyan-700 dark:text-cyan-300' : 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary text-primary dark:text-primary-hover';
                 return (
                   <button key={key} type="button" onClick={() => setAvatarFrame(key)}
-                    className={`text-left p-3.5 rounded-2xl border transition-all flex items-center gap-3 justify-between ${cls}`}>
+                    className={`text-left p-3.5 rounded-2xl border transition-all flex items-center gap-3 justify-between focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${cls}`}>
                     <div className="flex gap-3 items-center">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base relative overflow-hidden shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-black flex items-center justify-center text-base relative overflow-hidden shrink-0">
                         {ringClass && <div className={`absolute inset-0 rounded-full ${ringClass}`} />}
                         <span className="relative z-10">{icon}</span>
                       </div>
@@ -928,7 +932,7 @@ export default function ProfileView() {
           </div>
 
           {/* Effect + Base — show 3 + "More" button */}
-          <div className="border-t border-gray-100 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Effects Column */}
             <div>
               <h3 className="text-sm font-bold text-text mb-3">🌦️ {t('profile.weatherEffectsTitle')}</h3>
@@ -937,7 +941,7 @@ export default function ProfileView() {
                   const active = avatarEffect === key;
                   return (
                     <button key={key} type="button" onClick={() => setAvatarEffect(key)}
-                      className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${active ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary' : 'border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                       <span className="text-base shrink-0">{icon}</span>
                       <div className="flex-1 min-w-0">
                         <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
@@ -948,9 +952,9 @@ export default function ProfileView() {
                   );
                 })}
                 <button type="button" onClick={() => { setDialogTab('effects'); setShowDialog(true); }}
-                  className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary text-xs font-bold transition-all group">
+                  className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 text-primary text-xs font-bold transition-all group focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
                   <span>{t('profile.viewMoreEffects').replace('{count}', String(EFFECTS.length - 3))}</span>
-                  <div className="flex items-center gap-1 text-[10px] bg-primary/10 px-2 py-1 rounded-full group-hover:bg-primary/20 transition-colors">
+                  <div className="flex items-center gap-1 text-[10px] bg-primary/10 dark:bg-primary/20 px-2 py-1 rounded-full group-hover:bg-primary/30 transition-colors">
                     {EFFECTS.slice(3, 6).map(e => e.icon).join(' ')} <ChevronRight size={10} />
                   </div>
                 </button>
@@ -972,7 +976,7 @@ export default function ProfileView() {
                   const active = avatarBase === key;
                   return (
                     <button key={key} type="button" onClick={() => setAvatarBase(key)}
-                      className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      className={`text-left p-3 rounded-xl border transition-all flex items-center gap-2.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${active ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary' : 'border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                       <span className="text-base shrink-0">{icon}</span>
                       <div className="flex-1 min-w-0">
                         <span className={`text-xs font-bold block truncate ${active ? 'text-primary' : 'text-text-muted'}`}>{t(labelKey as any)}</span>
@@ -983,9 +987,9 @@ export default function ProfileView() {
                   );
                 })}
                 <button type="button" onClick={() => { setDialogTab('bases'); setShowDialog(true); }}
-                  className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary text-xs font-bold transition-all group">
+                  className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 text-primary text-xs font-bold transition-all group focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
                   <span>{t('profile.viewMoreBases').replace('{count}', String(BASES.length - 3))}</span>
-                  <div className="flex items-center gap-1 text-[10px] bg-primary/10 px-2 py-1 rounded-full group-hover:bg-primary/20 transition-colors">
+                  <div className="flex items-center gap-1 text-[10px] bg-primary/10 dark:bg-primary/20 px-2 py-1 rounded-full group-hover:bg-primary/30 transition-colors">
                     {BASES.slice(3, 6).map(b => b.icon).join(' ')} <ChevronRight size={10} />
                   </div>
                 </button>
@@ -1000,12 +1004,12 @@ export default function ProfileView() {
           </div>
 
           {/* Save */}
-          <div className="border-t border-gray-100 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-auto">
+          <div className="border-t border-gray-100 dark:border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-auto">
             <p className="text-[11px] text-text-muted/80 font-medium">
               {t('profile.syncNote')}
             </p>
             <button type="submit" disabled={isSaving || isUploading}
-              className="w-full md:w-auto px-8 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50">
+              className="w-full md:w-auto px-8 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none">
               {isSaving ? <><Loader2 size={14} className="animate-spin" />{t('profile.saving')}</> : <><Sparkles size={14} className="animate-pulse" />{t('profile.saveChanges')}</>}
             </button>
           </div>

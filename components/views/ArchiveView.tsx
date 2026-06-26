@@ -272,8 +272,8 @@ export default function ArchiveView() {
   const filteredItems = archiveItems
     .filter(item => {
       const matchesPlatform = platformFilter === 'All Platforms' || item.platform.toLowerCase() === platformFilter.toLowerCase();
-      const matchesSearch = searchQuery === '' || 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch = searchQuery === '' ||
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesPlatform && matchesSearch;
     })
@@ -320,21 +320,21 @@ export default function ArchiveView() {
       <div className="flex overflow-x-auto no-scrollbar border-b border-gray-200 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('posts')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'posts' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPosts')}
           {activeTab === 'posts' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('preview')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'preview' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabPreview')}
           {activeTab === 'preview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-6 py-3 text-sm font-extrabold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+          className={`px-6 py-3 text-sm font-extrabold transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-t-xl z-10 ${activeTab === 'history' ? 'text-primary' : 'text-text-muted hover:text-text'}`}
         >
           {t('archive.tabHistory')}
           {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
@@ -354,7 +354,7 @@ export default function ArchiveView() {
                 placeholder={t('archive.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+                className="w-full bg-sidebar/50 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-text-muted border border-gray-200/50 shadow-sm"
               />
             </div>
 
@@ -363,9 +363,9 @@ export default function ArchiveView() {
 
               {/* Platform Filter */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
                   <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
                   <ChevronDown size={16} className="text-text-muted" />
@@ -379,7 +379,7 @@ export default function ArchiveView() {
                           setPlatformFilter(p);
                           setShowPlatformDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 capitalize font-medium ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${platformFilter === p ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {p === 'All Platforms' ? t('archive.allPlatforms') : p}
                       </button>
@@ -390,9 +390,9 @@ export default function ArchiveView() {
 
               {/* Sort By */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer select-none"
+                  className="bg-white border border-gray-200 text-text px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:bg-white/5"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
                   <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
@@ -407,7 +407,7 @@ export default function ArchiveView() {
                           setSortBy(s);
                           setShowSortDropdown(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 font-medium ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-white/5 ${sortBy === s ? 'text-primary font-bold' : 'text-text'}`}
                       >
                         {s === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}
                       </button>
@@ -421,12 +421,12 @@ export default function ArchiveView() {
           </div>
 
           {/* 3-Column Grid Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 ${totalPages > 1 ? 'min-h-[3000px] md:min-h-[1488px] lg:min-h-[984px]' : ''}`}>
             {paginatedItems.map((item) => (
               <Link
                 href={item.link}
                 key={item.id}
-                className="bg-white border border-gray-200/60 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between"
+                className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
 
                 {/* Top Visual Banner */}
@@ -453,11 +453,10 @@ export default function ArchiveView() {
                     </span>
 
                     {/* Publish Status Badge */}
-                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
-                      item.status === 'posted'
+                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
                         ? 'bg-emerald-600/80 border border-emerald-500/30'
                         : 'bg-amber-600/80 border border-amber-500/30'
-                    }`}>
+                      }`}>
                       {item.status === 'posted'
                         ? (language === 'vi' ? 'Đã đăng' : 'Published')
                         : (language === 'vi' ? 'Chưa đăng' : 'Draft')
@@ -476,7 +475,7 @@ export default function ArchiveView() {
                 </div>
 
                 {/* Card Content Area */}
-                <div className="p-6 flex-1 flex flex-col justify-between gap-6">
+                <div className="p-6 flex-1 flex flex-col justify-between gap-4">
 
                   {/* Title & Desc */}
                   <div>
@@ -485,32 +484,11 @@ export default function ArchiveView() {
                         {item.nodeType}
                       </span>
                     )}
-                    <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors">
+                    <h3 className="text-lg font-extrabold text-text tracking-tight mb-2 hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted leading-relaxed font-medium whitespace-pre-wrap">
-                      {(() => {
-                        const isExpanded = expandedIds.has(item.id);
-                        const shouldTruncate = item.description.length > 150;
-                        const displayedText = shouldTruncate && !isExpanded 
-                          ? `${item.description.slice(0, 150)}...` 
-                          : item.description;
-                        return (
-                          <>
-                            {displayedText}
-                            {shouldTruncate && (
-                              <button
-                                onClick={(e) => toggleExpand(item.id, e)}
-                                className="text-primary font-black ml-1.5 hover:underline cursor-pointer focus:outline-none inline-block"
-                              >
-                                {isExpanded 
-                                  ? (language === 'vi' ? 'Ẩn bớt' : 'Show less') 
-                                  : (language === 'vi' ? 'Xem thêm' : 'Read more')}
-                              </button>
-                            )}
-                          </>
-                        );
-                      })()}
+                    <p className="text-xs text-text-muted leading-relaxed font-semibold line-clamp-3 min-h-[4.5rem]">
+                      {item.description}
                     </p>
                   </div>
 
@@ -560,7 +538,7 @@ export default function ArchiveView() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-6 select-none">
               <div className="text-xs text-text-muted font-bold">
-                {language === 'vi' 
+                {language === 'vi'
                   ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} trong tổng số ${filteredItems.length} bài đăng`
                   : `Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredItems.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} posts`
                 }
@@ -573,16 +551,15 @@ export default function ArchiveView() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
-                      currentPage === page
+                    className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'border border-gray-200/80 text-text hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -613,7 +590,7 @@ export default function ArchiveView() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-[11px] border-collapse min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -641,11 +618,11 @@ export default function ArchiveView() {
                     <tr key={row.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-bold text-text truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
-                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 font-black text-[9px]">{row.platform}</span>
+                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">{row.platform}</span>
                       </td>
                       <td className="px-4 py-3 text-text-muted truncate max-w-[250px]">{row.ai_content}</td>
                       <td className="px-4 py-3 font-black text-[10px]">{row.status}</td>
-                      <td className="px-4 py-3 text-gray-400">{new Date(row.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-slate-500">{new Date(row.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))
                 )}
@@ -656,7 +633,7 @@ export default function ArchiveView() {
       ) : (
         /* Export History Tab */
         <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -701,14 +678,14 @@ export default function ArchiveView() {
                             href={job.download_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl text-xs font-black transition-all"
+                            className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                           >
                             <Download size={14} />
                             {t('archive.jobDownload')}
                           </a>
                         ) : (
-                          <span className="text-gray-300">
-                            <Download size={14} className="inline" />
+                          <span className="text-slate-405">
+                            <Download size={14} className="inline text-slate-400" />
                           </span>
                         )}
                       </td>
@@ -719,11 +696,11 @@ export default function ArchiveView() {
             </table>
           </div>
 
-          <div className="flex items-center gap-3 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+          <div className="flex items-center gap-3 p-5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <Clock size={20} />
             </div>
-            <p className="text-xs text-blue-800 leading-relaxed font-medium">
+            <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
               {language === 'vi'
                 ? 'Các yêu cầu xuất dữ liệu lớn (>1000 dòng) được xử lý dưới nền. Link tải sẽ được gửi qua email sau khi hoàn tất và tồn tại trong 24h.'
                 : 'Large export requests (>1000 rows) are processed in the background. Download links will be sent via email once finished and expire after 24 hours.'}

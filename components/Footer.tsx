@@ -58,7 +58,7 @@ const Footer = () => {
   const isVi = language === 'vi';
 
   return (
-    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-4 sm:px-6 lg:px-10 pb-8 rounded-t-[32px] border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
+    <footer className="mt-16 bg-sidebar text-text w-full flex flex-col px-4 sm:px-6 lg:px-10 pb-8 rounded-t-2xl border-t border-primary/10 shadow-inner relative overflow-hidden shrink-0">
       
       {/* Decorative top ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent blur-md"></div>
@@ -101,14 +101,14 @@ const Footer = () => {
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
             {t('footer.tableOfContents')}
           </h3>
-          <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.home')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.company')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.caseStudies')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.services')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.resources')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.careers')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.contactUs')}</a>
+          <div className="flex flex-col gap-2 text-xs text-text-muted dark:text-white/60 font-semibold">
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.home')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.company')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.caseStudies')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.services')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.resources')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.careers')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.contactUs')}</a>
           </div>
         </div>
 
@@ -117,13 +117,13 @@ const Footer = () => {
           <h3 className="text-base font-extrabold text-text mb-4 tracking-tight">
             {t('footer.support')}
           </h3>
-          <div className="flex flex-col gap-2 text-xs text-text-muted font-semibold">
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.help')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.terms')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.privacy')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.privacyRights')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.shipping')}</a>
-            <a href="#" className="hover:bg-primary/5 hover:text-primary px-3 py-1 rounded-xl transition-all w-fit">{t('footer.returns')}</a>
+          <div className="flex flex-col gap-2 text-xs text-text-muted dark:text-white/60 font-semibold">
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.help')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.terms')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.privacy')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.privacyRights')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.shipping')}</a>
+            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.returns')}</a>
           </div>
         </div>
 
@@ -133,30 +133,32 @@ const Footer = () => {
       <div className="pt-8 flex flex-col gap-6 relative z-10">
         
         {/* Social Icons row */}
-        <div className="flex items-center gap-3.5 text-text-muted">
-          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#1DA1F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+        <div className="flex items-center gap-3.5 text-text-muted dark:text-white/50">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/8 border border-primary/10 dark:border-white/10 hover:border-transparent hover:bg-[#1DA1F2] hover:text-white dark:hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
             <Twitter size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#0077B5] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/8 border border-primary/10 dark:border-white/10 hover:border-transparent hover:bg-[#0077B5] hover:text-white dark:hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
             <Linkedin size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/8 border border-primary/10 dark:border-white/10 hover:border-transparent hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:text-white dark:hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
             <Instagram size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#1877F2] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/8 border border-primary/10 dark:border-white/10 hover:border-transparent hover:bg-[#1877F2] hover:text-white dark:hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
             <Facebook size={16} />
           </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/50 border border-primary/10 hover:border-primary/25 hover:bg-[#FF0000] hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-sm">
+          <a href="#" className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/8 border border-primary/10 dark:border-white/10 hover:border-transparent hover:bg-[#FF0000] hover:text-white dark:hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
             <Youtube size={16} />
           </a>
         </div>
 
         {/* Language Badges */}
-        <div className="flex items-center gap-2 text-[10px] text-text font-bold select-none">
+        <div className="flex items-center gap-2 text-[10px] text-text dark:text-white/70 font-bold select-none">
           <button 
             onClick={() => setLanguage('en')}
-            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
-              language === 'en' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
+              language === 'en' 
+                ? 'bg-white dark:bg-white/12 border-primary/30 dark:border-primary/40 text-text dark:text-white shadow-sm' 
+                : 'bg-white/50 dark:bg-white/5 border-primary/10 dark:border-white/8 text-text-muted dark:text-white/50 hover:bg-white dark:hover:bg-white/10 hover:border-primary/20 dark:hover:border-white/15'
             }`}
           >
             <span>🇺🇸</span>
@@ -164,8 +166,10 @@ const Footer = () => {
           </button>
           <button 
             onClick={() => setLanguage('vi')}
-            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer text-text ${
-              language === 'vi' ? 'bg-white border-primary/30 shadow-sm' : 'bg-white/50 border-primary/10 hover:bg-white'
+            className={`border rounded-full px-3 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
+              language === 'vi' 
+                ? 'bg-white dark:bg-white/12 border-primary/30 dark:border-primary/40 text-text dark:text-white shadow-sm' 
+                : 'bg-white/50 dark:bg-white/5 border-primary/10 dark:border-white/8 text-text-muted dark:text-white/50 hover:bg-white dark:hover:bg-white/10 hover:border-primary/20 dark:hover:border-white/15'
             }`}
           >
             <span>🇻🇳</span>

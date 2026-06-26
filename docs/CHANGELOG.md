@@ -3,7 +3,220 @@
 Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ được ghi nhận tại đây.
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ---
+## [1.5.1] - 2026-06-25
+
+### Fixed
+- **Sửa lỗi hiển thị lịch đăng bài (Calendar Stack Bug)**: Sửa lỗi thiếu hậu tố đơn vị `px` trong thuộc tính định vị `topOffset` của các thẻ bài đăng dạng xếp chồng (stacked post cards), giúp hiển thị đúng khung giờ dự kiến thay vì mặc định dồn về 12 AM.
+- **Tối ưu hóa Giao diện Lịch và Khung phân loại (Calendar & Category UI)**:
+  - Cập nhật khung lịch tháng thu nhỏ (Mini Monthly Calendar) có màu nền đen tuyền và viền xám tối (`dark:bg-black dark:border-zinc-800`).
+  - Thiết lập màu chữ rõ ràng cho ngày trong tháng: chữ trắng đối với các ngày trong tháng hiện tại (`dark:text-white`) và chữ xám đối với ngày thuộc tháng trước/sau (`dark:text-slate-500`).
+  - Cung cấp khung viền màu xám rõ nét (`dark:border-zinc-600` qua lớp `.platform-filter-btn`) cho từng nút phân loại mạng xã hội (Facebook, Instagram, Threads) trong phần "Lịch của tôi" ở chế độ Dark Mode.
+- **Tắt trạng thái Hover khi dùng Dark Mode**:
+  - Vô hiệu hóa màu nền hover sáng màu (`bg-slate-50`, `bg-gray-50`, `bg-slate-50/50`, etc.) bằng quy tắc CSS toàn cục `background-color: transparent !important` khi giao diện ở chế độ Dark Mode (`.dark`), giúp loại bỏ hiện tượng chói mắt/mất chữ khi rê chuột qua các dòng bảng và thẻ danh sách.
+
+## [1.5.0] - 2026-06-24
+
+### Added
+- **Bộ lọc danh mục thông báo (Notification Category Filters)**:
+  - **Notifications Page (`app/(dashboard)/notifications/page.tsx`)**: Bổ sung thanh bộ lọc danh mục thông báo (Tất cả, Thành công, Thất bại, A/B Testing, Hệ thống) có các nút màu tương ứng với trạng thái và biểu tượng đại diện trực quan.
+- **Nút floating cuộn lên đầu trang (Floating Back-to-Top Button)**:
+  - **Dashboard Layout (`app/(dashboard)/layout.tsx`)**: Tích hợp nút cuộn lên đầu trang dạng floating với hiệu ứng nảy xúc giác (Framer Motion scale) và chuyển đổi mượt mà khi cuộn trang xuống quá 400px.
+- **Bảng hướng dẫn phím tắt năng suất (Keyboard Shortcut Assistant Overlay)**:
+  - **Header Component (`components/Header.tsx`)**: Tích hợp biểu tượng hướng dẫn phím tắt trên Header và cơ chế lắng nghe phím `?` toàn cục để kích hoạt một bảng overlay hiển thị chi tiết các phím tắt năng suất trong hệ thống.
+
+### Changed
+- **Biểu đồ Thống kê Động (Interactive Analytics Charts)**:
+  - **Overview View (`components/views/OverviewView.tsx`)**: Nâng cấp biểu đồ thống kê xuất bản thành biểu đồ tương tác động, hỗ trợ lọc theo mốc thời gian (7 Ngày / 30 Ngày) và nền tảng (Tất cả, Facebook, Instagram, Threads), hiển thị tooltip chi tiết khi hover vào từng cột và tự động giãn cách cột hợp lý khi dữ liệu dày.
+- **Biểu đồ xu hướng mini (Dashboard Sparklines)**:
+  - **StatCard Component (`components/StatCard.tsx`)**: Tích hợp biểu đồ đường xu hướng mini bằng SVG tự động căn chỉnh tỷ lệ theo dữ liệu số liệu truyền vào.
+  - **Overview View (`components/views/OverviewView.tsx`)**: Tích hợp sparkline xu hướng 7 ngày thực tế vào thẻ "Nội dung tích lũy" dựa trên dữ liệu thống kê volume hàng ngày.
+
+## [1.4.2] - 2026-06-24
+
+### Added
+- **Phím tắt Năng suất (Keyboard Shortcuts) trong AI Creator**:
+  - **AI Creator View (`components/views/AiCreatorView.tsx`)**: Tích hợp các phím tắt nhanh giúp tăng tối đa năng suất làm việc:
+    - `Ctrl + Enter` (hoặc `Cmd + Enter`): Kích hoạt sinh caption AI ngay lập tức.
+    - Phím `←` / `→` (khi không focus vào ô nhập liệu): Đổi nhanh tab nền tảng (Facebook, Threads, Instagram) dễ dàng.
+    - `Ctrl + Shift + C`: Sao chép nhanh văn bản biến thể đang được chọn cho nền tảng hiện tại.
+    - `Esc`: Hủy tiến trình sinh đang chạy hoặc đóng modal.
+
+### Changed
+- **Tối ưu hóa Hiệu năng Re-render (Memoization)**:
+  - **Content Calendar View (`components/views/ContentCalendarView.tsx`)**: Bọc toàn bộ các hàm xử lý trạng thái cốt lõi (`showPopup`, `handleSelectDay`, `fetchPosts`, `handleCancel`, `handlePrevWeek`, `handleNextWeek`, `handleToday`, `handleTogglePlatform`) bằng `useCallback` để giữ tính nhất quán tham chiếu giữa các lần render.
+  - **Search View (`components/views/SearchView.tsx`)**: Bao bọc các component kết quả thẻ phụ (`ArticleCard`, `CaptionRow`, `PromptCard`, `FaqCard`) bằng `React.memo` để tránh vẽ lại DOM không cần thiết khi người dùng nhấp chuyển đổi tab kết quả tìm kiếm.
+
+## [1.4.1] - 2026-06-24
+
+### Added
+- **AI Model Selection Switcher (Mẫu chọn Model AI - Craft / Shape)**:
+  - **AI Creator View (`components/views/AiCreatorView.tsx`)**: Bổ sung bảng chọn Engine AI (`GPT-4o`, `Gemini`, `Claude`) trực quan và sang trọng dạng segmented controls với đầy đủ các trạng thái hover, focus, và active scale, truyền tải chính xác lựa chọn model sang API sinh caption.
+- **Trực quan hóa Sinh Nội dung & Hạt lấp lánh (Typewriting & Particles - Overdrive / Delight)**:
+  - **AI Creator View (`components/views/AiCreatorView.tsx`)**: Tích hợp hiệu ứng máy đánh chữ hiển thị text đang sinh cùng với hoạt ảnh lấp lánh nhẹ (glowing border ring màu ngọc lục bảo) và phun hạt lấp lánh (pulsing active particles) xung quanh hộp kết quả khi hoàn thành sinh caption thành công.
+- **Trích xuất Component & Tối ưu hóa (Extract / Optimize)**:
+  - **Debounced Textarea Component (`components/DebouncedTextarea.tsx`)**: Tách logic component `DebouncedTextarea` từ `AiCreatorView.tsx` ra file riêng để ngăn ngừa input lag và re-render toàn cục, giúp cải thiện đáng kể hiệu năng gõ chữ của marketer.
+- **Bộ kiểm thử Tự động cho Component mới (Automated Unit Tests)**:
+  - **DebouncedTextarea Test (`__tests__/components/DebouncedTextarea.test.tsx`)**: Xây dựng bộ kiểm thử đơn vị cho component `DebouncedTextarea` sử dụng cơ chế giả lập hook của Vitest (`vi.mock`), xác minh cấu trúc props và tính tương thích kết xuất trong môi trường Node.js.
+
+### Changed
+- **Nút Sao chép Xúc giác & Hoạt ảnh xoay checkmark (Tactile Copy Buttons - Delight)**:
+  - **Captions View (`components/views/CaptionsView.tsx`)** & **Prompts View (`components/views/PromptsView.tsx`)**: Tích hợp hiệu ứng nhấn co giãn xúc giác (`active:scale-95 duration-100`) và hoạt ảnh xoay scale checkmark mượt mà trên các nút Sao chép (Copy) và Nhân bản (Clone) khi thực hiện hành động thành công.
+- **Độ nảy xúc giác của Admin Landing Editor (Admin Editor Refinements - Delight)**:
+  - **History Sidebar (`components/admin/landing-editor/HistorySidebar.tsx`)**: Tích hợp hiệu ứng co giãn xúc giác `active:scale-[0.98]` khi nhấp nút Khôi phục (Restore) và `active:scale-95` khi nhấp đóng thanh lịch sử.
+  - **Image Uploader (`components/admin/landing-editor/ImageUploader.tsx`)**: Bổ sung hiệu ứng xúc giác `active:scale-95` cho các nút Sử dụng hình ảnh/Hủy và `active:scale-[0.99]` cho khu vực kéo thả tệp (Dropzone).
+- **Rõ nghĩa Thông báo Lỗi (API Error Banner - Clarify)**:
+  - **AI Creator View (`components/views/AiCreatorView.tsx`)**: Thay đổi thiết kế banner thông báo lỗi `generateError` thành dạng phân cấp rõ ràng (phân biệt lỗi thiếu prompt với lỗi API key kết nối), cung cấp nút dẫn hướng nhanh sang trang Cài đặt (Settings) để người dùng dễ dàng cấu hình API Key.
+
+## [1.4.0] - 2026-06-24
+
+### Added
+- **Luồng Hướng dẫn nhanh đa ngôn ngữ (Onboarding Tour - Onboard)**:
+  - **Overview View (`components/views/OverviewView.tsx`)**: Tích hợp một luồng hướng dẫn nhanh 5 bước cho người dùng lần đầu tiên truy nhập hệ thống (hoặc tùy chọn xem lại bằng nút "Hướng dẫn" ở Banner). Hướng dẫn bao gồm: Bảng chào mừng, Các chỉ số thống kê, Biểu đồ 7 ngày và Nhật ký bài đăng gần đây. Hệ thống tự động ghi nhớ trạng thái hoàn thành tour vào `localStorage` của trình duyệt.
+  - **Cải tiến tiêu điểm (Overlay Highlights)**: Kết hợp làm mờ nền bằng backdrop overlay mượt mà cùng hiệu ứng viền phát sáng primary (`ring-4 ring-primary`) trên các khối UI được hướng dẫn.
+
+### Changed
+- **Nâng cấp trạng thái Tải kết nối API (Simulated Loading - Critique)**:
+  - **Settings View (`components/views/SettingsView.tsx`)**: Thiết lập hiệu ứng tải trạng thái kết nối `openaiLoading` và `midjourneyLoading` kèm biểu tượng xoay `<Loader2 className="animate-spin" />` trong 600ms khi marketer nhấp bật/tắt kết nối API, thay vì thay đổi tức thì, giúp tăng tính tin cậy thực tế và thẩm mỹ cao cấp.
+
+## [1.3.9] - 2026-06-24
+
+### Changed
+- **Tối ưu hóa Thẩm mỹ, Định dạng Typography và Khắc phục lỗi TypeScript (Phase 2 UI/UX Refinement)**:
+  - **Landing View (`components/views/LandingView.tsx`)**: Loại bỏ hoàn toàn mã màu xanh tím viết cứng `#5A5CDE` và `#4A4CBF` trên các component SVG overlay, nút chỉnh sửa banner và khối CTA Banner sang các biến màu dynamic primary (`border-primary`, `bg-primary`, `text-primary`, `from-primary to-primary-hover`).
+  - **Popup Dialog (`components/PopupDialog.tsx`)**: Chuyển đổi mã màu `#5A5CDE` của biểu tượng thông tin (`Info` icon) và màu nền hộp thoại cảnh báo info sang dynamic theme `text-primary` và `bg-primary/10`.
+  - **Header (`components/Header.tsx`)**: Đổi màu nền của thông báo chưa đọc trong menu dropdown từ `#5A5CDE/5` sang dynamic `bg-primary/5`.
+  - **Article Detail View (`components/views/ArticleDetailView.tsx`)**: Thiết lập giới hạn chiều rộng chữ `max-w-[72ch]` cho khối render nội dung bài viết đầy đủ (bao gồm cả khối body blocks và fallback text), tối ưu hóa trải nghiệm đọc cho marketer tránh mỏi mắt theo tiêu chuẩn typeset.
+  - **Global CSS (`app/globals.css`)**: Tích hợp media query `@media (prefers-reduced-motion: reduce)` ở cuối tệp để tự động tắt hoặc tinh giản tất cả các chuyển động/hoạt ảnh CSS đối với người dùng bật chế độ giảm chuyển động trong hệ điều hành.
+
+### Fixed
+- **Sửa lỗi TypeScript compilation cho Suite kiểm thử tự động (Hardening & Test Suite)**:
+  - **AI Prompt Suggestion Test (`__tests__/api/aiPromptSuggestion.test.ts`)**: Nhập bổ sung helper `vi` từ package `vitest` giải quyết triệt để lỗi không nhận diện `vi.mock`.
+  - **Notifications API Test (`__tests__/api/notifications.test.ts`)**: Áp dụng type-casting `as any` cho các tham số Request truyền vào route handler để giải quyết lỗi NextRequest type mismatch.
+  - **Scheduled Posts API Test (`__tests__/api/scheduled-posts.test.ts`)**: Đóng gói dynamic route parameters `params` trong hàm `Promise.resolve` tương thích hoàn toàn với Next.js 15+ async params definitions.
+  - **Caption Flow Test (`__tests__/captionFlow.test.ts`)**: Bổ sung kiểu khai báo rõ ràng `: string` cho các hằng số so sánh literal để giải quyết cảnh báo no-overlap comparison.
+  - **Prompt Suggestion Test (`__tests__/promptSuggestion.test.ts`)**: Cast đối tượng prompt sang `any` để giải quyết lỗi truy xuất thuộc tính `usage_count`.
+  - **TS Config (`tsconfig.json`)**: Bổ sung thư mục kiểm thử Playwright `"e2e"` vào mảng `exclude` để tránh biên dịch các file test Playwright vốn thiếu kiểu thư viện E2E.
+  - **Background Worker (`worker.ts`)**: Thêm chỉ dẫn `// @ts-ignore` cho thư viện cron để bỏ qua các cảnh báo module resolution của script worker độc lập.
+
+## [1.3.8] - 2026-06-24
+
+### Changed
+- **Nâng cấp Giao diện, SEO và Accessibility cho các Trang Xác thực và Root Layout (Phase 2 UI/UX)**:
+  - **Root Layout (`app/layout.tsx`)**: Tối ưu hóa thẻ SEO metadata (bilingual Title & Description tiếng Việt/tiếng Anh) giúp hiển thị chuyên nghiệp và tăng điểm xếp hạng tìm kiếm.
+  - **Login Page (`app/(auth)/login/page.tsx`)**: Đồng bộ góc bo của container chính về `rounded-2xl` (16px) và ảnh graphic góc trái về `rounded-xl`. Bổ sung focus indicators `:focus-visible:ring-2` trên tất cả các trường input email/password, liên kết quên mật khẩu/đăng ký, nút hiển thị mật khẩu và nút Google OAuth. Tích hợp chỉ số focus và đồng bộ góc bo về `rounded-2xl` cho phần thử thách bảo mật mã PIN matrix locked.
+  - **Register Page (`app/(auth)/register/page.tsx`)**: Đồng bộ góc bo của container về `rounded-2xl` (16px). Thiết lập lại góc bo của các input fields từ dạng tròn `rounded-full` sang bo góc chữ nhật chuẩn `rounded-xl` (12px), mang lại sự nhất quán hoàn hảo cho giao diện biểu mẫu. Bổ sung focus ring `:focus-visible:ring-2` cho tất cả các input, nút submit, nút hiển thị mật khẩu và liên kết quay lại đăng nhập.
+  - **Forgot Password Page (`app/(auth)/forgot-password/page.tsx`)**: Đồng bộ góc bo container về `rounded-2xl` (16px), chuyển mã màu xanh viết cứng `#5A5CDE` của nút gửi và liên kết về dynamic primary theme. Bổ sung các chỉ số tiêu điểm focus-visible cho các trường email input, nút submit, nút back-to-login và liên kết quay lại.
+  - **Reset Password Page (`app/(auth)/reset-password/page.tsx`)**: Đồng bộ góc bo của card loading xác minh, card báo lỗi token và card form mật khẩu về `rounded-2xl` (16px). Chuyển mã màu xanh viết cứng `#5A5CDE` của loading spinner và nút bấm sang primary theme. Tích hợp focus ring `:focus-visible` cho các input mật khẩu mới/xác nhận, nút hiển thị mật khẩu và nút gửi form.
+  - **Landing Editor Page (`app/(dashboard)/admin/landing-editor/page.tsx`)**: Chuyển đổi toàn bộ màu sắc Indigo và xanh tím viết cứng (`#5A5CDE` và `#4A4CBF`) sang màu dynamic theme (`bg-primary`, `bg-primary/10`, `text-primary`, `hover:bg-primary-hover`). Bổ sung chỉ số focus `:focus-visible` cho toàn bộ các nút bấm của thanh công cụ nổi (floating toolbar), các nút thêm/xóa Banner/Logo/Review/Plan/FAQ, các trường input/textarea và nút xác nhận trên modal xuất bản.
+  - **Admin Access Denied Page (`app/(dashboard)/admin/AdminAccessDenied.tsx`)**: Bổ sung focus ring `:focus-visible:ring-2` cho nút bấm quay lại Dashboard để tối ưu trải nghiệm bàn phím.
+
+## [1.3.7] - 2026-06-24
+
+### Changed
+- **Nâng cấp Giao diện và Accessibility cho Layouts và Trang Quản trị (Phase 2 UI/UX)**:
+  - **Dashboard Shell Layout (`app/(dashboard)/layout.tsx`)**: Thay thế spinner tải trang truyền thống bằng bộ loader logo thương hiệu pulsing 3D mượt mà có hiệu ứng phát sáng mờ. Thêm focus indicator (`focus-visible:ring-2`) cho nút đăng xuất trên modal khóa tài khoản. Tích hợp thuộc tính `focus-within` cho Sidebar và Header ẩn hiện khi di chuyển tiêu điểm phím Tab giúp keyboard users truy cập và thao tác dễ dàng.
+  - **Notifications Page (`app/(dashboard)/notifications/page.tsx`)**: Đồng bộ hóa góc bo hộp chứa thông báo về `rounded-2xl` (16px). Loại bỏ hoàn toàn viền sọc unread side-stripe (banned style). Bổ sung `tabIndex={0}`, xử lý sự kiện keyboard (Space/Enter) và focus ring `:focus-visible` cho các thẻ thông báo để tương tác trơn tru bằng phím. Thiết lập focus-visible rings cho toàn bộ các nút phân trang và nút "Đánh dấu đã đọc". Thay thế mã màu xanh viết cứng `#5A5CDE` sang dynamic primary theme.
+  - **User Management Page (`app/(dashboard)/admin/users/page.tsx`)**: Đồng bộ góc bo của khối bộ lọc và bảng danh sách người dùng, cùng các hộp thoại phân quyền/khóa tài khoản về `rounded-2xl` (16px). Nâng cấp focus rings `:focus-visible:ring-2` trên thanh tìm kiếm, các nút phân trang, thẻ chọn vai trò/trạng thái và các nút xác nhận trên modal.
+  - **Audit Logs Page (`app/(dashboard)/admin/audit-logs/page.tsx`)**: Đồng bộ góc bo của khối tiêu đề và timeline nhật ký về `rounded-2xl` (16px). Bổ sung `tabIndex={0}`, role="button", thuộc tính ARIA `aria-expanded` và sự kiện bàn phím (Space/Enter) cho các thẻ nhật ký để cho phép duyệt chi tiết log (before/after state) bằng phím. Nâng cấp các nút phân trang, bộ lọc hành động sang dạng focus ring rõ nét.
+
+## [1.3.6] - 2026-06-24
+
+### Changed
+- **Nâng cấp Giao diện và Accessibility cho Bộ Component dùng chung (Shared Components)**:
+  - **Header.tsx**: Đồng bộ góc bo của thẻ search suggestions dropdown về `rounded-2xl` (16px). Bổ sung chỉ số focus `:focus-visible` cho nút Menu, các liên kết gợi ý tìm kiếm, nút tìm kiếm toàn bộ, nút tạo bài viết mới, nút chuông thông báo, nút đánh dấu đã đọc và các card thông báo. Tích hợp `tabIndex={0}` và xử lý sự kiện bàn phím (Space/Enter) cho các thẻ thông báo để hỗ trợ hoàn hảo bàn phím.
+  - **Footer.tsx**: Đồng bộ góc bo trên về `rounded-t-2xl` (16px). Bổ sung focus ring `:focus-visible` cho toàn bộ các liên kết điều hướng menu, liên kết mạng xã hội và nút bấm chọn ngôn ngữ.
+  - **Sidebar.tsx**: Đồng bộ góc bo trên bên phải của sidebar và header sidebar về `rounded-tr-2xl` (16px). Bổ sung focus ring `:focus-visible` cho nút đóng sidebar, các liên kết điều hướng, nút chọn ngôn ngữ, nút hỗ trợ và nút đăng xuất.
+  - **UserProfileDropdown.tsx**: Bổ sung chỉ số focus-visible cho nút avatar kích hoạt dropdown, nút liên kết chỉnh sửa profile, liên kết cài đặt và nút đăng xuất.
+  - **PopupDialog.tsx**: Đồng bộ góc bo của hộp thoại về `rounded-2xl` (16px) và bổ sung focus ring `:focus-visible` cho nút đóng (X).
+  - **Toast.tsx**: Bổ sung chỉ số focus `:focus-visible` cho nút đóng thông báo.
+  - **StatCard.tsx**: Đồng bộ góc bo của thẻ về `rounded-2xl` (16px). Thay thế màu nền tím cứng `#DFE1FA` bằng dynamic primary tint `bg-primary/10 border border-primary/20`. Thay màu văn bản giá trị viết cứng `#1a1b4b` sang dynamic `text-text`.
+  - **ActivityList.tsx**: Đồng bộ góc bo của các thẻ hoạt động về `rounded-2xl` (16px). Thay thế màu nền tím viết cứng `#DFE1FA` và `#DFE1FA]/50` thành dynamic theme `bg-primary/10 border border-primary/20` và `bg-primary/5`. Bổ sung chỉ số focus `:focus-visible`, `tabIndex={0}` và xử lý sự kiện bàn phím cho các card và nút tạo bài viết mới.
+  - **CaptionEditor.tsx**: Bổ sung chỉ số focus `:focus-visible` cho nút khôi phục nguyên bản AI. Thiết lập `tabIndex={0}` và sự kiện keyboard (Space/Enter) cùng focus outline cho khung soạn thảo khi ở chế độ xem tĩnh.
+  - **ChartPlaceholder.tsx**: Đồng bộ góc bo về `rounded-2xl` (16px). Nâng cấp khu vực hiển thị biểu đồ trống thành bộ cột biểu đồ CSS (Indigo, Peach, Mint) tương tác và co giãn mượt mà khi hover.
+  - **PromptCard.tsx**: Tích hợp `tabIndex={0}`, sự kiện keyboard (Space/Enter) và focus ring `:focus-visible` giúp duyệt và chọn các thẻ prompt bằng bàn phím.
+  - **PromptSuggestionSection.tsx**: Đồng bộ góc bo của khung gợi ý về `rounded-2xl` (16px). Bổ sung thuộc tính `focus-within:opacity-100` cho phần nút hành động và focus ring `:focus-visible` để hiển thị và kích hoạt nút "Dùng prompt này" bằng bàn phím.
+- **Nâng cấp Giao diện và Accessibility cho Bộ Component chỉnh sửa Landing Page (landing-editor/*)**:
+  - **BrandForm.tsx**: Loại bỏ viền sọc trái cứng (Side-stripe border) của các tiêu đề phần, đồng bộ hóa góc bo các trường input và select sang `rounded-xl`, đồng bộ bo góc bảng màu và input màu sang `rounded-lg`, bổ sung focus ring `:focus-visible` cho tất cả các điều khiển form.
+  - **HeroForm.tsx**: Loại bỏ viền sọc trái cứng của các tiêu đề, đồng bộ hóa góc bo các trường textarea/input sang `rounded-xl`, nâng cấp bo góc preview ảnh nền Hero sang `rounded-2xl` và bổ sung focus ring `:focus-visible` cho các nút điều khiển.
+  - **HistorySidebar.tsx**: Thay thế hoàn toàn cơ chế thông báo mặc định của trình duyệt `window.alert()` thành hộp thoại in-app `PopupDialog` mượt mà. Đồng bộ hóa góc bo của các thẻ lịch sử sang `rounded-2xl`, nút khôi phục sang `rounded-xl`, và bổ sung focus ring `:focus-visible` cho nút Close/Restore.
+  - **ImageUploader.tsx**: Đồng bộ hóa góc bo của các khung preview ảnh cũ/mới và khung kéo thả tệp dropzone sang `rounded-2xl`, thay thế mã màu xanh viết cứng `#5A5CDE` bằng màu `primary` dynamic. Bổ sung `tabIndex={0}` và xử lý sự kiện Space/Enter cho khung kéo thả giúp tương tác hoàn toàn bằng bàn phím.
+  - **SectionsForm.tsx**: Loại bỏ viền sọc trái của tiêu đề, đồng bộ hóa góc bo các trường input/textarea sang `rounded-xl`. Nâng cấp nút "Thêm tính năng" sang dạng `rounded-full` kết hợp màu dynamic, bổ sung `:focus-within` để nút Xóa thẻ có thể hiển thị và tương tác khi di chuyển tiêu điểm bàn phím.
+
+---
+## [1.3.5] - 2026-06-24
+
+### Changed
+- **Giao diện Kho lưu trữ Caption (CaptionsView.tsx)**:
+  - Đồng bộ hóa bán kính bo góc của card caption và màn hình empty state từ `rounded-[32px]` về tiêu chuẩn `rounded-2xl` (16px).
+  - Tích hợp thêm các bộ chỉ định tiêu điểm `focus-visible:ring-2` trên thanh tìm kiếm, các nút lọc nền tảng, nút sao chép nhanh, nút phân trang và đường dẫn tiêu đề bài viết gốc để hỗ trợ tiếp cận bàn phím.
+- **Giao diện Thư viện Prompt (PromptsView.tsx)**:
+  - Đồng bộ bán kính bo góc của các card prompt, hộp thông báo trống, và các cửa sổ popup modal (Create/Edit modal, Delete confirm modal) từ `rounded-[28px]`/`rounded-[32px]` về tiêu chuẩn `rounded-2xl` (16px).
+  - Tích hợp thêm các bộ chỉ định tiêu điểm `focus-visible:ring-2` trên tất cả các nút bộ lọc nền tảng, nút mở dropdown tag, bộ phân trang, các nút hành động (Clone, Edit, Delete), và các trường nhập liệu trong modal.
+  - Chuyển màu nền trống màu tím nhạt `#F3F4FD` thành xám nhạt trung tính `bg-slate-50`.
+- **Giao diện Hồ sơ cá nhân (ProfileView.tsx)**:
+  - Đồng bộ bán kính bo góc của các card tổng quan trái/phải và modal chọn hiệu ứng từ `rounded-[32px]`/`rounded-[28px]` về `rounded-2xl` (16px).
+  - Bổ sung focus ring `:focus-visible` cho nút Preset ảnh đại diện, ô tải tệp kéo thả, nút chọn khung, hiệu ứng và bục pedestal, nút Lưu thay đổi và liên kết Đổi mật khẩu.
+  - Thay màu nền tím nhạt viết cứng `#F3F4FD` trên nhãn phòng ban thành bộ màu dynamic theme `bg-primary/10`.
+- **Giao diện Đổi mật khẩu (ChangePasswordView.tsx)**:
+  - Đồng bộ bán kính bo góc của các card chi tiết trái/phải từ `rounded-[32px]` về `rounded-2xl` (16px).
+  - Bổ sung focus ring `:focus-visible` cho các nút bấm chuyển đổi ẩn/hiện mật khẩu, nút quay lại trang hồ sơ cá nhân và nút xác nhận đổi mật khẩu.
+  - Thay màu nền tím nhạt viết cứng `#F3F4FD` trên nhãn phòng ban thành dynamic theme `bg-primary/10`.
+- **Giao diện Tìm kiếm tổng hợp (SearchView.tsx)**:
+  - Đồng bộ bán kính bo góc của các card bài viết, caption, prompt, FAQ và hộp thông báo trống từ `rounded-[32px]`/`rounded-[28px]`/`rounded-[24px]` về `rounded-2xl` (16px).
+  - Tích hợp thêm các bộ chỉ định tiêu điểm `focus-visible:ring-2` trên ô nhập liệu tìm kiếm, nút tìm kiếm, các thẻ tab kết quả và tất cả các thẻ liên kết kết quả.
+  - Thay màu nền tím nhạt viết cứng `#F8F9FD` trên màn hình rỗng thành xám nhạt trung tính `bg-slate-50 border-slate-200/60`.
+- **Giao diện Giới thiệu sản phẩm (LandingView.tsx)**:
+  - Bổ sung chỉ số tiêu điểm `:focus-visible` cho các liên kết điều hướng đầu trang, các nút chọn ngôn ngữ (VN/EN), các nút Đăng nhập/Đăng ký, nút CTA ở banner Hero, chấm phân trang slide, nút điều hướng slide (trong Editor Mode) và nút CTA ở chân trang để đảm bảo khả năng tiếp cận bàn phím hoàn hảo.
+- **Giao diện Chi tiết bài viết (ArticleDetailView.tsx)**:
+  - Đồng bộ bán kính bo góc của các block nội dung, ảnh minh họa và tag từ `32px`/`24px` về tiêu chuẩn `rounded-2xl` (16px).
+  - Chuyển đổi màu sắc xanh tím viết cứng `#3F51B5` trên nút hành động, icon checkpoint, tag metadata sang màu dynamic `primary` thích ứng theo giao diện chủ đạo.
+  - Bổ sung chỉ số touch target tối thiểu và focus ring `:focus-visible` cho các nút bấm điều khiển (Share, Link, Edit, Save, Revert) và danh sách checkpoint lịch sử.
+- **Giao diện Lưu trữ bài đăng (ArchiveView.tsx)**:
+  - Đồng bộ hóa bán kính bo góc của card bài viết và bảng hiển thị từ `32px`/`30px` về tiêu chuẩn `rounded-2xl` (16px).
+  - Nâng cấp độ tương phản cho nhãn chữ từ màu xám mờ `text-gray-400` sang xám rõ ràng `text-slate-500`.
+  - Tích hợp thêm các bộ chỉ định tiêu điểm `focus-visible:ring-2` trên thanh Tab chuyển đổi, nút lọc phân loại và sắp xếp, bộ phân trang và các liên kết download để nâng cao trải nghiệm truy cập bàn phím.
+- **Giao diện Tổng quan Dashboard (OverviewView.tsx)**:
+  - Thiết kế đồng bộ bán kính bo góc card từ `32px` / `30px` về tiêu chuẩn `rounded-2xl` (16px).
+  - Loại bỏ các màu tím/xanh viết cứng (`indigo-*`, v.v.) thay bằng biến thể màu dynamic `text-primary`, `bg-primary/10`, `border-primary/20` để đồng bộ theo cài đặt giao diện chủ đạo.
+  - Tăng độ tương phản chữ xám từ `text-slate-450` / `text-slate-400` lên `text-slate-500` để đạt độ tương phản WCAG AA cao hơn.
+  - Thêm focus indicator (`focus-visible:ring-2`) trên nút Refresh, nút Xem lịch đăng bài, và các thẻ bài viết gần đây.
+- **Giao diện Cấu hình hệ thống (SettingsView.tsx)**:
+  - Tích hợp màu sắc thích ứng theo theme (`bg-primary`, `bg-sidebar/50`) thay cho màu xanh lục `#4E7164` và tím nhạt `#F3F4FD` viết cứng để đồng bộ hiển thị khi người dùng đổi màu chủ đạo hệ thống.
+  - Tăng kích thước nút tròn chọn màu từ `32px` lên `40px` và chiều cao tối thiểu của các nút chức năng để tối ưu hóa diện tích chạm trên màn hình cảm ứng di động.
+- **Giao diện Hỏi đáp (FaqView.tsx)**:
+  - Giảm bán kính bo góc card từ `32px` về `16px` (`rounded-2xl`) tạo nhịp điệu thiết kế tinh gọn, hiện đại và loại bỏ đặc trưng AI Slop.
+  - Chuyển màu card Pro Tips viết cứng xanh lục bảo sang gradient màu primary dynamic thích ứng theo cấu hình theme.
+- **Giao diện Lịch xuất bản (ContentCalendarView.tsx)**:
+  - Triển khai chế độ xem danh sách (Timeline List View) cho mobile (<768px), tự động ẩn Hourly Grid 24h để tăng tính khả dụng và hiển thị tối ưu trên màn hình nhỏ.
+  - Loại bỏ viền sọc trái dày `border-l-[4px]` (Anti-Pattern) trên các thẻ sự kiện sang viền toàn phần `border-2 border-slate-200/65` kết hợp nền màu nhạt dynamic.
+  - Chuyển màu thẻ lịch viết cứng xanh tím sang màu dynamic primary thích ứng theo theme đang bật.
+  - Tăng diện tích chạm cho các nút chuyển đổi tuần đạt chiều cao tối thiểu 40px.
+- **Giao diện Soạn thảo & Sáng tạo AI (AiCreatorView.tsx)**:
+  - Giải quyết triệt để lỗi trễ gõ chữ (input lag) của form prompt AI bằng cách tích hợp component đệm `DebouncedTextarea` ngăn chặn re-render component cha 4000 dòng trên từng keypress.
+  - Thiết kế đồng bộ lại bán kính bo góc thẻ card/modal từ `28px`/`32px` về `16px`/`12px`.
+  - Thay màu sắc viết cứng xanh lục nhập URL `#4A6B5D` và `#C4F0E1` thành màu primary thích ứng theo theme và màu CSS biến thể `--color-mint`.
+  - Tăng touch target cho các nút điều khiển Web Explorer lên `40x40px` (`w-10 h-10`).
+
+### Fixed
+- **Sửa lỗi Accessibility (A11y) trên các trang giao diện đã nâng cấp**:
+  - **CaptionsView.tsx**: Bổ sung focus ring `:focus-visible` cho các nút bộ lọc, ô tìm kiếm và các nút phân trang, tối ưu hóa điều hướng bàn phím.
+  - **PromptsView.tsx**: Bật focus rings rõ ràng `:focus-visible` cho toàn bộ các nút thao tác chính/phụ và ô tìm kiếm, tối ưu khả năng điều hướng bằng bàn phím.
+  - **ProfileView.tsx**: Bổ sung các chỉ số focus-visible cho các nút Preset ảnh đại diện, ô tải tệp kéo thả (hỗ trợ phím Enter/Space qua tabIndex={0}), nút chọn khung/hiệu ứng/đế bục và nút lưu thay đổi.
+  - **ChangePasswordView.tsx**: Tích hợp các chỉ chỉ số focus-visible cho các trường nhập liệu mật khẩu và nút chuyển đổi ẩn/hiện, tối ưu hóa điều hướng phím Tab.
+  - **SearchView.tsx**: Bật các chỉ số focus-visible cho ô tìm kiếm, nút bấm tìm kiếm, các thẻ tab kết quả và các card liên kết kết quả để cải thiện khả năng tiếp cận bàn phím.
+  - **LandingView.tsx**: Bổ sung focus ring cho toàn bộ các nút bấm và thẻ liên kết hành động để nâng cao tính khả dụng bàn phím.
+  - **ArticleDetailView.tsx**: Thiết lập focus indicators cho các button điều khiển, tag metadata, và checkpoint button, điều chỉnh tương phản màu chữ đạt WCAG AA.
+  - **ArchiveView.tsx**: Bổ sung chỉ số focus cho toàn bộ phần tử tương tác của Lịch sử bài đăng và biểu mẫu tải file, điều chỉnh mức tương phản xám đạt chuẩn WCAG AA.
+  - **OverviewView.tsx**: Bật focus outline rõ ràng và thuộc tính keyboard focus cho các thành phần điều khiển, sửa độ tương phản nhãn chữ `text-slate-450` -> `text-slate-500` đảm bảo khả dụng.
+  - **SettingsView.tsx**: Bật lại focus ring trên toggle checkbox và nút chuyển đổi phông/ngôn ngữ. Thêm liên kết ARIA `aria-labelledby` và `aria-describedby` cho checkbox input, điều chỉnh phân cấp headings `h4` -> `h3`.
+  - **FaqView.tsx**: Bật focus ring trên các tiêu đề accordion, tích hợp thuộc tính ARIA động (`aria-expanded`, `aria-controls`, `role="region"`) và thêm `aria-label` cho ô tìm kiếm.
+  - **ContentCalendarView.tsx**: Thêm focus ring `:focus-visible` cho các nút lọc và chuyển tuần, bổ sung `role="switch"` và `aria-checked` cho bộ lọc mạng xã hội, sửa độ tương phản nhãn chữ xám `text-slate-400` -> `text-slate-500`.
+  - **AiCreatorView.tsx**: Triển khai thuật toán khóa tiêu điểm bàn phím (Keyboard Focus Trap) cho 5 modal quan trọng trên trang, bật focus outlines cho inline text area và bổ sung `aria-current="step"` cho thanh chỉ dẫn các bước.
+
+---
+
 ## [1.3.4] - 2026-06-24
 
 ### Added

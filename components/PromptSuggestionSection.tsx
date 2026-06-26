@@ -3,30 +3,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Tag, TrendingUp, RotateCcw } from 'lucide-react';
 import { PromptSuggestResponse, PromptSuggestion } from '@/lib/types/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // ─── Platform badge colours ────────────────────────────────────────────────
 const PLATFORM_COLOR: Record<string, string> = {
-  facebook: 'bg-blue-100 text-blue-700',
-  thread: 'bg-gray-100 text-gray-700',
-  instagram: 'bg-pink-100 text-pink-700',
+  facebook: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',
+  thread: 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300',
+  instagram: 'bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400',
 };
 
 // ─── Skeleton card ─────────────────────────────────────────────────────────
 function PromptCardSkeleton() {
   return (
-    <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-3 animate-pulse">
+    <div className="border border-gray-100 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-3 animate-pulse">
       <div className="flex items-center justify-between">
-        <div className="h-3 bg-gray-200 rounded w-2/3" />
-        <div className="h-5 bg-gray-200 rounded-full w-16" />
+        <div className="h-3 bg-gray-200 dark:bg-slate-850 rounded w-2/3" />
+        <div className="h-5 bg-gray-200 dark:bg-slate-850 rounded-full w-16" />
       </div>
       <div className="space-y-1.5">
-        <div className="h-2.5 bg-gray-100 rounded w-full" />
-        <div className="h-2.5 bg-gray-100 rounded w-5/6" />
-        <div className="h-2.5 bg-gray-100 rounded w-4/6" />
+        <div className="h-2.5 bg-gray-100 dark:bg-slate-800 rounded w-full" />
+        <div className="h-2.5 bg-gray-100 dark:bg-slate-800 rounded w-5/6" />
+        <div className="h-2.5 bg-gray-100 dark:bg-slate-800 rounded w-4/6" />
       </div>
       <div className="flex gap-1.5 mt-1">
-        <div className="h-4 bg-gray-100 rounded-full w-14" />
-        <div className="h-4 bg-gray-100 rounded-full w-16" />
+        <div className="h-4 bg-gray-100 dark:bg-slate-800 rounded-full w-14" />
+        <div className="h-4 bg-gray-100 dark:bg-slate-800 rounded-full w-16" />
       </div>
     </div>
   );
@@ -35,10 +36,10 @@ function PromptCardSkeleton() {
 // ─── Relevance bar ──────────────────────────────────────────────────────────
 function RelevanceBar({ score }: { score: number }) {
   const pct = Math.round(score * 100);
-  const color = pct >= 60 ? 'bg-emerald-500' : pct >= 30 ? 'bg-amber-400' : 'bg-gray-300';
+  const color = pct >= 60 ? 'bg-emerald-500' : pct >= 30 ? 'bg-amber-400' : 'bg-gray-300 dark:bg-slate-700';
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-[10px] font-bold text-text-muted w-8 text-right">{pct}%</span>
@@ -56,6 +57,7 @@ interface PromptCardProps {
 function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
   const { prompt, relevanceScore, matchedTags } = suggestion;
   const [isSaving, setIsSaving] = useState(false);
+  const { t } = useLanguage();
 
   const handleUsePrompt = async () => {
     // T-1.19.1: Increment usage_count khi user chọn dùng prompt
@@ -71,11 +73,11 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
   };
 
   return (
-    <div className="border border-gray-100 hover:border-primary/30 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:shadow-sm transition-all duration-200 group">
+    <div className="border border-gray-100 dark:border-white/5 hover:border-primary/30 dark:hover:border-primary/30 rounded-2xl p-4 flex flex-col gap-3 bg-white dark:bg-slate-900 hover:shadow-sm transition-all duration-200 group">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-bold text-text leading-snug line-clamp-2 flex-1">{prompt.name}</p>
-        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${PLATFORM_COLOR[prompt.platform] ?? 'bg-gray-100 text-gray-600'}`}>
+        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${PLATFORM_COLOR[prompt.platform] ?? 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'}`}>
           {prompt.platform}
         </span>
       </div>
@@ -95,8 +97,8 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
                 key={tag}
                 className={`flex items-center gap-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
                   isMatched
-                    ? 'bg-primary/10 text-primary border-primary/20'
-                    : 'bg-gray-50 text-gray-400 border-gray-100'
+                    ? 'bg-primary/10 dark:bg-primary/20 text-primary border-primary/20 dark:border-primary/30'
+                    : 'bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-400 border-gray-100 dark:border-white/5'
                 }`}
               >
                 {isMatched && <Tag size={8} />}
@@ -111,12 +113,12 @@ function PromptCard({ suggestion, onUse, onSave }: PromptCardProps) {
       {relevanceScore > 0 && <RelevanceBar score={relevanceScore} />}
 
       {/* Buttons */}
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+      <div className="flex gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-200">
         <button
           onClick={handleUsePrompt}
-          className="w-full bg-primary text-white text-[10px] font-extrabold py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+          className="w-full bg-primary text-white text-[10px] font-extrabold py-2 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-offset-2"
         >
-          Dùng prompt này
+          {t('aiCreator.buttonUseThisPrompt')}
         </button>
       </div>
     </div>
@@ -153,6 +155,7 @@ export default function PromptSuggestionSection({
   onSelectPrompt,
   onSavePrompt,
 }: PromptSuggestionSectionProps) {
+  const { t } = useLanguage();
   const [data, setData] = useState<PromptSuggestResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +205,7 @@ export default function PromptSuggestionSection({
       })
       .catch((err) => {
         if (err.name === 'AbortError') return; // intentional cancel – không set error
-        setError('Không thể tải gợi ý prompt');
+        setError('aiCreator.suggestLoadFailed');
         setLoading(false);
       });
 
@@ -215,27 +218,27 @@ export default function PromptSuggestionSection({
   if (!articleId && !articleTitle && !loading) return null;
 
   return (
-    <div className="bg-white border border-gray-200/80 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+    <div className="bg-white dark:bg-card/40 border border-gray-200/80 dark:border-white/5 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+      <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <div className="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
             <Sparkles size={16} />
           </div>
           <div>
-            <h3 className="text-sm font-extrabold text-text">Gợi ý cho bài này</h3>
+            <h3 className="text-sm font-extrabold text-text">{t('aiCreator.suggestedPrompts')}</h3>
             {data && (
               <div className="flex items-center gap-2 mt-1">
                 {/* T-1.19.2: Category badge */}
                 {data.articleCategory && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
                     {data.articleCategory}
                   </span>
                 )}
                 {/* Fallback badge */}
                 {data.isFallback && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                    📌 Phổ biến nhất
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-450">
+                    📌 {t('aiCreator.mostPopular')}
                   </span>
                 )}
               </div>
@@ -246,9 +249,9 @@ export default function PromptSuggestionSection({
 
       {/* Error state */}
       {error && (
-        <div className="text-xs text-red-500 bg-red-50 px-4 py-3 rounded-xl border border-red-100 flex items-center gap-2">
+        <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 px-4 py-3 rounded-xl border border-red-100 dark:border-red-900/30 flex items-center gap-2">
           <RotateCcw size={12} />
-          {error}
+          {t(error)}
         </div>
       )}
 
@@ -266,7 +269,7 @@ export default function PromptSuggestionSection({
         <>
           {data.suggestions.length === 0 ? (
             <p className="text-xs text-text-muted text-center py-6">
-              Không tìm thấy prompt phù hợp cho bài này.
+              {t('aiCreator.suggestNoMatching')}
             </p>
           ) : (
             <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">

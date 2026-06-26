@@ -62,8 +62,8 @@ export default function FaqView() {
       id: 'harvesting',
       title: t('faq.categories.harvesting.title'),
       icon: <Rocket size={18} />,
-      accentClass: 'text-indigo-600 bg-indigo-50 border-indigo-100/50',
-      borderClass: 'hover:border-indigo-200/50 focus-within:border-indigo-300',
+      accentClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100/50 dark:border-indigo-900/30',
+      borderClass: 'hover:border-indigo-200/50 dark:hover:border-indigo-800/40 focus-within:border-indigo-300 dark:focus-within:border-indigo-600',
       questions: [
         { q: t('faq.categories.harvesting.q1'), a: t('faq.categories.harvesting.a1'), key: 'harvesting_1' },
         { q: t('faq.categories.harvesting.q2'), a: t('faq.categories.harvesting.a2'), key: 'harvesting_2' },
@@ -76,8 +76,8 @@ export default function FaqView() {
       id: 'aiPrompts',
       title: t('faq.categories.aiPrompts.title'),
       icon: <Lightbulb size={18} />,
-      accentClass: 'text-emerald-600 bg-emerald-50 border-emerald-100/50',
-      borderClass: 'hover:border-emerald-200/50 focus-within:border-emerald-300',
+      accentClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100/50 dark:border-emerald-900/30',
+      borderClass: 'hover:border-emerald-200/50 dark:hover:border-emerald-800/40 focus-within:border-emerald-300 dark:focus-within:border-emerald-600',
       questions: [
         { q: t('faq.categories.aiPrompts.q1'), a: t('faq.categories.aiPrompts.a1'), key: 'aiPrompts_1' },
         { q: t('faq.categories.aiPrompts.q2'), a: t('faq.categories.aiPrompts.a2'), key: 'aiPrompts_2' },
@@ -90,8 +90,8 @@ export default function FaqView() {
       id: 'scheduling',
       title: t('faq.categories.scheduling.title'),
       icon: <Cpu size={18} />,
-      accentClass: 'text-violet-600 bg-violet-50 border-violet-100/50',
-      borderClass: 'hover:border-violet-200/50 focus-within:border-violet-300',
+      accentClass: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-100/50 dark:border-violet-900/30',
+      borderClass: 'hover:border-violet-200/50 dark:hover:border-violet-800/40 focus-within:border-violet-300 dark:focus-within:border-violet-600',
       questions: [
         { q: t('faq.categories.scheduling.q1'), a: t('faq.categories.scheduling.a1'), key: 'scheduling_1' },
         { q: t('faq.categories.scheduling.q2'), a: t('faq.categories.scheduling.a2'), key: 'scheduling_2' },
@@ -104,8 +104,8 @@ export default function FaqView() {
       id: 'customization',
       title: t('faq.categories.customization.title'),
       icon: <HelpCircle size={18} />,
-      accentClass: 'text-rose-600 bg-rose-50 border-rose-100/50',
-      borderClass: 'hover:border-rose-200/50 focus-within:border-rose-300',
+      accentClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-100/50 dark:border-rose-900/30',
+      borderClass: 'hover:border-rose-200/50 dark:hover:border-rose-800/40 focus-within:border-rose-300 dark:focus-within:border-rose-600',
       questions: [
         { q: t('faq.categories.customization.q1'), a: t('faq.categories.customization.a1'), key: 'customization_1' },
         { q: t('faq.categories.customization.q2'), a: t('faq.categories.customization.a2'), key: 'customization_2' },
@@ -147,7 +147,8 @@ export default function FaqView() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('faq.searchPlace')} 
-          className="w-full bg-sidebar/50 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
+          aria-label={t('faq.searchPlace') || "Search FAQ"}
+          className="w-full bg-sidebar/50 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 placeholder:text-text-muted border border-gray-200/50 shadow-sm"
         />
       </div>
 
@@ -157,11 +158,11 @@ export default function FaqView() {
         {/* Left Column: Categories List & Accordions */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
           {filteredCategories.length === 0 ? (
-            <div className="bg-[#F3F4FD] border border-[#E4E6F8] rounded-[32px] p-12 flex flex-col items-center text-center gap-2">
-              <p className="font-bold text-slate-700">
+            <div className="bg-sidebar/50 border border-primary/10 rounded-2xl p-12 flex flex-col items-center text-center gap-2">
+              <p className="font-bold text-text">
                 {language === 'vi' ? 'Không tìm thấy câu hỏi phù hợp' : 'No matching questions found'}
               </p>
-              <p className="text-slate-500 text-xs">
+              <p className="text-text-muted text-xs">
                 {language === 'vi' ? 'Thử tìm kiếm với từ khóa khác.' : 'Try searching with another keyword.'}
               </p>
             </div>
@@ -169,14 +170,14 @@ export default function FaqView() {
             filteredCategories.map((category) => (
               <div 
                 key={category.id} 
-                className={`bg-white border border-gray-200/60 rounded-[32px] p-6 flex flex-col gap-4 shadow-sm transition-all duration-300 ${category.borderClass}`}
+                className={`bg-white border border-gray-200/60 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300 ${category.borderClass}`}
               >
                 {/* Category Title */}
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${category.accentClass}`}>
                      {category.icon}
                   </div>
-                  <h2 className="text-md font-black text-slate-800 tracking-tight">{category.title}</h2>
+                  <h2 className="text-md font-black text-slate-800 dark:text-white tracking-tight">{category.title}</h2>
                 </div>
 
                 {/* Accordion Questions */}
@@ -186,17 +187,23 @@ export default function FaqView() {
                     return (
                       <div key={item.key} id={`faq-${item.key}`} className="w-full flex flex-col scroll-mt-20">
                         <button 
+                          id={`faq-btn-${item.key}`}
                           onClick={() => toggleItem(item.key)}
-                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 transition-colors hover:text-primary outline-none group cursor-pointer select-none"
+                          aria-expanded={isOpen}
+                          aria-controls={`faq-content-${item.key}`}
+                          className="w-full text-left py-3.5 flex items-start justify-between text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors hover:text-primary dark:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-lg group cursor-pointer select-none"
                         >
                           <span className="pr-4 leading-tight">{item.q}</span>
                           <ChevronDown 
                             size={16} 
-                            className={`text-slate-400 group-hover:text-primary transition-transform duration-300 shrink-0 mt-0.5 ${isOpen ? 'rotate-180' : ''}`} 
+                            className={`text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-primary transition-transform duration-300 shrink-0 mt-0.5 ${isOpen ? 'rotate-180' : ''}`} 
                           />
                         </button>
                         
                         <div 
+                          id={`faq-content-${item.key}`}
+                          role="region"
+                          aria-labelledby={`faq-btn-${item.key}`}
                           className="overflow-hidden transition-all duration-300 ease-in-out"
                           style={{
                             maxHeight: isOpen ? '600px' : '0px',
@@ -204,7 +211,7 @@ export default function FaqView() {
                             pointerEvents: isOpen ? 'auto' : 'none'
                           }}
                         >
-                          <p className="text-xs leading-relaxed text-slate-500 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80">
+                          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 pb-4 font-semibold whitespace-pre-line border-b border-slate-100/80 dark:border-white/5">
                             {item.a}
                           </p>
                         </div>
@@ -220,34 +227,34 @@ export default function FaqView() {
         {/* Right Column: Tips & Support Sidebar */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
           
-          {/* Pro Tips Section (Emerald theme matching app) */}
-          <div className="bg-gradient-to-br from-[#4E7164] to-[#3A564C] border border-emerald-800/25 rounded-3xl p-6 text-white flex flex-col gap-4 shadow-sm relative overflow-hidden shrink-0">
+          {/* Pro Tips Section (Dynamic theme matching app primary gradient) */}
+          <div className="bg-gradient-to-br from-primary to-primary-hover border border-primary/20 rounded-2xl p-6 text-white flex flex-col gap-4 shadow-sm relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0">
                 <Lightbulb size={18} />
               </div>
               <h2 className="text-lg font-black tracking-tight">{t('faq.proTips')}</h2>
             </div>
             
-            <p className="text-xs font-semibold text-emerald-100/90 leading-relaxed">
+            <p className="text-xs font-semibold text-white/95 leading-relaxed">
               {t('faq.tipIntro')}
             </p>
 
-            <div className="flex flex-col gap-3 text-xs font-bold text-white/80">
+            <div className="flex flex-col gap-3 text-xs font-bold text-white">
               <div className="flex gap-2.5 items-start">
-                <CheckCircle size={15} className="text-[#C2E1D9] shrink-0 mt-[1px]" />
+                <CheckCircle size={15} className="text-white/80 shrink-0 mt-[1px]" />
                 <span className="leading-tight">{t('faq.tip1')}</span>
               </div>
               <div className="flex gap-2.5 items-start">
-                <CheckCircle size={15} className="text-[#C2E1D9] shrink-0 mt-[1px]" />
+                <CheckCircle size={15} className="text-white/80 shrink-0 mt-[1px]" />
                 <span className="leading-tight">{t('faq.tip2')}</span>
               </div>
             </div>
           </div>
 
           {/* Support Help Contact Card (Glassmorphic) */}
-          <div className="bg-white border border-gray-200/60 rounded-3xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
+          <div className="bg-white border border-gray-200/60 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -260,7 +267,7 @@ export default function FaqView() {
               {t('faq.contactDesc')}
             </p>
 
-            <button className="w-full bg-primary hover:bg-primary-hover text-white transition-all py-3 rounded-2xl font-black text-xs shadow-md shadow-primary/20 active:scale-95 cursor-pointer mt-2 flex items-center justify-center gap-1.5">
+            <button className="w-full bg-primary hover:bg-primary-hover text-white transition-all py-3 rounded-2xl font-black text-xs shadow-md shadow-primary/20 active:scale-95 cursor-pointer mt-2 flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
               <span>{t('faq.contactBtn')}</span>
             </button>
           </div>

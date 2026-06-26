@@ -161,27 +161,27 @@ export default function LandingEditor() {
     if (section === 'heroSlides') {
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageBanners}</span>
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.manageBanners}</span>
             <button 
               onClick={() => {
                 const newSlides = [...config.heroSlides, { tagline: 'NEW BANNER', description: '', ctaText: 'Click Here', bgImageUrl: '' }];
                 updateConfig('heroSlides', 'data', newSlides);
               }}
-              className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF] transition-colors"
+              className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
             >
               <Plus size={14} /> {t.addSlide}
             </button>
           </div>
 
           {config.heroSlides.map((slide, i) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group">
+            <div key={i} className="border border-[#E2E8F0] dark:border-white/10 rounded-xl p-4 bg-[#F8F9FA] dark:bg-[#1A1D27] relative group">
               <button 
                 onClick={() => {
                   const newSlides = config.heroSlides.filter((_, idx) => idx !== i);
                   updateConfig('heroSlides', 'data', newSlides);
                 }}
-                className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-opacity focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none"
               >
                 <Trash2 size={14} />
               </button>
@@ -199,7 +199,7 @@ export default function LandingEditor() {
                 />
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">{t.title}</label>
-                  <input className="px-3 py-2 border rounded-lg outline-none focus:border-[#5A5CDE]" value={slide.tagline} onChange={e => {
+                  <input className="px-3 py-2 border rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none" value={slide.tagline} onChange={e => {
                     const newSlides = [...config.heroSlides];
                     newSlides[i].tagline = e.target.value;
                     updateConfig('heroSlides', 'data', newSlides);
@@ -207,7 +207,7 @@ export default function LandingEditor() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">{t.subtitle}</label>
-                  <textarea className="px-3 py-2 border rounded-lg h-20 outline-none focus:border-[#5A5CDE]" value={slide.description} onChange={e => {
+                  <textarea className="px-3 py-2 border rounded-lg h-20 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none" value={slide.description} onChange={e => {
                     const newSlides = [...config.heroSlides];
                     newSlides[i].description = e.target.value;
                     updateConfig('heroSlides', 'data', newSlides);
@@ -247,15 +247,15 @@ export default function LandingEditor() {
       const logos = (config.sections as any).trustedByLogos || [];
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageLogos}</span>
-            <button onClick={() => updateConfig('sections', 'trustedByLogos', [...logos, ''])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.manageLogos}</span>
+            <button onClick={() => updateConfig('sections', 'trustedByLogos', [...logos, ''])} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
               <Plus size={14} /> {t.addLogo}
             </button>
           </div>
           {logos.map((logo: string, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group">
-              <button onClick={() => updateConfig('sections', 'trustedByLogos', logos.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100">
+            <div key={i} className="border border-[#E2E8F0] dark:border-white/10 rounded-xl p-4 bg-[#F8F9FA] dark:bg-[#1A1D27] relative group">
+              <button onClick={() => updateConfig('sections', 'trustedByLogos', logos.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none">
                 <Trash2 size={14} />
               </button>
               <h4 className="font-extrabold text-xs text-slate-500 uppercase mb-4 tracking-wider">{t.logoNumber?.replace('{number}', String(i + 1)) || `Logo ${i + 1}`}</h4>
@@ -271,17 +271,17 @@ export default function LandingEditor() {
       const stats = (config.sections as any).stats || [];
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageStats}</span>
-            <button onClick={() => updateConfig('sections', 'stats', [...stats, { number: '0', label: 'New Stat' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.manageStats}</span>
+            <button onClick={() => updateConfig('sections', 'stats', [...stats, { number: '0', label: 'New Stat' }])} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
               <Plus size={14} /> {t.addStat}
             </button>
           </div>
           {stats.map((stat: any, i: number) => (
             <div key={i} className="flex gap-2 items-center">
-              <input className="px-3 py-2 border rounded-lg w-1/3" placeholder={t.statNumberPlaceholder} value={stat.number} onChange={e => updateArrayItem('sections', 'stats', i, 'number', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg flex-1" placeholder={t.statLabelPlaceholder} value={stat.label} onChange={e => updateArrayItem('sections', 'stats', i, 'label', e.target.value)} />
-              <button onClick={() => updateConfig('sections', 'stats', stats.filter((_: any, idx: number) => idx !== i))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+              <input className="px-3 py-2 border border-slate-200 rounded-lg w-1/3 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.statNumberPlaceholder} value={stat.number} onChange={e => updateArrayItem('sections', 'stats', i, 'number', e.target.value)} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg flex-1 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.statLabelPlaceholder} value={stat.label} onChange={e => updateArrayItem('sections', 'stats', i, 'label', e.target.value)} />
+              <button onClick={() => updateConfig('sections', 'stats', stats.filter((_: any, idx: number) => idx !== i))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -295,21 +295,21 @@ export default function LandingEditor() {
       const tms = (config.sections as any).testimonials || [];
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageReviews}</span>
-            <button onClick={() => updateConfig('sections', 'testimonials', [...tms, { quote: '', author: '', role: '', avatar: '' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.manageReviews}</span>
+            <button onClick={() => updateConfig('sections', 'testimonials', [...tms, { quote: '', author: '', role: '', avatar: '' }])} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
               <Plus size={14} /> {t.addReview}
             </button>
           </div>
           {tms.map((tItem: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group flex flex-col gap-2">
-              <button onClick={() => updateConfig('sections', 'testimonials', tms.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
+            <div key={i} className="border border-[#E2E8F0] dark:border-white/10 rounded-xl p-4 bg-[#F8F9FA] dark:bg-[#1A1D27] relative group flex flex-col gap-2">
+              <button onClick={() => updateConfig('sections', 'testimonials', tms.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none">
                 <Trash2 size={14} />
               </button>
               <ImageUploader value={tItem.avatar} onChange={v => updateArrayItem('sections', 'testimonials', i, 'avatar', v)} />
-              <textarea className="px-3 py-2 border rounded-lg" placeholder={t.quotePlaceholder} value={tItem.quote} onChange={e => updateArrayItem('sections', 'testimonials', i, 'quote', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg" placeholder={t.authorNamePlaceholder} value={tItem.author} onChange={e => updateArrayItem('sections', 'testimonials', i, 'author', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg" placeholder={t.authorRolePlaceholder} value={tItem.role} onChange={e => updateArrayItem('sections', 'testimonials', i, 'role', e.target.value)} />
+              <textarea className="px-3 py-2 border border-slate-200 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.quotePlaceholder} value={tItem.quote} onChange={e => updateArrayItem('sections', 'testimonials', i, 'quote', e.target.value)} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.authorNamePlaceholder} value={tItem.author} onChange={e => updateArrayItem('sections', 'testimonials', i, 'author', e.target.value)} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.authorRolePlaceholder} value={tItem.role} onChange={e => updateArrayItem('sections', 'testimonials', i, 'role', e.target.value)} />
             </div>
           ))}
         </div>
@@ -321,20 +321,20 @@ export default function LandingEditor() {
       const prices = (config.sections as any).pricing || [];
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.managePricing}</span>
-            <button onClick={() => updateConfig('sections', 'pricing', [...prices, { plan: 'New Plan', price: '$0', features: [] }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.managePricing}</span>
+            <button onClick={() => updateConfig('sections', 'pricing', [...prices, { plan: 'New Plan', price: '$0', features: [] }])} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
               <Plus size={14} /> {t.addPlan}
             </button>
           </div>
           {prices.map((p: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group flex flex-col gap-2">
-              <button onClick={() => updateConfig('sections', 'pricing', prices.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
+            <div key={i} className="border border-[#E2E8F0] dark:border-white/10 rounded-xl p-4 bg-[#F8F9FA] dark:bg-[#1A1D27] relative group flex flex-col gap-2">
+              <button onClick={() => updateConfig('sections', 'pricing', prices.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none">
                 <Trash2 size={14} />
               </button>
-              <input className="px-3 py-2 border rounded-lg font-bold" placeholder={t.planNamePlaceholder} value={p.plan} onChange={e => updateArrayItem('sections', 'pricing', i, 'plan', e.target.value)} />
-              <input className="px-3 py-2 border rounded-lg text-2xl font-black text-[#5A5CDE]" placeholder={t.pricePlaceholder} value={p.price} onChange={e => updateArrayItem('sections', 'pricing', i, 'price', e.target.value)} />
-              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder={t.featuresPlaceholder} value={(p.features || []).join('\n')} onChange={e => updateArrayItem('sections', 'pricing', i, 'features', e.target.value.split('\n'))} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.planNamePlaceholder} value={p.plan} onChange={e => updateArrayItem('sections', 'pricing', i, 'plan', e.target.value)} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg text-2xl font-black text-primary outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.pricePlaceholder} value={p.price} onChange={e => updateArrayItem('sections', 'pricing', i, 'price', e.target.value)} />
+              <textarea className="px-3 py-2 border border-slate-200 rounded-lg h-24 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.featuresPlaceholder} value={(p.features || []).join('\n')} onChange={e => updateArrayItem('sections', 'pricing', i, 'features', e.target.value.split('\n'))} />
             </div>
           ))}
         </div>
@@ -346,19 +346,19 @@ export default function LandingEditor() {
       const faqs = (config.sections as any).faq || [];
       return (
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-[#5A5CDE]/10 p-3 rounded-lg">
-            <span className="font-bold text-sm text-[#5A5CDE]">{t.manageFaq}</span>
-            <button onClick={() => updateConfig('sections', 'faq', [...faqs, { q: 'Câu hỏi?', a: 'Trả lời...' }])} className="flex items-center gap-1 bg-[#5A5CDE] text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-[#4A4CBF]">
+          <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
+            <span className="font-bold text-sm text-primary">{t.manageFaq}</span>
+            <button onClick={() => updateConfig('sections', 'faq', [...faqs, { q: 'Câu hỏi?', a: 'Trả lời...' }])} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
               <Plus size={14} /> {t.addFaq}
             </button>
           </div>
           {faqs.map((faq: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative group flex flex-col gap-2">
-              <button onClick={() => updateConfig('sections', 'faq', faqs.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10">
+            <div key={i} className="border border-[#E2E8F0] dark:border-white/10 rounded-xl p-4 bg-[#F8F9FA] dark:bg-[#1A1D27] relative group flex flex-col gap-2">
+              <button onClick={() => updateConfig('sections', 'faq', faqs.filter((_: any, idx: number) => idx !== i))} className="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1.5 bg-red-50 rounded-md opacity-0 group-hover:opacity-100 z-10 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:outline-none">
                 <Trash2 size={14} />
               </button>
-              <input className="px-3 py-2 border rounded-lg font-bold" placeholder={t.faqQuestionPlaceholder} value={faq.q} onChange={e => updateArrayItem('sections', 'faq', i, 'q', e.target.value)} />
-              <textarea className="px-3 py-2 border rounded-lg h-24" placeholder={t.faqAnswerPlaceholder} value={faq.a} onChange={e => updateArrayItem('sections', 'faq', i, 'a', e.target.value)} />
+              <input className="px-3 py-2 border border-slate-200 rounded-lg font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.faqQuestionPlaceholder} value={faq.q} onChange={e => updateArrayItem('sections', 'faq', i, 'q', e.target.value)} />
+              <textarea className="px-3 py-2 border border-slate-200 rounded-lg h-24 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary" placeholder={t.faqAnswerPlaceholder} value={faq.a} onChange={e => updateArrayItem('sections', 'faq', i, 'a', e.target.value)} />
             </div>
           ))}
         </div>
@@ -384,7 +384,7 @@ export default function LandingEditor() {
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold text-slate-500 uppercase">{t.editText}</label>
           <textarea 
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg min-h-[120px] outline-none focus:ring-2 focus:ring-[#5A5CDE]/50" 
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg min-h-[120px] outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none" 
             value={value} 
             onChange={e => updateConfig(section as any, field, e.target.value)} 
           />
@@ -397,7 +397,7 @@ export default function LandingEditor() {
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold text-slate-500 uppercase">{t.editTitleText}</label>
         <input 
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#5A5CDE]/50" 
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none" 
           type="text" 
           value={value} 
           onChange={e => updateConfig(section as any, field, e.target.value)} 
@@ -427,44 +427,44 @@ export default function LandingEditor() {
       </div>
 
       {/* Floating Toolbar */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-slate-200 px-4 py-3 flex items-center gap-4 z-[9990] animate-bounce-short">
-        <div className="flex items-center gap-2 pr-4 border-r border-slate-200">
-          <LayoutTemplate className="text-[#5A5CDE]" size={20} />
-          <span className="font-extrabold text-sm text-slate-800 uppercase tracking-wide">{t.mode}</span>
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 rounded-2xl md:rounded-full shadow-2xl border border-slate-200 dark:border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-4 z-[9990] animate-bounce-short max-w-[calc(100vw-2rem)] w-auto">
+        <div className="hidden sm:flex items-center gap-2 pr-3 md:pr-4 border-r border-slate-200 dark:border-zinc-700 shrink-0">
+          <LayoutTemplate className="text-primary" size={18} />
+          <span className="font-extrabold text-xs md:text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wide">{t.mode}</span>
         </div>
 
         <button 
           onClick={() => setShowBrandDrawer(true)}
-          className="flex items-center gap-2 text-slate-600 hover:text-[#5A5CDE] font-bold text-xs uppercase transition-colors"
+          className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
         >
-          <Palette size={16} /> {t.brand}
+          <Palette size={15} /> <span className="hidden sm:inline">{t.brand}</span>
         </button>
 
         <button 
           onClick={() => setShowHistory(true)}
-          className="flex items-center gap-2 text-slate-600 hover:text-[#5A5CDE] font-bold text-xs uppercase transition-colors"
+          className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
         >
-          <History size={16} /> {t.history}
+          <History size={15} /> <span className="hidden sm:inline">{t.history}</span>
         </button>
 
-        <div className="w-[1px] h-6 bg-slate-200 mx-2" />
+        <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
         <button
           onClick={saveDraft}
           disabled={isSaving}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-2 disabled:opacity-50"
+          className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
         >
-          <Save size={14} />
-          {isSaving ? t.saving : t.saveDraft}
+          <Save size={13} />
+          <span className="hidden sm:inline">{isSaving ? t.saving : t.saveDraft}</span>
         </button>
 
         <button
           onClick={() => setConfirmPublish(true)}
           disabled={isPublishing}
-          className="bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white px-6 py-2 rounded-full font-bold text-xs uppercase shadow-md shadow-[#5A5CDE]/30 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+          className="bg-primary hover:bg-primary-hover text-white px-3 md:px-6 py-1.5 md:py-2 rounded-full font-bold text-xs uppercase shadow-md shadow-primary/30 transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none shrink-0"
         >
-          <RefreshCcw size={14} className={isPublishing ? "animate-spin" : ""} />
-          {isPublishing ? t.publishing : t.publish}
+          <RefreshCcw size={13} className={isPublishing ? "animate-spin" : ""} />
+          <span className="hidden xs:inline">{isPublishing ? t.publishing : t.publish}</span>
         </button>
       </div>
 
@@ -474,7 +474,7 @@ export default function LandingEditor() {
           <div className="bg-white shadow-2xl border-l border-slate-200 w-full max-w-md h-full overflow-hidden animate-in slide-in-from-right duration-300 flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="font-extrabold text-slate-800 uppercase tracking-tight text-sm">{t.editContent}</h3>
-              <button onClick={() => setEditingField(null)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => setEditingField(null)} className="text-slate-400 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded p-1">
                 <X size={18} />
               </button>
             </div>
@@ -484,7 +484,7 @@ export default function LandingEditor() {
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
               <button 
                 onClick={() => setEditingField(null)}
-                className="px-6 py-2 bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors"
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 {t.done}
               </button>
@@ -499,7 +499,7 @@ export default function LandingEditor() {
           <div className="bg-white shadow-2xl border-l border-slate-200 w-full max-w-md h-full overflow-hidden animate-in slide-in-from-right duration-300 flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="font-extrabold text-slate-800 uppercase tracking-tight text-sm">{t.brandConfig}</h3>
-              <button onClick={() => setShowBrandDrawer(false)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => setShowBrandDrawer(false)} className="text-slate-400 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded p-1">
                 <X size={18} />
               </button>
             </div>
@@ -509,7 +509,7 @@ export default function LandingEditor() {
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
               <button 
                 onClick={() => setShowBrandDrawer(false)}
-                className="px-6 py-2 bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors"
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 {t.close}
               </button>
@@ -539,8 +539,8 @@ export default function LandingEditor() {
              <h3 className="font-extrabold text-slate-800 text-lg mb-2">{t.confirmPublishTitle}</h3>
              <p className="text-sm text-slate-500 mb-6 font-semibold">{t.confirmPublishDesc}</p>
              <div className="flex gap-3 justify-center">
-               <button onClick={() => setConfirmPublish(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors">{t.cancel}</button>
-               <button onClick={() => { setConfirmPublish(false); executePublish(); }} className="px-6 py-2 bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95">{t.confirm}</button>
+               <button onClick={() => setConfirmPublish(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">{t.cancel}</button>
+               <button onClick={() => { setConfirmPublish(false); executePublish(); }} className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirm}</button>
              </div>
           </div>
         </div>

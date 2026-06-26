@@ -247,7 +247,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+    <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
       <AnimatePresence>
         {toast && (
           <Toast
@@ -259,7 +259,7 @@ export default function LoginPage() {
       </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
-        <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
+        <div className="relative w-full h-full rounded-xl overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
           <Image
             src="/images/login.png"
             alt={t("login.altText")}
@@ -305,7 +305,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 placeholder={t("login.emailPlaceholder")}
                 disabled={isLockedOut}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
             {errors.email && (
@@ -320,7 +320,7 @@ export default function LoginPage() {
               <label className="text-xs font-semibold text-gray-700">{t("login.passwordLabel")}</label>
               <Link
                 href={emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : "/forgot-password"}
-                className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
+                className="text-xs font-semibold text-primary hover:text-primary-hover focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded transition-colors"
               >
                 {t("login.forgotPassword")}
               </Link>
@@ -334,11 +334,11 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder={t("login.passwordPlaceholder")}
                 disabled={isLockedOut}
-                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLockedOut}
               >
@@ -355,7 +355,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting || isLockedOut}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             {isLockedOut ? t("login.lockoutMessage", { time: lockoutTime }) : isSubmitting ? t("login.submitting") : t("login.submitBtn")}
             {!isLockedOut && <ArrowRight className="h-4 w-4" />}
@@ -363,9 +363,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 flex items-center">
-          <div className="flex-1 border-t border-gray-200"></div>
-          <span className="px-4 text-xs text-gray-400 bg-white">{t("login.orContinueWith")}</span>
-          <div className="flex-1 border-t border-gray-200"></div>
+          <div className="flex-1 border-t border-gray-200 dark:border-zinc-800"></div>
+          <span className="px-4 text-xs text-gray-400 bg-white dark:bg-[#0F0F12]">{t("login.orContinueWith")}</span>
+          <div className="flex-1 border-t border-gray-200 dark:border-zinc-800"></div>
         </div>
 
         <div className="mt-6">
@@ -373,7 +373,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLockedOut}
-            className="w-full bg-[#F3F4F6] hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#F3F4F6] dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-slate-200 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4">
               <path
@@ -399,7 +399,7 @@ export default function LoginPage() {
 
         <p className="mt-8 text-center text-xs text-gray-500 font-medium">
           {t("login.noAccount")}{" "}
-          <Link href="/register" className="text-primary hover:text-primary-hover font-semibold transition-colors">
+          <Link href="/register" className="text-primary hover:text-primary-hover font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded">
             {t("login.registerLink")}
           </Link>
         </p>
@@ -410,14 +410,14 @@ export default function LoginPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute -inset-2 z-40 flex flex-col items-center justify-center bg-white/98 backdrop-blur-md p-6 rounded-3xl border border-gray-100/60 shadow-xl text-center"
+              className="absolute -inset-2 z-40 flex flex-col items-center justify-center bg-white/98 dark:bg-[#0F0F12]/98 backdrop-blur-md p-6 rounded-2xl border border-gray-100/60 dark:border-white/5 shadow-xl text-center"
             >
-              <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-2">
+              <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/20 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center mb-2">
                 <ShieldAlert className="w-5 h-5" />
               </div>
               
-              <h3 className="text-base font-bold text-gray-950 mb-0.5">{t("login.matrixTitle")}</h3>
-              <p className="text-xs text-gray-500 leading-normal max-w-xs">{t("login.matrixSubtitle")}</p>
+              <h3 className="text-base font-bold text-gray-950 dark:text-slate-100 mb-0.5">{t("login.matrixTitle")}</h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400 leading-normal max-w-xs">{t("login.matrixSubtitle")}</p>
 
               {/* Matrix grid */}
               <motion.div
@@ -433,10 +433,10 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => handleNumberClick(num)}
                       disabled={nextNumber > 9}
-                      className={`h-12 w-12 text-base font-bold rounded-xl flex items-center justify-center transition-all select-none border focus:outline-none focus:ring-2 active:scale-95 ${
+                      className={`h-12 w-12 text-base font-bold rounded-xl flex items-center justify-center transition-all select-none border focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none active:scale-95 ${
                         isClicked
-                          ? "bg-emerald-500 text-white border-emerald-600 shadow-inner scale-95"
-                          : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-gray-800 border-gray-200/60 focus:ring-primary/20"
+                          ? "bg-emerald-500 text-white border-emerald-600 dark:border-emerald-500 shadow-inner scale-95"
+                          : "bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-white/8 active:bg-gray-200 dark:active:bg-white/12 text-gray-800 dark:text-slate-200 border-gray-200/60 dark:border-white/5"
                       }`}
                     >
                       {num}

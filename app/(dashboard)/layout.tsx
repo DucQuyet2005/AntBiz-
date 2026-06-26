@@ -7,8 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldX } from 'lucide-react';
+import { ShieldX, ChevronUp } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRef } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -20,7 +21,7 @@ export default function DashboardLayout({
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     let isMounted = true;
@@ -112,6 +113,8 @@ export default function DashboardLayout({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editorSidebarHover, setEditorSidebarHover] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     // Close sidebar on pathname change (navigation)
@@ -119,12 +122,50 @@ export default function DashboardLayout({
     setEditorSidebarHover(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (!mainEl) return;
+
+    const handleScroll = () => {
+      if (mainEl.scrollTop > 400) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    mainEl.addEventListener('scroll', handleScroll);
+    return () => mainEl.removeEventListener('scroll', handleScroll);
+  }, [loading]);
+
+  const scrollToTop = () => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F4F5F9]">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-semibold text-slate-500">{t("dashboardLayout.verifying")}</p>
+          <div className="relative flex items-center justify-center">
+            {/* Outer soft pulsing glow */}
+            <div className="absolute inset-0 rounded-3xl bg-primary/20 blur-xl animate-pulse scale-150"></div>
+            {/* Logo container */}
+            <div className="relative w-20 h-20 rounded-2xl bg-white p-3 flex items-center justify-center shadow-lg border border-slate-100 animate-pulse">
+              <img
+                src="/images/logo.png"
+                alt="AntBiz Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+          <p className="text-sm font-semibold tracking-wide text-slate-500 bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-100/60 animate-pulse">
+            {t("dashboardLayout.verifying")}
+          </p>
         </div>
       </div>
     );
@@ -167,7 +208,7 @@ export default function DashboardLayout({
                     window.location.replace(`/login?error=locked&reason=${encodeURIComponent(lockedReason)}`);
                   });
                 }}
-                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors text-sm"
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors text-sm focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 {t("dashboardLayout.logoutBtn")}
               </button>
@@ -178,15 +219,15 @@ export default function DashboardLayout({
       {isLandingEditor ? (
         <>
           {/* Bulletproof CSS Hover Sidebar */}
-          <div className="fixed top-0 bottom-0 left-0 w-4 hover:w-[280px] z-[9999] group/sidebar transition-all duration-300 ease-out">
-            <div className="absolute top-0 bottom-0 left-0 w-[280px] -translate-x-full group-hover/sidebar:translate-x-0 transition-transform duration-300 ease-out shadow-2xl">
+          <div className="fixed top-0 bottom-0 left-0 w-4 hover:w-[280px] focus-within:w-[280px] z-[9999] group/sidebar transition-all duration-300 ease-out">
+            <div className="absolute top-0 bottom-0 left-0 w-[280px] -translate-x-full group-hover/sidebar:translate-x-0 group-focus-within/sidebar:translate-x-0 transition-transform duration-300 ease-out shadow-2xl">
               <Sidebar isOpen={true} onClose={() => {}} />
             </div>
           </div>
 
           {/* Bulletproof CSS Hover Header */}
-          <div className="fixed top-0 left-0 right-0 h-4 hover:h-20 z-[9998] group/header transition-all duration-300 ease-out">
-            <div className="absolute top-0 left-0 right-0 -translate-y-full group-hover/header:translate-y-0 transition-transform duration-300 ease-out bg-white/95 backdrop-blur-md shadow-md px-4 sm:px-6 lg:px-10 flex items-center h-20">
+          <div className="fixed top-0 left-0 right-0 h-4 hover:h-20 focus-within:h-20 z-[9998] group/header transition-all duration-300 ease-out">
+            <div className="absolute top-0 left-0 right-0 -translate-y-full group-hover/header:translate-y-0 group-focus-within/header:translate-y-0 transition-transform duration-300 ease-out bg-white/95 backdrop-blur-md shadow-md px-4 sm:px-6 lg:px-10 flex items-center h-20">
               <div className="max-w-[1200px] w-full mx-auto">
                 <Header onMenuClick={() => {}} />
               </div>
@@ -210,7 +251,11 @@ export default function DashboardLayout({
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}>
+      <main 
+        ref={mainRef}
+        className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}
+        style={{ scrollBehavior: 'smooth' }}
+      >
         <div className={`max-w-[1200px] w-full mx-auto ${isLandingEditor ? 'px-0' : 'px-4 sm:px-6 lg:px-10'} flex flex-col pb-12 grow shrink-0 min-h-screen`}>
           {!isLandingEditor && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
           <motion.div
@@ -225,6 +270,25 @@ export default function DashboardLayout({
         </div>
         {!isLandingEditor && <Footer />}
       </main>
+
+      {/* Floating Back to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={scrollToTop}
+            className="fixed bottom-6 right-6 z-[60] bg-primary text-white p-3.5 rounded-full shadow-lg shadow-primary/20 cursor-pointer border-0 hover:bg-primary-hover transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            title={language === 'vi' ? 'Lên đầu trang' : 'Back to top'}
+          >
+            <ChevronUp size={18} strokeWidth={2.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

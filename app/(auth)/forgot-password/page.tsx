@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row">
+    <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
       <AnimatePresence>
         {toast && (
           <Toast
@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
       </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
-        <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
+        <div className="relative w-full h-full rounded-xl overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
           <Image
             src="/images/login.png"
             alt={t("login.altText")}
@@ -137,7 +137,7 @@ export default function ForgotPasswordPage() {
 
       {/* Right Side - Form */}
       <div className="w-full md:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <Link href="/login" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-[#5A5CDE] transition-colors mb-8 group w-fit">
+        <Link href="/login" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition-colors mb-8 group w-fit focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded">
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           {t("forgotPassword.backToLogin")}
         </Link>
@@ -156,7 +156,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               {t("forgotPassword.backToLogin")}
             </Link>
@@ -174,7 +174,7 @@ export default function ForgotPasswordPage() {
                   type="email"
                   placeholder={t("forgotPassword.emailPlaceholder")}
                   disabled={isSubmitting}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5A5CDE]/20 focus:border-[#5A5CDE] transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors text-gray-900 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               {errors.email && (
@@ -187,7 +187,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-[#5A5CDE] hover:bg-[#4A4CBF] text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               {isSubmitting ? t("forgotPassword.submitting") : t("forgotPassword.submitBtn")}
               {!isSubmitting && <ArrowRight className="h-4 w-4" />}

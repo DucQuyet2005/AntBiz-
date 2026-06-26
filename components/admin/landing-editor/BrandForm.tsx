@@ -21,16 +21,16 @@ export default function BrandForm({ config, onChange }: Props) {
   const t = translations[language].landingEditor;
 
   const fontFamilies = [
-    { label: 'Inter (Hiện đại, tối giản)', value: 'Inter' },
-    { label: 'Roboto (Chuẩn mực)', value: 'Roboto' },
-    { label: 'Montserrat (Đậm đà, cá tính)', value: 'Montserrat' },
-    { label: 'Be Vietnam Pro (Bản địa hóa)', value: 'Be Vietnam Pro' }
+    { label: t.fontInter, value: 'Inter' },
+    { label: t.fontRoboto, value: 'Roboto' },
+    { label: t.fontMontserrat, value: 'Montserrat' },
+    { label: t.fontBeVietnam, value: 'Be Vietnam Pro' }
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
           {t.logo}
         </h3>
         <div className="flex flex-col gap-2">
@@ -39,23 +39,23 @@ export default function BrandForm({ config, onChange }: Props) {
             type="text" 
             value={config.logoUrl}
             onChange={(e) => onChange('logoUrl', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+            className="w-full px-3 py-2 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
             placeholder="https://..."
           />
-          <p className="text-[10px] text-slate-400 font-medium">Nhập URL hình ảnh logo (khuyến nghị định dạng PNG trong suốt, tỷ lệ 1:1 hoặc 3:1).</p>
+          <p className="text-[10px] text-slate-400 font-medium">{t.logoUrlDesc}</p>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
-          Typography
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
+          {t.typography}
         </h3>
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold text-slate-500 uppercase">Font chữ chủ đạo</label>
+          <label className="text-xs font-bold text-slate-500 uppercase">{t.fontFamilyLabel}</label>
           <select 
             value={config.fontFamily}
             onChange={(e) => onChange('fontFamily', e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#5A5CDE]/50 outline-none"
+            className="w-full px-3 py-2 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-xl text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
           >
             {fontFamilies.map(font => (
               <option key={font.value} value={font.value}>{font.label}</option>
@@ -65,8 +65,8 @@ export default function BrandForm({ config, onChange }: Props) {
       </div>
 
       <div>
-        <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 border-l-4 border-[#5A5CDE] pl-2">
-          Bảng màu (Palette)
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider mb-4">
+          {t.colorPalette}
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
@@ -76,13 +76,13 @@ export default function BrandForm({ config, onChange }: Props) {
                 type="color" 
                 value={config.primaryColor}
                 onChange={(e) => onChange('primaryColor', e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                className="w-8 h-8 rounded-lg cursor-pointer border border-[#E2E8F0] dark:border-white/10 overflow-hidden p-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               />
               <input 
                 type="text" 
                 value={config.primaryColor}
                 onChange={(e) => onChange('primaryColor', e.target.value)}
-                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono uppercase"
+                className="w-full px-2.5 py-1.5 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-lg text-xs font-mono uppercase focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
               />
             </div>
           </div>
@@ -93,13 +93,13 @@ export default function BrandForm({ config, onChange }: Props) {
                 type="color" 
                 value={config.secondaryColor}
                 onChange={(e) => onChange('secondaryColor', e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                className="w-8 h-8 rounded-lg cursor-pointer border border-[#E2E8F0] dark:border-white/10 overflow-hidden p-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               />
               <input 
                 type="text" 
                 value={config.secondaryColor}
                 onChange={(e) => onChange('secondaryColor', e.target.value)}
-                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono uppercase"
+                className="w-full px-2.5 py-1.5 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-lg text-xs font-mono uppercase focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
               />
             </div>
           </div>
@@ -110,13 +110,13 @@ export default function BrandForm({ config, onChange }: Props) {
                 type="color" 
                 value={config.bgColor}
                 onChange={(e) => onChange('bgColor', e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                className="w-8 h-8 rounded-lg cursor-pointer border border-[#E2E8F0] dark:border-white/10 overflow-hidden p-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               />
               <input 
                 type="text" 
                 value={config.bgColor}
                 onChange={(e) => onChange('bgColor', e.target.value)}
-                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono uppercase"
+                className="w-full px-2.5 py-1.5 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-lg text-xs font-mono uppercase focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
               />
             </div>
           </div>
@@ -127,13 +127,13 @@ export default function BrandForm({ config, onChange }: Props) {
                 type="color" 
                 value={config.textColor}
                 onChange={(e) => onChange('textColor', e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                className="w-8 h-8 rounded-lg cursor-pointer border border-[#E2E8F0] dark:border-white/10 overflow-hidden p-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               />
               <input 
                 type="text" 
                 value={config.textColor}
                 onChange={(e) => onChange('textColor', e.target.value)}
-                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono uppercase"
+                className="w-full px-2.5 py-1.5 bg-[#F8F9FA] dark:bg-[#1A1D27] border border-[#E2E8F0] dark:border-white/10 rounded-lg text-xs font-mono uppercase focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-text"
               />
             </div>
           </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Clock, RotateCcw } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translations } from '@/lib/i18n/translations';
+import PopupDialog from '@/components/PopupDialog';
 
 interface HistoryRecord {
   id: string;
@@ -22,6 +23,12 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
   const t = translations[language].landingEditor;
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' }>({
+    isOpen: false,
+    message: '',
+    type: 'success'
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -52,25 +59,25 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
       });
       if (res.ok) {
         onRestore(snapshot);
-        alert(t.restoreSuccess);
+        setPopup({ isOpen: true, message: t.restoreSuccess, type: 'success' });
       } else {
-        alert(t.restoreFail);
+        setPopup({ isOpen: true, message: t.restoreFail, type: 'error' });
       }
     } catch (e) {
-      alert(t.restoreError);
+      setPopup({ isOpen: true, message: t.restoreError, type: 'error' });
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-y-0 right-0 w-[300px] bg-white border-l border-slate-200 shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+    <div className="absolute inset-y-0 right-0 w-[300px] bg-white dark:bg-zinc-950 border-l border-slate-200 dark:border-zinc-800 shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
+      <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50 dark:bg-zinc-900">
         <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm tracking-tight uppercase">
-          <Clock size={16} className="text-[#5A5CDE]" />
+          <Clock size={16} className="text-primary" />
           <h3>{t.historyTitle}</h3>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded p-0.5 transition-all duration-100 active:scale-95">
           <X size={18} />
         </button>
       </div>
@@ -82,21 +89,21 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
           <div className="text-xs text-slate-500 font-medium text-center py-8">{t.noHistory}</div>
         ) : (
           history.map((record) => (
-            <div key={record.id} className="border border-slate-200 rounded-lg p-3 hover:border-[#5A5CDE]/30 transition-colors bg-white">
+            <div key={record.id} className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg uppercase">
                   {new Date(record.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                 </span>
               </div>
-              <p className="text-xs text-slate-700 font-medium mb-1">
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1">
                 {record.note || t.autoSaved}
               </p>
-              <p className="text-[10px] text-slate-400 mb-3">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">
                 {t.by}: {record.users?.email || 'Unknown'}
               </p>
               <button
                 onClick={() => handleRollback(record.id, record.config_snapshot)}
-                className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded text-[10px] font-bold uppercase tracking-wide transition-colors"
+                className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all duration-100 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 <RotateCcw size={12} /> {t.restore}
               </button>
@@ -104,6 +111,13 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
           ))
         )}
       </div>
+
+      <PopupDialog
+        isOpen={popup.isOpen}
+        onClose={() => setPopup(p => ({ ...p, isOpen: false }))}
+        message={popup.message}
+        type={popup.type}
+      />
     </div>
   );
 }
