@@ -494,17 +494,17 @@ export default function ChangePasswordView() {
     e.preventDefault();
 
     if (!currentPassword) {
-      setPopup({ isOpen: true, message: 'Vui lòng nhập mật khẩu hiện tại.', type: 'warning' });
+      setPopup({ isOpen: true, message: t('profile.currentPasswordRequired'), type: 'warning' });
       return;
     }
 
     if (!isPasswordStrong) {
-      setPopup({ isOpen: true, message: 'Mật khẩu mới không đáp ứng đủ yêu cầu bảo mật.', type: 'warning' });
+      setPopup({ isOpen: true, message: t('profile.passwordRequirements'), type: 'warning' });
       return;
     }
 
     if (!passwordsMatch) {
-      setPopup({ isOpen: true, message: 'Mật khẩu xác nhận không trùng khớp.', type: 'warning' });
+      setPopup({ isOpen: true, message: t('profile.confirmPasswordMismatch'), type: 'warning' });
       return;
     }
 
@@ -518,10 +518,10 @@ export default function ChangePasswordView() {
 
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json.error || 'Đổi mật khẩu thất bại.');
+        throw new Error(json.error || t('profile.errorOccurred'));
       }
 
-      setPopup({ isOpen: true, message: 'Đổi mật khẩu thành công! Hệ thống sẽ đăng xuất sau 3 giây.', type: 'success' });
+      setPopup({ isOpen: true, message: t('profile.successRedirect'), type: 'success' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -531,7 +531,11 @@ export default function ChangePasswordView() {
         window.location.replace('/login?reset=success');
       }, 3000);
     } catch (err: any) {
-      setPopup({ isOpen: true, message: err.message || 'Có lỗi xảy ra.', type: 'error' });
+      let msg = err.message || t('profile.errorOccurred');
+      if (msg === "New password should be different from the old password.") {
+        msg = t('profile.samePasswordError');
+      }
+      setPopup({ isOpen: true, message: msg, type: 'error' });
     } finally {
       setIsChangingPassword(false);
     }

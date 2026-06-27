@@ -280,7 +280,6 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
       return () => clearInterval(timer);
     }
   }, [config.heroSlides, isEditor]);
-
   // Sync state if initialConfig changes (for real-time updates from parent Editor)
   useEffect(() => {
     if (isEditor && initialConfig) {
@@ -346,7 +345,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             <Edit2 size={12} /> {t('common.edit')}
           </div>
         </div>
-        <div className="relative z-10 pointer-events-none">
+        <div className="relative z-10">
           {children}
         </div>
       </div>
@@ -561,8 +560,9 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             initial={{ opacity: 0, scale: 0.95 }} 
             whileInView={{ opacity: 1, scale: 1 }} 
             viewport={{ once: true, margin: "-50px" }}
+            className="text-center mb-16 w-full"
           >
-            <EditableField section="sections" field="featuresTitle" className="inline-block mx-auto mb-16 w-full text-center">
+            <EditableField section="sections" field="featuresTitle" className="inline-block mx-auto">
               <h2 className="text-3xl font-extrabold uppercase tracking-wider text-slate-800">{config.sections.featuresTitle}</h2>
             </EditableField>
           </motion.div>

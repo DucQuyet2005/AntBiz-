@@ -27,6 +27,23 @@ export async function login(formData: FormData) {
     return { error: 'Dữ liệu gửi lên không hợp lệ.' }
   }
 
+  const adminSupabase = createAdminClient()
+
+  // 1. Kiểm tra trạng thái khóa trước khi đăng nhập để hiển thị lỗi bị khóa thay vì "sai mật khẩu"
+  const { data: preAuthUser } = await adminSupabase
+    .from('users')
+    .select('status, locked_reason')
+    .eq('email', validatedFields.data.email)
+    .maybeSingle()
+
+  if (preAuthUser && preAuthUser.status === 'locked') {
+    return { 
+      error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+      isBanned: true,
+      lockedReason: preAuthUser.locked_reason
+    }
+  }
+
   const supabase = createClient()
 
   const { data: signInData, error } = await supabase.auth.signInWithPassword({
@@ -56,9 +73,6 @@ export async function login(formData: FormData) {
       return { error: error.message }
     }
   }
-
-  // Sử dụng adminSupabase để bypass RLS (đặc biệt là policy update users chỉ cho phép admin)
-  const adminSupabase = createAdminClient()
 
   // Kiểm tra xem profile có tồn tại trong bảng public.users không
   const { data: userProfile, error: profileError } = await adminSupabase

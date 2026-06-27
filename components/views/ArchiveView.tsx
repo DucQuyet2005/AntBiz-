@@ -186,11 +186,39 @@ export default function ArchiveView() {
       }
       const res = await fetch(`/api/captions/export?${params.toString()}`);
       if (res.ok) {
-        showPopup(language === 'vi' ? 'Đã tiếp nhận yêu cầu xuất dữ liệu! Vui lòng kiểm tra email hoặc tab Lịch sử.' : 'Export request received! Please check your email or History tab.', 'success');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Trích xuất filename từ header content-disposition nếu có
+        const contentDisposition = res.headers.get('content-disposition');
+        let filename = `antbiz_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+          if (match && match[1]) {
+            filename = match[1];
+          }
+        }
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+        showPopup(language === 'vi' ? 'Đã xuất và tải file CSV thành công!' : 'Successfully exported and downloaded CSV file!', 'success');
         fetchExportJobs();
       } else {
-        const err = await res.json();
-        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + (err.error || 'Unknown error'), 'error');
+        let errorMsg = 'Unknown error';
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch (_) {
+          try {
+            errorMsg = await res.text();
+          } catch (_) {}
+        }
+        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + errorMsg, 'error');
       }
     } catch (err) {
       console.error('Export error:', err);
@@ -702,8 +730,8 @@ export default function ArchiveView() {
             </div>
             <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
               {language === 'vi'
-                ? 'Các yêu cầu xuất dữ liệu lớn (>1000 dòng) được xử lý dưới nền. Link tải sẽ được gửi qua email sau khi hoàn tất và tồn tại trong 24h.'
-                : 'Large export requests (>1000 rows) are processed in the background. Download links will be sent via email once finished and expire after 24 hours.'}
+                ? 'Các yêu cầu xuất dữ liệu CSV được tải trực tiếp về thiết bị của bạn và lưu trữ lịch sử tải xuống trong tab Lịch sử này.'
+                : 'CSV export requests are downloaded directly to your device and your download history is saved in this History tab.'}
             </p>
           </div>
         </div>

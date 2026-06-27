@@ -193,6 +193,12 @@
   color: #94A3B8 !important;
 }
 
+/* Hide browser default password reveal button (e.g. Edge) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
 /* General Input elements in dark mode */
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
 .dark textarea,

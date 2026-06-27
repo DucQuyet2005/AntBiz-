@@ -471,6 +471,26 @@ export default function UserProfileDropdown() {
 
   useEffect(() => {
     loadUserData();
+
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      console.log('Received profile-updated event in UserProfileDropdown:', customEvent.detail);
+      if (customEvent.detail) {
+        const { fullName, avatarUrl, avatarFrame, avatarEffect, avatarBase } = customEvent.detail;
+        if (fullName !== undefined) setFullName(fullName);
+        if (avatarUrl !== undefined) setAvatarUrl(avatarUrl);
+        if (avatarFrame !== undefined) setAvatarFrame(avatarFrame);
+        if (avatarEffect !== undefined) setAvatarEffect(avatarEffect);
+        if (avatarBase !== undefined) setAvatarBase(avatarBase);
+      } else {
+        loadUserData();
+      }
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+    };
   }, []);
 
   // Listen to focus or custom events if user changes profile on the page

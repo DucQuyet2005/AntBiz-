@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LandingView, { DEFAULT_CONFIG } from '@/components/views/LandingView';
 import BrandForm from '@/components/admin/landing-editor/BrandForm';
 import HistorySidebar from '@/components/admin/landing-editor/HistorySidebar';
 import ImageUploader from '@/components/admin/landing-editor/ImageUploader';
 import PopupDialog from '@/components/PopupDialog';
-import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2 } from 'lucide-react';
+import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2, RotateCcw, ChevronLeft, ChevronRight, EyeOff, Eye, ChevronDown } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translations } from '@/lib/i18n/translations';
 
@@ -21,6 +21,30 @@ export default function LandingEditor() {
   const [editingField, setEditingField] = useState<{ section: string; field: string; index?: number } | null>(null);
   const [showBrandDrawer, setShowBrandDrawer] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Left sidebar
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [leftTab, setLeftTab] = useState<'brand' | 'history'>('brand');
+
+  // Toolbar visibility
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+
+  // Canvas scroll → header nổi lên
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasScrolled, setCanvasScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const onScroll = () => setCanvasScrolled(el.scrollTop > 10);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const openLeftPanel = (tab: 'brand' | 'history') => {
+    setLeftTab(tab);
+    setLeftSidebarOpen(true);
+  };
 
   // Fetch initial draft
   useEffect(() => {
@@ -84,6 +108,13 @@ export default function LandingEditor() {
     type: 'info'
   });
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleResetToDefault = () => {
+    setConfig(DEFAULT_CONFIG);
+    setConfirmReset(false);
+    setPopupInfo({ isOpen: true, message: t.resetSuccess, type: 'info' });
+  };
 
   const saveDraft = async () => {
     setIsSaving(true);
@@ -408,65 +439,256 @@ export default function LandingEditor() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-100 relative">
-      
-      {/* Natively Rendered Live Preview Canvas */}
-      <div className="flex-1 overflow-y-auto">
+
+      {/* ── TOP TRIGGER – D-shape tab – click to scroll header into view ── */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-[9980] flex flex-col items-center group cursor-pointer"
+        onClick={() => canvasRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+        title={t.scrollToTop}
+      >
+        {/* Glow */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 pointer-events-none rounded-full opacity-60 group-hover:opacity-90 transition-opacity duration-300"
+          style={{
+            background: 'radial-gradient(ellipse at top, #5A5CDE 0%, transparent 70%)',
+            filter: 'blur(14px)',
+          }}
+        />
+        {/* D-shape pill */}
+        <div
+          className="relative flex items-center justify-center w-14 h-7 rounded-b-full transition-all duration-200 group-hover:h-10 group-hover:w-16"
+          style={{
+            background: '#5A5CDE',
+            boxShadow: '0 6px 20px 0 rgba(90,92,222,0.4)',
+          }}
+        >
+          <ChevronDown size={16} className="text-white" />
+        </div>
+      </div>
+
+      {/* ── LEFT TRIGGER – D-shape tab – click to open Sidebar ── */}
+      {!leftSidebarOpen && (
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-[9980] flex items-center group cursor-pointer"
+          onClick={() => openLeftPanel('brand')}
+          title={t.openSidebar}
+        >
+          {/* Glow */}
+          <div
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-28 pointer-events-none rounded-full opacity-60 group-hover:opacity-90 transition-opacity duration-300"
+            style={{
+              background: 'radial-gradient(ellipse at left, #5A5CDE 0%, transparent 70%)',
+              filter: 'blur(14px)',
+            }}
+          />
+          {/* D-shape pill */}
+          <div
+            className="relative flex items-center justify-center h-14 w-7 rounded-r-full transition-all duration-200 group-hover:w-10 group-hover:h-16"
+            style={{
+              background: '#5A5CDE',
+              boxShadow: '6px 0 20px 0 rgba(90,92,222,0.4)',
+            }}
+          >
+            <ChevronRight size={16} className="text-white" />
+          </div>
+        </div>
+      )}
+
+      {/* ── RIGHT SIDEBAR – Brand + History tabs ── */}
+      <div
+        className={`fixed right-0 top-0 bottom-0 z-[9970] flex flex-col bg-white dark:bg-zinc-950 border-l border-slate-200 dark:border-zinc-800 shadow-2xl transition-all duration-300 ease-in-out overflow-hidden ${
+          leftSidebarOpen ? 'w-[360px]' : 'w-0'
+        }`}
+      >
+        {leftSidebarOpen && (
+          <>
+            {/* Tab header */}
+            <div className="flex items-center justify-between px-3 pt-3 pb-0 shrink-0 bg-slate-50 dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800">
+              <button
+                onClick={() => setLeftSidebarOpen(false)}
+                className="text-slate-400 hover:text-slate-700 rounded p-1 transition-colors focus-visible:outline-none mb-1"
+                title="Đóng"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <div className="flex gap-0.5">
+                <button
+                  onClick={() => setLeftTab('brand')}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-[11px] font-bold uppercase tracking-wide transition-all focus-visible:outline-none ${
+                    leftTab === 'brand'
+                      ? 'bg-white dark:bg-zinc-950 text-primary border-b-2 border-primary'
+                      : 'text-slate-500 hover:text-primary'
+                  }`}
+                >
+                  <Palette size={12} /> {t.brand}
+                </button>
+                <button
+                  onClick={() => setLeftTab('history')}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-[11px] font-bold uppercase tracking-wide transition-all focus-visible:outline-none ${
+                    leftTab === 'history'
+                      ? 'bg-white dark:bg-zinc-950 text-primary border-b-2 border-primary'
+                      : 'text-slate-500 hover:text-primary'
+                  }`}
+                >
+                  <History size={12} /> {t.history}
+                </button>
+              </div>
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto">
+              {leftTab === 'brand' && (
+                <div className="p-4">
+                  <BrandForm config={config.brand} onChange={(k, v) => updateConfig('brand', k, v)} />
+                </div>
+              )}
+              {leftTab === 'history' && (
+                <HistorySidebarInline
+                  onRestore={(snapshot: any) => {
+                    setConfig(prev => ({
+                      brand: { ...prev.brand, ...(snapshot.brand || {}) },
+                      heroSlides: snapshot.heroSlides || prev.heroSlides,
+                      sections: { ...prev.sections, ...(snapshot.sections || {}) }
+                    }));
+                    setLeftSidebarOpen(false);
+                  }}
+                  t={t}
+                  language={language}
+                />
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── MAIN CANVAS (full width, overlay dims it when sidebar open) ── */}
+      {/* Dark + blur overlay on canvas when sidebar is open */}
+      {leftSidebarOpen && (
+        <div
+          className="fixed inset-0 z-[9960] pointer-events-none transition-all duration-300"
+          style={{
+            background: 'rgba(0,0,0,0.30)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
+            right: '360px',
+          }}
+        />
+      )}
+      <div ref={canvasRef} className="flex-1 overflow-y-auto">
         <div className="min-h-full">
-          <LandingView 
-            initialConfig={config} 
-            isEditor={true} 
+          <LandingView
+            initialConfig={config}
+            isEditor={true}
             onEditClick={(s, f, i) => {
               if (s === 'brand' && f === 'logoUrl') {
-                setShowBrandDrawer(true);
+                openLeftPanel('brand');
               } else {
                 setEditingField({ section: s, field: f, index: i });
               }
-            }} 
+            }}
           />
         </div>
       </div>
 
-      {/* Floating Toolbar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 rounded-2xl md:rounded-full shadow-2xl border border-slate-200 dark:border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-4 z-[9990] animate-bounce-short max-w-[calc(100vw-2rem)] w-auto">
-        <div className="hidden sm:flex items-center gap-2 pr-3 md:pr-4 border-r border-slate-200 dark:border-zinc-700 shrink-0">
-          <LayoutTemplate className="text-primary" size={18} />
-          <span className="font-extrabold text-xs md:text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wide">{t.mode}</span>
+      {/* Overlay tối + mờ khi header nổi lên trong canvas */}
+      {canvasScrolled && (
+        <div
+          className="fixed inset-0 pointer-events-none z-[9955] transition-opacity duration-300"
+          style={{
+            top: '64px',
+            right: leftSidebarOpen ? '360px' : 0,
+            background: 'rgba(0,0,0,0.28)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
+          }}
+        />
+      )}
+
+      {/* ── FLOATING TOOLBAR ── */}
+      {toolbarVisible && (
+        <div
+          className={`fixed bottom-6 z-[9990] transition-all duration-300 left-1/2 -translate-x-1/2`}
+          style={{ maxWidth: 'calc(100vw - 2rem)' }}
+        >
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl md:rounded-full shadow-2xl border border-slate-200 dark:border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3 w-auto">
+
+            {/* EDITOR MODE label */}
+            <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-slate-200 dark:border-zinc-700 shrink-0">
+              <LayoutTemplate className="text-primary" size={17} />
+              <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 uppercase tracking-wide">{t.mode}</span>
+            </div>
+
+            {/* Brand */}
+            <button
+              onClick={() => openLeftPanel('brand')}
+              className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
+            >
+              <Palette size={14} /> <span className="hidden sm:inline">{t.brand}</span>
+            </button>
+
+            {/* History */}
+            <button
+              onClick={() => openLeftPanel('history')}
+              className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
+            >
+              <History size={14} /> <span className="hidden sm:inline">{t.history}</span>
+            </button>
+
+            <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
+
+            {/* Reset to default */}
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 focus-visible:ring-2 focus-visible:ring-amber-400/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
+              title={t.resetDefaultTitle}
+            >
+              <RotateCcw size={13} /> <span className="hidden sm:inline">{t.resetDefault}</span>
+            </button>
+
+            {/* Hide UI */}
+            <button
+              onClick={() => setToolbarVisible(false)}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
+              title={t.hideUITitle}
+            >
+              <EyeOff size={13} /> <span className="hidden sm:inline">{t.hideUI}</span>
+            </button>
+
+            <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
+
+            {/* Save Draft */}
+            <button
+              onClick={saveDraft}
+              disabled={isSaving}
+              className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
+            >
+              <Save size={13} />
+              <span className="hidden sm:inline">{isSaving ? t.saving : t.saveDraft}</span>
+            </button>
+
+            {/* Publish – red with label */}
+            <button
+              onClick={() => setConfirmPublish(true)}
+              disabled={isPublishing}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-full font-bold text-xs uppercase shadow-md shadow-red-500/30 transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:outline-none shrink-0"
+            >
+              <RefreshCcw size={13} className={isPublishing ? 'animate-spin' : ''} />
+              <span>{isPublishing ? t.publishing : t.publishAction}</span>
+            </button>
+          </div>
         </div>
+      )}
 
-        <button 
-          onClick={() => setShowBrandDrawer(true)}
-          className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-        >
-          <Palette size={15} /> <span className="hidden sm:inline">{t.brand}</span>
-        </button>
-
-        <button 
-          onClick={() => setShowHistory(true)}
-          className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-        >
-          <History size={15} /> <span className="hidden sm:inline">{t.history}</span>
-        </button>
-
-        <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-
+      {/* Restore toolbar when hidden */}
+      {!toolbarVisible && (
         <button
-          onClick={saveDraft}
-          disabled={isSaving}
-          className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
+          onClick={() => setToolbarVisible(true)}
+          className="fixed bottom-6 right-6 z-[9990] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 shadow-lg rounded-full p-3 text-slate-600 dark:text-slate-300 hover:text-primary transition-all"
+          title={t.showUI}
         >
-          <Save size={13} />
-          <span className="hidden sm:inline">{isSaving ? t.saving : t.saveDraft}</span>
+          <Eye size={18} />
         </button>
-
-        <button
-          onClick={() => setConfirmPublish(true)}
-          disabled={isPublishing}
-          className="bg-primary hover:bg-primary-hover text-white px-3 md:px-6 py-1.5 md:py-2 rounded-full font-bold text-xs uppercase shadow-md shadow-primary/30 transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none shrink-0"
-        >
-          <RefreshCcw size={13} className={isPublishing ? "animate-spin" : ""} />
-          <span className="hidden xs:inline">{isPublishing ? t.publishing : t.publish}</span>
-        </button>
-      </div>
+      )}
 
       {/* Inline Edit Popup Drawer */}
       {!!editingField && (
@@ -482,7 +704,7 @@ export default function LandingEditor() {
               {renderEditForm()}
             </div>
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
-              <button 
+              <button
                 onClick={() => setEditingField(null)}
                 className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
@@ -493,7 +715,7 @@ export default function LandingEditor() {
         </div>
       )}
 
-      {/* Brand Config Drawer */}
+      {/* Brand Config Drawer (legacy fallback) */}
       {showBrandDrawer && (
         <div className="fixed inset-0 z-[9999] flex justify-end bg-black/40 backdrop-blur-sm">
           <div className="bg-white shadow-2xl border-l border-slate-200 w-full max-w-md h-full overflow-hidden animate-in slide-in-from-right duration-300 flex flex-col">
@@ -507,7 +729,7 @@ export default function LandingEditor() {
               <BrandForm config={config.brand} onChange={(k, v) => updateConfig('brand', k, v)} />
             </div>
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
-              <button 
+              <button
                 onClick={() => setShowBrandDrawer(false)}
                 className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs uppercase tracking-wide transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
@@ -518,10 +740,10 @@ export default function LandingEditor() {
         </div>
       )}
 
-      {/* History Drawer */}
-      <HistorySidebar 
-        isOpen={showHistory} 
-        onClose={() => setShowHistory(false)} 
+      {/* History Drawer (legacy) */}
+      <HistorySidebar
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
         onRestore={(snapshot) => {
           setConfig(prev => ({
             brand: { ...prev.brand, ...(snapshot.brand || {}) },
@@ -536,24 +758,147 @@ export default function LandingEditor() {
       {confirmPublish && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
-             <h3 className="font-extrabold text-slate-800 text-lg mb-2">{t.confirmPublishTitle}</h3>
-             <p className="text-sm text-slate-500 mb-6 font-semibold">{t.confirmPublishDesc}</p>
-             <div className="flex gap-3 justify-center">
-               <button onClick={() => setConfirmPublish(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">{t.cancel}</button>
-               <button onClick={() => { setConfirmPublish(false); executePublish(); }} className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirm}</button>
-             </div>
+            <h3 className="font-extrabold text-slate-800 text-lg mb-2">{t.confirmPublishTitle}</h3>
+            <p className="text-sm text-slate-500 mb-6 font-semibold">{t.confirmPublishDesc}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setConfirmPublish(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">{t.cancel}</button>
+              <button onClick={() => { setConfirmPublish(false); executePublish(); }} className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirm}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Reset Modal */}
+      {confirmReset && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <RotateCcw size={22} className="text-amber-500" />
+            </div>
+            <h3 className="font-extrabold text-slate-800 text-lg mb-2">{t.confirmResetTitle}</h3>
+            <p className="text-sm text-slate-500 mb-6 font-semibold">{t.confirmResetDesc}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setConfirmReset(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-amber-400/40 focus-visible:outline-none">{t.cancel}</button>
+              <button onClick={handleResetToDefault} className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirmResetAction}</button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Notifications */}
-      <PopupDialog 
-        isOpen={popupInfo.isOpen} 
-        onClose={() => setPopupInfo(prev => ({ ...prev, isOpen: false }))} 
-        message={popupInfo.message} 
-        type={popupInfo.type} 
+      <PopupDialog
+        isOpen={popupInfo.isOpen}
+        onClose={() => setPopupInfo(prev => ({ ...prev, isOpen: false }))}
+        message={popupInfo.message}
+        type={popupInfo.type}
       />
 
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Inline History Sidebar — rendered directly inside the left panel
+// (same visual style as HistorySidebar.tsx but without fixed positioning)
+// ──────────────────────────────────────────────────────────────────────────
+function HistorySidebarInline({
+  onRestore,
+  t,
+  language,
+}: {
+  onRestore: (snapshot: any) => void;
+  t: any;
+  language: string;
+}) {
+  const [history, setHistory] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/admin/landing-config/history');
+        if (res.ok) setHistory(await res.json());
+      } catch {}
+      finally { setIsLoading(false); }
+    };
+    load();
+  }, []);
+
+  const [recordToRestore, setRecordToRestore] = React.useState<{ id: string; snapshot: any } | null>(null);
+
+  const handleRollback = async (id: string, snapshot: any) => {
+    setRecordToRestore({ id, snapshot });
+  };
+
+  const executeRollback = async () => {
+    if (!recordToRestore) return;
+    const { id, snapshot } = recordToRestore;
+    setRecordToRestore(null);
+    try {
+      const res = await fetch(`/api/admin/landing-config/rollback/${id}`, { method: 'POST' });
+      if (res.ok) onRestore(snapshot);
+    } catch {}
+  };
+
+  if (isLoading) {
+    return <div className="text-xs text-slate-500 text-center py-10">{t.loading}</div>;
+  }
+  if (history.length === 0) {
+    return <div className="text-xs text-slate-500 text-center py-10">{t.noHistory}</div>;
+  }
+
+  return (
+    <div className="p-4 flex flex-col gap-3">
+      {history.map((record: any) => (
+        <div
+          key={record.id}
+          className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40"
+        >
+          <div className="mb-2">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg uppercase">
+              {new Date(record.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+            </span>
+          </div>
+          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1">{record.note || t.autoSaved}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">
+            {t.by}: {record.users?.email || 'Unknown'}
+          </p>
+          <button
+            onClick={() => handleRollback(record.id, record.config_snapshot)}
+            className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          >
+            <RotateCcw size={12} /> {t.restore}
+          </button>
+        </div>
+      ))}
+
+      {/* Custom Confirmation Modal instead of native alert/confirm */}
+      {recordToRestore && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <RotateCcw size={22} className="text-primary" />
+            </div>
+            <h3 className="font-extrabold text-slate-800 dark:text-zinc-150 text-lg mb-2">{t.confirmRestoreTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-6 font-semibold">{t.confirmRestore}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setRecordToRestore(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={executeRollback}
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {t.confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

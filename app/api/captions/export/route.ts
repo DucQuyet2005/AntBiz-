@@ -66,20 +66,27 @@ export async function GET(request: NextRequest) {
     const data = await getCaptionsForExport(adminSupabase, { platform, search, startDate, endDate }, limit);
     
     // Tạo URL dẫn đến endpoint download thật
-    const origin = request.nextUrl.origin;
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host');
+    const externalHost = forwardedHost || host;
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || (externalHost ? `${forwardedProto}://${externalHost}` : request.nextUrl.origin);
     const actualDownloadUrl = `${origin}/api/captions/export/download?jobId=${job.id}`;
     
-    // Hoàn tất job và tự động GỬI EMAIL tới user
-    await completeExportJob(adminSupabase, job.id, actualDownloadUrl, data.length, user.email);
+    const csv = generateCaptionCSV(data);
+
+    // Hoàn tất job (không truyền user.email để không gửi email thông báo nữa)
+    await completeExportJob(adminSupabase, job.id, actualDownloadUrl, data.length);
     
-    console.log(`[Export Service] Đã xử lý job ${job.id} thành công và gửi email tới ${user.email}`);
+    console.log(`[Export Service] Đã xử lý job ${job.id} thành công (đã tắt gửi email)`);
     
-    return NextResponse.json({ 
-      message: 'Đã hoàn thành xuất dữ liệu và gửi email.',
-      job_id: job.id,
-      status: 'completed',
-      rowCount: data.length
-    }, { status: 200 });
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="antbiz_export_${job.id.substring(0, 8)}.csv"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
 
   } catch (err: any) {
     console.error('CREATE EXPORT JOB ERROR:', err);

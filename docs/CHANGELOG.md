@@ -5,6 +5,26 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.5.2] - 2026-06-26
+
+### Added
+- **Nút bật tắt Dark/Light Mode ở Landing Page**: Tích hợp nút chuyển đổi giao diện sáng/tối ngay trên Header của Landing Page giúp tối ưu trải nghiệm đọc ban đêm.
+- **Tải trực tiếp khi xuất CSV**:
+  - Thay đổi cơ chế API `/api/captions/export` để tạo và gửi trực tiếp dữ liệu CSV về trình duyệt dưới dạng file tải xuống (`Response` dạng file đính kèm).
+  - Loại bỏ hoàn toàn việc tự động gửi email thông báo sau khi xuất thành công để tinh giản quy trình.
+
+### Changed
+- **Điều chỉnh Thông tin Profile**: Loại bỏ các nút liên kết Cài đặt và Đăng xuất trong menu User Profile Dropdown để hợp lý hóa các hành động của tài khoản.
+- **Đổi màu Đăng xuất ở Sidebar**: Thay đổi màu sắc của nút Đăng xuất trên thanh Sidebar thành màu đỏ nổi bật nhằm cảnh báo hành động rõ ràng hơn.
+
+### Fixed
+- **Khôi phục hiển thị popup cảnh báo tài khoản bị khóa (Banned Account Popup Dialog)**: Cập nhật lại luồng xác thực trong `actions.ts` để kiểm tra trạng thái khóa tài khoản ngay lập tức thông qua email trước khi chứng thực mật khẩu. Đồng thời tích hợp trực tiếp bảng thông báo (Popup Dialog) hiển thị rõ lý do khóa vào màn hình đăng nhập (`login/page.tsx`), khắc phục lỗi mất hiển thị dialog khi người dùng cố đăng nhập hoặc bị bắt buộc đăng xuất khỏi Dashboard.
+- **Sửa lỗi hiển thị thông báo đăng nhập sai cho tài khoản bị khóa (Locked Account Wrong Password Toast)**: Ổn định hóa tham chiếu hàm `t` bằng `useCallback` trong `LanguageContext` và xóa các tham số truy vấn lỗi/khóa khỏi URL sau khi hiển thị toast lần đầu trên trang Login để ngăn chặn việc ghi đè lên thông báo lỗi mật khẩu không chính xác khi người dùng cố gắng đăng nhập.
+- **Bản địa hóa quản lý người dùng (User Management Localization)**: Bản địa hóa toàn bộ các thông báo lỗi (bao gồm lỗi tự đổi status/role của bản thân), các toast thành công/thất bại, cảnh báo lý do khóa tài khoản, và các tooltip trên bảng quản lý người dùng thông qua `translations.ts`.
+- **Căn chỉnh Lớp phủ Greeting Banner**: Thay thế toạ độ định vị lớp phủ gradient trong banner chào mừng từ dạng dịch chuyển âm sang `inset-0` để đồng bộ hoàn toàn với ảnh nền, khắc phục triệt để hiện tượng hở mép/khe lệch viền bên trái.
+- **Sửa khoảng hở mặt nạ hướng dẫn (Tour Mask)**: Mở rộng kích thước mặt nạ SVG tour hướng dẫn ra ngoài màn hình và tinh chỉnh vị trí cắt ghép hộp tiêu điểm giúp loại bỏ hoàn toàn khe hở 1px ở rìa màn hình.
+- **Hiệu ứng chuyển động (Entrance Animations)**: Gắn hiệu ứng chuyển động mượt mà bằng Framer Motion cho danh sách câu hỏi FAQ ở Landing Page và toàn bộ các thẻ thông tin quan trọng trên trang Dashboard Overview.
+
 ## [1.5.1] - 2026-06-25
 
 ### Fixed
