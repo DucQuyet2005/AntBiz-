@@ -45,10 +45,12 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   // Search Suggestions State
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<{
-    articles: any[];
-    captions: any[];
-    prompts: any[];
-    faqs: any[];
+    articles?: any[];
+    captions?: any[];
+    prompts?: any[];
+    faqs?: any[];
+    users?: any[];
+    auditLogs?: any[];
   } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
@@ -81,11 +83,38 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     fetchRole();
   }, [supabase]);
 
+  // Role-based Search Suggestions config
+  const popularKeywords = userRole === 'admin'
+    ? (language === 'vi'
+        ? ['Người dùng', 'Lịch sử', 'Giao diện', 'Bảo mật', 'Cài đặt', 'Tài khoản', 'Quyền truy cập']
+        : ['Users', 'Audit Logs', 'Landing Editor', 'Security', 'Settings', 'Account', 'Permissions'])
+    : userRole === 'marketer_content'
+    ? (language === 'vi'
+        ? ['Kịch bản', 'Bài viết', 'Ý tưởng', 'Caption', 'Mẫu nội dung', 'Xu hướng', 'Facebook', 'TikTok']
+        : ['Script', 'Article', 'Idea', 'Caption', 'Templates', 'Trends', 'Facebook', 'TikTok'])
+    : (language === 'vi'
+        ? ['Facebook', 'TikTok', 'Instagram', 'Marketing', 'Bán hàng', 'Kịch bản', 'Bài viết', 'Khách hàng']
+        : ['Facebook', 'TikTok', 'Instagram', 'Marketing', 'Sales', 'Script', 'Article', 'Customer']);
+
+  const quickAccessLinks = userRole === 'admin'
+    ? [
+        { name: language === 'vi' ? 'Quản lý người dùng' : 'User Management', href: '/admin/users', icon: UserCog },
+        { name: language === 'vi' ? 'Nhật ký hệ thống' : 'Audit Logs', href: '/admin/audit-logs', icon: RotateCcw },
+        { name: language === 'vi' ? 'Chỉnh sửa Landing' : 'Landing Editor', href: '/admin/landing-editor', icon: Globe },
+        { name: language === 'vi' ? 'Cài đặt hệ thống' : 'System Settings', href: '/settings', icon: User },
+      ]
+    : [
+        { name: language === 'vi' ? 'Thư viện Prompt' : 'Prompts Library', href: '/prompts', icon: Terminal },
+        { name: language === 'vi' ? 'AI Creator' : 'AI Creator', href: '/ai-creator', icon: Plus },
+        { name: language === 'vi' ? 'Lịch nội dung' : 'Content Calendar', href: '/content-calendar', icon: Palette },
+        { name: language === 'vi' ? 'Lưu trữ' : 'Archive', href: '/archive', icon: Search },
+      ];
+
   // Debounce API calls when search query changes
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSuggestions(null);
-      setIsSearchOpen(false);
+      // Keep suggestions dropdown open to show general suggestions
       return;
     }
 
@@ -140,10 +169,14 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   const hasSuggestions =
     suggestions &&
-    (suggestions.articles.length > 0 ||
-      suggestions.captions.length > 0 ||
-      suggestions.prompts.length > 0 ||
-      suggestions.faqs.length > 0);
+    (userRole === 'admin'
+      ? ((suggestions.users?.length ?? 0) > 0 ||
+         (suggestions.auditLogs?.length ?? 0) > 0 ||
+         (suggestions.faqs?.length ?? 0) > 0)
+      : ((suggestions.articles?.length ?? 0) > 0 ||
+         (suggestions.captions?.length ?? 0) > 0 ||
+         (suggestions.prompts?.length ?? 0) > 0 ||
+         (suggestions.faqs?.length ?? 0) > 0));
 
   // Fetch Notifications
   const fetchNotifications = async (silent = false) => {
@@ -354,11 +387,15 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => {
-              if (searchQuery.trim().length >= 2) {
-                setIsSearchOpen(true);
-              }
+              setIsSearchOpen(true);
             }}
-            placeholder={t('header.searchPlaceholder')}
+            placeholder={
+              userRole === 'admin'
+                ? (language === 'vi' ? 'Tìm kiếm người dùng, nhật ký, câu hỏi...' : 'Search users, logs, questions...')
+                : userRole === 'marketer_content'
+                ? (language === 'vi' ? 'Tìm kiếm bài viết, caption, ý tưởng, câu hỏi...' : 'Search articles, captions, ideas, questions...')
+                : (language === 'vi' ? 'Tìm kiếm bài viết, caption, prompt, câu hỏi...' : 'Search articles, captions, prompts, questions...')
+            }
             className="w-full bg-sidebar/50 rounded-full py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-muted border border-transparent focus:border-gray-200 dark:focus:border-white/10 text-text"
           />
           {isSearchLoading && (
@@ -368,7 +405,57 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
           {/* Suggestions Dropdown */}
           {isSearchOpen && (
             <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[480px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-2xl shadow-2xl p-5 max-h-[460px] overflow-y-auto flex flex-col gap-4 z-50">
-              {isSearchLoading && !hasSuggestions ? (
+              {searchQuery.trim().length < 2 ? (
+                <>
+                  {/* Popular Suggestions */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-1">
+                      {t('search.popularSuggestions')}
+                    </span>
+                    <div className="flex flex-wrap gap-2 px-1">
+                      {popularKeywords.map((kw) => (
+                        <button
+                          key={kw}
+                          onClick={() => {
+                            setSearchQuery(kw);
+                          }}
+                          className="px-3 py-1.5 text-xs rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-text font-semibold transition-all cursor-pointer border border-transparent dark:border-white/5 hover:scale-[1.02] active:scale-95"
+                        >
+                          #{kw}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick Access */}
+                  <div className="flex flex-col gap-2 mt-2">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-1">
+                      {t('search.quickAccess')}
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 px-1">
+                      {quickAccessLinks.map((link) => {
+                        const Icon = link.icon;
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="flex items-center gap-2 p-2.5 rounded-xl border border-gray-150 dark:border-white/5 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 text-xs font-bold text-text transition-all cursor-pointer hover:scale-[1.01]"
+                          >
+                            <Icon size={14} className="text-primary shrink-0" />
+                            <span>{link.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Search Tip */}
+                  <div className="text-[10px] text-text-muted italic text-center border-t border-gray-100 dark:border-white/5 pt-3.5 mt-1 px-1">
+                    {t('search.searchTip')}
+                  </div>
+                </>
+              ) : isSearchLoading && !hasSuggestions ? (
                 <div className="flex items-center justify-center py-8 text-xs text-text-muted gap-2">
                   <Loader2 className="animate-spin text-primary" size={14} />
                   <span>{t('common.loading')}</span>
@@ -379,99 +466,153 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                 </div>
               ) : (
                 <>
-                  {/* Articles Section */}
-                  {suggestions.articles.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
-                        {t('search.articles')}
-                      </span>
-                      <div className="flex flex-col">
-                        {suggestions.articles.slice(0, 3).map((art) => (
-                          <Link
-                             key={art.id}
-                             href={`/archive/${art.id}`}
-                             onClick={() => setIsSearchOpen(false)}
-                             className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                          >
-                            <div className="text-xs font-extrabold text-text line-clamp-1">{art.title}</div>
-                            {art.description && (
-                              <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5">{art.description}</div>
-                            )}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {userRole === 'admin' ? (
+                    <>
+                      {/* Users Section */}
+                      {suggestions.users && suggestions.users.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                            {t('search.users')}
+                          </span>
+                          <div className="flex flex-col">
+                            {suggestions.users.slice(0, 3).map((usr) => (
+                              <Link
+                                 key={usr.id}
+                                 href="/admin/users"
+                                 onClick={() => setIsSearchOpen(false)}
+                                 className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                              >
+                                <div className="text-xs font-extrabold text-text line-clamp-1">{usr.email}</div>
+                                <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5 capitalize">
+                                  {usr.role.replace('marketer_', '')} • {usr.status}
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Captions Section */}
-                  {suggestions.captions.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
-                        {t('search.captions')}
-                      </span>
-                      <div className="flex flex-col">
-                        {suggestions.captions.slice(0, 3).map((cap) => (
-                          <Link
-                             key={cap.id}
-                             href={`/archive/${cap.article_id}?captionId=${cap.id}`}
-                             onClick={() => setIsSearchOpen(false)}
-                             className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                          >
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase">
-                                {cap.platform}
-                              </span>
-                              {cap.articles?.title && (
-                                <span className="text-[9px] text-text-muted font-bold line-clamp-1">
-                                  {cap.articles.title}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-text line-clamp-1 font-medium">
-                              {cap.edited_content || cap.ai_content}
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                      {/* Audit Logs Section */}
+                      {suggestions.auditLogs && suggestions.auditLogs.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                            {t('search.auditLogs')}
+                          </span>
+                          <div className="flex flex-col">
+                            {suggestions.auditLogs.slice(0, 3).map((log) => (
+                              <Link
+                                 key={log.id}
+                                 href="/admin/audit-logs"
+                                 onClick={() => setIsSearchOpen(false)}
+                                 className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                              >
+                                <div className="text-xs font-extrabold text-text line-clamp-1">{log.action}</div>
+                                <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5">
+                                  {log.actor?.email || 'System'} • {new Date(log.created_at).toLocaleDateString()}
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Articles Section */}
+                      {suggestions.articles && suggestions.articles.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                            {t('search.articles')}
+                          </span>
+                          <div className="flex flex-col">
+                            {suggestions.articles.slice(0, 3).map((art) => (
+                              <Link
+                                 key={art.id}
+                                 href={`/archive/${art.id}`}
+                                 onClick={() => setIsSearchOpen(false)}
+                                 className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                              >
+                                <div className="text-xs font-extrabold text-text line-clamp-1">{art.title}</div>
+                                {art.description && (
+                                  <div className="text-[10px] text-text-muted line-clamp-1 mt-0.5">{art.description}</div>
+                                )}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Prompts Section */}
-                  {suggestions.prompts.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
-                        {t('search.prompts')}
-                      </span>
-                      <div className="flex flex-col">
-                        {suggestions.prompts.slice(0, 3).map((p) => (
-                          <Link
-                            key={p.id}
-                            href={`/prompts?promptId=${p.id}`}
-                            onClick={() => setIsSearchOpen(false)}
-                            className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                          >
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 text-[8px] font-black uppercase">
-                                {p.platform}
-                              </span>
-                              {p.tags?.slice(0, 2).map((tag: string) => (
-                                <span
-                                  key={tag}
-                                  className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 text-[8px] font-black"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="text-xs font-extrabold text-text line-clamp-1">{p.name}</div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
+                      {/* Captions Section */}
+                      {suggestions.captions && suggestions.captions.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                            {t('search.captions')}
+                          </span>
+                          <div className="flex flex-col">
+                            {suggestions.captions.slice(0, 3).map((cap) => (
+                              <Link
+                                 key={cap.id}
+                                 href={`/archive/${cap.article_id}?captionId=${cap.id}`}
+                                 onClick={() => setIsSearchOpen(false)}
+                                 className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                              >
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase">
+                                    {cap.platform}
+                                  </span>
+                                  {cap.articles?.title && (
+                                    <span className="text-[9px] text-text-muted font-bold line-clamp-1">
+                                      {cap.articles.title}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-text line-clamp-1 font-medium">
+                                  {cap.edited_content || cap.ai_content}
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Prompts Section */}
+                      {suggestions.prompts && suggestions.prompts.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
+                            {t('search.prompts')}
+                          </span>
+                          <div className="flex flex-col">
+                            {suggestions.prompts.slice(0, 3).map((p) => (
+                              <Link
+                                key={p.id}
+                                href={`/prompts?promptId=${p.id}`}
+                                onClick={() => setIsSearchOpen(false)}
+                                className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                              >
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 text-[8px] font-black uppercase">
+                                    {p.platform}
+                                  </span>
+                                  {p.tags?.slice(0, 2).map((tag: string) => (
+                                    <span
+                                      key={tag}
+                                      className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 text-[8px] font-black"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="text-xs font-extrabold text-text line-clamp-1">{p.name}</div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* FAQs Section */}
-                  {suggestions.faqs.length > 0 && (
+                  {suggestions.faqs && suggestions.faqs.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-text-muted uppercase tracking-wider px-2.5">
                         {t('search.faqs')}

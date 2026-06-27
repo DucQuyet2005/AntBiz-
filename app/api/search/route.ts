@@ -57,64 +57,99 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 3. Execute searches in parallel to minimize latency
-    const articlesPromise = supabase
-      .from('articles')
-      .select('id, title, description, crawled_at')
-      .or(`title.ilike.%${q}%,description.ilike.%${q}%,full_text.ilike.%${q}%`)
-      .order('created_at', { ascending: false })
-      .limit(20);
+    if (role === 'admin') {
+      // Admin searches users and audit logs
+      const usersPromise = supabase
+        .from('users')
+        .select('id, email, role, status, created_at')
+        .ilike('email', `%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-    const captionsPromise = supabase
-      .from('captions')
-      .select('id, platform, ai_content, edited_content, article_id, articles(id, title)')
-      .or(`edited_content.ilike.%${q}%,ai_content.ilike.%${q}%`)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      const auditLogsPromise = supabase
+        .from('audit_logs')
+        .select('id, action, created_at, actor_id, actor:users!audit_logs_actor_id_fkey(email)')
+        .ilike('action', `%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-    let promptsQuery = supabase
-      .from('prompts')
-      .select('id, name, content, platform, tags, created_by')
-      .eq('is_deleted', false)
-      .or(`name.ilike.%${q}%,content.ilike.%${q}%`)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      const [usersResult, auditLogsResult] = await Promise.all([
+        usersPromise,
+        auditLogsPromise,
+      ]);
 
-    // Apply security check: non-admins can only see their own prompts
-    if (role !== 'admin' && user) {
-      promptsQuery = promptsQuery.eq('created_by', user.id);
+      if (usersResult.error) {
+        console.error('[GET /api/search] users query error:', usersResult.error);
+        throw usersResult.error;
+      }
+      if (auditLogsResult.error) {
+        console.error('[GET /api/search] auditLogs query error:', auditLogsResult.error);
+        throw auditLogsResult.error;
+      }
+
+      const faqs = searchFaq(q, lang);
+
+      return NextResponse.json({
+        users: usersResult.data || [],
+        auditLogs: auditLogsResult.data || [],
+        faqs,
+      });
+    } else {
+      // Marketers search articles, captions, and prompts
+      const articlesPromise = supabase
+        .from('articles')
+        .select('id, title, description, crawled_at')
+        .or(`title.ilike.%${q}%,description.ilike.%${q}%,full_text.ilike.%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const captionsPromise = supabase
+        .from('captions')
+        .select('id, platform, ai_content, edited_content, article_id, articles(id, title)')
+        .or(`edited_content.ilike.%${q}%,ai_content.ilike.%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      let promptsQuery = supabase
+        .from('prompts')
+        .select('id, name, content, platform, tags, created_by')
+        .eq('is_deleted', false)
+        .or(`name.ilike.%${q}%,content.ilike.%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (user) {
+        promptsQuery = promptsQuery.eq('created_by', user.id);
+      }
+
+      const [articlesResult, captionsResult, promptsResult] = await Promise.all([
+        articlesPromise,
+        captionsPromise,
+        promptsQuery,
+      ]);
+
+      if (articlesResult.error) {
+        console.error('[GET /api/search] articles query error:', articlesResult.error);
+        throw articlesResult.error;
+      }
+      if (captionsResult.error) {
+        console.error('[GET /api/search] captions query error:', captionsResult.error);
+        throw captionsResult.error;
+      }
+      if (promptsResult.error) {
+        console.error('[GET /api/search] prompts query error:', promptsResult.error);
+        throw promptsResult.error;
+      }
+
+      const faqs = searchFaq(q, lang);
+
+      return NextResponse.json({
+        articles: articlesResult.data || [],
+        captions: captionsResult.data || [],
+        prompts: promptsResult.data || [],
+        faqs,
+      });
     }
-
-    const [articlesResult, captionsResult, promptsResult] = await Promise.all([
-      articlesPromise,
-      captionsPromise,
-      promptsQuery,
-    ]);
-
-    // Handle database query errors
-    if (articlesResult.error) {
-      console.error('[GET /api/search] articles query error:', articlesResult.error);
-      throw articlesResult.error;
-    }
-    if (captionsResult.error) {
-      console.error('[GET /api/search] captions query error:', captionsResult.error);
-      throw captionsResult.error;
-    }
-    if (promptsResult.error) {
-      console.error('[GET /api/search] prompts query error:', promptsResult.error);
-      throw promptsResult.error;
-    }
-
-    // Search FAQs in memory
-    const faqs = searchFaq(q, lang);
-
-    // 4. Return combined results
-    return NextResponse.json({
-      articles: articlesResult.data || [],
-      captions: captionsResult.data || [],
-      prompts: promptsResult.data || [],
-      faqs,
-    });
   } catch (err: any) {
     console.error('[GET /api/search] search API error:', err);
     return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Share2,
@@ -27,6 +27,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toast, useToast } from '@/components/Toast';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -64,6 +65,75 @@ const articleData = {
   ]
 };
 
+function parseCustomDate(dateStr: any): Date {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  
+  // Try default constructor first
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  
+  // Match dd/mm/yyyy hh:mm or dd/mm/yyyy, hh:mm
+  const match = String(dateStr).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // 0-indexed
+    const year = parseInt(match[3], 10);
+    const hour = match[4] ? parseInt(match[4], 10) : 0;
+    const minute = match[5] ? parseInt(match[5], 10) : 0;
+    const second = match[6] ? parseInt(match[6], 10) : 0;
+    return new Date(year, month, day, hour, minute, second);
+  }
+  
+  return new Date();
+}
+
+function formatRelativeTime(dateInput: any, lang: string, platform: 'facebook' | 'threads') {
+  if (!dateInput) {
+    return lang === 'vi' ? 'Vừa xong' : 'Just now';
+  }
+  
+  const date = parseCustomDate(dateInput);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) {
+    return lang === 'vi' ? 'Vừa xong' : 'Just now';
+  }
+  if (diffMin < 60) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffMin} phút` : `${diffMin} mins`;
+    } else {
+      return lang === 'vi' ? `${diffMin} phút trước` : `${diffMin}m ago`;
+    }
+  }
+  if (diffHr < 24) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffHr} giờ` : `${diffHr} hrs`;
+    } else {
+      return lang === 'vi' ? `${diffHr} giờ trước` : `${diffHr}h ago`;
+    }
+  }
+  if (diffDay < 7) {
+    if (platform === 'facebook') {
+      return lang === 'vi' ? `${diffDay} ngày` : `${diffDay} days`;
+    } else {
+      return lang === 'vi' ? `${diffDay} ngày trước` : `${diffDay}d ago`;
+    }
+  }
+  return date.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
 export default function ArticleDetailView() {
   const { t, language } = useLanguage();
   const params = useParams();
@@ -77,6 +147,7 @@ export default function ArticleDetailView() {
   const [userId, setUserId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<any>(articleData);
   const [captions, setCaptions] = useState<any[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
@@ -89,6 +160,37 @@ export default function ArticleDetailView() {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [versionTrigger, setVersionTrigger] = useState(0);
+
+  // PopupDialog State
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupTitle, setPopupTitle] = useState('');
+  const [popupMsg, setPopupMsg] = useState('');
+  const [popupType, setPopupType] = useState<PopupType>('info');
+
+  // Helper to get active caption prioritizing posted > scheduled > draft
+  const getActiveCaption = (plat: 'facebook' | 'threads') => {
+    const platCaps = captions.filter(c => c.platform === plat);
+    if (platCaps.length === 0) return null;
+
+    // First try to find posted status
+    const postedCap = platCaps.find(c => {
+      if (c.status === 'posted') return true;
+      const sched = scheduledPosts.find(s => s.caption_id === c.id);
+      return sched?.status === 'posted';
+    });
+    if (postedCap) return postedCap;
+
+    // Then try scheduled/pending
+    const scheduledCap = platCaps.find(c => {
+      if (c.status === 'scheduled' || c.status === 'pending') return true;
+      const sched = scheduledPosts.find(s => s.caption_id === c.id);
+      return sched?.status === 'scheduled' || sched?.status === 'pending';
+    });
+    if (scheduledCap) return scheduledCap;
+
+    // Fallback to the latest updated one
+    return platCaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+  };
 
   // Automatically toggle platform and highlight mockup if captionId query param is provided
   useEffect(() => {
@@ -110,8 +212,23 @@ export default function ArticleDetailView() {
     const threadsText = "10 năm mua vàng mua nhà: Hành trình thoát cảnh đi thuê trọ của vợ chồng trẻ. 🏠\n\nTừ hai bàn tay trắng, tích lũy từng chỉ vàng mỗi tháng làm quỹ mua nhà. Sau một thập kỷ kiên trì, giấc mơ an cư đã thành hiện thực. Bạn có đang tích lũy vàng để mua nhà không?";
 
     setCaptions([
-      { id: 'mock-fb', platform: 'facebook', content: fbText },
-      { id: 'mock-threads', platform: 'threads', content: threadsText }
+      { id: 'mock-fb', platform: 'facebook', content: fbText, created_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() },
+      { id: 'mock-threads', platform: 'threads', content: threadsText, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }
+    ]);
+
+    setScheduledPosts([
+      {
+        caption_id: 'mock-fb',
+        status: 'posted',
+        posted_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+        scheduled_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        caption_id: 'mock-threads',
+        status: 'pending',
+        posted_at: null,
+        scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+      }
     ]);
 
     setActiveArticle(articleData);
@@ -227,6 +344,16 @@ export default function ArticleDetailView() {
 
         if (dbCaptions && dbCaptions.length > 0) {
           setCaptions(dbCaptions);
+          
+          // 4. Fetch scheduled posts for these captions
+          const captionIds = dbCaptions.map(c => c.id);
+          const { data: schedData } = await supabase
+            .from('scheduled_posts')
+            .select('*')
+            .in('caption_id', captionIds);
+          if (schedData) {
+            setScheduledPosts(schedData);
+          }
         } else {
           loadMockData();
         }
@@ -243,7 +370,7 @@ export default function ArticleDetailView() {
 
   useEffect(() => {
     const fetchVersions = async () => {
-      const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+      const activeCap = getActiveCaption(selectedPlatform) || captions[0];
       if (!activeCap || !activeCap.id) return;
       
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -290,11 +417,145 @@ export default function ArticleDetailView() {
     }
   }, [selectedPlatform, captions, versionTrigger]);
 
+  // Refs to prevent Realtime WebSocket reconnect on every key stroke
+  const isEditingRef = useRef(isEditing);
+  const editTextRef = useRef(editText);
+  const selectedPlatformRef = useRef(selectedPlatform);
+  const captionsRef = useRef(captions);
+  const userIdRef = useRef(userId);
+  const articleTitleRef = useRef(activeArticle.title);
+  const languageRef = useRef(language);
+
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+    editTextRef.current = editText;
+    selectedPlatformRef.current = selectedPlatform;
+    captionsRef.current = captions;
+    userIdRef.current = userId;
+    articleTitleRef.current = activeArticle.title;
+    languageRef.current = language;
+  }, [isEditing, editText, selectedPlatform, captions, userId, activeArticle.title, language]);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
   }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) return; // Skip if mock route
+
+    const channel = supabase
+      .channel(`article-detail-schedule-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'scheduled_posts'
+        },
+        async (payload) => {
+          const newPost = payload.new;
+          
+          // Check if this post belongs to one of the captions in our list
+          const matchedCaption = captionsRef.current.find(c => c.id === newPost.caption_id);
+          if (!matchedCaption) return;
+
+          // Update local scheduledPosts state
+          setScheduledPosts(prev => prev.map(s => s.id === newPost.id ? newPost : s));
+
+          if (newPost.status === 'posted') {
+            // Update local captions state
+            setCaptions(prev => prev.map(c => c.id === newPost.caption_id ? { ...c, status: 'posted' } : c));
+
+            // Find the caption corresponding to the platform of the published post
+            const activeCap = captionsRef.current.find(c => c.id === newPost.caption_id);
+            const activePlat = activeCap?.platform?.toLowerCase() || 'facebook';
+            
+            if (isEditingRef.current && activeCap && selectedPlatformRef.current.toLowerCase() === activePlat) {
+              const originalText = activeCap.edited_content || activeCap.ai_content || activeCap.content || '';
+              
+              if (editTextRef.current.trim() !== originalText.trim()) {
+                try {
+                  // 1. Get next version number
+                  const { data: existingVersions } = await supabase
+                    .from('caption_versions')
+                    .select('version_number')
+                    .eq('caption_id', activeCap.id);
+
+                  let nextVersionNumber = 1;
+                  if (existingVersions && existingVersions.length > 0) {
+                    const maxVersion = Math.max(...existingVersions.map((v: any) => v.version_number));
+                    nextVersionNumber = maxVersion + 1;
+                  }
+
+                  // 2. Insert unsaved editTextRef.current as new version
+                  await supabase
+                    .from('caption_versions')
+                    .insert({
+                      caption_id: activeCap.id,
+                      version_number: nextVersionNumber,
+                      content: editTextRef.current,
+                      source: 'human',
+                      created_at: new Date().toISOString()
+                    });
+
+                  // 3. Send in-app notification to user
+                  if (userIdRef.current) {
+                    await fetch('/api/notifications', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        userId: userIdRef.current,
+                        type: 'info',
+                        title: languageRef.current === 'vi' ? 'Tự động lưu bản nháp khi đăng bài' : 'Auto-saved draft on publish',
+                        message: languageRef.current === 'vi'
+                          ? `Bài viết '${articleTitleRef.current}' đã được đăng theo lịch hẹn. Nội dung chỉnh sửa chưa lưu đã được tự động lưu thành phiên bản v${nextVersionNumber}.`
+                          : `The post '${articleTitleRef.current}' has been published. Your unsaved changes have been auto-saved as version v${nextVersionNumber}.`
+                      }),
+                    });
+                  }
+
+                  // 4. Trigger version list update
+                  setVersionTrigger(prev => prev + 1);
+
+                  // 5. Open PopupDialog notification
+                  setPopupTitle(languageRef.current === 'vi' ? 'Đã đến giờ đăng bài' : 'Scheduled Posting Time Reached');
+                  setPopupMsg(languageRef.current === 'vi' 
+                    ? `Đã đến giờ đăng bài theo lịch hẹn! Bài viết gốc đã được đăng lên mạng xã hội thành công. Bản phác thảo chưa lưu bạn đang chỉnh sửa đã được tự động lưu lại vào Lịch sử phiên bản dưới dạng bản nháp v${nextVersionNumber}.`
+                    : `The scheduled posting time has arrived! The original content was successfully published. Your unsaved draft has been automatically archived as version v${nextVersionNumber}.`
+                  );
+                  setPopupType('info');
+                  setPopupOpen(true);
+                } catch (err) {
+                  console.error("Error auto-saving draft version:", err);
+                }
+              } else {
+                // If there are no changes, just notify about publish
+                setPopupTitle(languageRef.current === 'vi' ? 'Đã đến giờ đăng bài' : 'Scheduled Posting Time Reached');
+                setPopupMsg(languageRef.current === 'vi'
+                  ? 'Bài viết đã được đăng thành công theo lịch trình.'
+                  : 'The post has been successfully published according to the schedule.'
+                );
+                setPopupType('info');
+                setPopupOpen(true);
+              }
+              // Exit editing mode
+              setIsEditing(false);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [id, supabase]);
 
   const getDisplayContent = () => {
     if (selectedCheckpoint) {
@@ -304,7 +565,7 @@ export default function ArticleDetailView() {
       return selectedCheckpoint.content || '';
     }
 
-    const activeCap = captions.find(c => c.platform === selectedPlatform);
+    const activeCap = getActiveCaption(selectedPlatform);
     if (activeCap) {
       return activeCap.edited_content || activeCap.ai_content || activeCap.content || '';
     }
@@ -316,7 +577,36 @@ export default function ArticleDetailView() {
     return '';
   };
 
-  const isPublished = captions.some(c => c.status === 'posted');
+  const getMockupDisplayTime = () => {
+    if (selectedCheckpoint) {
+      return formatRelativeTime(selectedCheckpoint.created_at, language, selectedPlatform);
+    }
+    const activeCap = getActiveCaption(selectedPlatform);
+    if (!activeCap) {
+      return language === 'vi' ? 'Chưa đăng' : 'Not published';
+    }
+    const sched = scheduledPosts.find(s => s.caption_id === activeCap.id);
+    if (sched) {
+      if (sched.status === 'posted') {
+        const postTime = sched.posted_at || sched.scheduled_at || activeCap.created_at;
+        return formatRelativeTime(postTime, language, selectedPlatform);
+      } else {
+        const schedTime = sched.scheduled_at;
+        if (schedTime && new Date(schedTime) > new Date()) {
+          // If scheduled for the future
+          const formatted = new Date(schedTime).toLocaleString('vi-VN');
+          return language === 'vi' ? `Lên lịch lúc ${formatted}` : `Scheduled at ${formatted}`;
+        }
+        return language === 'vi' ? 'Chưa đăng' : 'Not published';
+      }
+    }
+    if (activeCap.status === 'posted') {
+      return formatRelativeTime(activeCap.created_at, language, selectedPlatform);
+    }
+    return language === 'vi' ? 'Chưa đăng' : 'Not published';
+  };
+
+  const isPublished = captions.some(c => c.status === 'posted') || scheduledPosts.some(s => s.status === 'posted');
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -335,7 +625,7 @@ export default function ArticleDetailView() {
   };
 
   const handleSaveToVersion = async () => {
-    const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+    const activeCap = getActiveCaption(selectedPlatform) || captions[0];
     if (!activeCap) {
       showToast(language === 'vi' ? 'Không có caption nào để lưu.' : 'No caption found to save.', 'error');
       return;
@@ -406,7 +696,7 @@ export default function ArticleDetailView() {
   };
 
   const handleSaveAndReplaceOriginal = async () => {
-    const activeCap = captions.find(c => c.platform === selectedPlatform) || captions[0];
+    const activeCap = getActiveCaption(selectedPlatform) || captions[0];
     if (!activeCap) {
       showToast(language === 'vi' ? 'Không có caption nào để lưu.' : 'No caption found to save.', 'error');
       return;
@@ -560,33 +850,33 @@ export default function ArticleDetailView() {
     <div className="flex flex-col gap-6 font-sans">
 
       {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-2 text-text-muted">
-          <Link href="/archive" className="hover:text-text transition-colors p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-zinc-800">
+        <div className="flex items-center gap-2 text-text-muted dark:text-zinc-400">
+          <Link href="/archive" className="hover:text-text dark:hover:text-white transition-colors p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Link href="/archive" className="hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">{t('articleDetail.contentList')}</Link>
+            <Link href="/archive" className="hover:text-text dark:hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded">{t('articleDetail.contentList')}</Link>
             <span>/</span>
-            <span className="text-text max-w-[200px] truncate" title={activeArticle.title}>
+            <span className="text-text dark:text-zinc-200 max-w-[200px] truncate" title={activeArticle.title}>
               {activeArticle.title}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3 justify-end">
-          <button className="w-10 h-10 rounded-full bg-white border border-slate-200/60 shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+          <button className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900/50 border border-slate-200/60 dark:border-zinc-800 shadow-sm flex items-center justify-center text-text-muted dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
             <Share2 size={18} />
           </button>
-          <button className="w-10 h-10 rounded-full bg-white border border-slate-200/60 shadow-sm flex items-center justify-center text-text-muted hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+          <button className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900/50 border border-slate-200/60 dark:border-zinc-800 shadow-sm flex items-center justify-center text-text-muted dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
             <LinkIcon size={18} />
           </button>
           <button
             onClick={handleEditClick}
-            disabled={isEditing}
+            disabled={isEditing || isPublished}
             className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
               isPublished
-                ? 'bg-gray-200 text-gray-405 cursor-not-allowed shadow-none'
+                ? 'bg-gray-200 text-gray-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed shadow-none'
                 : isEditing
                 ? 'bg-primary/10 text-primary/70 border border-primary/20 cursor-default shadow-none'
                 : 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20 cursor-pointer'
@@ -622,24 +912,24 @@ export default function ArticleDetailView() {
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
 
           {/* Title & Author Card */}
-          <div className="bg-slate-50 rounded-2xl p-8 flex flex-col gap-5 border border-slate-200/60">
-            <div className="flex items-center gap-2 text-xs font-bold text-primary bg-white px-4 py-1.5 rounded-full w-fit shadow-sm border border-slate-200/60">
+          <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-8 flex flex-col gap-5 border border-slate-200/60 dark:border-zinc-800/60 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-bold text-primary bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full w-fit shadow-sm border border-slate-200/60 dark:border-zinc-800">
               <span>🏠</span>
               {activeArticle.category}
             </div>
 
-            <h1 className="text-4xl font-extrabold text-text leading-[1.15] tracking-tight pr-10">
+            <h1 className="text-4xl font-extrabold text-text dark:text-zinc-100 leading-[1.15] tracking-tight pr-10">
               {activeArticle.title}
             </h1>
 
-            <div className="flex items-center gap-6 mt-3 pt-6 border-t border-slate-100">
-              <div className="flex items-center gap-2 text-text-muted text-sm font-semibold">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <div className="flex items-center gap-6 mt-3 pt-6 border-t border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2 text-text-muted dark:text-zinc-400 text-sm font-semibold">
+                <div className="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/20 text-primary flex items-center justify-center">
                   <User size={12} />
                 </div>
                 {activeArticle.author}
               </div>
-              <div className="flex items-center gap-2 text-text-muted text-sm font-semibold">
+              <div className="flex items-center gap-2 text-text-muted dark:text-zinc-400 text-sm font-semibold">
                 <Calendar size={16} />
                 {activeArticle.published_at}
               </div>
@@ -647,19 +937,19 @@ export default function ArticleDetailView() {
           </div>
 
           {/* High-Fidelity Platform Mockup Viewport */}
-          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
-              <h3 className="text-xs font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
+          <div className="bg-white/80 dark:bg-zinc-900/50 border border-gray-200/80 dark:border-zinc-800/80 backdrop-blur-md rounded-2xl p-6 shadow-sm flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800/80 pb-3.5">
+              <h3 className="text-xs font-extrabold text-text dark:text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles size={16} className="text-primary" />
                 {language === 'vi' ? 'Bản xem trước mạng xã hội' : 'Social Media Preview'}
               </h3>
 
-              <div className="flex bg-slate-50 rounded-full p-1 border border-slate-200/60">
+              <div className="flex bg-slate-50 dark:bg-zinc-950 rounded-full p-1 border border-slate-200/60 dark:border-zinc-800">
                 <button
                   onClick={() => setSelectedPlatform('facebook')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
                     ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-text-muted hover:text-text'
+                    : 'text-text-muted dark:text-zinc-400 hover:text-text dark:hover:text-zinc-200'
                     }`}
                 >
                   <ThumbsUp size={11} className={selectedPlatform === 'facebook' ? 'fill-white' : ''} />
@@ -668,8 +958,8 @@ export default function ArticleDetailView() {
                 <button
                   onClick={() => setSelectedPlatform('threads')}
                   className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'threads'
-                    ? 'bg-black text-white shadow-sm'
-                    : 'text-text-muted hover:text-text'
+                    ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm'
+                    : 'text-text-muted dark:text-zinc-400 hover:text-text dark:hover:text-zinc-200'
                     }`}
                 >
                   <ThreadsIcon size={11} />
@@ -680,7 +970,7 @@ export default function ArticleDetailView() {
 
             {/* Warning Checkpoint Banner */}
             {selectedCheckpoint && (
-              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold text-amber-850">
+              <div className="bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold text-amber-850 dark:text-amber-300">
                 <div className="flex items-center gap-2">
                   <span className="text-base">⚠️</span>
                   <span>
@@ -707,21 +997,21 @@ export default function ArticleDetailView() {
             )}
 
             {/* Post Layout Display */}
-            <div className={`border border-gray-100 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5 transition-all duration-500 ${isHighlighted ? 'ring-4 ring-primary/40 border-primary bg-primary/5 animate-pulse' : ''}`}>
+            <div className={`border border-gray-100 dark:border-zinc-800 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5 transition-all duration-500 ${isHighlighted ? 'ring-4 ring-primary/40 border-primary bg-primary/5 animate-pulse' : ''}`}>
               {selectedPlatform === 'facebook' ? (
                 /* Facebook Preview Mockup */
-                <div className="flex flex-col bg-white">
+                <div className="flex flex-col bg-white dark:bg-zinc-900">
                   <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
                         AB
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-text flex items-center gap-1 select-none">
+                        <span className="text-xs font-bold text-text dark:text-zinc-200 flex items-center gap-1 select-none">
                           AntBiz Official
                           <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
                         </span>
-                        <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                        <span className="text-[9px] text-text-muted dark:text-zinc-400">{getMockupDisplayTime()} · 🌍</span>
                       </div>
                     </div>
                   </div>
@@ -738,7 +1028,7 @@ export default function ArticleDetailView() {
                         <textarea
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary text-xs font-medium leading-relaxed bg-white text-text resize-y"
+                          className="w-full min-h-[160px] p-3 border border-gray-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary text-xs font-medium leading-relaxed bg-white dark:bg-zinc-955 text-text dark:text-zinc-200 resize-y"
                           placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
                         />
                       ) : (
@@ -769,15 +1059,15 @@ export default function ArticleDetailView() {
 
                     {/* Author & Tags footer */}
                     {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
-                      <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1">
+                      <div className="text-[10px] text-text-muted dark:text-zinc-400 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-zinc-800/85 flex flex-col gap-1">
                         {activeArticle.author && (
-                          <div className="flex items-center gap-1 font-semibold text-gray-500">
+                          <div className="flex items-center gap-1 font-semibold text-gray-500 dark:text-zinc-400">
                             <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                             <span>{activeArticle.author}</span>
                           </div>
                         )}
                         {activeArticle.tags && activeArticle.tags.length > 0 && (
-                          <div className="text-blue-600 font-bold">
+                          <div className="text-blue-600 dark:text-blue-400 font-bold">
                             {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
                           </div>
                         )}
@@ -787,11 +1077,11 @@ export default function ArticleDetailView() {
 
                   {/* All images - Facebook style */}
                   {activeArticle.images && activeArticle.images.length > 0 && (
-                    <div className={`w-full border-y border-gray-100 ${activeArticle.images.length === 1 ? '' : 'grid grid-cols-2 gap-0.5 bg-gray-100'}`}>
+                    <div className={`w-full border-y border-gray-100 dark:border-zinc-800 ${activeArticle.images.length === 1 ? '' : 'grid grid-cols-2 gap-0.5 bg-gray-100 dark:bg-zinc-950'}`}>
                       {activeArticle.images.map((img: any, idx: number) => (
                         <div
                           key={idx}
-                          className={`relative overflow-hidden bg-gray-50 ${activeArticle.images.length === 1 ? 'aspect-[1.91/1]' : 'aspect-square'}`}
+                          className={`relative overflow-hidden bg-gray-50 dark:bg-zinc-950 ${activeArticle.images.length === 1 ? 'aspect-[1.91/1]' : 'aspect-square'}`}
                         >
                           <img
                             src={img.url}
@@ -809,21 +1099,21 @@ export default function ArticleDetailView() {
                     </div>
                   )}
 
-                  <div className="px-2 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between select-none">
-                    <button className="flex-1 py-2 hover:bg-gray-50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent">
+                  <div className="px-2 py-1.5 flex border-t border-gray-100 dark:border-zinc-850 text-[10px] text-text-muted dark:text-zinc-400 font-bold justify-between select-none bg-white dark:bg-zinc-900">
+                    <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-450">
                       <ThumbsUp size={12} /> {language === 'vi' ? 'Thích' : 'Like'}
                     </button>
-                    <button className="flex-1 py-2 hover:bg-gray-50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent">
+                    <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-455">
                       <MessageSquare size={12} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
                     </button>
-                    <button className="flex-1 py-2 hover:bg-gray-50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent">
+                    <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-455">
                       <Share2 size={12} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
                     </button>
                   </div>
                 </div>
               ) : (
                 /* Threads Preview Mockup */
-                <div className="bg-white p-5 flex flex-col gap-0 text-text">
+                <div className="bg-white dark:bg-zinc-900 p-5 flex flex-col gap-0 text-text dark:text-zinc-150">
                   {/* Threads Post 1/2 */}
                   <div className="flex gap-3.5 items-stretch">
                     <div className="flex flex-col items-center shrink-0">
@@ -835,18 +1125,18 @@ export default function ArticleDetailView() {
                           +
                         </div>
                       </div>
-                      <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                      <div className="w-0.5 bg-gray-200 dark:bg-zinc-800 grow my-2"></div>
                     </div>
 
                     <div className="flex-1 flex flex-col gap-2.5 min-w-0 pb-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-text select-none">antbiz_official</span>
-                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                        <span className="text-xs font-bold text-text dark:text-zinc-200 select-none">antbiz_official</span>
+                        <span className="text-[10px] text-text-muted dark:text-zinc-400 select-none">{getMockupDisplayTime()}</span>
                       </div>
 
-                      <div className="text-xs text-text leading-relaxed flex flex-col gap-2">
+                      <div className="text-xs text-text dark:text-zinc-150 leading-relaxed flex flex-col gap-2">
                         {/* Title & Category block */}
-                        <div className="font-extrabold text-[12px] text-text">
+                        <div className="font-extrabold text-[12px] text-text dark:text-zinc-200">
                           [{activeArticle.category.replace('#', '')}] {activeArticle.title}
                         </div>
 
@@ -856,7 +1146,7 @@ export default function ArticleDetailView() {
                             <textarea
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
-                              className="w-full min-h-[160px] p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black text-xs font-medium leading-relaxed bg-white text-text resize-y"
+                              className="w-full min-h-[160px] p-3 border border-gray-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary text-xs font-medium leading-relaxed bg-white dark:bg-zinc-955 text-text dark:text-zinc-200 resize-y"
                               placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
                             />
                           ) : (
@@ -883,20 +1173,20 @@ export default function ArticleDetailView() {
                               );
                             })()
                           )}
-                          {!isEditing && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>}
+                          {!isEditing && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-150 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>}
                         </div>
 
                         {/* Author & Tags footer */}
                         {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
-                          <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1">
+                          <div className="text-[10px] text-text-muted dark:text-zinc-400 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-zinc-850 flex flex-col gap-1">
                             {activeArticle.author && (
-                              <div className="flex items-center gap-1 font-semibold text-gray-500">
+                              <div className="flex items-center gap-1 font-semibold text-gray-500 dark:text-zinc-400">
                                 <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
                                 <span>{activeArticle.author}</span>
                               </div>
                             )}
                             {activeArticle.tags && activeArticle.tags.length > 0 && (
-                              <div className="text-blue-600 font-bold">
+                              <div className="text-blue-600 dark:text-blue-400 font-bold">
                                 {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
                               </div>
                             )}
@@ -908,7 +1198,7 @@ export default function ArticleDetailView() {
                       {activeArticle.images && activeArticle.images.length > 0 && (
                         <div className="flex flex-col gap-2 mt-1">
                           {activeArticle.images.map((img: any, idx: number) => (
-                            <div key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                            <div key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm">
                               <img
                                 src={img.url}
                                 alt={img.caption || `Ảnh ${idx + 1}`}
@@ -916,7 +1206,7 @@ export default function ArticleDetailView() {
                                 loading="lazy"
                               />
                               {img.caption && (
-                                <p className="text-[9px] text-text-muted font-semibold px-3 py-1.5 bg-gray-50 border-t border-gray-100">
+                                <p className="text-[9px] text-text-muted dark:text-zinc-400 font-semibold px-3 py-1.5 bg-gray-50 dark:bg-zinc-950/40 border-t border-gray-105 dark:border-zinc-800">
                                   {img.caption}
                                 </p>
                               )}
@@ -935,7 +1225,7 @@ export default function ArticleDetailView() {
                   </div>
 
                   {/* Threads Post 2/2 */}
-                  <div className="flex gap-3.5 items-stretch">
+                  <div className="flex gap-3.5 items-stretch mt-4 pt-4 border-t border-gray-100 dark:border-zinc-850">
                     <div className="flex flex-col items-center shrink-0">
                       <div className="w-9 h-9 rounded-full bg-[#1E293B] dark:bg-black flex items-center justify-center text-white dark:text-slate-100 font-extrabold text-sm shadow-sm select-none">
                         T
@@ -944,15 +1234,15 @@ export default function ArticleDetailView() {
 
                     <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-text select-none">antbiz_official</span>
-                        <span className="text-[10px] text-text-muted select-none">{language === 'vi' ? '2 giờ trước' : '2h ago'}</span>
+                        <span className="text-xs font-bold text-text dark:text-zinc-200 select-none">antbiz_official</span>
+                        <span className="text-[10px] text-text-muted dark:text-zinc-400 select-none">{getMockupDisplayTime()}</span>
                       </div>
 
-                      <div className="text-xs text-text leading-relaxed mt-0.5">
-                        <span className="text-blue-500 hover:underline cursor-pointer font-medium break-all">
+                      <div className="text-xs text-text dark:text-zinc-150 leading-relaxed mt-0.5">
+                        <span className="text-blue-500 dark:text-blue-400 hover:underline cursor-pointer font-medium break-all">
                           &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {activeArticle.url}
                         </span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-150 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
                       </div>
 
                       <div className="flex items-center gap-4 text-gray-400 mt-2 select-none">
@@ -1007,9 +1297,9 @@ export default function ArticleDetailView() {
 
           {/* Nội dung bài viết đầy đủ (body blocks: text + ảnh xen kẽ) */}
           {Array.isArray(activeArticle.body) && activeArticle.body.length > 0 ? (
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 shadow-sm flex flex-col gap-5">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                <div className="flex items-center gap-2 text-text font-bold text-lg">
+            <div className="bg-white/80 dark:bg-zinc-900/50 border border-gray-200/80 dark:border-zinc-800/80 backdrop-blur-md rounded-2xl p-8 shadow-sm flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-gray-105 dark:border-zinc-800 pb-4">
+                <div className="flex items-center gap-2 text-text dark:text-zinc-200 font-bold text-lg">
                   <span className="text-2xl">📄</span>
                   <h2>{language === 'vi' ? 'Nội dung bài viết đầy đủ' : 'Full Article Content'}</h2>
                 </div>
@@ -1027,7 +1317,7 @@ export default function ArticleDetailView() {
                       {displayedBlocks.map((block: any, idx: number) => {
                         if (block.type === 'image' && block.url) {
                           return (
-                            <figure key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                            <figure key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-105 dark:border-zinc-800 shadow-sm">
                               <img
                                 src={block.url}
                                 alt={block.caption || `Hình ảnh ${idx + 1}`}
@@ -1035,7 +1325,7 @@ export default function ArticleDetailView() {
                                 loading="lazy"
                               />
                               {block.caption && (
-                                <figcaption className="text-[11px] text-text-muted font-semibold text-center px-4 py-2 bg-gray-50 border-t border-gray-100">
+                                <figcaption className="text-[11px] text-text-muted dark:text-zinc-400 font-semibold text-center px-4 py-2 bg-gray-50 dark:bg-zinc-950/40 border-t border-gray-105 dark:border-zinc-800">
                                   {block.caption}
                                 </figcaption>
                               )}
@@ -1187,8 +1477,8 @@ export default function ArticleDetailView() {
           </div>
 
           {/* Checkpoint Version History Card */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-            <h3 className="text-[11px] font-bold tracking-[0.1em] text-text-muted uppercase border-b border-gray-100 pb-3 flex items-center gap-1.5 select-none">
+          <div className="bg-white/80 dark:bg-zinc-900/50 border border-gray-200/80 dark:border-zinc-800/80 backdrop-blur-md rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+            <h3 className="text-[11px] font-bold tracking-[0.1em] text-text-muted dark:text-zinc-400 uppercase border-b border-gray-100 dark:border-zinc-800 pb-3 flex items-center gap-1.5 select-none">
               <RotateCcw size={13} className="text-primary" />
               {language === 'vi' ? 'Lịch sử Checkpoint' : 'Checkpoint History'}
             </h3>
@@ -1209,8 +1499,8 @@ export default function ArticleDetailView() {
                         }
                       }}
                       className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1.5 cursor-pointer relative overflow-hidden bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${isViewing
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-gray-100 hover:border-gray-300 bg-gray-50/10 hover:bg-gray-50/30'
+                        ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm'
+                        : 'border-gray-100 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 bg-gray-50/10 dark:bg-zinc-950/20 hover:bg-gray-50/30'
                         }`}
                     >
                       <div className="flex items-center justify-between">
@@ -1244,9 +1534,9 @@ export default function ArticleDetailView() {
           </div>
 
           {/* Metadata Tags Card */}
-          <div className="bg-white border border-slate-200/60 rounded-2xl p-7 shadow-sm">
-            <div className="flex items-center gap-2 text-text font-bold text-sm mb-5">
-              <Tag size={18} className="text-text-muted" />
+          <div className="bg-white/80 dark:bg-zinc-900/50 border border-slate-200/60 dark:border-zinc-800/80 backdrop-blur-md rounded-2xl p-7 shadow-sm">
+            <div className="flex items-center gap-2 text-text dark:text-zinc-200 font-bold text-sm mb-5">
+              <Tag size={18} className="text-text-muted dark:text-zinc-400" />
               <h3>{t('articleDetail.metadataTags')}</h3>
             </div>
 
@@ -1254,7 +1544,7 @@ export default function ArticleDetailView() {
               {activeArticle.tags.map((tag: string, idx: number) => (
                 <span
                   key={idx}
-                  className="bg-primary/10 text-primary px-4 py-2 rounded-full text-[13px] font-bold"
+                  className="bg-primary/10 dark:bg-primary/20 text-primary px-4 py-2 rounded-full text-[13px] font-bold"
                 >
                   {tag}
                 </span>
@@ -1275,6 +1565,14 @@ export default function ArticleDetailView() {
           />
         )}
       </AnimatePresence>
+
+      <PopupDialog
+        isOpen={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        title={popupTitle}
+        message={popupMsg}
+        type={popupType}
+      />
     </div>
   );
 }

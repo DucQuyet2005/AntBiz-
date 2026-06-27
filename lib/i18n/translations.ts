@@ -35,7 +35,7 @@ export const translations = {
       landingEditor: "Chỉnh sửa Landing",
     },
     header: {
-      searchPlaceholder: "Tìm kiếm...",
+      searchPlaceholder: "Tìm kiếm bài viết, caption, prompt, FAQ...",
       addPost: "Thêm bài viết",
     },
     search: {
@@ -47,6 +47,8 @@ export const translations = {
       captions: "Captions",
       prompts: "Prompts",
       faqs: "Hỏi đáp (FAQ)",
+      users: "Người dùng",
+      auditLogs: "Nhật ký hoạt động",
       noResults: "Không tìm thấy kết quả phù hợp",
       tryChanging: "Thử thay đổi từ khóa tìm kiếm.",
       foundResults: "Tìm thấy {count} kết quả",
@@ -68,6 +70,9 @@ export const translations = {
       viewAnswer: "Xem câu trả lời",
       loading: "Đang tải...",
       articlePrefix: "Bài viết: ",
+      popularSuggestions: "Gợi ý tìm kiếm phổ biến",
+      quickAccess: "Truy cập nhanh danh mục",
+      searchTip: "Nhập từ khóa và nhấn Enter để tìm kiếm toàn bộ hệ thống.",
     },
     profile: {
       title: "Hồ sơ của bạn",
@@ -497,7 +502,7 @@ export const translations = {
       searchPlaceholder: "Tìm kiếm tiêu đề lưu trữ, thẻ, hoặc mô tả...",
       allPlatforms: "Tất cả nền tảng",
       publishDate: "Ngày xuất bản",
-      totalReach: "Tổng tiếp cận",
+      totalReach: "Lượt xem",
       conversions: "Chuyển đổi",
       likes: "Lượt thích",
       comments: "Bình luận",
@@ -1082,7 +1087,7 @@ export const translations = {
       landingEditor: "Landing Editor",
     },
     header: {
-      searchPlaceholder: "Search...",
+      searchPlaceholder: "Search articles, captions, prompts, FAQs...",
       addPost: "Add Post",
     },
     search: {
@@ -1094,6 +1099,8 @@ export const translations = {
       captions: "Captions",
       prompts: "Prompts",
       faqs: "FAQs",
+      users: "Users",
+      auditLogs: "Audit Logs",
       noResults: "No matching results found",
       tryChanging: "Try changing your search keywords.",
       foundResults: "Found {count} results",
@@ -1115,6 +1122,9 @@ export const translations = {
       viewAnswer: "View Answer",
       loading: "Loading...",
       articlePrefix: "Article: ",
+      popularSuggestions: "Popular search suggestions",
+      quickAccess: "Quick category access",
+      searchTip: "Type keyword and press Enter to search the entire system.",
     },
     profile: {
       title: "Your Profile",
@@ -1545,7 +1555,7 @@ export const translations = {
       searchPlaceholder: "Search archive title, tags, or description copy...",
       allPlatforms: "All Platforms",
       publishDate: "Publish Date",
-      totalReach: "Total Reach",
+      totalReach: "Views",
       conversions: "Conversions",
       likes: "Likes",
       comments: "Comments",

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/utils/supabase/client';
 import {
   Search,
   FileText,
@@ -15,7 +16,9 @@ import {
   Facebook,
   Instagram,
   Globe,
-  HelpCircle
+  HelpCircle,
+  User,
+  RotateCcw
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -57,13 +60,16 @@ export default function SearchView() {
   const query = searchParams?.get('q') || '';
 
   const [localQuery, setLocalQuery] = useState(query);
-  const [activeTab, setActiveTab] = useState<'all' | 'articles' | 'captions' | 'prompts' | 'faqs'>('all');
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [results, setResults] = useState<{
     articles: any[];
     captions: any[];
     prompts: any[];
     faqs: any[];
-  }>({ articles: [], captions: [], prompts: [], faqs: [] });
+    users?: any[];
+    auditLogs?: any[];
+  }>({ articles: [], captions: [], prompts: [], faqs: [], users: [], auditLogs: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,10 +78,29 @@ export default function SearchView() {
     setLocalQuery(query);
   }, [query]);
 
+  // Fetch role
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+          if (data) {
+            setUserRole(data.role);
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching user role in SearchView:', err);
+      }
+    };
+    fetchRole();
+  }, []);
+
   // Fetch search results from API
   useEffect(() => {
     if (!query.trim()) {
-      setResults({ articles: [], captions: [], prompts: [], faqs: [] });
+      setResults({ articles: [], captions: [], prompts: [], faqs: [], users: [], auditLogs: [] });
       return;
     }
 
@@ -108,8 +133,24 @@ export default function SearchView() {
     }
   };
 
-  const totalResults =
-    results.articles.length + results.captions.length + results.prompts.length + results.faqs.length;
+  const totalResults = userRole === 'admin'
+    ? ((results.users?.length ?? 0) + (results.auditLogs?.length ?? 0) + results.faqs.length)
+    : (results.articles.length + results.captions.length + results.prompts.length + results.faqs.length);
+
+  const tabs = userRole === 'admin'
+    ? [
+        { id: 'all', label: t('search.all'), count: totalResults },
+        { id: 'users', label: t('search.users'), count: results.users?.length ?? 0 },
+        { id: 'auditLogs', label: t('search.auditLogs'), count: results.auditLogs?.length ?? 0 },
+        { id: 'faqs', label: t('search.faqs'), count: results.faqs.length },
+      ]
+    : [
+        { id: 'all', label: t('search.all'), count: totalResults },
+        { id: 'articles', label: t('search.articles'), count: results.articles.length },
+        { id: 'captions', label: t('search.captions'), count: results.captions.length },
+        { id: 'prompts', label: t('search.prompts'), count: results.prompts.length },
+        { id: 'faqs', label: t('search.faqs'), count: results.faqs.length },
+      ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,7 +172,13 @@ export default function SearchView() {
             type="text"
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
-            placeholder={t('search.placeholder')}
+            placeholder={
+              userRole === 'admin'
+                ? (language === 'vi' ? 'Tìm kiếm người dùng, nhật ký, câu hỏi...' : 'Search users, logs, questions...')
+                : userRole === 'marketer_content'
+                ? (language === 'vi' ? 'Tìm kiếm bài viết, caption, ý tưởng, câu hỏi...' : 'Search articles, captions, ideas, questions...')
+                : (language === 'vi' ? 'Tìm kiếm bài viết, caption, prompt, câu hỏi...' : 'Search articles, captions, prompts, questions...')
+            }
             className="w-full bg-white border border-gray-200/80 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted shadow-sm"
           />
         </div>
@@ -152,13 +199,7 @@ export default function SearchView() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap mt-4">
-        {[
-          { id: 'all', label: t('search.all'), count: totalResults },
-          { id: 'articles', label: t('search.articles'), count: results.articles.length },
-          { id: 'captions', label: t('search.captions'), count: results.captions.length },
-          { id: 'prompts', label: t('search.prompts'), count: results.prompts.length },
-          { id: 'faqs', label: t('search.faqs'), count: results.faqs.length },
-        ].map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
@@ -218,79 +259,131 @@ export default function SearchView() {
               {/* Tab: ALL */}
               {activeTab === 'all' && (
                 <div className="flex flex-col gap-8">
-                  {/* Articles Preview */}
-                  {results.articles.length > 0 && (
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                        <FileText size={18} className="text-primary" />
-                        <h2 className="text-lg font-black text-text">{t('search.articles')}</h2>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {results.articles.slice(0, 4).map((art) => (
-                          <ArticleCard key={art.id} article={art} query={query} />
-                        ))}
-                      </div>
-                      {results.articles.length > 4 && (
-                        <button
-                          onClick={() => setActiveTab('articles')}
-                          className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
-                        >
-                          {t('search.viewMoreArticles')} <ChevronRight size={14} />
-                        </button>
+                  {userRole === 'admin' ? (
+                    <>
+                      {/* Users Preview */}
+                      {results.users && results.users.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <User size={18} className="text-primary" />
+                            <h2 className="text-lg font-black text-text">{t('search.users')}</h2>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {results.users.slice(0, 4).map((usr) => (
+                              <UserCard key={usr.id} user={usr} query={query} />
+                            ))}
+                          </div>
+                          {results.users.length > 4 && (
+                            <button
+                              onClick={() => setActiveTab('users')}
+                              className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {language === 'vi' ? 'Xem thêm người dùng' : 'View more users'} <ChevronRight size={14} />
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* Captions Preview */}
-                  {results.captions.length > 0 && (
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                        <MessageSquare size={18} className="text-primary" />
-                        <h2 className="text-lg font-black text-text">{t('search.captions')}</h2>
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        {results.captions.slice(0, 3).map((cap) => (
-                          <CaptionRow key={cap.id} caption={cap} query={query} />
-                        ))}
-                      </div>
-                      {results.captions.length > 3 && (
-                        <button
-                          onClick={() => setActiveTab('captions')}
-                          className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
-                        >
-                          {t('search.viewMoreCaptions')} <ChevronRight size={14} />
-                        </button>
+                      {/* Audit Logs Preview */}
+                      {results.auditLogs && results.auditLogs.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <RotateCcw size={18} className="text-primary" />
+                            <h2 className="text-lg font-black text-text">{t('search.auditLogs')}</h2>
+                          </div>
+                          <div className="flex flex-col gap-3">
+                            {results.auditLogs.slice(0, 3).map((log) => (
+                              <AuditLogCard key={log.id} log={log} query={query} />
+                            ))}
+                          </div>
+                          {results.auditLogs.length > 3 && (
+                            <button
+                              onClick={() => setActiveTab('auditLogs')}
+                              className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {language === 'vi' ? 'Xem thêm nhật ký' : 'View more logs'} <ChevronRight size={14} />
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Articles Preview */}
+                      {results.articles && results.articles.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <FileText size={18} className="text-primary" />
+                            <h2 className="text-lg font-black text-text">{t('search.articles')}</h2>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {results.articles.slice(0, 4).map((art) => (
+                              <ArticleCard key={art.id} article={art} query={query} />
+                            ))}
+                          </div>
+                          {results.articles.length > 4 && (
+                            <button
+                              onClick={() => setActiveTab('articles')}
+                              className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {t('search.viewMoreArticles')} <ChevronRight size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
 
-                  {/* Prompts Preview */}
-                  {results.prompts.length > 0 && (
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                        <Sparkles size={18} className="text-primary" />
-                        <h2 className="text-lg font-black text-text">{t('search.prompts')}</h2>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {results.prompts.slice(0, 4).map((p) => (
-                          <PromptCard key={p.id} prompt={p} query={query} />
-                        ))}
-                      </div>
-                      {results.prompts.length > 4 && (
-                        <button
-                          onClick={() => setActiveTab('prompts')}
-                          className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
-                        >
-                          {t('search.viewMorePrompts')} <ChevronRight size={14} />
-                        </button>
+                      {/* Captions Preview */}
+                      {results.captions && results.captions.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <MessageSquare size={18} className="text-primary" />
+                            <h2 className="text-lg font-black text-text">{t('search.captions')}</h2>
+                          </div>
+                          <div className="flex flex-col gap-3">
+                            {results.captions.slice(0, 3).map((cap) => (
+                              <CaptionRow key={cap.id} caption={cap} query={query} />
+                            ))}
+                          </div>
+                          {results.captions.length > 3 && (
+                            <button
+                              onClick={() => setActiveTab('captions')}
+                              className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {t('search.viewMoreCaptions')} <ChevronRight size={14} />
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </div>
+
+                      {/* Prompts Preview */}
+                      {results.prompts && results.prompts.length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <Sparkles size={18} className="text-primary" />
+                            <h2 className="text-lg font-black text-text">{t('search.prompts')}</h2>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {results.prompts.slice(0, 4).map((p) => (
+                              <PromptCard key={p.id} prompt={p} query={query} />
+                            ))}
+                          </div>
+                          {results.prompts.length > 4 && (
+                            <button
+                              onClick={() => setActiveTab('prompts')}
+                              className="self-start text-xs font-black text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {t('search.viewMorePrompts')} <ChevronRight size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* FAQs Preview */}
-                  {results.faqs.length > 0 && (
+                  {results.faqs && results.faqs.length > 0 && (
                     <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
                         <HelpCircle size={18} className="text-primary" />
                         <h2 className="text-lg font-black text-text">{t('search.faqs')}</h2>
                       </div>
@@ -335,6 +428,24 @@ export default function SearchView() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {results.prompts.map((p) => (
                     <PromptCard key={p.id} prompt={p} query={query} />
+                  ))}
+                </div>
+              )}
+
+              {/* Tab: USERS */}
+              {activeTab === 'users' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {results.users?.map((usr) => (
+                    <UserCard key={usr.id} user={usr} query={query} />
+                  ))}
+                </div>
+              )}
+
+              {/* Tab: AUDIT LOGS */}
+              {activeTab === 'auditLogs' && (
+                <div className="flex flex-col gap-4">
+                  {results.auditLogs?.map((log) => (
+                    <AuditLogCard key={log.id} log={log} query={query} />
                   ))}
                 </div>
               )}
@@ -498,6 +609,61 @@ const FaqCard = React.memo(function FaqCard({ faq, query = '' }: { faq: any; que
       </div>
       <div className="flex items-center justify-end text-[10px] font-black text-primary group-hover:underline gap-0.5">
         {t('search.viewAnswer')} <ExternalLink size={10} />
+      </div>
+    </Link>
+  );
+});
+
+const UserCard = React.memo(function UserCard({ user, query = '' }: { user: any; query?: string }) {
+  const { language } = useLanguage();
+  return (
+    <Link
+      href="/admin/users"
+      className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-6 rounded-2xl hover:shadow-md transition-all group flex flex-col justify-between gap-4 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+    >
+      <div>
+        <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5 block">
+          {user.role?.replace('marketer_', '') || 'User'}
+        </div>
+        <h3 className="font-extrabold text-base text-text line-clamp-2 group-hover:text-primary transition-colors mb-2">
+          {highlightText(user.email, query)}
+        </h3>
+        <p className="text-xs text-text-muted font-medium">
+          {language === 'vi' ? 'Trạng thái: ' : 'Status: '}
+          <span className={`capitalize font-bold ${user.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
+            {user.status}
+          </span>
+        </p>
+      </div>
+      <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted font-bold">
+        <span>{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</span>
+        <span className="flex items-center gap-1 text-primary group-hover:underline">
+          {language === 'vi' ? 'Quản lý' : 'Manage'} <ExternalLink size={10} />
+        </span>
+      </div>
+    </Link>
+  );
+});
+
+const AuditLogCard = React.memo(function AuditLogCard({ log, query = '' }: { log: any; query?: string }) {
+  const { language } = useLanguage();
+  return (
+    <Link
+      href="/admin/audit-logs"
+      className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl hover:shadow-sm transition-all flex flex-col gap-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+    >
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider bg-primary/10 text-primary">
+            {log.action}
+          </span>
+          <span className="text-[10px] text-text-muted font-bold line-clamp-1 max-w-sm">
+            {language === 'vi' ? 'Thực hiện bởi: ' : 'Performed by: '}{log.actor?.email || 'System'}
+          </span>
+        </div>
+        <span className="text-[10px] text-text-muted font-medium">
+          {log.created_at ? new Date(log.created_at).toLocaleString() : ''}
+        </span>
       </div>
     </Link>
   );

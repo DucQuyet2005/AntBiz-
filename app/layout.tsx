@@ -33,7 +33,34 @@ export default async function RootLayout({
     <html
       lang={lang}
       className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var savedDark = localStorage.getItem('app-dark-mode');
+                  var isDark = false;
+                  if (savedDark !== null) {
+                    isDark = savedDark === 'true';
+                  } else {
+                    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  }
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                  var savedTheme = localStorage.getItem('app-theme') || 'solid-blue';
+                  document.documentElement.classList.add('theme-' + savedTheme);
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col text-gray-800 bg-[#F4F5F9] font-sans">
         <ThemeProvider>
           <FontProvider>
