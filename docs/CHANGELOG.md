@@ -5,6 +5,38 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.0] - 2026-06-26
+
+### Added
+- **Giao diện trang Quản trị & Sáng tạo Nội dung AI (AI Creator & Dashboard Views)**:
+  - Tích hợp các component `AdminOverviewView`, `AiCreatorView`, và `ContentCalendarView` cho trang quản trị, sáng tạo nội dung AI và lịch đăng bài đa kênh.
+  - Bổ sung ảnh nền `/images/welcome-team.jpg` cho biểu đồ tổng quan (Overview Banner).
+  - Thêm tệp kịch bản `inspect_db.ts` hỗ trợ truy vấn trực tiếp trạng thái các bảng `articles`, `captions`, và `scheduled_posts` trong Supabase Database.
+
+### Changed
+- **Tối ưu hóa Bố cục và Hoạt ảnh trang Tổng quan (Overview Layout & Animations)**:
+  - Cải tiến biểu ngữ chào mừng (`Overview Greeting Banner`) với bố cục căn chỉnh hình ảnh đội ngũ (`welcome-team.jpg`) tỉ lệ chuẩn kết hợp hiệu ứng gradient mờ sang màu chủ đạo của theme (`bg-gradient-to-r`).
+  - Áp dụng các hiệu ứng chuyển động mượt mà bằng `framer-motion` cho các khu vực chính của trang `OverviewView` khi tải trang (greeting banner, stats, featured posts, post log).
+  - Tái cấu trúc sidebar (`components/Sidebar.tsx`) đồng bộ với layout responsive và quản lý theme; tích hợp trực tiếp menu người dùng và xóa file component tách rời `components/UserProfileDropdown.tsx`.
+- **Cải tiến tính năng Onboarding Tour trên trang Overview**:
+  - Sử dụng `createPortal` để render popup tour trực tiếp lên `document.body` (tránh lỗi z-index/chèn layout).
+  - Cải tiến kích thước mặt nạ SVG mask (`x="-100" y="-100" width="10000" height="10000"`) giúp chống tràn khung khi cuộn trang hoặc ở màn hình lớn.
+  - Hỗ trợ Dark Mode đầy đủ cho popup hướng dẫn.
+  - Cập nhật tài liệu dịch thuật ngôn ngữ (`lib/i18n/translations.ts`) bổ sung thêm các bước hướng dẫn về tính năng "Tái tạo phiên bản AI" (Regenerate AI Variant) trong tour hướng dẫn.
+
+### Fixed
+- **Sửa lỗi hiển thị thời gian đăng bài trong Mockup (Mockup Dynamic Time)**:
+  - Trong trang `ArticleDetailView.tsx`, thay thế các mốc thời gian tĩnh ("7 giờ", "2h ago") trong mockup đăng bài của Facebook, Instagram, Threads bằng hàm tính toán động `getMockupDisplayTime()` dựa trên dữ liệu thực tế của bảng `scheduled_posts` trong Supabase.
+- **Sửa lỗi phân tích JSON từ phản hồi của Gemini API (Gemini JSON Cleanup)**:
+  - Xử lý trường hợp Gemini trả về nội dung bọc trong block code markdown (```json ... ```) trong hàm `classifyArticle`, đồng thời thêm khối try-catch an toàn để tự động chuyển về cơ chế phân loại fallback nếu parse JSON thất bại.
+- **Khắc phục lỗi định dạng Dark Mode hiển thị trên trang Chi tiết bài viết (`ArticleDetailView.tsx`)**:
+  - Áp dụng các lớp màu nền, viền và kiểu mờ đục phù hợp (`bg-white/80 dark:bg-zinc-900/50`, `border-gray-200/80 dark:border-zinc-800/80`, `backdrop-blur-md`) cho khung bài viết, khối lịch sử phiên bản và danh sách tag khi chạy ở chế độ Dark Mode.
+
+### Removed
+- **Loại bỏ file cấu hình tự sinh khỏi Git**:
+  - Gỡ bỏ hoàn toàn việc theo dõi tập tin môi trường tự động sinh `next-env.d.ts` khỏi git quản lý (`git rm --cached` và thêm vào `.gitignore`) giúp hạn chế xung đột khi deploy.
+
+---
 ## [1.5.2] - 2026-06-27
 
 ### Changed
