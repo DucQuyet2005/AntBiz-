@@ -194,19 +194,32 @@ export default function PromptsView() {
     setModal({ mode: "edit", prompt });
   }
 
-  // Load specific prompt for editing if promptId is in URL query parameters
+  // If promptId is in URL query parameters, find it, clear filters, navigate to the correct page, and scroll to it
   useEffect(() => {
-    if (promptIdParam) {
-      fetch(`/api/prompts/${promptIdParam}`)
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.data) {
-            openEditModal(json.data);
+    if (promptIdParam && allPrompts.length > 0) {
+      const index = allPrompts.findIndex((p) => p.id === promptIdParam);
+      if (index !== -1) {
+        // Clear all filters so the target prompt is visible
+        setSearch("");
+        setPlatformFilter("");
+        setTagsFilter([]);
+
+        // Go to the correct page
+        const targetPage = Math.floor(index / pageSize) + 1;
+        setPage(targetPage);
+
+        // Wait for DOM rendering and then scroll to the element
+        const timer = setTimeout(() => {
+          const element = document.getElementById(`prompt-${promptIdParam}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
           }
-        })
-        .catch((err) => console.error("Error loading prompt for edit modal:", err));
+        }, 150);
+
+        return () => clearTimeout(timer);
+      }
     }
-  }, [promptIdParam]);
+  }, [promptIdParam, allPrompts, pageSize]);
 
   function closeModal() {
     if (submitting) return;
@@ -536,7 +549,10 @@ export default function PromptsView() {
           {paginatedPrompts.map((prompt) => (
             <div
               key={prompt.id}
-              className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start"
+              id={`prompt-${prompt.id}`}
+              className={`bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start ${
+                prompt.id === promptIdParam ? 'animate-highlight-glow' : ''
+              }`}
             >
               <div className="h-6 flex items-center justify-between gap-3 shrink-0 overflow-hidden mb-2">
                 <div className="flex items-center gap-1.5 overflow-hidden flex-wrap max-h-6">
