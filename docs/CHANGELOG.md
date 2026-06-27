@@ -5,6 +5,22 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.5.2] - 2026-06-27
+
+### Changed
+- **Cấu hình tìm kiếm Header theo vai trò người dùng (Role-Based Search)**:
+  - Tự động thay đổi danh mục truy cập nhanh (Quick Access Links) và các từ khóa tìm kiếm phổ biến (Popular Keywords) dựa trên vai trò của người dùng (`admin`, `marketer_content`, `marketer_full`).
+  - Đối với `admin`: Hiển thị các truy cập nhanh đến Quản lý người dùng, Nhật ký hoạt động, Chỉnh sửa Landing, Cài đặt hệ thống.
+  - Đối với `marketer`: Giữ nguyên liên kết Thư viện Prompt, AI Creator, Lịch nội dung, Lưu trữ.
+  - Cập nhật Placeholder thanh tìm kiếm động theo từng vai trò.
+- **Phân tách kết quả tìm kiếm theo phân quyền (Role-Based Search Results)**:
+  - Cập nhật API tìm kiếm `/api/search` để tìm kiếm `users` (dựa trên email) và `audit_logs` (dựa trên action) thay vì `articles` và `captions` đối với tài khoản `admin`.
+  - Cập nhật giao diện trang tìm kiếm `SearchView` để hiển thị danh sách người dùng và nhật ký hoạt động (với các thẻ hiển thị `UserCard` và `AuditLogCard`) dành riêng cho quản trị viên.
+
+### Fixed
+- **Khắc phục lỗi tự động ép tối giao diện (Force Dark Mode override)**:
+  - Khắc phục lỗi hiển thị nền thẻ bài viết màu xám tối và chữ trắng khi trình duyệt bật tính năng Force Dark Mode bằng cách bổ sung thuộc tính CSS tiêu chuẩn `color-scheme: light` cho `:root` và `color-scheme: dark` cho `.dark` trong tệp `globals.css`.
+
 ## [1.5.1] - 2026-06-25
 
 ### Fixed

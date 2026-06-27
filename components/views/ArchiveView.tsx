@@ -429,7 +429,7 @@ export default function ArchiveView() {
               >
 
                 {/* Top Visual Banner */}
-                <div className="h-44 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
+                <div className="h-40 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
 
                   {/* Image if available */}
                   {item.image ? (
@@ -453,8 +453,8 @@ export default function ArchiveView() {
 
                     {/* Publish Status Badge */}
                     <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
-                        ? 'bg-emerald-600/80 border border-emerald-500/30'
-                        : 'bg-amber-600/80 border border-amber-500/30'
+                      ? 'bg-emerald-600/80 border border-emerald-500/30'
+                      : 'bg-amber-600/80 border border-amber-500/30'
                       }`}>
                       {item.status === 'posted'
                         ? (language === 'vi' ? 'Đã đăng' : 'Published')
@@ -474,7 +474,7 @@ export default function ArchiveView() {
                 </div>
 
                 {/* Card Content Area */}
-                <div className="p-6 flex-1 flex flex-col justify-between gap-4">
+                <div className="pt-5 pb-6 px-6 flex-1 flex flex-col justify-between gap-4">
 
                   {/* Title & Desc */}
                   <div>
@@ -483,10 +483,10 @@ export default function ArchiveView() {
                         {item.nodeType}
                       </span>
                     )}
-                    <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-2 hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+                    <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-1 hover:text-primary transition-colors line-clamp-2 min-h-[3rem]">
                       {item.title}
                     </h3>
-                    <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-3 min-h-[4.5rem]">
+                    <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-2 min-h-[2.5rem]">
                       {item.description}
                     </p>
                   </div>
@@ -494,7 +494,7 @@ export default function ArchiveView() {
                   {/* Metrics & Reactions */}
                   <div>
                     {/* Horizontal divider */}
-                    <div className="border-t border-gray-100/80 dark:border-zinc-800/60 my-4"></div>
+                    <div className="border-t border-gray-100/80 dark:border-zinc-800/60 my-2.5"></div>
 
                     {/* Reach & Conversions */}
                     <div className="flex gap-10">
@@ -502,7 +502,7 @@ export default function ArchiveView() {
                         <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
                         <span className="text-sm font-extrabold text-text dark:text-zinc-200 flex items-center gap-1">
                           <TrendingUp size={14} className="text-emerald-500" />
-                          {item.reach}
+                          {typeof item.reach === 'string' ? item.reach.replace(/\s*lượt\s*xem/gi, '') : item.reach}
                         </span>
                       </div>
                       <div>
@@ -514,7 +514,7 @@ export default function ArchiveView() {
                     </div>
 
                     {/* Bottom Reactions & Publish Date */}
-                    <div className="flex items-center justify-between text-xs font-semibold text-text-muted dark:text-zinc-500 mt-5">
+                    <div className="flex items-center justify-between text-xs font-semibold text-text-muted dark:text-zinc-500 mt-3.5">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
                           <Heart size={14} className="text-rose-400 fill-rose-50 dark:fill-rose-950/20" />
@@ -563,8 +563,8 @@ export default function ArchiveView() {
                     key={page}
                     onClick={() => setCurrentPage(page)}
                     className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
-                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                        : 'border border-gray-200/80 text-text hover:bg-gray-50'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'border border-gray-200/80 text-text hover:bg-gray-50'
                       }`}
                   >
                     {page}
