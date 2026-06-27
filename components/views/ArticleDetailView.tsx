@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Share2,
@@ -27,6 +27,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toast, useToast } from '@/components/Toast';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
@@ -159,6 +160,12 @@ export default function ArticleDetailView() {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [versionTrigger, setVersionTrigger] = useState(0);
+
+  // PopupDialog State
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupTitle, setPopupTitle] = useState('');
+  const [popupMsg, setPopupMsg] = useState('');
+  const [popupType, setPopupType] = useState<PopupType>('info');
 
   // Helper to get active caption prioritizing posted > scheduled > draft
   const getActiveCaption = (plat: 'facebook' | 'threads') => {
@@ -410,11 +417,145 @@ export default function ArticleDetailView() {
     }
   }, [selectedPlatform, captions, versionTrigger]);
 
+  // Refs to prevent Realtime WebSocket reconnect on every key stroke
+  const isEditingRef = useRef(isEditing);
+  const editTextRef = useRef(editText);
+  const selectedPlatformRef = useRef(selectedPlatform);
+  const captionsRef = useRef(captions);
+  const userIdRef = useRef(userId);
+  const articleTitleRef = useRef(activeArticle.title);
+  const languageRef = useRef(language);
+
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+    editTextRef.current = editText;
+    selectedPlatformRef.current = selectedPlatform;
+    captionsRef.current = captions;
+    userIdRef.current = userId;
+    articleTitleRef.current = activeArticle.title;
+    languageRef.current = language;
+  }, [isEditing, editText, selectedPlatform, captions, userId, activeArticle.title, language]);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
   }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) return; // Skip if mock route
+
+    const channel = supabase
+      .channel(`article-detail-schedule-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'scheduled_posts'
+        },
+        async (payload) => {
+          const newPost = payload.new;
+          
+          // Check if this post belongs to one of the captions in our list
+          const matchedCaption = captionsRef.current.find(c => c.id === newPost.caption_id);
+          if (!matchedCaption) return;
+
+          // Update local scheduledPosts state
+          setScheduledPosts(prev => prev.map(s => s.id === newPost.id ? newPost : s));
+
+          if (newPost.status === 'posted') {
+            // Update local captions state
+            setCaptions(prev => prev.map(c => c.id === newPost.caption_id ? { ...c, status: 'posted' } : c));
+
+            // Find the caption corresponding to the platform of the published post
+            const activeCap = captionsRef.current.find(c => c.id === newPost.caption_id);
+            const activePlat = activeCap?.platform?.toLowerCase() || 'facebook';
+            
+            if (isEditingRef.current && activeCap && selectedPlatformRef.current.toLowerCase() === activePlat) {
+              const originalText = activeCap.edited_content || activeCap.ai_content || activeCap.content || '';
+              
+              if (editTextRef.current.trim() !== originalText.trim()) {
+                try {
+                  // 1. Get next version number
+                  const { data: existingVersions } = await supabase
+                    .from('caption_versions')
+                    .select('version_number')
+                    .eq('caption_id', activeCap.id);
+
+                  let nextVersionNumber = 1;
+                  if (existingVersions && existingVersions.length > 0) {
+                    const maxVersion = Math.max(...existingVersions.map((v: any) => v.version_number));
+                    nextVersionNumber = maxVersion + 1;
+                  }
+
+                  // 2. Insert unsaved editTextRef.current as new version
+                  await supabase
+                    .from('caption_versions')
+                    .insert({
+                      caption_id: activeCap.id,
+                      version_number: nextVersionNumber,
+                      content: editTextRef.current,
+                      source: 'human',
+                      created_at: new Date().toISOString()
+                    });
+
+                  // 3. Send in-app notification to user
+                  if (userIdRef.current) {
+                    await fetch('/api/notifications', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        userId: userIdRef.current,
+                        type: 'info',
+                        title: languageRef.current === 'vi' ? 'Tự động lưu bản nháp khi đăng bài' : 'Auto-saved draft on publish',
+                        message: languageRef.current === 'vi'
+                          ? `Bài viết '${articleTitleRef.current}' đã được đăng theo lịch hẹn. Nội dung chỉnh sửa chưa lưu đã được tự động lưu thành phiên bản v${nextVersionNumber}.`
+                          : `The post '${articleTitleRef.current}' has been published. Your unsaved changes have been auto-saved as version v${nextVersionNumber}.`
+                      }),
+                    });
+                  }
+
+                  // 4. Trigger version list update
+                  setVersionTrigger(prev => prev + 1);
+
+                  // 5. Open PopupDialog notification
+                  setPopupTitle(languageRef.current === 'vi' ? 'Đã đến giờ đăng bài' : 'Scheduled Posting Time Reached');
+                  setPopupMsg(languageRef.current === 'vi' 
+                    ? `Đã đến giờ đăng bài theo lịch hẹn! Bài viết gốc đã được đăng lên mạng xã hội thành công. Bản phác thảo chưa lưu bạn đang chỉnh sửa đã được tự động lưu lại vào Lịch sử phiên bản dưới dạng bản nháp v${nextVersionNumber}.`
+                    : `The scheduled posting time has arrived! The original content was successfully published. Your unsaved draft has been automatically archived as version v${nextVersionNumber}.`
+                  );
+                  setPopupType('info');
+                  setPopupOpen(true);
+                } catch (err) {
+                  console.error("Error auto-saving draft version:", err);
+                }
+              } else {
+                // If there are no changes, just notify about publish
+                setPopupTitle(languageRef.current === 'vi' ? 'Đã đến giờ đăng bài' : 'Scheduled Posting Time Reached');
+                setPopupMsg(languageRef.current === 'vi'
+                  ? 'Bài viết đã được đăng thành công theo lịch trình.'
+                  : 'The post has been successfully published according to the schedule.'
+                );
+                setPopupType('info');
+                setPopupOpen(true);
+              }
+              // Exit editing mode
+              setIsEditing(false);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [id, supabase]);
 
   const getDisplayContent = () => {
     if (selectedCheckpoint) {
@@ -732,10 +873,10 @@ export default function ArticleDetailView() {
           </button>
           <button
             onClick={handleEditClick}
-            disabled={isEditing}
+            disabled={isEditing || isPublished}
             className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
               isPublished
-                ? 'bg-gray-200 text-gray-405 cursor-not-allowed shadow-none'
+                ? 'bg-gray-200 text-gray-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed shadow-none'
                 : isEditing
                 ? 'bg-primary/10 text-primary/70 border border-primary/20 cursor-default shadow-none'
                 : 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20 cursor-pointer'
@@ -1424,6 +1565,14 @@ export default function ArticleDetailView() {
           />
         )}
       </AnimatePresence>
+
+      <PopupDialog
+        isOpen={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        title={popupTitle}
+        message={popupMsg}
+        type={popupType}
+      />
     </div>
   );
 }
