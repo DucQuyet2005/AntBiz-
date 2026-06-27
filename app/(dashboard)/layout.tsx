@@ -287,7 +287,7 @@ export default function DashboardLayout({
               <Sidebar isOpen={true} onClose={() => {}} />
             </div>
             {/* D-shape trigger tab */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center pointer-events-none group-hover/sidebar:opacity-0 transition-opacity duration-200">
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center pointer-events-none group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0 transition-opacity duration-200">
               {/* Glow */}
               <div
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-14 h-32 rounded-full"

@@ -43,18 +43,34 @@ export async function POST(request: Request) {
       snapshot[item.section][item.key] = item.value;
     });
 
-    // 3. Save to history
-    const { data: historyRecord, error: historyError } = await supabase
+    // 2.5. Check if this snapshot is identical to the latest history record to prevent duplicate entries
+    const { data: latestHistory } = await supabase
       .from('landing_page_history')
-      .insert({
-        config_snapshot: snapshot,
-        note,
-        created_by: user.id
-      })
-      .select()
-      .single();
+      .select('id, config_snapshot')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (historyError) throw historyError;
+    let historyRecord = latestHistory;
+
+    const isIdentical = latestHistory && 
+      JSON.stringify(latestHistory.config_snapshot) === JSON.stringify(snapshot);
+
+    if (!isIdentical) {
+      // 3. Save to history only if changed
+      const { data: newHistory, error: historyError } = await supabase
+        .from('landing_page_history')
+        .insert({
+          config_snapshot: snapshot,
+          note,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (historyError) throw historyError;
+      historyRecord = newHistory;
+    }
 
     // 4. Invalidate the public landing page cache
     revalidatePath('/', 'page');
@@ -77,7 +93,7 @@ export async function POST(request: Request) {
             title,
             message,
             metadata: {
-              history_id: historyRecord.id,
+              history_id: historyRecord?.id || null,
               action_by: user.id,
               note,
             }

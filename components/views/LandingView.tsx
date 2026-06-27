@@ -502,13 +502,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
         {/* Editor Manual Navigation Arrows */}
         {isEditor && config.heroSlides?.length > 1 && (
           <>
-            <button 
-              onClick={handlePrevSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-              title={t('landingEditor.slidePrev')}
-            >
-              <ChevronLeft size={24} />
-            </button>
+            {/* Left arrow hidden in editor mode to prevent overlap with sidebar trigger */}
             <button 
               onClick={handleNextSlide}
               className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"

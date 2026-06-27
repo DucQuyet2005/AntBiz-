@@ -6,7 +6,7 @@ import BrandForm from '@/components/admin/landing-editor/BrandForm';
 import HistorySidebar from '@/components/admin/landing-editor/HistorySidebar';
 import ImageUploader from '@/components/admin/landing-editor/ImageUploader';
 import PopupDialog from '@/components/PopupDialog';
-import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2, RotateCcw, ChevronLeft, ChevronRight, EyeOff, Eye, ChevronDown } from 'lucide-react';
+import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2, RotateCcw, ChevronLeft, ChevronRight, EyeOff, Eye, ChevronDown, Edit2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translations } from '@/lib/i18n/translations';
 
@@ -14,6 +14,8 @@ export default function LandingEditor() {
   const { language } = useLanguage();
   const t = translations[language].landingEditor;
   const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const lastSavedConfig = useRef<typeof DEFAULT_CONFIG>(DEFAULT_CONFIG);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   
@@ -62,15 +64,21 @@ export default function LandingEditor() {
                 draftConfig[item.section][item.key] = item.value;
               }
             });
-            setConfig(prev => ({
-              brand: { ...prev.brand, ...draftConfig.brand },
-              heroSlides: draftConfig.heroSlides || prev.heroSlides,
-              sections: { ...prev.sections, ...draftConfig.sections }
-            }));
+            const merged = {
+              brand: { ...DEFAULT_CONFIG.brand, ...draftConfig.brand },
+              heroSlides: draftConfig.heroSlides || DEFAULT_CONFIG.heroSlides,
+              sections: { ...DEFAULT_CONFIG.sections, ...draftConfig.sections }
+            };
+            setConfig(merged);
+            lastSavedConfig.current = merged;
+          } else {
+            lastSavedConfig.current = DEFAULT_CONFIG;
           }
         }
       } catch (e) {
         console.error("Failed to fetch draft config", e);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
     fetchDraft();
@@ -116,7 +124,15 @@ export default function LandingEditor() {
     setPopupInfo({ isOpen: true, message: t.resetSuccess, type: 'info' });
   };
 
-  const saveDraft = async () => {
+  const saveDraft = async (silent = false): Promise<boolean> => {
+    // Prevent saving if the current configuration is identical to the last saved state
+    if (JSON.stringify(config) === JSON.stringify(lastSavedConfig.current)) {
+      if (!silent) {
+        setPopupInfo({ isOpen: true, message: t.noChangesToSave, type: 'info' });
+      }
+      return false;
+    }
+
     setIsSaving(true);
     try {
       const updates = [];
@@ -150,9 +166,15 @@ export default function LandingEditor() {
         }
       }
 
-      setPopupInfo({ isOpen: true, message: t.saveSuccess, type: 'success' });
+      lastSavedConfig.current = config;
+      if (!silent) {
+        setPopupInfo({ isOpen: true, message: t.saveSuccess, type: 'success' });
+      }
+      return true;
     } catch (e: any) {
-      setPopupInfo({ isOpen: true, message: `${t.saveFail}: ${e.message}`, type: 'error' });
+      if (!silent) {
+        setPopupInfo({ isOpen: true, message: `${t.saveFail}: ${e.message}`, type: 'error' });
+      }
       throw e; // Rethrow to stop publish if it was called from executePublish
     } finally {
       setIsSaving(false);
@@ -162,7 +184,11 @@ export default function LandingEditor() {
   const executePublish = async () => {
     setIsPublishing(true);
     try {
-      await saveDraft();
+      // If there are changes, save them silently. If not, it returns false, which is fine since data is up to date
+      await saveDraft(true).catch((e) => {
+        // Only block publish if saving threw a real network/DB error
+        throw e;
+      });
       const res = await fetch('/api/admin/landing-config/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -437,6 +463,15 @@ export default function LandingEditor() {
     );
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-100 dark:bg-zinc-950">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mb-3" />
+        <span className="text-xs font-semibold text-slate-500">{t.loading}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-100 relative">
 
@@ -544,12 +579,29 @@ export default function LandingEditor() {
               )}
               {leftTab === 'history' && (
                 <HistorySidebarInline
-                  onRestore={(snapshot: any) => {
-                    setConfig(prev => ({
-                      brand: { ...prev.brand, ...(snapshot.brand || {}) },
-                      heroSlides: snapshot.heroSlides || prev.heroSlides,
-                      sections: { ...prev.sections, ...(snapshot.sections || {}) }
-                    }));
+                  onRestore={(rawSnapshot: any) => {
+                    let snapshot = rawSnapshot;
+                    if (typeof rawSnapshot === 'string') {
+                      try {
+                        snapshot = JSON.parse(rawSnapshot);
+                      } catch (e) {
+                        console.error('Failed to parse snapshot JSON', e);
+                        return;
+                      }
+                    }
+                    if (!snapshot) return;
+
+                    setConfig(prev => {
+                      const prevBrand = prev?.brand || DEFAULT_CONFIG.brand;
+                      const prevSlides = prev?.heroSlides || DEFAULT_CONFIG.heroSlides;
+                      const prevSections = prev?.sections || DEFAULT_CONFIG.sections;
+
+                      return {
+                        brand: { ...prevBrand, ...(snapshot.brand || {}) },
+                        heroSlides: snapshot.heroSlides || prevSlides,
+                        sections: { ...prevSections, ...(snapshot.sections || {}) }
+                      };
+                    });
                     setLeftSidebarOpen(false);
                   }}
                   t={t}
@@ -565,7 +617,8 @@ export default function LandingEditor() {
       {/* Dark + blur overlay on canvas when sidebar is open */}
       {leftSidebarOpen && (
         <div
-          className="fixed inset-0 z-[9960] pointer-events-none transition-all duration-300"
+          onClick={() => setLeftSidebarOpen(false)}
+          className="fixed inset-0 z-[9960] cursor-pointer transition-all duration-300"
           style={{
             background: 'rgba(0,0,0,0.30)',
             backdropFilter: 'blur(3px)',
@@ -639,7 +692,7 @@ export default function LandingEditor() {
             {/* Reset to default */}
             <button
               onClick={() => setConfirmReset(true)}
-              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 focus-visible:ring-2 focus-visible:ring-amber-400/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
               title={t.resetDefaultTitle}
             >
               <RotateCcw size={13} /> <span className="hidden sm:inline">{t.resetDefault}</span>
@@ -658,7 +711,7 @@ export default function LandingEditor() {
 
             {/* Save Draft */}
             <button
-              onClick={saveDraft}
+              onClick={() => saveDraft()}
               disabled={isSaving}
               className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
             >
@@ -771,15 +824,15 @@ export default function LandingEditor() {
       {/* Confirm Reset Modal */}
       {confirmReset && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <RotateCcw size={22} className="text-amber-500" />
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <RotateCcw size={22} className="text-primary" />
             </div>
-            <h3 className="font-extrabold text-slate-800 text-lg mb-2">{t.confirmResetTitle}</h3>
-            <p className="text-sm text-slate-500 mb-6 font-semibold">{t.confirmResetDesc}</p>
+            <h3 className="font-extrabold text-slate-800 dark:text-zinc-150 text-lg mb-2">{t.confirmResetTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-6 font-semibold">{t.confirmResetDesc}</p>
             <div className="flex gap-3 justify-center">
-              <button onClick={() => setConfirmReset(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-amber-400/40 focus-visible:outline-none">{t.cancel}</button>
-              <button onClick={handleResetToDefault} className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirmResetAction}</button>
+              <button onClick={() => setConfirmReset(false)} className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">{t.cancel}</button>
+              <button onClick={handleResetToDefault} className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none">{t.confirmResetAction}</button>
             </div>
           </div>
         </div>
@@ -826,6 +879,15 @@ function HistorySidebarInline({
   }, []);
 
   const [recordToRestore, setRecordToRestore] = React.useState<{ id: string; snapshot: any } | null>(null);
+  const [recordToDelete, setRecordToDelete] = React.useState<string | null>(null);
+  const [recordToRename, setRecordToRename] = React.useState<{ id: string; note: string } | null>(null);
+  const [isRestoring, setIsRestoring] = React.useState(false);
+  const [isRenaming, setIsRenaming] = React.useState(false);
+  const [popup, setPopup] = React.useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({
+    isOpen: false,
+    message: '',
+    type: 'info'
+  });
 
   const handleRollback = async (id: string, snapshot: any) => {
     setRecordToRestore({ id, snapshot });
@@ -833,16 +895,65 @@ function HistorySidebarInline({
 
   const executeRollback = async () => {
     if (!recordToRestore) return;
-    const { id, snapshot } = recordToRestore;
+    const { id } = recordToRestore;
     setRecordToRestore(null);
+    setIsRestoring(true);
     try {
       const res = await fetch(`/api/admin/landing-config/rollback/${id}`, { method: 'POST' });
-      if (res.ok) onRestore(snapshot);
-    } catch {}
+      if (res.ok) {
+        // Force window reload to update all content instead of setting state directly
+        window.location.reload();
+      } else {
+        setIsRestoring(false);
+      }
+    } catch {
+      setIsRestoring(false);
+    }
   };
 
-  if (isLoading) {
-    return <div className="text-xs text-slate-500 text-center py-10">{t.loading}</div>;
+  const executeDelete = async () => {
+    if (!recordToDelete) return;
+    const id = recordToDelete;
+    setRecordToDelete(null);
+    try {
+      const res = await fetch(`/api/admin/landing-config/history?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setHistory(prev => prev.filter(r => r.id !== id));
+        setPopup({ isOpen: true, message: t.deleteSuccess, type: 'success' });
+      } else {
+        setPopup({ isOpen: true, message: t.deleteFail, type: 'error' });
+      }
+    } catch {
+      setPopup({ isOpen: true, message: t.deleteFail, type: 'error' });
+    }
+  };
+
+  const executeRename = async () => {
+    if (!recordToRename) return;
+    const { id, note } = recordToRename;
+    setRecordToRename(null);
+    setIsRenaming(true);
+    try {
+      const res = await fetch('/api/admin/landing-config/history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, note })
+      });
+      if (res.ok) {
+        setHistory(prev => prev.map(r => r.id === id ? { ...r, note } : r));
+        setPopup({ isOpen: true, message: t.updateNameSuccess, type: 'success' });
+      } else {
+        setPopup({ isOpen: true, message: t.updateNameFail, type: 'error' });
+      }
+    } catch {
+      setPopup({ isOpen: true, message: t.updateNameFail, type: 'error' });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  if (isLoading || isRestoring) {
+    return <div className="text-xs text-slate-500 text-center py-10">{isRestoring ? t.restoring : t.loading}</div>;
   }
   if (history.length === 0) {
     return <div className="text-xs text-slate-500 text-center py-10">{t.noHistory}</div>;
@@ -853,15 +964,35 @@ function HistorySidebarInline({
       {history.map((record: any) => (
         <div
           key={record.id}
-          className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40"
+          className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40 relative group"
         >
-          <div className="mb-2">
+          {/* Action Buttons Container */}
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            {/* Rename Button */}
+            <button
+              onClick={() => setRecordToRename({ id: record.id, note: record.note || '' })}
+              className="text-slate-400 hover:text-primary p-1 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+              title={t.editVersionName}
+            >
+              <Edit2 size={13} />
+            </button>
+            {/* Delete History Button */}
+            <button
+              onClick={() => setRecordToDelete(record.id)}
+              className="text-slate-400 hover:text-red-550 p-1 hover:bg-red-50 dark:hover:bg-red-955/20 rounded-lg cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
+              title={t.deleteHistory}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+
+          <div className="mb-2 pr-12">
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg uppercase">
               {new Date(record.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
             </span>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1">{record.note || t.autoSaved}</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">
+          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1 pr-12">{record.note || t.autoSaved}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3 pr-12">
             {t.by}: {record.users?.email || 'Unknown'}
           </p>
           <button
@@ -873,7 +1004,7 @@ function HistorySidebarInline({
         </div>
       ))}
 
-      {/* Custom Confirmation Modal instead of native alert/confirm */}
+      {/* Custom Confirmation Restore Modal */}
       {recordToRestore && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
@@ -899,6 +1030,72 @@ function HistorySidebarInline({
           </div>
         </div>
       )}
+
+      {/* Custom Confirmation Delete Modal */}
+      {recordToDelete && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-955/20 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={22} className="text-red-550" />
+            </div>
+            <h3 className="font-extrabold text-slate-800 dark:text-zinc-150 text-lg mb-2">{t.confirmDeleteTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-6 font-semibold">{t.confirmDeleteDesc}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setRecordToDelete(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {t.deleteAction}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Rename Modal */}
+      {recordToRename && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-left animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="font-extrabold text-slate-800 dark:text-zinc-150 text-lg mb-2">{t.renameVersionTitle}</h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 mb-4 font-semibold">{t.versionNameLabel}</p>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-slate-350 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-lg text-xs font-semibold text-slate-800 dark:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none mb-6"
+              value={recordToRename.note}
+              onChange={e => setRecordToRename(prev => prev ? { ...prev, note: e.target.value } : null)}
+              placeholder={t.autoSaved}
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setRecordToRename(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={executeRename}
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {t.saveNameAction}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Toast Notifications */}
+      <PopupDialog
+        isOpen={popup.isOpen}
+        onClose={() => setPopup(p => ({ ...p, isOpen: false }))}
+        message={popup.message}
+        type={popup.type}
+      />
     </div>
   );
 }
