@@ -30,63 +30,6 @@ export const DEFAULT_CONFIG = {
   },
   heroSlides: [
     {
-      tagline: 'MULTI-CHANNEL AI PUBLISHING HUB',
-      description: 'Optimize your content pipeline from scraping sources, generating AI variants via Gemini, to drag-and-drop Gantt calendar scheduling.',
-      ctaText: 'Get Started Now',
-      bgImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200'
-    },
-    {
-      tagline: 'SCALE YOUR CONTENT REACH',
-      description: 'Automate post scheduling and avoid collisions with our intelligent visual drag-and-drop calendar system.',
-      ctaText: 'View Features',
-      bgImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200'
-    }
-  ],
-  sections: {
-    aboutTitle: 'Developed in 2026, AntBiz is the premier multi-channel AI content publishing platform with secure execution across all marketing campaigns.',
-    aboutContent: 'We comprehensively optimize the creative workflow of modern editors. By combining precise Cheerio data scraping, Gemini AI LLM copywriting, and drag-and-drop Gantt calendars with collision prevention, AntBiz automates high-quality content publication.',
-    
-    featuresTitle: 'What We Do',
-    features: [
-      {
-        icon: 'Wand2',
-        title: 'AI Copywriting',
-        desc: 'Generate automated A/B copy variants optimized for Facebook, Instagram, and Threads with advanced Gemini AI models.',
-        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800'
-      },
-      {
-        icon: 'CalendarDays',
-        title: '2D Gantt Calendar',
-        desc: 'Visual weekly Gantt board for drag-and-drop post scheduling. Features an automatic collision lock mechanism.',
-        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800'
-      },
-      {
-        icon: 'Archive',
-        title: 'Archive & Checkpoints',
-        desc: 'Smart campaign archives supporting background CSV export queues and post edit history logging.',
-        image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=800'
-      }
-    ],
-
-    ctaBannerTitle: 'Ready to Transform Your Workflow?',
-    ctaBannerText: 'Join thousands of editors publishing at scale today.',
-    ctaBannerBtn: 'Start Free Trial',
-
-    footerText: '© 2026 AntBiz. All rights reserved.'
-  }
-};
-
-export const DEFAULT_CONFIG_VI = {
-  brand: {
-    primaryColor: '#5A5CDE',
-    secondaryColor: '#4A4CBF',
-    bgColor: '#ffffff',
-    textColor: '#1e293b',
-    fontFamily: 'Inter',
-    logoUrl: '/images/logo.png',
-  },
-  heroSlides: [
-    {
       tagline: 'HỆ ĐIỀU HÀNH XUẤT BẢN NỘI DUNG AI ĐA KÊNH',
       description: 'Tối ưu hóa quy trình từ cào bài viết gốc, sinh biến thể caption bằng Gemini AI, đến quản lý và lên lịch trên biểu đồ Gantt chống xung đột.',
       ctaText: 'Bắt đầu ngay',
@@ -133,6 +76,65 @@ export const DEFAULT_CONFIG_VI = {
   }
 };
 
+export const DEFAULT_CONFIG_VI = DEFAULT_CONFIG;
+
+export const DEFAULT_CONFIG_EN = {
+  brand: {
+    primaryColor: '#5A5CDE',
+    secondaryColor: '#4A4CBF',
+    bgColor: '#ffffff',
+    textColor: '#1e293b',
+    fontFamily: 'Inter',
+    logoUrl: '/images/logo.png',
+  },
+  heroSlides: [
+    {
+      tagline: 'MULTI-CHANNEL AI PUBLISHING HUB',
+      description: 'Optimize your content pipeline from scraping sources, generating AI variants via Gemini, to drag-and-drop Gantt calendar scheduling.',
+      ctaText: 'Get Started Now',
+      bgImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200'
+    },
+    {
+      tagline: 'SCALE YOUR CONTENT REACH',
+      description: 'Automate post scheduling and avoid collisions with our intelligent visual drag-and-drop calendar system.',
+      ctaText: 'View Features',
+      bgImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1200'
+    }
+  ],
+  sections: {
+    aboutTitle: 'Developed in 2026, AntBiz is the premier multi-channel AI content publishing platform with secure execution across all marketing campaigns.',
+    aboutContent: 'We comprehensively optimize the creative workflow of modern editors. By combining precise Cheerio data scraping, Gemini AI LLM copywriting, and drag-and-drop Gantt calendars with collision prevention, AntBiz automates high-quality content publication.',
+    
+    featuresTitle: 'What We Do',
+    features: [
+      {
+        icon: 'Wand2',
+        title: 'AI Copywriting',
+        desc: 'Generate automated A/B copy variants optimized for Facebook, Instagram, and Threads with advanced Gemini AI models.',
+        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800'
+      },
+      {
+        icon: 'CalendarDays',
+        title: '2D Gantt Calendar',
+        desc: 'Visual weekly Gantt board for drag-and-drop post scheduling. Features an automatic collision lock mechanism.',
+        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800'
+      },
+      {
+        icon: 'Archive',
+        title: 'Archive & Checkpoints',
+        desc: 'Smart campaign archives supporting background CSV export queues and post edit history logging.',
+        image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=800'
+      }
+    ],
+
+    ctaBannerTitle: 'Ready to Transform Your Workflow?',
+    ctaBannerText: 'Join thousands of editors publishing at scale today.',
+    ctaBannerBtn: 'Start Free Trial',
+
+    footerText: '© 2026 AntBiz. All rights reserved.'
+  }
+};
+
 interface Props {
   initialConfig?: any;
   isPreview?: boolean;
@@ -172,64 +174,9 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
     return [];
   };
 
-  // Localize values dynamically based on selected language
-  const translateDefault = (section: string, field: string, value: any) => {
-    if (language !== 'vi') return value;
-    if (typeof value === 'string') {
-      if (value === DEFAULT_CONFIG.sections.aboutTitle) return DEFAULT_CONFIG_VI.sections.aboutTitle;
-      if (value === DEFAULT_CONFIG.sections.aboutContent) return DEFAULT_CONFIG_VI.sections.aboutContent;
-      if (value === DEFAULT_CONFIG.sections.featuresTitle) return DEFAULT_CONFIG_VI.sections.featuresTitle;
-      if (value === DEFAULT_CONFIG.sections.ctaBannerTitle) return DEFAULT_CONFIG_VI.sections.ctaBannerTitle;
-      if (value === DEFAULT_CONFIG.sections.ctaBannerText) return DEFAULT_CONFIG_VI.sections.ctaBannerText;
-      if (value === DEFAULT_CONFIG.sections.ctaBannerBtn) return DEFAULT_CONFIG_VI.sections.ctaBannerBtn;
-      if (value === DEFAULT_CONFIG.sections.footerText) return DEFAULT_CONFIG_VI.sections.footerText;
-    }
-    return value;
-  };
-
-  const localizedSlides = getSlidesArray(rawConfig.heroSlides).map((slide: any, idx: number) => {
-    if (language !== 'vi') return slide;
-    const defaultSlide = DEFAULT_CONFIG.heroSlides[idx];
-    if (defaultSlide && slide.tagline === defaultSlide.tagline) {
-      const viSlide = DEFAULT_CONFIG_VI.heroSlides[idx];
-      return {
-        ...slide,
-        tagline: viSlide.tagline,
-        description: viSlide.description,
-        ctaText: viSlide.ctaText,
-      };
-    }
-    return slide;
-  });
-
-  const localizedFeatures = (rawConfig.sections.features || []).map((feature: any, idx: number) => {
-    if (language !== 'vi') return feature;
-    const defaultFeature = DEFAULT_CONFIG.sections.features[idx];
-    if (defaultFeature && feature.title === defaultFeature.title) {
-      const viFeature = DEFAULT_CONFIG_VI.sections.features[idx];
-      return {
-        ...feature,
-        title: viFeature.title,
-        desc: viFeature.desc,
-      };
-    }
-    return feature;
-  });
-
   const config = {
     ...rawConfig,
-    heroSlides: localizedSlides,
-    sections: {
-      ...rawConfig.sections,
-      aboutTitle: translateDefault('sections', 'aboutTitle', rawConfig.sections.aboutTitle),
-      aboutContent: translateDefault('sections', 'aboutContent', rawConfig.sections.aboutContent),
-      featuresTitle: translateDefault('sections', 'featuresTitle', rawConfig.sections.featuresTitle),
-      ctaBannerTitle: translateDefault('sections', 'ctaBannerTitle', rawConfig.sections.ctaBannerTitle),
-      ctaBannerText: translateDefault('sections', 'ctaBannerText', rawConfig.sections.ctaBannerText),
-      ctaBannerBtn: translateDefault('sections', 'ctaBannerBtn', rawConfig.sections.ctaBannerBtn),
-      footerText: translateDefault('sections', 'footerText', rawConfig.sections.footerText),
-      features: localizedFeatures
-    }
+    heroSlides: getSlidesArray(rawConfig.heroSlides)
   };
 
   const [currentSlide, setCurrentSlide] = useState(0);

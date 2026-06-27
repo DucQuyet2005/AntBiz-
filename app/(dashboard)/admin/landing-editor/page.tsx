@@ -1,24 +1,124 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import LandingView, { DEFAULT_CONFIG } from '@/components/views/LandingView';
+import LandingView, { DEFAULT_CONFIG, DEFAULT_CONFIG_VI } from '@/components/views/LandingView';
 import BrandForm from '@/components/admin/landing-editor/BrandForm';
 import HistorySidebar from '@/components/admin/landing-editor/HistorySidebar';
 import ImageUploader from '@/components/admin/landing-editor/ImageUploader';
 import PopupDialog from '@/components/PopupDialog';
-import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2, RotateCcw, ChevronLeft, ChevronRight, EyeOff, Eye, ChevronDown, Edit2 } from 'lucide-react';
+import { Save, RefreshCcw, LayoutTemplate, Palette, History, X, Plus, Trash2, RotateCcw, ChevronLeft, ChevronRight, EyeOff, Eye, ChevronDown, Edit2, Monitor, Smartphone } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translations } from '@/lib/i18n/translations';
 
 export default function LandingEditor() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const t = translations[language].landingEditor;
-  const [config, setConfig] = useState(DEFAULT_CONFIG);
-  const lastSavedConfig = useRef<typeof DEFAULT_CONFIG>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState(DEFAULT_CONFIG_VI);
+  const lastSavedConfig = useRef<typeof DEFAULT_CONFIG_VI>(DEFAULT_CONFIG_VI);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  
+
+  const [isTranslating, setIsTranslating] = useState(false);
+  const viConfigRef = useRef<typeof DEFAULT_CONFIG_VI | null>(null);
+
+  useEffect(() => {
+    if (isInitialLoading) return;
+
+    const translateConfig = async () => {
+      const toLang = language;
+      const fromLang = 'vi';
+
+      if (toLang === 'vi') {
+        // Only translate from Vietnamese to English. For English to Vietnamese, restore the original content.
+        if (viConfigRef.current) {
+          setConfig(viConfigRef.current);
+        }
+        return;
+      }
+
+      // Switching from Vietnamese to English, back up the original Vietnamese content
+      viConfigRef.current = config;
+
+      setIsTranslating(true);
+      try {
+        const textItems: { path: string[]; text: string }[] = [];
+
+        // 1. Hero Slides
+        const slides = config.heroSlides || [];
+        slides.forEach((slide: any, idx: number) => {
+          if (slide.tagline) textItems.push({ path: ['heroSlides', String(idx), 'tagline'], text: slide.tagline });
+          if (slide.description) textItems.push({ path: ['heroSlides', String(idx), 'description'], text: slide.description });
+          if (slide.ctaText) textItems.push({ path: ['heroSlides', String(idx), 'ctaText'], text: slide.ctaText });
+        });
+
+        // 2. Sections
+        const sec = config.sections || {};
+        if (sec.aboutTitle) textItems.push({ path: ['sections', 'aboutTitle'], text: sec.aboutTitle });
+        if (sec.aboutContent) textItems.push({ path: ['sections', 'aboutContent'], text: sec.aboutContent });
+        if (sec.featuresTitle) textItems.push({ path: ['sections', 'featuresTitle'], text: sec.featuresTitle });
+        if (sec.ctaBannerTitle) textItems.push({ path: ['sections', 'ctaBannerTitle'], text: sec.ctaBannerTitle });
+        if (sec.ctaBannerText) textItems.push({ path: ['sections', 'ctaBannerText'], text: sec.ctaBannerText });
+        if (sec.ctaBannerBtn) textItems.push({ path: ['sections', 'ctaBannerBtn'], text: sec.ctaBannerBtn });
+        if (sec.footerText) textItems.push({ path: ['sections', 'footerText'], text: sec.footerText });
+
+        // Features list
+        const features = sec.features || [];
+        features.forEach((feat: any, idx: number) => {
+          if (feat.title) textItems.push({ path: ['sections', 'features', String(idx), 'title'], text: feat.title });
+          if (feat.desc) textItems.push({ path: ['sections', 'features', String(idx), 'desc'], text: feat.desc });
+        });
+
+        if (textItems.length === 0) return;
+
+        // Call Translation API route in bulk
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: textItems.map(item => item.text), from: fromLang, to: toLang })
+        });
+
+        if (res.ok) {
+          const { translatedTexts } = await res.json();
+          if (translatedTexts && translatedTexts.length === textItems.length) {
+            setConfig(prev => {
+              const newConfig = JSON.parse(JSON.stringify(prev));
+              textItems.forEach((item, idx) => {
+                const val = translatedTexts[idx];
+                const path = item.path;
+                if (path[0] === 'heroSlides') {
+                  const slideIdx = Number(path[1]);
+                  const field = path[2];
+                  if (newConfig.heroSlides && newConfig.heroSlides[slideIdx]) {
+                    newConfig.heroSlides[slideIdx][field] = val;
+                  }
+                } else if (path[0] === 'sections') {
+                  if (path[1] === 'features') {
+                    const featIdx = Number(path[2]);
+                    const field = path[3];
+                    if (newConfig.sections.features && newConfig.sections.features[featIdx]) {
+                      newConfig.sections.features[featIdx][field] = val;
+                    }
+                  } else {
+                    const field = path[1];
+                    newConfig.sections[field] = val;
+                  }
+                }
+              });
+              return newConfig;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Translation error:', err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    translateConfig();
+  }, [language, isInitialLoading]);
+
   // UI State
   const [editingField, setEditingField] = useState<{ section: string; field: string; index?: number } | null>(null);
   const [showBrandDrawer, setShowBrandDrawer] = useState(false);
@@ -65,14 +165,14 @@ export default function LandingEditor() {
               }
             });
             const merged = {
-              brand: { ...DEFAULT_CONFIG.brand, ...draftConfig.brand },
-              heroSlides: draftConfig.heroSlides || DEFAULT_CONFIG.heroSlides,
-              sections: { ...DEFAULT_CONFIG.sections, ...draftConfig.sections }
+              brand: { ...DEFAULT_CONFIG_VI.brand, ...draftConfig.brand },
+              heroSlides: draftConfig.heroSlides || DEFAULT_CONFIG_VI.heroSlides,
+              sections: { ...DEFAULT_CONFIG_VI.sections, ...draftConfig.sections }
             };
             setConfig(merged);
             lastSavedConfig.current = merged;
           } else {
-            lastSavedConfig.current = DEFAULT_CONFIG;
+            lastSavedConfig.current = DEFAULT_CONFIG_VI;
           }
         }
       } catch (e) {
@@ -121,12 +221,41 @@ export default function LandingEditor() {
   const handleResetToDefault = () => {
     setConfig(DEFAULT_CONFIG);
     setConfirmReset(false);
-    setPopupInfo({ isOpen: true, message: t.resetSuccess, type: 'info' });
+    setPopupInfo({ isOpen: true, message: t.resetSuccess, type: 'success' });
+  };
+
+  const isEqualConfig = (a: any, b: any): boolean => {
+    const stringifySorted = (obj: any): string => {
+      if (Array.isArray(obj)) return JSON.stringify(obj.map(stringifySorted));
+      if (obj !== null && typeof obj === 'object') {
+        const keys = Object.keys(obj).sort();
+        const sortedObj: any = {};
+        keys.forEach(k => { sortedObj[k] = stringifySorted(obj[k]); });
+        return JSON.stringify(sortedObj);
+      }
+      return JSON.stringify(obj);
+    };
+    return stringifySorted(a) === stringifySorted(b);
   };
 
   const saveDraft = async (silent = false): Promise<boolean> => {
+    // If in English mode, save the backed up Vietnamese configuration to database
+    const configToSave = (language === 'en' && viConfigRef.current) ? viConfigRef.current : config;
+
+    // Prevent saving if the user manually tries to save the default configuration
+    if (isEqualConfig(configToSave, DEFAULT_CONFIG_VI)) {
+      setPopupInfo({
+        isOpen: true,
+        message: language === 'vi' 
+          ? 'Không thể lưu cấu hình mặc định. Vui lòng chỉnh sửa nội dung trước khi lưu.' 
+          : 'Cannot save the default configuration. Please edit content before saving.',
+        type: 'warning'
+      });
+      return false; // NEVER allow saving default, whether silent or not
+    }
+
     // Prevent saving if the current configuration is identical to the last saved state
-    if (JSON.stringify(config) === JSON.stringify(lastSavedConfig.current)) {
+    if (isEqualConfig(configToSave, lastSavedConfig.current)) {
       if (!silent) {
         setPopupInfo({ isOpen: true, message: t.noChangesToSave, type: 'info' });
       }
@@ -136,7 +265,7 @@ export default function LandingEditor() {
     setIsSaving(true);
     try {
       const updates = [];
-      for (const [section, sectionData] of Object.entries(config)) {
+      for (const [section, sectionData] of Object.entries(configToSave)) {
         if (section === 'heroSlides') {
           updates.push(
             fetch('/api/admin/landing-config', {
@@ -182,23 +311,42 @@ export default function LandingEditor() {
   };
 
   const executePublish = async () => {
+    const configToPublish = (language === 'en' && viConfigRef.current) ? viConfigRef.current : config;
+    const isDefault = isEqualConfig(configToPublish, DEFAULT_CONFIG_VI);
+
     setIsPublishing(true);
     try {
-      // If there are changes, save them silently. If not, it returns false, which is fine since data is up to date
-      await saveDraft(true).catch((e) => {
-        // Only block publish if saving threw a real network/DB error
-        throw e;
-      });
-      const res = await fetch('/api/admin/landing-config/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: 'Inline Editor Publish' })
-      });
-      if (res.ok) {
-        setPopupInfo({ isOpen: true, message: t.publishSuccess, type: 'success' });
+      if (isDefault) {
+        const resClear = await fetch('/api/admin/landing-config', { method: 'DELETE' });
+        if (!resClear.ok) throw new Error('Failed to clear database configuration');
+        lastSavedConfig.current = DEFAULT_CONFIG_VI;
+
+        const res = await fetch('/api/admin/landing-config/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: 'Khôi phục Mặc định', skipHistory: true })
+        });
+        if (res.ok) {
+          setPopupInfo({ isOpen: true, message: t.publishSuccess, type: 'success' });
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || res.statusText);
+        }
       } else {
-        const errData = await res.json().catch(() => ({}));
-        setPopupInfo({ isOpen: true, message: `${t.publishFail}: ${errData.error || res.statusText}`, type: 'error' });
+        await saveDraft(true).catch((e) => {
+          throw e;
+        });
+        const res = await fetch('/api/admin/landing-config/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: 'Inline Editor Publish' })
+        });
+        if (res.ok) {
+          setPopupInfo({ isOpen: true, message: t.publishSuccess, type: 'success' });
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || res.statusText);
+        }
       }
     } catch (e: any) {
       setPopupInfo({ isOpen: true, message: `${t.publishError}: ${e.message}`, type: 'error' });
@@ -463,6 +611,11 @@ export default function LandingEditor() {
     );
   };
 
+  const isDefaultConfig = isEqualConfig(
+    (language === 'en' && viConfigRef.current) ? viConfigRef.current : config,
+    DEFAULT_CONFIG_VI
+  );
+
   if (isInitialLoading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-100 dark:bg-zinc-950">
@@ -592,9 +745,9 @@ export default function LandingEditor() {
                     if (!snapshot) return;
 
                     setConfig(prev => {
-                      const prevBrand = prev?.brand || DEFAULT_CONFIG.brand;
-                      const prevSlides = prev?.heroSlides || DEFAULT_CONFIG.heroSlides;
-                      const prevSections = prev?.sections || DEFAULT_CONFIG.sections;
+                      const prevBrand = prev?.brand || DEFAULT_CONFIG_VI.brand;
+                      const prevSlides = prev?.heroSlides || DEFAULT_CONFIG_VI.heroSlides;
+                      const prevSections = prev?.sections || DEFAULT_CONFIG_VI.sections;
 
                       return {
                         brand: { ...prevBrand, ...(snapshot.brand || {}) },
@@ -712,7 +865,7 @@ export default function LandingEditor() {
             {/* Save Draft */}
             <button
               onClick={() => saveDraft()}
-              disabled={isSaving}
+              disabled={isSaving || isDefaultConfig}
               className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
             >
               <Save size={13} />
@@ -846,6 +999,15 @@ export default function LandingEditor() {
         type={popupInfo.type}
       />
 
+      {isTranslating && (
+        <div className="fixed bottom-6 left-6 z-[9999] bg-white/85 dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-2 animate-in fade-in duration-200">
+          <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-primary border-t-transparent" />
+          <span className="text-[10px] font-bold text-slate-650 dark:text-zinc-300 uppercase tracking-wide">
+            {language === 'vi' ? 'Đang dịch giao diện...' : 'Translating content...'}
+          </span>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -881,6 +1043,8 @@ function HistorySidebarInline({
   const [recordToRestore, setRecordToRestore] = React.useState<{ id: string; snapshot: any } | null>(null);
   const [recordToDelete, setRecordToDelete] = React.useState<string | null>(null);
   const [recordToRename, setRecordToRename] = React.useState<{ id: string; note: string } | null>(null);
+  const [recordToPreview, setRecordToPreview] = React.useState<{ id: string; snapshot: any; note: string; created_at: string } | null>(null);
+  const [previewMode, setPreviewMode] = React.useState<'desktop' | 'mobile'>('desktop');
   const [isRestoring, setIsRestoring] = React.useState(false);
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [popup, setPopup] = React.useState<{ isOpen: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({
@@ -888,6 +1052,92 @@ function HistorySidebarInline({
     message: '',
     type: 'info'
   });
+
+  const [previewY, setPreviewY] = React.useState<number | null>(null);
+  const hoverTimeoutRef = React.useRef<any>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>, record: any) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    const currentTarget = e.currentTarget;
+    const note = record.note || '';
+    const created_at = record.created_at;
+    const id = record.id;
+    const snapshot = record.config_snapshot;
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      const rect = currentTarget.getBoundingClientRect();
+      const itemHeight = rect.height;
+      const previewHeight = 360;
+      const targetY = rect.top + itemHeight / 2 - previewHeight / 2;
+      const safeY = Math.max(20, Math.min(targetY, window.innerHeight - previewHeight - 20));
+      setPreviewY(safeY);
+      setRecordToPreview({ id, snapshot, note, created_at });
+    }, 3000);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setRecordToPreview(null);
+    setPreviewY(null);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
+
+  const previewScrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!recordToPreview) return;
+    
+    let animationFrameId: number;
+    let lastTime = Date.now();
+    let currentScroll = 0;
+    let isPaused = false;
+    let pauseStartTime = 0;
+    const speed = 62.5; // Pixels per second (25% faster)
+
+    const scrollLoop = () => {
+      const el = previewScrollRef.current;
+      if (el) {
+        const now = Date.now();
+        const delta = (now - lastTime) / 1000;
+        lastTime = now;
+
+        const maxScroll = el.scrollHeight - el.clientHeight;
+        if (maxScroll > 0) {
+          if (isPaused) {
+            if (now - pauseStartTime >= 2000) {
+              isPaused = false;
+              currentScroll = 0;
+              el.scrollTop = 0;
+            }
+          } else {
+            currentScroll += speed * delta;
+            if (currentScroll >= maxScroll) {
+              currentScroll = maxScroll;
+              el.scrollTop = maxScroll;
+              isPaused = true;
+              pauseStartTime = now;
+            } else {
+              el.scrollTop = currentScroll;
+            }
+          }
+        }
+      } else {
+        lastTime = Date.now();
+      }
+      animationFrameId = requestAnimationFrame(scrollLoop);
+    };
+
+    animationFrameId = requestAnimationFrame(scrollLoop);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [recordToPreview]);
 
   const handleRollback = async (id: string, snapshot: any) => {
     setRecordToRestore({ id, snapshot });
@@ -964,13 +1214,15 @@ function HistorySidebarInline({
       {history.map((record: any) => (
         <div
           key={record.id}
-          className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40 relative group"
+          onMouseEnter={(e) => handleMouseEnter(e, record)}
+          onMouseLeave={handleMouseLeave}
+          className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-3 hover:border-primary/30 dark:hover:border-primary/40 transition-colors bg-white dark:bg-zinc-950/40 relative group cursor-pointer"
         >
           {/* Action Buttons Container */}
           <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
             {/* Rename Button */}
             <button
-              onClick={() => setRecordToRename({ id: record.id, note: record.note || '' })}
+              onClick={(e) => { e.stopPropagation(); setRecordToRename({ id: record.id, note: record.note || '' }); }}
               className="text-slate-400 hover:text-primary p-1 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               title={t.editVersionName}
             >
@@ -978,7 +1230,7 @@ function HistorySidebarInline({
             </button>
             {/* Delete History Button */}
             <button
-              onClick={() => setRecordToDelete(record.id)}
+              onClick={(e) => { e.stopPropagation(); setRecordToDelete(record.id); }}
               className="text-slate-400 hover:text-red-550 p-1 hover:bg-red-50 dark:hover:bg-red-955/20 rounded-lg cursor-pointer border-0 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
               title={t.deleteHistory}
             >
@@ -996,7 +1248,7 @@ function HistorySidebarInline({
             {t.by}: {record.users?.email || 'Unknown'}
           </p>
           <button
-            onClick={() => handleRollback(record.id, record.config_snapshot)}
+            onClick={(e) => { e.stopPropagation(); handleRollback(record.id, record.config_snapshot); }}
             className="w-full flex items-center justify-center gap-1 py-1.5 bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <RotateCcw size={12} /> {t.restore}
@@ -1088,6 +1340,61 @@ function HistorySidebarInline({
           </div>
         </div>
       )}
+
+      {/* Custom Preview Modal */}
+      {recordToPreview && (() => {
+        let snapshotObj = recordToPreview.snapshot;
+        if (typeof snapshotObj === 'string') {
+          try {
+            snapshotObj = JSON.parse(snapshotObj);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        const safeSnapshot = {
+          brand: { ...DEFAULT_CONFIG_VI.brand, ...(snapshotObj?.brand || {}) },
+          heroSlides: snapshotObj?.heroSlides || DEFAULT_CONFIG_VI.heroSlides,
+          sections: { ...DEFAULT_CONFIG_VI.sections, ...(snapshotObj?.sections || {}) }
+        };
+
+        return (
+          <div 
+            className="fixed right-[380px] z-[9999] p-4 pointer-events-none animate-in fade-in slide-in-from-right-4 duration-200"
+            style={{ top: previewY !== null ? `${previewY}px` : '20px' }}
+          >
+             <div className="relative w-[500px] h-[360px] border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white shadow-2xl flex flex-col">
+               {/* Address bar (Mini browser header) */}
+               <div className="h-6 bg-slate-100 dark:bg-zinc-900 border-b border-slate-200/80 dark:border-zinc-800 flex items-center px-2 gap-1 shrink-0">
+                 <div className="flex gap-1 shrink-0">
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                 </div>
+                 <div className="flex-1 text-[8px] font-bold text-slate-500 dark:text-zinc-400 text-center truncate">
+                   {recordToPreview.note || t.autoSaved}
+                 </div>
+               </div>
+               
+               {/* Viewport wrapper with exact visual size */}
+               <div className="flex-1 w-full overflow-hidden relative">
+                 {/* Scaled container */}
+                 <div
+                   ref={previewScrollRef}
+                   className="overflow-y-auto no-scrollbar absolute left-0 top-0 bg-slate-100 dark:bg-zinc-950"
+                   style={{
+                     width: '1200px',
+                     height: '810px', // 336px / 0.415 = ~809.6px
+                     transform: 'scale(0.415)',
+                     transformOrigin: 'top left'
+                   }}
+                 >
+                   <LandingView initialConfig={safeSnapshot} isPreview={true} isEditor={false} />
+                 </div>
+               </div>
+             </div>
+          </div>
+        );
+      })()}
 
       {/* History Toast Notifications */}
       <PopupDialog

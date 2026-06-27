@@ -52,6 +52,7 @@ export const LanguageProvider = ({
     setLanguageState(newLang);
     localStorage.setItem('lang', newLang);
     document.cookie = `lang=${newLang};path=/;max-age=31536000;SameSite=Lax`;
+
     // Dispatch event to keep other contexts/instances in sync
     window.dispatchEvent(new Event('languageChange'));
   };

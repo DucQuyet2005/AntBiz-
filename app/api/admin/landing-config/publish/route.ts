@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const note = body?.note || 'Published changes';
+    const skipHistory = body?.skipHistory === true;
 
     // 1. Fetch current config
     const { data: currentConfig, error: fetchError } = await supabase
@@ -43,21 +44,33 @@ export async function POST(request: Request) {
       snapshot[item.section][item.key] = item.value;
     });
 
-    // 2.5. Check if this snapshot is identical to the latest history record to prevent duplicate entries
-    const { data: latestHistory } = await supabase
+    // 2.5. Check if this snapshot is identical to any of the recent history records to prevent duplicate entries
+    const { data: recentHistory } = await supabase
       .from('landing_page_history')
       .select('id, config_snapshot')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(10);
 
-    let historyRecord = latestHistory;
+    const stringifySorted = (obj: any): string => {
+      if (Array.isArray(obj)) return JSON.stringify(obj.map(stringifySorted));
+      if (obj !== null && typeof obj === 'object') {
+        const keys = Object.keys(obj).sort();
+        const sortedObj: any = {};
+        keys.forEach(k => { sortedObj[k] = stringifySorted(obj[k]); });
+        return JSON.stringify(sortedObj);
+      }
+      return JSON.stringify(obj);
+    };
 
-    const isIdentical = latestHistory && 
-      JSON.stringify(latestHistory.config_snapshot) === JSON.stringify(snapshot);
+    const duplicateRecord = recentHistory?.find(hist => 
+      stringifySorted(hist.config_snapshot) === stringifySorted(snapshot)
+    );
 
-    if (!isIdentical) {
-      // 3. Save to history only if changed
+    const isIdentical = !!duplicateRecord;
+    let historyRecord = duplicateRecord || null;
+
+    if (!isIdentical && !skipHistory) {
+      // 3. Save to history only if changed and skipHistory is false
       const { data: newHistory, error: historyError } = await supabase
         .from('landing_page_history')
         .insert({
