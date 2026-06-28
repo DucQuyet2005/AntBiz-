@@ -1948,6 +1948,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setCaptionId('');
           const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
           setActivePrompt(defaultPrompt);
+
+          // Auto-generate a unique prompt title based on the scraped article title
+          const basePromptTitle = updatedPostData.title ? (updatedPostData.title.length > 150 ? updatedPostData.title.slice(0, 147) + '...' : updatedPostData.title) : 'Bài viết';
+          let uniqueTitle = basePromptTitle;
+          let counter = 1;
+          const allExistingNames = [
+            ...(promptsList || []).map((p) => p?.name),
+            ...(prompts || []).map((p) => p?.name),
+            customPromptTitle
+          ].filter(Boolean);
+          while (allExistingNames.includes(uniqueTitle)) {
+            uniqueTitle = `${basePromptTitle} (${counter})`;
+            counter++;
+          }
+          setCustomPromptTitle(uniqueTitle);
+
           generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
           setHasUnsavedChanges(true);
@@ -2022,6 +2038,22 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setPostData(updatedPostData);
           setArticleId(data.id || null);
           setCaptionId('');
+
+          // Auto-generate a unique prompt title based on the scraped article title
+          const basePromptTitle = updatedPostData.title ? (updatedPostData.title.length > 150 ? updatedPostData.title.slice(0, 147) + '...' : updatedPostData.title) : 'Bài viết';
+          let uniqueTitle = basePromptTitle;
+          let counter = 1;
+          const allExistingNames = [
+            ...(promptsList || []).map((p) => p?.name),
+            ...(prompts || []).map((p) => p?.name),
+            customPromptTitle
+          ].filter(Boolean);
+          while (allExistingNames.includes(uniqueTitle)) {
+            uniqueTitle = `${basePromptTitle} (${counter})`;
+            counter++;
+          }
+          setCustomPromptTitle(uniqueTitle);
+
           generateVariants(updatedPostData, selectedPrompt);
           setHasUnsavedChanges(true);
         }
@@ -2464,7 +2496,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5 font-semibold">
                       {selectedPrompt
-                        ? t('aiCreator.promptConfigBarUsing', { platform: selectedPrompt.platform?.toUpperCase(), name: selectedPrompt.name })
+                        ? t('aiCreator.promptConfigBarUsing', { platform: selectedPrompt.platform?.toUpperCase(), name: `"${selectedPrompt.name}"` })
                         : activePrompt
                           ? t('aiCreator.promptConfigBarCustom')
                           : t('aiCreator.promptConfigBarDefault')

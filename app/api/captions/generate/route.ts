@@ -297,6 +297,8 @@ Body Blocks: ${JSON.stringify(article.body || [], null, 2)}
 Full Text Content:
 ${article.full_text ? article.full_text.substring(0, 8000) : ''}
 ---
+
+CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ LỜI DẪN GIẢI, GIỚI THIỆU, LỜI CHÀO HỎI HỢP LỆ HAY CÁC KÝ TỰ PHÂN CÁCH NHƯ "Tuyệt vời!", "Dưới đây là...", "---", KHÔNG CÓ BẤT KỲ KÝ TỰ NÀO NGOÀI BÀI ĐĂNG MẠNG XÃ HỘI.
 `;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${geminiKey}`;
