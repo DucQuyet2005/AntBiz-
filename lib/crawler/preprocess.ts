@@ -103,48 +103,28 @@ function formatDateVN(date: Date): string {
 
 function parsePublishedAt(rawStr: string): string {
   const clean = rawStr.trim();
-  if (!clean) {
-    return formatDateVN(new Date());
+  if (!clean) return '';
+
+  // If it's relative time, return as-is
+  const isRelative = /phút|phut|tiếng|tieng|giờ|gio|ngày|ngay|trước|truoc|hôm|hom/i.test(clean);
+  if (isRelative) {
+    return clean;
   }
 
-  // Check if already in DD/MM/YYYY HH:mm format
+  // If already in DD/MM/YYYY HH:mm format
   if (/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(clean)) {
     return clean;
   }
 
-  const now = new Date();
-
-  // Relative minutes: e.g. "54 phút trước", "54 phut"
-  const minMatch = clean.match(/(\d+)\s*phút/i) || clean.match(/(\d+)\s*phut/i);
-  if (minMatch) {
-    const mins = parseInt(minMatch[1], 10);
-    const date = new Date(now.getTime() - mins * 60 * 1000);
-    return formatDateVN(date);
-  }
-
-  // Relative hours: e.g. "2 tiếng trước", "1 giờ"
-  const hourMatch = clean.match(/(\d+)\s*(tiếng|giờ)/i) || clean.match(/(\d+)\s*(tieng|gio)/i);
-  if (hourMatch) {
-    const hours = parseInt(hourMatch[1], 10);
-    const date = new Date(now.getTime() - hours * 60 * 60 * 1000);
-    return formatDateVN(date);
-  }
-
-  // Relative days: e.g. "1 ngày trước"
-  const dayMatch = clean.match(/(\d+)\s*ngày/i) || clean.match(/(\d+)\s*ngay/i);
-  if (dayMatch) {
-    const days = parseInt(dayMatch[1], 10);
-    const date = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    return formatDateVN(date);
-  }
-
-  // Try standard parsing
+  // If it's an ISO date or parseable timestamp, format it nicely
   const parsedTimestamp = Date.parse(clean);
   if (!isNaN(parsedTimestamp)) {
-    return formatDateVN(new Date(parsedTimestamp));
+    if (clean.includes('-') || clean.includes('T') || clean.includes(':')) {
+      return formatDateVN(new Date(parsedTimestamp));
+    }
   }
 
-  return formatDateVN(now);
+  return clean;
 }
 
 export function preprocessArticle(raw: CrawlResult): ArticleData {
@@ -291,14 +271,12 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   }
 
   // ── Published date ────────────────────────────────────────────────────
-  let rawPublishedAt = jsonLdPublishedAt;
+  let rawPublishedAt = cleanText(
+    scope.find('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() ||
+    $('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() || ''
+  );
   if (!rawPublishedAt) {
-    rawPublishedAt = cleanText(
-      scope.find('p.text-gray-400').first().text() ||
-      scope.find('span.text-gray-500').first().text() ||
-      $('p.text-gray-400').first().text() ||
-      $('span.text-gray-500').first().text() || ''
-    );
+    rawPublishedAt = jsonLdPublishedAt;
   }
   const published_at = parsePublishedAt(rawPublishedAt);
 
