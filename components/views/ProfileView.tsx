@@ -753,6 +753,28 @@ export default function ProfileView() {
 
       setPopup({ isOpen: true, message: t('profile.saveSuccess'), type: 'success' });
 
+      if (typeof window !== 'undefined') {
+        console.log('Dispatching profile-updated event:', {
+          fullName,
+          department,
+          avatarUrl,
+          avatarFrame,
+          avatarEffect,
+          avatarBase,
+        });
+        const event = new CustomEvent('profile-updated', {
+          detail: {
+            fullName,
+            department,
+            avatarUrl,
+            avatarFrame,
+            avatarEffect,
+            avatarBase,
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
       // Gửi thông báo in-app
       try {
         await fetch('/api/notifications', {

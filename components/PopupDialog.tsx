@@ -58,7 +58,7 @@ export default function PopupDialog({
         return 'bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30';
       case 'info':
       default:
-        return 'bg-primary/10 dark:bg-primary/5 border border-primary/20 dark:border-primary/10';
+        return 'bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30';
     }
   };
 

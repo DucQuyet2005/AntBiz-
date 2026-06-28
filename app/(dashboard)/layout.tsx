@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldX, ChevronUp } from 'lucide-react';
+import { ShieldX, ChevronUp, RefreshCw, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRef } from 'react';
 
@@ -21,7 +21,9 @@ export default function DashboardLayout({
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
+  const [roleChangeData, setRoleChangeData] = useState<{ active: boolean; newRole: string }>({ active: false, newRole: '' });
   const { t, language } = useLanguage();
+  const currentRoleRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,24 +58,26 @@ export default function DashboardLayout({
         return;
       }
 
-      // Initial status check against DB (also fetch locked_reason)
+      // Initial status check against DB (also fetch locked_reason, role)
       const { data: profile } = await supabase
         .from('users')
-        .select('status, locked_reason')
+        .select('status, locked_reason, role')
         .eq('id', user.id)
         .maybeSingle();
 
       if (!isMounted) return;
 
       if (!profile || profile.status === 'locked') {
-        await forceLogout(profile?.locked_reason ?? undefined);
+        setLoading(false);
+        showLockDialogThenLogout(profile?.locked_reason || t("dashboardLayout.defaultReason"));
         return;
       }
 
+      currentRoleRef.current = profile.role;
       setLoading(false);
 
       // 🔴 Supabase Realtime: subscribe to changes on THIS user's row
-      // Fires immediately when admin changes status to 'locked' — no polling needed
+      // Fires immediately when admin changes status to 'locked' or updates role
       realtimeChannel = supabase
         .channel(`user-status-${user.id}`)
         .on(
@@ -85,9 +89,17 @@ export default function DashboardLayout({
             filter: `id=eq.${user.id}`,
           },
           (payload) => {
-            const newRecord = payload.new as { status: string; locked_reason?: string };
+            const newRecord = payload.new as { status: string; locked_reason?: string; role?: string };
             if (newRecord.status === 'locked') {
               showLockDialogThenLogout(newRecord.locked_reason || t("dashboardLayout.defaultReason"));
+              return;
+            }
+            // Nếu vai trò (role) thay đổi, hiển thị Popup và thực hiện reload
+            if (newRecord.role && currentRoleRef.current && newRecord.role !== currentRoleRef.current) {
+              setRoleChangeData({ active: true, newRole: newRecord.role });
+              setTimeout(() => {
+                window.location.reload();
+              }, 2500);
             }
           }
         )
@@ -171,6 +183,13 @@ export default function DashboardLayout({
     );
   }
 
+  const getRoleLabel = (roleStr: string) => {
+    if (roleStr === 'admin') return t("dashboardLayout.roleAdmin");
+    if (roleStr === 'marketer_full') return t("dashboardLayout.roleMarketerFull");
+    if (roleStr === 'marketer_content') return t("dashboardLayout.roleMarketerContent");
+    return roleStr;
+  };
+
   const isLandingEditor = pathname.includes('/admin/landing-editor');
 
   return (
@@ -216,24 +235,118 @@ export default function DashboardLayout({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 🟢 Role Change Notification Overlay */}
+      <AnimatePresence>
+        {roleChangeData.active && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col items-center gap-5 text-center border border-gray-100"
+            >
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                <UserCheck className="w-8 h-8 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-gray-900 mb-1">
+                  {t("dashboardLayout.roleUpdatedTitle")}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {t("dashboardLayout.roleUpdatedDesc")}
+                </p>
+              </div>
+              <div className="w-full bg-emerald-50 border border-emerald-250/50 rounded-xl p-4 flex flex-col items-center gap-1">
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                  {t("dashboardLayout.newRoleLabel")}
+                </span>
+                <span className="text-sm font-black text-emerald-900 bg-emerald-100/60 px-3.5 py-1 rounded-full border border-emerald-200">
+                  {getRoleLabel(roleChangeData.newRole)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-gray-550 select-none">
+                <RefreshCw size={13} className="animate-spin text-primary" />
+                <span>
+                  {t("dashboardLayout.preparingReload")}
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {isLandingEditor ? (
-        <>
-          {/* Bulletproof CSS Hover Sidebar */}
-          <div className="fixed top-0 bottom-0 left-0 w-4 hover:w-[280px] focus-within:w-[280px] z-[9999] group/sidebar transition-all duration-300 ease-out">
+      <>
+          {/* ── LEFT SIDEBAR TRIGGER – D-shape pill + glow ── */}
+          <div className="fixed top-0 bottom-0 left-0 w-10 hover:w-[280px] focus-within:w-[280px] z-[9999] group/sidebar transition-all duration-300 ease-out">
             <div className="absolute top-0 bottom-0 left-0 w-[280px] -translate-x-full group-hover/sidebar:translate-x-0 group-focus-within/sidebar:translate-x-0 transition-transform duration-300 ease-out shadow-2xl">
               <Sidebar isOpen={true} onClose={() => {}} />
             </div>
+            {/* D-shape trigger tab */}
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center pointer-events-none group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0 transition-opacity duration-200">
+              {/* Glow */}
+              <div
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-14 h-32 rounded-full"
+                style={{
+                  background: 'radial-gradient(ellipse at left, #5A5CDE 0%, transparent 70%)',
+                  filter: 'blur(14px)',
+                  opacity: 0.65,
+                }}
+              />
+              {/* Pill */}
+              <div
+                className="relative flex items-center justify-center h-14 w-8 rounded-r-full"
+                style={{
+                  background: '#5A5CDE',
+                  boxShadow: '6px 0 20px 0 rgba(90,92,222,0.45)',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            </div>
           </div>
 
-          {/* Bulletproof CSS Hover Header */}
-          <div className="fixed top-0 left-0 right-0 h-4 hover:h-20 focus-within:h-20 z-[9998] group/header transition-all duration-300 ease-out">
+          {/* ── TOP HEADER TRIGGER & PANEL ── */}
+          <div className="fixed top-0 left-0 right-0 h-0 z-[9998] group/header">
+            {/* The actual header panel - slides down when group/header is hovered */}
             <div className="absolute top-0 left-0 right-0 -translate-y-full group-hover/header:translate-y-0 group-focus-within/header:translate-y-0 transition-transform duration-300 ease-out bg-white/95 backdrop-blur-md shadow-md px-4 sm:px-6 lg:px-10 flex items-center h-20">
               <div className="max-w-[1200px] w-full mx-auto">
                 <Header onMenuClick={() => {}} />
               </div>
             </div>
+            
+            {/* Narrow Hover Zone around the arrow trigger */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-10 pointer-events-auto cursor-pointer flex flex-col items-center">
+              {/* D-shape trigger tab */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none group-hover/header:opacity-0 transition-opacity duration-200">
+                {/* Glow */}
+                <div
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-14 rounded-full"
+                  style={{
+                    background: 'radial-gradient(ellipse at top, #5A5CDE 0%, transparent 70%)',
+                    filter: 'blur(14px)',
+                    opacity: 0.65,
+                  }}
+                />
+                {/* Pill */}
+                <div
+                  className="relative flex items-center justify-center w-16 h-8 rounded-b-full"
+                  style={{
+                    background: '#5A5CDE',
+                    boxShadow: '0 6px 20px 0 rgba(90,92,222,0.45)',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </>
+
       ) : (
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       )}

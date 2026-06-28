@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { translations } from '@/lib/i18n/translations';
 
 type Language = 'vi' | 'en';
@@ -52,11 +52,12 @@ export const LanguageProvider = ({
     setLanguageState(newLang);
     localStorage.setItem('lang', newLang);
     document.cookie = `lang=${newLang};path=/;max-age=31536000;SameSite=Lax`;
+
     // Dispatch event to keep other contexts/instances in sync
     window.dispatchEvent(new Event('languageChange'));
   };
 
-  const t = (key: string, variables?: Record<string, string | number>): string => {
+  const t = useCallback((key: string, variables?: Record<string, string | number>): string => {
     const keys = key.split('.');
     let result: any = translations[language];
 
@@ -92,7 +93,7 @@ export const LanguageProvider = ({
     }
 
     return result;
-  };
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

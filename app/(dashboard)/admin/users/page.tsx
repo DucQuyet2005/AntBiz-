@@ -52,7 +52,7 @@ export default function AdminUsersPage() {
       setTotalPages(json.meta?.totalPages || 1);
       setTotalUsers(json.meta?.total || 0);
     } catch (err) {
-      setToast({ isOpen: true, message: 'Lỗi tải danh sách người dùng', type: 'error' });
+      setToast({ isOpen: true, message: t('admin.fetchUsersError'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -92,9 +92,12 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Update failed');
+        const errorMsg = errorData.error === 'Cannot change your own role'
+          ? t('admin.cannotChangeOwnRole')
+          : (errorData.error || t('admin.updateFailed'));
+        throw new Error(errorMsg);
       }
-      setToast({ isOpen: true, message: `Đã đổi quyền cho ${targetUser.email}`, type: 'success' });
+      setToast({ isOpen: true, message: t('admin.changeRoleSuccess').replace('{email}', targetUser.email), type: 'success' });
       fetchUsers();
     } catch (err: any) {
       setUsers(originalUsers);
@@ -110,7 +113,7 @@ export default function AdminUsersPage() {
   const confirmStatusChange = async () => {
     if (!lockModal.user) return;
     if (lockModal.targetStatus === 'locked' && lockModal.reason.length < 10) {
-      setToast({ isOpen: true, message: 'Vui lòng nhập lý do khóa tài khoản (tối thiểu 10 ký tự)', type: 'warning' });
+      setToast({ isOpen: true, message: t('admin.lockReasonMinLength'), type: 'warning' });
       return;
     }
 
@@ -134,9 +137,15 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Update failed');
+        const errorMsg = errorData.error === 'Cannot change your own status'
+          ? t('admin.cannotChangeOwnStatus')
+          : (errorData.error || t('admin.updateFailed'));
+        throw new Error(errorMsg);
       }
-      setToast({ isOpen: true, message: `Đã ${targetStatus === 'locked' ? 'khóa' : 'mở khóa'} tài khoản ${targetUser.email}`, type: 'success' });
+      const successMessage = targetStatus === 'locked'
+        ? t('admin.lockAccountSuccess').replace('{email}', targetUser.email)
+        : t('admin.unlockAccountSuccess').replace('{email}', targetUser.email);
+      setToast({ isOpen: true, message: successMessage, type: 'success' });
       fetchUsers();
     } catch (err: any) {
       setUsers(originalUsers);
@@ -305,7 +314,7 @@ export default function AdminUsersPage() {
                           className={`group p-2 rounded-xl transition-all duration-150 cursor-pointer focus-visible:ring-2 focus-visible:outline-none ${user.status === 'locked' 
                             ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/30 hover:scale-110 hover:shadow-md hover:shadow-emerald-500/30 focus-visible:ring-emerald-500' 
                             : 'bg-rose-100 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900/30 hover:scale-110 hover:shadow-md hover:shadow-rose-500/40 focus-visible:ring-rose-500'}`}
-                          title={user.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                          title={user.status === 'locked' ? t('admin.unlockAccountTooltip') : t('admin.lockAccountTooltip')}
                         >
                           <span className="block transition-all duration-150 group-hover:brightness-125 group-hover:drop-shadow-[0_0_4px_currentColor]">
                             {user.status === 'locked' ? <Unlock size={18} /> : <Lock size={18} />}

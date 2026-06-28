@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const note = body?.note || 'Published changes';
+    const skipHistory = body?.skipHistory === true;
 
     // 1. Fetch current config
     const { data: currentConfig, error: fetchError } = await supabase
@@ -43,18 +44,46 @@ export async function POST(request: Request) {
       snapshot[item.section][item.key] = item.value;
     });
 
-    // 3. Save to history
-    const { data: historyRecord, error: historyError } = await supabase
+    // 2.5. Check if this snapshot is identical to any of the recent history records to prevent duplicate entries
+    const { data: recentHistory } = await supabase
       .from('landing_page_history')
-      .insert({
-        config_snapshot: snapshot,
-        note,
-        created_by: user.id
-      })
-      .select()
-      .single();
+      .select('id, config_snapshot')
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-    if (historyError) throw historyError;
+    const stringifySorted = (obj: any): string => {
+      if (Array.isArray(obj)) return JSON.stringify(obj.map(stringifySorted));
+      if (obj !== null && typeof obj === 'object') {
+        const keys = Object.keys(obj).sort();
+        const sortedObj: any = {};
+        keys.forEach(k => { sortedObj[k] = stringifySorted(obj[k]); });
+        return JSON.stringify(sortedObj);
+      }
+      return JSON.stringify(obj);
+    };
+
+    const duplicateRecord = recentHistory?.find(hist => 
+      stringifySorted(hist.config_snapshot) === stringifySorted(snapshot)
+    );
+
+    const isIdentical = !!duplicateRecord;
+    let historyRecord = duplicateRecord || null;
+
+    if (!isIdentical && !skipHistory) {
+      // 3. Save to history only if changed and skipHistory is false
+      const { data: newHistory, error: historyError } = await supabase
+        .from('landing_page_history')
+        .insert({
+          config_snapshot: snapshot,
+          note,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (historyError) throw historyError;
+      historyRecord = newHistory;
+    }
 
     // 4. Invalidate the public landing page cache
     revalidatePath('/', 'page');
@@ -77,7 +106,7 @@ export async function POST(request: Request) {
             title,
             message,
             metadata: {
-              history_id: historyRecord.id,
+              history_id: historyRecord?.id || null,
               action_by: user.id,
               note,
             }

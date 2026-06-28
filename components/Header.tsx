@@ -207,13 +207,13 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         setUnreadCount(countRes.count || 0);
       }
     } catch (err: any) {
-      if (err?.message === 'Failed to fetch' || err instanceof TypeError) {
-        console.warn('Network issue fetching notifications in Header (Failed to fetch).');
+      if (err?.message?.includes('Failed to fetch') || err instanceof TypeError) {
+        console.warn('Network issue fetching notifications in Header (Failed to fetch/offline).');
       } else {
         console.error('Error fetching notifications in Header:', err);
       }
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
     }
   };
 

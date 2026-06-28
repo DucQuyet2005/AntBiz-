@@ -51,8 +51,16 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
     }
   };
 
+  const [recordToRestore, setRecordToRestore] = useState<{ id: string; snapshot: any } | null>(null);
+
   const handleRollback = async (id: string, snapshot: any) => {
-    if (!confirm(t.confirmRestore)) return;
+    setRecordToRestore({ id, snapshot });
+  };
+
+  const executeRollback = async () => {
+    if (!recordToRestore) return;
+    const { id, snapshot } = recordToRestore;
+    setRecordToRestore(null);
     try {
       const res = await fetch(`/api/admin/landing-config/rollback/${id}`, {
         method: 'POST'
@@ -118,6 +126,33 @@ export default function HistorySidebar({ isOpen, onClose, onRestore }: Props) {
         message={popup.message}
         type={popup.type}
       />
+
+      {/* Styled Confirmation Modal */}
+      {recordToRestore && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full max-w-sm p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <RotateCcw size={22} className="text-primary" />
+            </div>
+            <h3 className="font-extrabold text-slate-800 dark:text-zinc-150 text-lg mb-2">{t.confirmRestoreTitle}</h3>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-6 font-semibold">{t.confirmRestore}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setRecordToRestore(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg font-bold text-xs uppercase transition-colors focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={executeRollback}
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs shadow-md uppercase transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {t.confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Mail, Lock, EyeOff, Eye, ArrowRight, AlertCircle, CheckCircle2, ShieldAlert, ShieldX } from "lucide-react";
 import { useState, useEffect } from "react";
 import { login, signInWithGoogle, clearLoginAttempts } from "../actions";
 import { useForm } from "react-hook-form";
@@ -17,7 +17,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function LoginPage() {
   const { toast, showToast, hideToast } = useToast();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [bannedReason, setBannedReason] = useState<string | null>(null);
 
   const getEmailErrorMessage = (message?: string) => {
     if (!message) return "";
@@ -169,21 +170,29 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const errorParam = params.get("error");
       const resetParam = params.get("reset");
+      let hasToastShown = false;
       
       if (errorParam === "no_profile") {
         showToast(t("login.toastNoProfile"), "error");
+        hasToastShown = true;
       } else if (errorParam === "locked") {
         const reason = params.get("reason");
-        const message = reason
-          ? t("login.toastLockedReason", { reason })
-          : t("login.toastLocked");
-        showToast(message, "error");
+        setBannedReason(reason || t("dashboardLayout.defaultReason"));
+        hasToastShown = true;
       } else if (errorParam) {
         showToast(errorParam === "Could not authenticate user" ? t("login.toastAuthFailed") : errorParam, "error");
+        hasToastShown = true;
       }
 
       if (resetParam === "success") {
         showToast(t("login.toastResetSuccess"), "success");
+        hasToastShown = true;
+      }
+
+      // Clear search params so they do not trigger the toast again on component re-renders
+      if (hasToastShown) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
       }
     }
   }, [showToast, t]);
@@ -217,6 +226,13 @@ export default function LoginPage() {
     const result = await login(formData);
 
     if (result?.error) {
+      // @ts-ignore
+      if (result.isBanned) {
+        // @ts-ignore
+        setBannedReason(result.lockedReason || t("dashboardLayout.defaultReason"));
+        return;
+      }
+      
       showToast(getAuthErrorMessage(result.error), "error");
       
       let attempts = parseInt(localStorage.getItem("login_attempts_count") || "0", 10);
@@ -255,6 +271,44 @@ export default function LoginPage() {
             type={toast.type}
             onClose={hideToast}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 🔴 Account Locked Dialog Overlay */}
+      <AnimatePresence>
+        {bannedReason && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col items-center gap-5 text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center">
+                <ShieldX className="w-8 h-8 text-rose-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-gray-900 mb-1">{t("dashboardLayout.lockedTitle")}</h2>
+                <p className="text-sm text-gray-500">{t("dashboardLayout.lockedSubtitle")}</p>
+              </div>
+              <div className="w-full bg-rose-50 border border-rose-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-1">{t("dashboardLayout.reasonLabel")}</p>
+                <p className="text-sm text-rose-800 font-medium leading-relaxed">{bannedReason}</p>
+              </div>
+              <p className="text-xs text-gray-400">{t("dashboardLayout.lockedWarning")}</p>
+              <button
+                onClick={() => setBannedReason(null)}
+                type="button"
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors text-sm focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {language === 'vi' ? 'Đã hiểu' : 'Got it'}
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
       {/* Left Side - Image/Graphic */}
