@@ -1056,23 +1056,6 @@ export default function ArticleDetailView() {
                         })()
                       )}
                     </div>
-
-                    {/* Author & Tags footer */}
-                    {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
-                      <div className="text-[10px] text-text-muted dark:text-zinc-400 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-zinc-800/85 flex flex-col gap-1">
-                        {activeArticle.author && (
-                          <div className="flex items-center gap-1 font-semibold text-gray-500 dark:text-zinc-400">
-                            <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                            <span>{activeArticle.author}</span>
-                          </div>
-                        )}
-                        {activeArticle.tags && activeArticle.tags.length > 0 && (
-                          <div className="text-blue-600 dark:text-blue-400 font-bold">
-                            {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* All images - Facebook style */}
@@ -1175,23 +1158,6 @@ export default function ArticleDetailView() {
                           )}
                           {!isEditing && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-150 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>}
                         </div>
-
-                        {/* Author & Tags footer */}
-                        {(activeArticle.author || (activeArticle.tags && activeArticle.tags.length > 0)) && (
-                          <div className="text-[10px] text-text-muted dark:text-zinc-400 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-zinc-850 flex flex-col gap-1">
-                            {activeArticle.author && (
-                              <div className="flex items-center gap-1 font-semibold text-gray-500 dark:text-zinc-400">
-                                <span>🎥 {language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                <span>{activeArticle.author}</span>
-                              </div>
-                            )}
-                            {activeArticle.tags && activeArticle.tags.length > 0 && (
-                              <div className="text-blue-600 dark:text-blue-400 font-bold">
-                                {activeArticle.tags.map((tag: string) => tag.startsWith('#') ? tag : `#${tag}`).join(' ')}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
 
                       {/* All images - Threads stacked style */}

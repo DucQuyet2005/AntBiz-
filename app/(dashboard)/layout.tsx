@@ -74,6 +74,10 @@ export default function DashboardLayout({
       }
 
       currentRoleRef.current = profile.role;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem("login_attempts_count");
+        localStorage.removeItem("login_matrix_locked");
+      }
       setLoading(false);
 
       // 🔴 Supabase Realtime: subscribe to changes on THIS user's row
