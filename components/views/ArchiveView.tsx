@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FolderOpen
 } from 'lucide-react';
 
 // Threads Custom SVG Logo
@@ -448,125 +449,142 @@ export default function ArchiveView() {
 
           </div>
           {/* 3-Column Grid Cards */}
-          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 ${totalPages > 1 ? 'min-h-[3000px] md:min-h-[1488px] lg:min-h-[984px]' : ''}`}>
-            {paginatedItems.map((item) => (
-              <Link
-                href={item.link}
-                key={item.id}
-                className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200/60 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
+          {filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center bg-white/50 dark:bg-zinc-900/30 backdrop-blur-md border border-dashed border-gray-200 dark:border-zinc-800 rounded-3xl p-12 mt-2 select-none min-h-[350px]">
+              <div className="w-16 h-16 rounded-2xl bg-gray-50 dark:bg-zinc-800/80 flex items-center justify-center mb-4 text-text-muted dark:text-zinc-400">
+                <FolderOpen size={28} className="text-gray-400 dark:text-zinc-500" />
+              </div>
+              <h3 className="text-base font-bold text-text dark:text-zinc-200 mb-1">
+                {language === 'vi' ? 'Không tìm thấy bài viết' : 'No posts found'}
+              </h3>
+              <p className="text-xs text-text-muted dark:text-zinc-400 max-w-md leading-relaxed font-semibold">
+                {language === 'vi'
+                  ? `Hiện không có bài viết nào thuộc nền tảng ${platformFilter === 'All Platforms' ? 'đang chọn' : platformFilter.toUpperCase()}. Vui lòng chọn nền tảng khác.`
+                  : `There are no posts belonging to ${platformFilter === 'All Platforms' ? 'this selection' : platformFilter.toUpperCase()} at the moment. Please try a different platform.`
+                }
+              </p>
+            </div>
+          ) : (
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 ${totalPages > 1 ? 'min-h-[3000px] md:min-h-[1488px] lg:min-h-[984px]' : ''}`}>
+              {paginatedItems.map((item) => (
+                <Link
+                  href={item.link}
+                  key={item.id}
+                  className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200/60 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:translate-y-[-2px] transition-all cursor-pointer flex flex-col justify-between h-[480px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
 
-                {/* Top Visual Banner */}
-                <div className="h-40 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
+                  {/* Top Visual Banner */}
+                  <div className="h-40 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
 
-                  {/* Image if available */}
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    /* Gradient background for text/thread card */
-                    <div className={`w-full h-full bg-gradient-to-tr ${item.gradient}`}></div>
-                  )}
-
-                  {/* Overlay Badges */}
-
-                  <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
-                    {/* Type Badge */}
-                    <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
-                      {item.type}
-                    </span>
-
-                    {/* Publish Status Badge */}
-                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
-                      ? 'bg-emerald-600/80 border border-emerald-500/30'
-                      : 'bg-amber-600/80 border border-amber-500/30'
-                      }`}>
-                      {item.status === 'posted'
-                        ? (language === 'vi' ? 'Đã đăng' : 'Published')
-                        : (language === 'vi' ? 'Chưa đăng' : 'Draft')
-                      }
-                    </span>
-                  </div>
-
-                  {/* Platform Icon Badge (Right) */}
-                  <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none z-10">
-                    {item.platform === 'facebook' && <Facebook size={14} className="fill-white" />}
-                    {item.platform === 'instagram' && <Instagram size={14} />}
-                    {item.platform === 'blog' && <Globe size={14} />}
-                    {item.platform === 'threads' && <ThreadsIcon size={14} />}
-                  </div>
-
-                </div>
-
-                {/* Card Content Area */}
-                <div className="pt-5 pb-6 px-6 flex-1 flex flex-col justify-between gap-4">
-
-                  {/* Title & Desc */}
-                  <div>
-                    {item.nodeType && (
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
-                        {item.nodeType}
-                      </span>
+                    {/* Image if available */}
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      /* Gradient background for text/thread card */
+                      <div className={`w-full h-full bg-gradient-to-tr ${item.gradient}`}></div>
                     )}
-                    <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-1 hover:text-primary transition-colors line-clamp-2 min-h-[3rem]">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-2 min-h-[2.5rem]">
-                      {item.description}
-                    </p>
-                  </div>
 
-                  {/* Metrics & Reactions */}
-                  <div>
-                    {/* Horizontal divider */}
-                    <div className="border-t border-gray-100/80 dark:border-zinc-800/60 my-2.5"></div>
+                    {/* Overlay Badges */}
 
-                    {/* Reach & Conversions */}
-                    <div className="flex gap-10">
-                      <div>
-                        <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
-                        <span className="text-sm font-extrabold text-text dark:text-zinc-200 flex items-center gap-1">
-                          <TrendingUp size={14} className="text-emerald-500" />
-                          {typeof item.reach === 'string' ? item.reach.replace(/\s*lượt\s*xem/gi, '') : item.reach}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.conversions')}</span>
-                        <span className="text-sm font-extrabold text-text dark:text-zinc-200">
-                          {item.conversions}
-                        </span>
-                      </div>
+                    <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
+                      {/* Type Badge */}
+                      <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
+                        {item.type}
+                      </span>
+
+                      {/* Publish Status Badge */}
+                      <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
+                        ? 'bg-emerald-600/80 border border-emerald-500/30'
+                        : 'bg-amber-600/80 border border-amber-500/30'
+                        }`}>
+                        {item.status === 'posted'
+                          ? (language === 'vi' ? 'Đã đăng' : 'Published')
+                          : (language === 'vi' ? 'Chưa đăng' : 'Draft')
+                        }
+                      </span>
                     </div>
 
-                    {/* Bottom Reactions & Publish Date */}
-                    <div className="flex items-center justify-between text-xs font-semibold text-text-muted dark:text-zinc-500 mt-3.5">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
-                          <Heart size={14} className="text-rose-400 fill-rose-50 dark:fill-rose-950/20" />
-                          <span>{item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)}k` : item.likes}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                          <MessageSquare size={14} />
-                          <span>{item.comments}</span>
-                        </div>
-                      </div>
-                      {item.created_at && (
-                        <span className="text-[10px] text-text-muted dark:text-zinc-500 font-medium select-none">
-                          {new Date(item.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                    {/* Platform Icon Badge (Right) */}
+                    <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none z-10">
+                      {item.platform === 'facebook' && <Facebook size={14} className="fill-white" />}
+                      {item.platform === 'instagram' && <Instagram size={14} />}
+                      {item.platform === 'blog' && <Globe size={14} />}
+                      {item.platform === 'threads' && <ThreadsIcon size={14} />}
+                    </div>
+
+                  </div>
+
+                  {/* Card Content Area */}
+                  <div className="pt-5 pb-6 px-6 flex-1 flex flex-col justify-between gap-4">
+
+                    {/* Title & Desc */}
+                    <div>
+                      {item.nodeType && (
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
+                          {item.nodeType}
                         </span>
                       )}
+                      <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-1 hover:text-primary transition-colors line-clamp-2 min-h-[3rem]">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-2 min-h-[2.5rem]">
+                        {item.description}
+                      </p>
+                    </div>
+
+                    {/* Metrics & Reactions */}
+                    <div>
+                      {/* Horizontal divider */}
+                      <div className="border-t border-gray-100/80 dark:border-zinc-800/60 my-2.5"></div>
+
+                      {/* Reach & Conversions */}
+                      <div className="flex gap-10">
+                        <div>
+                          <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.totalReach')}</span>
+                          <span className="text-sm font-extrabold text-text dark:text-zinc-200 flex items-center gap-1">
+                            <TrendingUp size={14} className="text-emerald-500" />
+                            {typeof item.reach === 'string' ? item.reach.replace(/\s*lượt\s*xem/gi, '') : item.reach}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-text-muted dark:text-zinc-500 uppercase tracking-wider block mb-0.5">{t('archive.conversions')}</span>
+                          <span className="text-sm font-extrabold text-text dark:text-zinc-200">
+                            {item.conversions}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Reactions & Publish Date */}
+                      <div className="flex items-center justify-between text-xs font-semibold text-text-muted dark:text-zinc-500 mt-3.5">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
+                            <Heart size={14} className="text-rose-400 fill-rose-50 dark:fill-rose-950/20" />
+                            <span>{item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)}k` : item.likes}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                            <MessageSquare size={14} />
+                            <span>{item.comments}</span>
+                          </div>
+                        </div>
+                        {item.created_at && (
+                          <span className="text-[10px] text-text-muted dark:text-zinc-500 font-medium select-none">
+                            {new Date(item.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                          </span>
+                        )}
+                      </div>
+
                     </div>
 
                   </div>
 
-                </div>
-
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Premium Pagination Controls */}
           {totalPages > 1 && (
