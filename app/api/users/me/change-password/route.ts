@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { sendEmail } from '@/lib/email';
 import { createNotification } from '@/lib/services/notificationService';
 
@@ -40,8 +39,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Invalidate all refresh tokens (Global Sign Out)
-    const adminClient = createAdminClient();
-    const { error: signOutError } = await adminClient.auth.admin.signOut(user.id, 'global');
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' });
 
     if (signOutError) {
       console.error('Lỗi khi thu hồi các session:', signOutError);
