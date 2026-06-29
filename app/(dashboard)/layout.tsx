@@ -296,18 +296,14 @@ export default function DashboardLayout({
               <div
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-14 h-32 rounded-full"
                 style={{
-                  background: 'radial-gradient(ellipse at left, #5A5CDE 0%, transparent 70%)',
+                  background: 'radial-gradient(ellipse at left, var(--color-primary) 0%, transparent 70%)',
                   filter: 'blur(14px)',
                   opacity: 0.65,
                 }}
               />
               {/* Pill */}
               <div
-                className="relative flex items-center justify-center h-14 w-8 rounded-r-full"
-                style={{
-                  background: '#5A5CDE',
-                  boxShadow: '6px 0 20px 0 rgba(90,92,222,0.45)',
-                }}
+                className="relative flex items-center justify-center h-14 w-8 rounded-r-full bg-primary shadow-lg shadow-primary/30"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
@@ -331,18 +327,14 @@ export default function DashboardLayout({
                 <div
                   className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-14 rounded-full"
                   style={{
-                    background: 'radial-gradient(ellipse at top, #5A5CDE 0%, transparent 70%)',
+                    background: 'radial-gradient(ellipse at top, var(--color-primary) 0%, transparent 70%)',
                     filter: 'blur(14px)',
                     opacity: 0.65,
                   }}
                 />
                 {/* Pill */}
                 <div
-                  className="relative flex items-center justify-center w-16 h-8 rounded-b-full"
-                  style={{
-                    background: '#5A5CDE',
-                    boxShadow: '0 6px 20px 0 rgba(90,92,222,0.45)',
-                  }}
+                  className="relative flex items-center justify-center w-16 h-8 rounded-b-full bg-primary shadow-lg shadow-primary/30"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                 </div>
