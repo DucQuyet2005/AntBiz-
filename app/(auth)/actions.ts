@@ -9,11 +9,6 @@ import { loginSchema, registerSchema } from '@/lib/validations/auth'
 
 export async function login(formData: FormData) {
   const cookieStore = await cookies()
-  const lockoutCookie = cookieStore.get('login_lockout')
-
-  if (lockoutCookie) {
-    return { error: 'Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 3 phút.', isLockedOut: true }
-  }
 
   let email = formData.get('email') as string
   if (email && !email.includes('@')) {
@@ -56,14 +51,8 @@ export async function login(formData: FormData) {
     attempts += 1
 
     if (attempts >= 5) {
-      // Set lockout cookie for 3 minutes
-      cookieStore.set('login_lockout', '1', {
-        maxAge: 180,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
-      })
       cookieStore.delete('login_attempts')
-      return { error: 'Bạn đã đăng nhập sai 5 lần. Tài khoản tạm thời bị khóa 3 phút.', isLockedOut: true }
+      return { error: 'Bạn đã đăng nhập sai 5 lần. Vui lòng hoàn thành xác thực để tiếp tục.', isLockedOut: true }
     } else {
       cookieStore.set('login_attempts', attempts.toString(), {
         maxAge: 60 * 60 * 24, // 24 hours

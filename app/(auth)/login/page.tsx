@@ -53,6 +53,8 @@ export default function LoginPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        localStorage.removeItem("login_attempts_count");
+        localStorage.removeItem("login_matrix_locked");
         router.replace('/overview');
       }
     };
@@ -60,7 +62,6 @@ export default function LoginPage() {
   }, [router]);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [lockoutTime, setLockoutTime] = useState<number>(0);
 
   // Matrix challenge states
   const [isMatrixLocked, setIsMatrixLocked] = useState(false);
@@ -143,24 +144,13 @@ export default function LoginPage() {
 
   const emailValue = watch("email");
 
-  const isLockedOut = lockoutTime > 0 || isMatrixLocked;
+  const isLockedOut = isMatrixLocked;
 
   useEffect(() => {
     const isLocked = localStorage.getItem("login_matrix_locked") === "true";
     if (isLocked) {
       setIsMatrixLocked(true);
       generateShuffledMatrix();
-    } else {
-      const storedLockout = localStorage.getItem("login_lockout_until");
-      if (storedLockout) {
-        const remaining = Math.floor((parseInt(storedLockout) - Date.now()) / 1000);
-        if (remaining > 0) {
-          setLockoutTime(remaining);
-        } else {
-          localStorage.removeItem("login_lockout_until");
-          localStorage.removeItem("login_attempts_count");
-        }
-      }
     }
   }, []);
 
@@ -197,23 +187,7 @@ export default function LoginPage() {
     }
   }, [showToast, t]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lockoutTime > 0) {
-      timer = setInterval(() => {
-        setLockoutTime((prev) => {
-          if (prev <= 1) {
-            localStorage.removeItem("login_lockout_until");
-            localStorage.removeItem("login_attempts_count");
-            hideToast();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [lockoutTime, hideToast]);
+
 
   const onSubmit = async (data: LoginInput) => {
     if (isLockedOut) return;
@@ -411,7 +385,7 @@ export default function LoginPage() {
             disabled={isSubmitting || isLockedOut}
             className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            {isLockedOut ? t("login.lockoutMessage", { time: lockoutTime }) : isSubmitting ? t("login.submitting") : t("login.submitBtn")}
+            {isLockedOut ? (language === 'vi' ? 'Đã bị khóa' : 'Locked') : isSubmitting ? t("login.submitting") : t("login.submitBtn")}
             {!isLockedOut && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
