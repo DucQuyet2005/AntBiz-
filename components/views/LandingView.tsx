@@ -446,16 +446,22 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           </div>
         )}
 
-        {/* Editor Manual Navigation Arrows */}
-        {isEditor && config.heroSlides?.length > 1 && (
+        {/* Manual Navigation Arrows */}
+        {config.heroSlides?.length > 1 && (
           <>
-            {/* Left arrow hidden in editor mode to prevent overlap with sidebar trigger */}
+            <button 
+              onClick={handlePrevSlide}
+              className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white p-2.5 rounded-full shadow-lg transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${isEditor ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} duration-300`}
+              title={language === 'vi' ? 'Slide trước' : 'Previous slide'}
+            >
+              <ChevronLeft size={20} />
+            </button>
             <button 
               onClick={handleNextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-              title={t('landingEditor.slideNext')}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white p-2.5 rounded-full shadow-lg transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${isEditor ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} duration-300`}
+              title={language === 'vi' ? 'Slide sau' : 'Next slide'}
             >
-              <ChevronRight size={24} />
+              <ChevronRight size={20} />
             </button>
           </>
         )}

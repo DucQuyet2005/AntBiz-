@@ -638,49 +638,18 @@ export default function LandingEditor() {
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 pointer-events-none rounded-full opacity-60 group-hover:opacity-90 transition-opacity duration-300"
           style={{
-            background: 'radial-gradient(ellipse at top, #5A5CDE 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at top, var(--color-primary) 0%, transparent 70%)',
             filter: 'blur(14px)',
           }}
         />
         {/* D-shape pill */}
         <div
-          className="relative flex items-center justify-center w-14 h-7 rounded-b-full transition-all duration-200 group-hover:h-10 group-hover:w-16"
-          style={{
-            background: '#5A5CDE',
-            boxShadow: '0 6px 20px 0 rgba(90,92,222,0.4)',
-          }}
+          className="relative flex items-center justify-center w-14 h-7 rounded-b-full transition-all duration-200 group-hover:h-10 group-hover:w-16 bg-primary shadow-lg shadow-primary/30"
         >
           <ChevronDown size={16} className="text-white" />
         </div>
       </div>
 
-      {/* ── LEFT TRIGGER – D-shape tab – click to open Sidebar ── */}
-      {!leftSidebarOpen && (
-        <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-[9980] flex items-center group cursor-pointer"
-          onClick={() => openLeftPanel('brand')}
-          title={t.openSidebar}
-        >
-          {/* Glow */}
-          <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-28 pointer-events-none rounded-full opacity-60 group-hover:opacity-90 transition-opacity duration-300"
-            style={{
-              background: 'radial-gradient(ellipse at left, #5A5CDE 0%, transparent 70%)',
-              filter: 'blur(14px)',
-            }}
-          />
-          {/* D-shape pill */}
-          <div
-            className="relative flex items-center justify-center h-14 w-7 rounded-r-full transition-all duration-200 group-hover:w-10 group-hover:h-16"
-            style={{
-              background: '#5A5CDE',
-              boxShadow: '6px 0 20px 0 rgba(90,92,222,0.4)',
-            }}
-          >
-            <ChevronRight size={16} className="text-white" />
-          </div>
-        </div>
-      )}
 
       {/* ── RIGHT SIDEBAR – Brand + History tabs ── */}
       <div
@@ -816,70 +785,74 @@ export default function LandingEditor() {
           className={`fixed bottom-6 z-[9990] transition-all duration-300 left-1/2 -translate-x-1/2`}
           style={{ maxWidth: 'calc(100vw - 2rem)' }}
         >
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl md:rounded-full shadow-2xl border border-slate-200 dark:border-zinc-700 px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-3 w-auto">
+          <div className="bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-slate-200 dark:border-zinc-700 px-2 py-2 flex items-center gap-1 md:gap-1.5 w-auto">
 
-            {/* EDITOR MODE label */}
-            <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-slate-200 dark:border-zinc-700 shrink-0">
-              <LayoutTemplate className="text-primary" size={17} />
-              <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 uppercase tracking-wide">{t.mode}</span>
+            {/* Left group: mode label + nav buttons */}
+            <div className="flex items-center gap-1 md:gap-1.5 pl-2 md:pl-3 pr-2">
+
+              {/* EDITOR MODE label */}
+              <div className="hidden xl:flex items-center gap-1.5 pr-3 border-r border-slate-200 dark:border-zinc-700 shrink-0">
+                <LayoutTemplate className="text-primary" size={15} />
+                <span className="font-bold text-[10px] text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t.mode}</span>
+              </div>
+
+              {/* Brand */}
+              <button
+                onClick={() => openLeftPanel('brand')}
+                className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2.5 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition-colors shrink-0"
+              >
+                <Palette size={13} /> <span className="hidden lg:inline">{t.brand}</span>
+              </button>
+
+              {/* History */}
+              <button
+                onClick={() => openLeftPanel('history')}
+                className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2.5 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition-colors shrink-0"
+              >
+                <History size={13} /> <span className="hidden lg:inline">{t.history}</span>
+              </button>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
+
+              {/* Reset to default */}
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2.5 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition-colors shrink-0"
+                title={t.resetDefaultTitle}
+              >
+                <RotateCcw size={12} /> <span className="hidden xl:inline">{t.resetDefault}</span>
+              </button>
+
+              {/* Hide UI */}
+              <button
+                onClick={() => setToolbarVisible(false)}
+                className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:outline-none rounded-full px-2.5 py-1.5 font-semibold text-[10px] uppercase tracking-wide transition-colors shrink-0"
+                title={t.hideUITitle}
+              >
+                <EyeOff size={12} /> <span className="hidden xl:inline">{t.hideUI}</span>
+              </button>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
+
+              {/* Save Draft */}
+              <button
+                onClick={() => saveDraft()}
+                disabled={isSaving || isDefaultConfig}
+                className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full font-semibold text-[10px] uppercase tracking-wide transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
+              >
+                <Save size={12} />
+                <span className="hidden lg:inline">{isSaving ? t.saving : t.saveDraft}</span>
+              </button>
             </div>
 
-            {/* Brand */}
-            <button
-              onClick={() => openLeftPanel('brand')}
-              className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-            >
-              <Palette size={14} /> <span className="hidden sm:inline">{t.brand}</span>
-            </button>
-
-            {/* History */}
-            <button
-              onClick={() => openLeftPanel('history')}
-              className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-            >
-              <History size={14} /> <span className="hidden sm:inline">{t.history}</span>
-            </button>
-
-            <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
-
-            {/* Reset to default */}
-            <button
-              onClick={() => setConfirmReset(true)}
-              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-              title={t.resetDefaultTitle}
-            >
-              <RotateCcw size={13} /> <span className="hidden sm:inline">{t.resetDefault}</span>
-            </button>
-
-            {/* Hide UI */}
-            <button
-              onClick={() => setToolbarVisible(false)}
-              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:outline-none rounded-full px-2 py-1 font-bold text-xs uppercase transition-colors shrink-0"
-              title={t.hideUITitle}
-            >
-              <EyeOff size={13} /> <span className="hidden sm:inline">{t.hideUI}</span>
-            </button>
-
-            <div className="w-[1px] h-5 bg-slate-200 dark:bg-zinc-700 mx-0.5 shrink-0" />
-
-            {/* Save Draft */}
-            <button
-              onClick={() => saveDraft()}
-              disabled={isSaving || isDefaultConfig}
-              className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full font-bold text-xs uppercase transition-colors flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none shrink-0"
-            >
-              <Save size={13} />
-              <span className="hidden sm:inline">{isSaving ? t.saving : t.saveDraft}</span>
-            </button>
-
-            {/* Publish – red with label */}
+            {/* Publish — standalone pill flush-right */}
             <button
               onClick={() => setConfirmPublish(true)}
               disabled={isPublishing}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-full font-bold text-xs uppercase shadow-md shadow-red-500/30 transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:outline-none shrink-0"
+              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-full font-bold text-[10px] uppercase tracking-wide transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:outline-none shrink-0"
             >
-              <RefreshCcw size={13} className={isPublishing ? 'animate-spin' : ''} />
-              <span>{isPublishing ? t.publishing : t.publishAction}</span>
+              <RefreshCcw size={12} className={isPublishing ? 'animate-spin' : ''} />
+              <span className="hidden md:inline">{isPublishing ? t.publishing : t.publishAction}</span>
             </button>
           </div>
         </div>

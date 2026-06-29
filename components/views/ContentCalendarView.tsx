@@ -69,16 +69,31 @@ export default function ContentCalendarView() {
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(() => new Date());
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const [dragOverTime, setDragOverTime] = useState<{ dayIndex: number; timeStr: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const getMiniCalendarDate = (d: { day: number; isCurrentMonth: boolean }) => {
+  // Mini calendar month state — starts at today's month
+  const [miniCalMonth, setMiniCalMonth] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  const handlePrevMiniMonth = useCallback(() => {
+    setMiniCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  }, []);
+
+  const handleNextMiniMonth = useCallback(() => {
+    setMiniCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  }, []);
+
+  const getMiniCalendarDate = useCallback((d: { day: number; isCurrentMonth: boolean; isPrev: boolean }) => {
     if (d.isCurrentMonth) {
-      return new Date(2026, 5, d.day); // June is month index 5
-    } else if (d.day === 31) {
-      return new Date(2026, 4, 31); // May is month index 4
+      return new Date(miniCalMonth.getFullYear(), miniCalMonth.getMonth(), d.day);
+    } else if (d.isPrev) {
+      return new Date(miniCalMonth.getFullYear(), miniCalMonth.getMonth() - 1, d.day);
     } else {
-      return new Date(2026, 6, d.day); // July is month index 6
+      return new Date(miniCalMonth.getFullYear(), miniCalMonth.getMonth() + 1, d.day);
     }
-  };
+  }, [miniCalMonth]);
 
   const isDateMatch = (d1: Date | null, d2: Date) => {
     if (!d1) return false;
@@ -386,9 +401,22 @@ export default function ContentCalendarView() {
     );
   }, []);
 
-  const filteredPosts = posts.filter(post =>
-    selectedPlatforms.includes(post.platform?.toLowerCase() || 'blog')
-  );
+  const filteredPosts = posts.filter(post => {
+    const platformMatch = selectedPlatforms.includes(post.platform?.toLowerCase() || 'blog');
+    if (!platformMatch) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    
+    const title = post.captions?.articles?.title || '';
+    const aiContent = post.captions?.ai_content || '';
+    const editedContent = post.captions?.edited_content || '';
+    
+    const titleMatch = title.toLowerCase().includes(q);
+    const aiContentMatch = aiContent.toLowerCase().includes(q);
+    const editedContentMatch = editedContent.toLowerCase().includes(q);
+    
+    return titleMatch || aiContentMatch || editedContentMatch;
+  });
 
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
   const formatHour = (hour: number) => {
@@ -397,14 +425,31 @@ export default function ContentCalendarView() {
     return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
   };
 
-  const miniCalendarDays = [
-    { day: 31, isCurrentMonth: false },
-    ...Array.from({ length: 30 }, (_, i) => ({ day: i + 1, isCurrentMonth: true })),
-    { day: 1, isCurrentMonth: false },
-    { day: 2, isCurrentMonth: false },
-    { day: 3, isCurrentMonth: false },
-    { day: 4, isCurrentMonth: false },
-  ];
+  // Dynamic mini calendar — compute days for miniCalMonth
+  const miniCalendarDays = useMemo(() => {
+    const year = miniCalMonth.getFullYear();
+    const month = miniCalMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    const days: { day: number; isCurrentMonth: boolean; isPrev: boolean }[] = [];
+
+    // Leading days from previous month
+    for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+      days.push({ day: daysInPrevMonth - i, isCurrentMonth: false, isPrev: true });
+    }
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ day: i, isCurrentMonth: true, isPrev: false });
+    }
+    // Trailing days from next month to fill 6 rows (42 cells)
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ day: i, isCurrentMonth: false, isPrev: false });
+    }
+    return days;
+  }, [miniCalMonth]);
 
   const getHeaderTitle = () => {
     const midWeek = new Date(currentWeekStart);
@@ -584,15 +629,30 @@ export default function ContentCalendarView() {
             )}
           </div>
 
-          {/* Mini Monthly Calendar (June 2026) */}
+          {/* Mini Monthly Calendar – dynamic */}
           <div className="mini-cal-container rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
-                {language === 'vi' ? 'Tháng 6, 2026' : 'June 2026'}
+              <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                {language === 'vi'
+                  ? `Tháng ${miniCalMonth.getMonth() + 1}, ${miniCalMonth.getFullYear()}`
+                  : miniCalMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+                }
               </span>
               <div className="flex items-center gap-1.5">
-                <ChevronLeft size={14} className="text-slate-400 cursor-pointer hover:text-slate-700 transition-colors" />
-                <ChevronRight size={14} className="text-slate-400 cursor-pointer hover:text-slate-700 transition-colors" />
+                <button
+                  onClick={handlePrevMiniMonth}
+                  aria-label={language === 'vi' ? 'Tháng trước' : 'Previous month'}
+                  className="p-0.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors focus-visible:outline-none"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  onClick={handleNextMiniMonth}
+                  aria-label={language === 'vi' ? 'Tháng sau' : 'Next month'}
+                  className="p-0.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors focus-visible:outline-none"
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
 
@@ -605,8 +665,8 @@ export default function ContentCalendarView() {
                 const today = new Date();
                 const isToday = d.isCurrentMonth &&
                   d.day === today.getDate() &&
-                  today.getMonth() === 5 &&
-                  today.getFullYear() === 2026;
+                  miniCalMonth.getMonth() === today.getMonth() &&
+                  miniCalMonth.getFullYear() === today.getFullYear();
                 const cellDate = getMiniCalendarDate(d);
                 const isSelected = highlightedDate && isDateMatch(highlightedDate, cellDate);
 
@@ -636,8 +696,10 @@ export default function ContentCalendarView() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-450 w-4 h-4" />
             <input
               type="text"
-              placeholder={language === 'vi' ? 'Tìm người, sự kiện...' : 'Search people...'}
-              aria-label={language === 'vi' ? 'Tìm kiếm bài viết' : 'Search posts'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={language === 'vi' ? 'Tìm lịch theo tên...' : 'Search schedules...'}
+              aria-label={language === 'vi' ? 'Tìm kiếm lịch đăng bài' : 'Search scheduled posts'}
               className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl py-3 pl-10 pr-3.5 text-xs font-bold text-slate-700 placeholder:text-slate-400/80 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all shadow-inner"
             />
           </div>
