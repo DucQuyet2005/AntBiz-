@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createNotification, createNotifications } from '@/lib/services/notificationService';
+import { broadcastUserStatusChange } from '@/lib/services/broadcastService';
 
 export async function PUT(
   req: NextRequest,
@@ -114,8 +115,13 @@ export async function PUT(
     })()
   );
 
-  // Thực hiện các tác vụ phụ ở background (không await để trả phản hồi ngay lập tức cho client)
-  Promise.all(bgPromises);
+  // 3. Send realtime broadcast for immediate reaction using admin client (supports WebSocket)
+  bgPromises.push(
+    broadcastUserStatusChange(id, { role })
+  );
+
+  // Await tất cả background tasks trước khi trả về response.
+  await Promise.all(bgPromises);
 
   return NextResponse.json({ success: true, message: 'Role updated successfully' });
 }

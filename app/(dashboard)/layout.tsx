@@ -107,6 +107,17 @@ export default function DashboardLayout({
             }
           }
         )
+        .on(
+          'broadcast',
+          { event: 'status_changed' },
+          (payload) => {
+            const { status, locked_reason } = payload.payload;
+            if (status === 'locked') {
+              showLockDialogThenLogout(locked_reason || t("dashboardLayout.defaultReason"));
+              return;
+            }
+          }
+        )
         .subscribe((status, err) => {
           if (status !== 'SUBSCRIBED') {
             console.warn(`Supabase Realtime subscription status for user-status-${user.id}:`, status, err);
