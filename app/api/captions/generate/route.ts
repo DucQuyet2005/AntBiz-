@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
     }
 
-    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId } = body;
+    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId, authorProfileId } = body;
 
     if (!promptId && !customPrompt) {
       return NextResponse.json({ error: 'Thiếu promptId' }, { status: 400 });
@@ -266,9 +266,50 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Connect to Gemini API for Streaming
     const geminiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL;
+    const model = process.env.GEMINI_MODEL || '';
+
+    // 3.5. Fetch Author Profile for 2-Layer Custom Style (Few-shot or Tuned Model)
+    let authorFewShotPrompt = '';
+    let resolvedModel = model;
+
+    if (authorProfileId) {
+      try {
+        const { data: profile, error: profileError } = await userSupabase
+          .from('author_profiles')
+          .select('*')
+          .eq('id', authorProfileId)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('[Generate API] Error fetching author profile:', profileError);
+        } else if (profile) {
+          // If we have a ready Tuned Model, use it
+          if (profile.tuning_status === 'ready' && profile.tuned_model_id) {
+            resolvedModel = profile.tuned_model_id;
+            console.log(`[Generate API] Using Google AI Studio Tuned Model: ${resolvedModel}`);
+          }
+          
+          // Add few-shot context as a strong guide or fallback
+          if (profile.sample_posts && profile.sample_posts.length > 0) {
+            const examples = profile.sample_posts.slice(0, 3).map((post: string, index: number) => {
+              return `--- \nVí dụ bài viết ${index + 1} cần bắt chước văn phong:\n${post}\n`;
+            }).join('\n');
+
+            authorFewShotPrompt = `
+Dưới đây là một số bài đăng mẫu thể hiện chính xác văn phong bạn CẦN BẮT CHƯỚC (về giọng điệu, cách viết hook, cách ngắt dòng, sử dụng emoji):
+${examples}
+---
+Yêu cầu bắt buộc: Hãy viết bài viết mới bắt chước hoàn hảo phong cách hành văn của các bài viết mẫu trên.
+`;
+          }
+        }
+      } catch (err) {
+        console.error('[Generate API] Unexpected error resolving author profile:', err);
+      }
+    }
+
+    // 4. Connect to Gemini API for Streaming
 
     if (!geminiKey) {
       console.error('[Generate API] GEMINI_API_KEY is not defined in .env');
@@ -282,6 +323,7 @@ export async function POST(request: NextRequest) {
 
     const promptText = `
 ${promptContent}
+${authorFewShotPrompt}
 
 ---
 Original Article (Full Preprocessed Data):
@@ -301,7 +343,9 @@ ${article.full_text ? article.full_text.substring(0, 8000) : ''}
 CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ LỜI DẪN GIẢI, GIỚI THIỆU, LỜI CHÀO HỎI HỢP LỆ HAY CÁC KÝ TỰ PHÂN CÁCH NHƯ "Tuyệt vời!", "Dưới đây là...", "---", KHÔNG CÓ BẤT KỲ KÝ TỰ NÀO NGOÀI BÀI ĐĂNG MẠNG XÃ HỘI.
 `;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${geminiKey}`;
+    const isTunedModel = resolvedModel.startsWith('tunedModels/');
+    const modelPath = isTunedModel ? resolvedModel : `models/${resolvedModel}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:streamGenerateContent?key=${geminiKey}`;
     // Use higher temperature for variant B/C (index >= 1) to increase caption diversity
     const temperature = resolvedVariantIndex >= 1 ? 1.0 : 0.7;
     const response = await fetchGeminiWithRetry(geminiUrl, {
@@ -393,6 +437,7 @@ CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ
             const insertPayload: Record<string, unknown> = {
               article_id: article.id,
               prompt_id: dbPromptId || null,
+              author_profile_id: authorProfileId || null,
               created_by: user.id,
               platform: targetPlatform === 'threads' ? 'thread' : targetPlatform,
               ai_content: generatedText,

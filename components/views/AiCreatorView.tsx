@@ -272,7 +272,7 @@ const EditableText = ({
                     )}
                   </div>
                   <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                    {value.length.toLocaleString()} ký tự (~{value.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
                   </div>
                 </div>
                 {value.length > charLimit && (
@@ -381,7 +381,7 @@ const EditableText = ({
                 )}
               </div>
               <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                {value.length.toLocaleString()} ký tự (~{value.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
               </div>
             </div>
             {value.length > charLimit && (
@@ -407,6 +407,62 @@ export default function AiCreatorView() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+
+  // --- States moved from lower levels to avoid Temporal Dead Zone (Cannot access before initialization) ---
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
+  const [variantCount, setVariantCount] = useState<2 | 3>(2);
+
+  // --- US-2.07: Prompt Config States ---
+  const [savedConfigs, setSavedConfigs] = useState<any[]>([]);
+  const [selectedConfigId, setSelectedConfigId] = useState<string>('');
+  const [isSaveConfigModalOpen, setIsSaveConfigModalOpen] = useState(false);
+  const [newConfigName, setNewConfigName] = useState('');
+  const [isNewConfigDefault, setIsNewConfigDefault] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  // --- US-2.09: Author Profiles (Văn phong tác giả) States ---
+  const [authorProfiles, setAuthorProfiles] = useState<any[]>([]);
+  const [selectedAuthorIds, setSelectedAuthorIds] = useState<Record<'facebook' | 'threads' | 'instagram', string>>({
+    facebook: '',
+    threads: '',
+    instagram: ''
+  });
+  const selectedAuthorId = selectedAuthorIds[selectedPlatform] || '';
+  const setSelectedAuthorId = (id: string) => {
+    setSelectedAuthorIds(prev => ({
+      ...prev,
+      [selectedPlatform]: id
+    }));
+  };
+  const [isAuthorModalOpen, setIsAuthorModalOpen] = useState(false);
+  const [newAuthorName, setNewAuthorName] = useState('');
+  const [newAuthorUrl, setNewAuthorUrl] = useState('');
+  const [isTrainingAuthor, setIsTrainingAuthor] = useState(false);
+  const [trainingStatusText, setTrainingStatusText] = useState('');
+
+  // --- US-2.08: Prompt Wizard States ---
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState({
+    platform: 'facebook' as 'facebook' | 'threads' | 'instagram',
+    tone: 'Chuyên nghiệp',
+    length: 'Vừa (200-500 từ)',
+    emphasis: '',
+    variantCount: 2,
+    name: '',
+    isDefault: false
+  });
+  const [wizardResultPrompt, setWizardResultPrompt] = useState('');
+  const [isGeneratingWizardPrompt, setIsGeneratingWizardPrompt] = useState(false);
+  const [customTone, setCustomTone] = useState('');
+  const [customLength, setCustomLength] = useState('');
+  const [showCustomToneInput, setShowCustomToneInput] = useState(false);
+  const [showCustomLengthInput, setShowCustomLengthInput] = useState(false);
+
+  // Form states
+  const [tone, setTone] = useState<string>('Chuyên nghiệp');
+  const [length, setLength] = useState<string>('Vừa (200-500 từ)');
+  const [emphasis, setEmphasis] = useState<string>('');
 
   // Onboarding Tour state for AI Creator
   const [showTour, setShowTour] = useState(false);
@@ -599,8 +655,6 @@ export default function AiCreatorView() {
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [lastGeneratedAiContent, setLastGeneratedAiContent] = useState<string | null>(null);
-  // T-1.18: Multi-variant state
-  const [variantCount, setVariantCount] = useState<2 | 3>(2);
   const [variantGroupId, setVariantGroupId] = useState<string | null>(null);
   const [regeneratingVariantId, setRegeneratingVariantId] = useState<string | null>(null);
 
@@ -668,6 +722,7 @@ export default function AiCreatorView() {
             variantGroupId: groupId,
             variantIndex,
             model: selectedModel,
+            authorProfileId: selectedAuthorId || undefined,
             ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
               ? { promptId: selectedPrompt.id }
               : {}),
@@ -817,6 +872,7 @@ export default function AiCreatorView() {
           variantIndex,
           oldCaptionId,
           model: selectedModel,
+          authorProfileId: selectedAuthorId || undefined,
           ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
             ? { promptId: selectedPrompt.id }
             : {}),
@@ -883,13 +939,13 @@ export default function AiCreatorView() {
     }
   };
 
-  // Update prompt when platform changes
+  // Update prompt when platform or configurations change
   useEffect(() => {
-    if (postData.title && postData.description && !isGenerating && !isGeneratingSmartPrompt) {
-      const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.description);
+    if (postData.title && (postData.full_text || postData.description) && !isGenerating && !isGeneratingSmartPrompt) {
+      const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.full_text || postData.description, tone, length, emphasis);
       setActivePrompt(newPrompt);
     }
-  }, [promptPlatform]);
+  }, [promptPlatform, tone, length, emphasis]);
 
   // Prompt Selector Library States
   const [promptsList, setPromptsList] = useState<any[]>([]);
@@ -946,6 +1002,35 @@ export default function AiCreatorView() {
     }
   };
 
+  // Analyze article content to automatically propose configurations (Tone, Length, Emphasis)
+  const analyzeAndApplyConfig = async (title: string, content: string) => {
+    try {
+      const res = await fetch('/api/prompt-configs/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.tone) setTone(data.tone);
+        if (data.length) setLength(data.length);
+        if (data.emphasis) setEmphasis(data.emphasis);
+        return {
+          tone: data.tone || "Chuyên nghiệp",
+          length: data.length || "Vừa (200-500 từ)",
+          emphasis: data.emphasis || "",
+        };
+      }
+    } catch (err) {
+      console.error('Error analyzing article config:', err);
+    }
+    return {
+      tone: "Chuyên nghiệp",
+      length: "Vừa (200-500 từ)",
+      emphasis: "",
+    };
+  };
+
   const handleSaveCurrentPrompt = async () => {
     if (!activePrompt) return null;
     setIsSavingPrompt(true);
@@ -964,6 +1049,38 @@ export default function AiCreatorView() {
       });
       if (res.ok) {
         const json = await res.json();
+
+        // --- US-2.07: Auto save/update prompt config ---
+        try {
+          const isEdit = !!selectedConfigId;
+          const url = isEdit ? `/api/prompt-configs/${selectedConfigId}` : '/api/prompt-configs';
+          const method = isEdit ? 'PUT' : 'POST';
+
+          let configName = finalTitle;
+          let configDefault = true;
+          if (isEdit) {
+            const found = savedConfigs.find(c => c.id === selectedConfigId);
+            if (found) {
+              configName = found.name;
+              configDefault = found.is_default;
+            }
+          }
+
+          await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: configName,
+              platform: promptPlatform,
+              params: { tone, length, emphasis, variant_count: variantCount },
+              is_default: configDefault,
+            }),
+          });
+          await fetchConfigs();
+        } catch (configErr) {
+          console.error('Error auto-saving prompt config:', configErr);
+        }
+
         setSaveSuccess(true);
         setHasUnsavedChanges(false);
         setTimeout(() => setSaveSuccess(false), 3000);
@@ -974,6 +1091,13 @@ export default function AiCreatorView() {
           setPromptsList(listJson.data || []);
         }
         return json.data;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.error('[Save Prompt API Error]:', errJson);
+        const errMsg = errJson.error && errJson.details && Array.isArray(errJson.details) 
+          ? `${errJson.error} (${errJson.details.map((d: any) => `${d.path?.join('.') || 'trường'}: ${d.message || 'lỗi'}`).join(', ')})`
+          : (errJson.error || 'Lỗi khi lưu prompt');
+        alert(errMsg);
       }
     } catch (error) {
       console.error('Error saving prompt:', error);
@@ -989,33 +1113,41 @@ export default function AiCreatorView() {
     setLastGeneratedAiContent(null);
   };
 
-  const getDefaultPromptTemplate = (platform: string, title: string, content: string) => {
+  const getDefaultPromptTemplate = (platform: string, title: string, content: string, toneVal?: string, lengthVal?: string, emphasisVal?: string) => {
     const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+    const resolvedTone = toneVal || tone;
+    const resolvedLength = lengthVal || length;
+    const resolvedEmphasis = emphasisVal || emphasis;
+
+    const truncatedTitle = title && title.length > 300 ? title.slice(0, 300) + '...' : title;
+    const truncatedContent = content && content.length > 3000 ? content.slice(0, 3000) + '... (Nội dung rút gọn)' : content;
+
     return `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 
 **Nền tảng:** ${platformLabel}
 
 **Dữ liệu đầu vào:**
-*   **Tiêu đề bài báo:** "${title}"
-*   **Nội dung tóm tắt:** "${content}"
+*   **Tiêu đề bài báo:** "${truncatedTitle}"
+*   **Nội dung tóm tắt:** "${truncatedContent}"
+${resolvedEmphasis ? `*   **Khía cạnh đặc biệt cần nhấn mạnh:** "${resolvedEmphasis}"` : ''}
 
 **Hướng dẫn khai thác nội dung:**
 *   Sử dụng đoạn tóm tắt để tạo hook và gây tò mò ngay từ đầu.
-*   Tập trung vào khía cạnh truyền cảm hứng của câu chuyện: sự kiên trì, mục tiêu tài chính, hành trình tiết kiệm/đầu tư để đạt được mục tiêu.
 *   Bài viết không cần kể chi tiết toàn bộ câu chuyện mà cần gợi mở để khuyến khích sự tương tác và muốn tìm hiểu thêm.
 
 **Văn phong:**
-*   Thân thiện, gần gũi, dễ đọc, truyền cảm hứng.
-*   Sử dụng ngôn ngữ đời thường, tránh thuật ngữ phức tạp.
+*   Văn phong yêu cầu: ${resolvedTone}.
 *   Khuyến khích sự tương tác, đặt câu hỏi gợi mở.
 
-**Cấu trúc bài viết:**
-1.  **Hook (Móc câu):** Bắt đầu mạnh mẽ, gây tò mò hoặc bất ngờ từ đoạn tóm tắt. Có thể là một câu hỏi hoặc một phát biểu gây chú ý.
-2.  **Body (Nội dung chính):** Phát triển câu chuyện ngắn gọn, nhấn mạnh cảm giác nhẹ nhõm và thành quả. Nhấn mạnh sự nỗ lực và bài học.
-3.  **Call to Action (CTA - Kêu gọi hành động):** Khuyến khích người đọc bình luận, chia sẻ quan điểm, hoặc kể về câu chuyện/mục tiêu của họ.
-4.  **Hashtag:** Đề xuất 3-5 hashtag liên quan, phổ biến và có khả năng viral.
+**Độ dài yêu cầu:** ${resolvedLength}.
 
-TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+**Cấu trúc bài viết:**
+1.  **Hook (Móc câu):** Bắt đầu mạnh mẽ, gây tò mò hoặc bất ngờ từ đoạn tóm tắt.
+2.  **Body (Nội dung chính):** Phát triển câu chuyện ngắn gọn, đúng trọng tâm.
+3.  **Call to Action (CTA - Kêu gọi hành động):** Khuyến khích người đọc bình luận, chia sẻ quan điểm.
+4.  **Hashtag:** Đề xuất 3-5 hashtag liên quan, phổ biến.
+
+TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
   };
 
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
@@ -1478,7 +1610,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
   const [url, setUrl] = useState('');
   const [isFetching, setIsFetching] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
 
   // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
   interface Prompt { id: string; name: string; platform: string; content: string; }
@@ -1491,6 +1622,399 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
   const [generateDone, setGenerateDone] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Fetch list configs of user
+  const fetchConfigs = async () => {
+    try {
+      const res = await fetch(`/api/prompt-configs?platform=${selectedPlatform}`);
+      if (res.ok) {
+        const json = await res.json();
+        setSavedConfigs(json.data || []);
+      }
+    } catch (err) {
+      console.error('Lỗi fetchConfigs:', err);
+    }
+  };
+
+  // Fetch default config
+  const fetchDefaultConfig = async () => {
+    try {
+      const res = await fetch(`/api/prompt-configs/default?platform=${selectedPlatform}`);
+      if (res.ok) {
+        const json = await res.json();
+        const config = json.data;
+        if (config) {
+          setSelectedConfigId(config.id);
+          if (config.params) {
+            if (config.params.tone) setTone(config.params.tone);
+            if (config.params.length) setLength(config.params.length);
+            if (config.params.emphasis) setEmphasis(config.params.emphasis);
+            if (config.params.variant_count) setVariantCount(config.params.variant_count);
+          }
+        } else {
+          setSelectedConfigId('');
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi fetchDefaultConfig:', err);
+    }
+  };
+
+  // Fetch list author profiles of user
+  const fetchAuthorProfiles = async () => {
+    try {
+      const res = await fetch('/api/author-profiles');
+      if (res.ok) {
+        const json = await res.json();
+        setAuthorProfiles(json.data || []);
+      }
+    } catch (err) {
+      console.error('Lỗi fetchAuthorProfiles:', err);
+    }
+  };
+
+  // Create new author profile and trigger training
+  const handleCreateAuthorProfile = async () => {
+    if (!newAuthorName.trim()) {
+      setPopup({ isOpen: true, message: 'Vui lòng nhập tên văn phong', type: 'error' });
+      return;
+    }
+    setIsTrainingAuthor(true);
+    setTrainingStatusText(language === 'vi' ? 'Đang khởi tạo hồ sơ...' : 'Initializing profile...');
+    
+    try {
+      const createRes = await fetch('/api/author-profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAuthorName.trim(),
+          source_url: newAuthorUrl.trim() || undefined,
+        }),
+      });
+
+      if (!createRes.ok) {
+        const errJson = await createRes.json();
+        throw new Error(errJson.error || 'Lỗi tạo hồ sơ');
+      }
+
+      const createJson = await createRes.json();
+      const newProfile = createJson.data;
+
+      if (newAuthorUrl.trim()) {
+        setTrainingStatusText(language === 'vi' ? 'Đang cào dữ liệu & huấn luyện văn phong...' : 'Scraping data & training style...');
+        const trainRes = await fetch(`/api/author-profiles/${newProfile.id}/train`, {
+          method: 'POST',
+        });
+
+        if (!trainRes.ok) {
+          const errJson = await trainRes.json();
+          throw new Error(errJson.error || 'Lỗi huấn luyện');
+        }
+
+        setPopup({
+          isOpen: true,
+          message: language === 'vi' ? 'Huấn luyện văn phong tác giả thành công!' : 'Author style trained successfully!',
+          type: 'success'
+        });
+      } else {
+        setPopup({
+          isOpen: true,
+          message: language === 'vi' ? 'Đã tạo văn phong tác giả mới!' : 'Created new author style!',
+          type: 'success'
+        });
+      }
+
+      // Refresh list
+      await fetchAuthorProfiles();
+      // Auto-select the newly created author profile!
+      setSelectedAuthorId(newProfile.id);
+      
+      // Close modal and reset fields
+      setIsAuthorModalOpen(false);
+      setNewAuthorName('');
+      setNewAuthorUrl('');
+    } catch (err: any) {
+      setPopup({
+        isOpen: true,
+        message: err.message || 'Lỗi xử lý',
+        type: 'error'
+      });
+    } finally {
+      setIsTrainingAuthor(false);
+      setTrainingStatusText('');
+    }
+  };
+
+  // Load configs when platform changes
+  useEffect(() => {
+    if (mounted) {
+      fetchConfigs();
+      fetchDefaultConfig();
+      fetchAuthorProfiles();
+    }
+  }, [selectedPlatform, mounted]);
+
+  // Save prompt config
+  const handleSaveConfig = async () => {
+    if (!newConfigName.trim()) {
+      alert(language === 'vi' ? 'Vui lòng nhập tên cấu hình' : 'Please enter configuration name');
+      return;
+    }
+    setIsSavingConfig(true);
+    try {
+      const res = await fetch('/api/prompt-configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newConfigName.trim(),
+          platform: selectedPlatform,
+          params: { tone, length, emphasis, variant_count: variantCount },
+          is_default: isNewConfigDefault,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Lỗi khi lưu cấu hình');
+      }
+
+      const json = await res.json();
+      await fetchConfigs();
+      setSelectedConfigId(json.data.id);
+      setIsSaveConfigModalOpen(false);
+      setNewConfigName('');
+      setIsNewConfigDefault(false);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Delete config
+  const handleDeleteConfig = async (configId: string) => {
+    const confirmMsg = language === 'vi'
+      ? 'Bạn có chắc chắn muốn xóa cấu hình này?'
+      : 'Are you sure you want to delete this configuration?';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`/api/prompt-configs/${configId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await fetchConfigs();
+        if (selectedConfigId === configId) {
+          setSelectedConfigId('');
+        }
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Lỗi khi xóa cấu hình');
+      }
+    } catch (err) {
+      console.error('Lỗi handleDeleteConfig:', err);
+    }
+  };
+
+  // Handle dropdown config selection change
+  const handleSelectConfig = (configId: string) => {
+    setSelectedConfigId(configId);
+    if (!configId) return;
+    const config = savedConfigs.find(c => c.id === configId);
+    if (config && config.params) {
+      if (config.params.tone) setTone(config.params.tone);
+      if (config.params.length) setLength(config.params.length);
+      if (config.params.emphasis) setEmphasis(config.params.emphasis);
+      if (config.params.variant_count) setVariantCount(config.params.variant_count);
+    }
+  };
+
+  // --- US-2.08: Prompt Wizard Handlers ---
+  const handleStartWizard = () => {
+    setWizardStep(1);
+    setWizardData({
+      platform: selectedPlatform,
+      tone: tone || 'Chuyên nghiệp',
+      length: length || 'Vừa (200-500 từ)',
+      emphasis: emphasis || '',
+      variantCount: variantCount,
+      name: '',
+      isDefault: false
+    });
+    setWizardResultPrompt('');
+    setCustomTone('');
+    setCustomLength('');
+    setShowCustomToneInput(false);
+    setShowCustomLengthInput(false);
+    setIsWizardOpen(true);
+  };
+
+  const handleGenerateWizardPrompt = async () => {
+    setIsGeneratingWizardPrompt(true);
+    try {
+      const res = await fetch('/api/prompt-configs/from-wizard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: wizardData.platform,
+          tone: wizardData.tone,
+          length: wizardData.length,
+          emphasis: wizardData.emphasis,
+          variantCount: wizardData.variantCount
+        })
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Lỗi sinh prompt từ AI');
+      }
+
+      const json = await res.json();
+      setWizardResultPrompt(json.prompt || '');
+      setWizardStep(6); // Step 6 hiển thị kết quả
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    } finally {
+      setIsGeneratingWizardPrompt(false);
+    }
+  };
+
+  const handleApplyWizardResult = async () => {
+    if (!wizardData.name.trim()) {
+      alert(language === 'vi' ? 'Vui lòng nhập tên cấu hình' : 'Please enter configuration name');
+      return;
+    }
+
+    try {
+      // 1. Lưu cấu hình vào DB
+      const res = await fetch('/api/prompt-configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: wizardData.name.trim(),
+          platform: wizardData.platform === 'threads' ? 'thread' : wizardData.platform,
+          params: {
+            tone: wizardData.tone,
+            length: wizardData.length,
+            emphasis: wizardData.emphasis,
+            variant_count: wizardData.variantCount
+          },
+          is_default: wizardData.isDefault
+        })
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Lỗi lưu cấu hình');
+      }
+
+      const json = await res.json();
+
+      // 2. Cập nhật các state chính của AI Creator
+      setTone(wizardData.tone);
+      setLength(wizardData.length);
+      setEmphasis(wizardData.emphasis);
+      setVariantCount(wizardData.variantCount as any);
+      setSelectedPlatform(wizardData.platform as any);
+      setPromptPlatform(wizardData.platform as any);
+      
+      // Đặt prompt vừa sinh thành activePrompt
+      setActivePrompt(wizardResultPrompt);
+
+      // Cập nhật dropdown cấu hình đã chọn
+      await fetchConfigs();
+      setSelectedConfigId(json.data.id);
+
+      // Đóng modal
+      setIsWizardOpen(false);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    }
+  };
+
+  // --- US-2.08: Lọc và kiểm tra tính hợp lệ của dữ liệu nhập tùy chỉnh (Spam / Rác) ---
+  const isValidCustomInput = (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed.length < 2 || trimmed.length > 50) return false;
+
+    const words = trimmed.split(/\s+/);
+
+    // 1. Chống từ liền nhau quá dài (gõ phím rác liền mạch)
+    for (const word of words) {
+      if (word.length > 15) return false;
+    }
+
+    // 2. Chống lặp từ 1 ký tự quá nhiều (ví dụ: "ộ i i", "a b c d e")
+    const singleCharWords = words.filter(w => w.length === 1);
+    if (singleCharWords.length >= 2) return false;
+
+    // 3. Nhận diện các pattern spam phím QWERTY phổ biến
+    const spamPatterns = [
+      /asd/i, /dsad/i, /asda/i, /zxc/i, /qwe/i, /sdf/i, /dfg/i, /fgh/i, /ghj/i, /hjk/i, /jkl/i,
+      /rty/i, /yui/i, /uio/i, /iop/i, /xcv/i, /cvb/i, /vbn/i, /bnm/i, /dsa/i, /sda/i
+    ];
+    for (const pattern of spamPatterns) {
+      if (pattern.test(trimmed)) return false;
+    }
+
+    // 4. Chỉ cho phép các ký tự hợp lệ
+    const validRegex = /^[a-zA-Z0-9À-ỹ\s\-(),./]+$/u;
+    return validRegex.test(trimmed);
+  };
+
+  // --- US-2.08: Helper to replace platform name in prompt text when switched ---
+  const replacePlatformInPrompt = (promptText: string, newPlat: string, oldPlat: string) => {
+    if (!promptText) return promptText;
+    
+    const formatLabel = (p: string) => {
+      if (p === 'facebook') return 'Facebook';
+      if (p === 'instagram') return 'Instagram';
+      if (p === 'threads' || p === 'thread') return 'Threads';
+      return p;
+    };
+
+    const newLabel = formatLabel(newPlat);
+    const newLabelLower = newPlat === 'threads' ? 'threads' : newPlat.toLowerCase();
+
+    let result = promptText;
+    const platforms = [
+      { key: 'facebook', label: 'Facebook' },
+      { key: 'instagram', label: 'Instagram' },
+      { key: 'threads', label: 'Threads' },
+      { key: 'thread', label: 'Threads' },
+    ];
+
+    platforms.forEach(p => {
+      if (p.key !== newPlat) {
+        const regexCapital = new RegExp(p.label, 'g');
+        result = result.replace(regexCapital, newLabel);
+        const regexLower = new RegExp(p.key, 'g');
+        result = result.replace(regexLower, newLabelLower);
+      }
+    });
+
+    return result;
+  };
+
+  const handlePromptPlatformChange = (newPlat: 'facebook' | 'threads' | 'instagram') => {
+    const oldPlat = promptPlatform;
+    setPromptPlatform(newPlat);
+    
+    if (activePrompt) {
+      const updatedPrompt = replacePlatformInPrompt(activePrompt, newPlat, oldPlat);
+      setActivePrompt(updatedPrompt);
+    }
+  };
+
+  // Helper to build generation prompt including configurations
+  const buildGenerationPrompt = (basePrompt: string) => {
+    let promptParts = [];
+    if (tone) promptParts.push(`Văn phong: ${tone}`);
+    if (length) promptParts.push(`Độ dài bài viết: ${length}`);
+    if (emphasis) promptParts.push(`Khía cạnh cần nhấn mạnh: ${emphasis}`);
+    if (basePrompt) promptParts.push(`Hướng dẫn chi tiết: ${basePrompt}`);
+    return promptParts.join('. ');
+  };
 
   // Fetch prompts on mount
   useEffect(() => {
@@ -1576,7 +2100,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       const res = await fetch('/api/captions/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel }),
+        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel, authorProfileId: selectedAuthorId || undefined }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -1946,7 +2470,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setPostData(updatedPostData);
           setArticleId(data.id || null);
           setCaptionId('');
-          const defaultPrompt = getDefaultPromptTemplate(selectedPlatform, updatedPostData.title, updatedPostData.description);
+          
+          // Auto analyze and propose config
+          const analysis = await analyzeAndApplyConfig(updatedPostData.title, updatedPostData.full_text);
+
+          const defaultPrompt = getDefaultPromptTemplate(
+            selectedPlatform,
+            updatedPostData.title,
+            updatedPostData.full_text,
+            analysis.tone,
+            analysis.length,
+            analysis.emphasis
+          );
           setActivePrompt(defaultPrompt);
 
           // Auto-generate a unique prompt title based on the scraped article title
@@ -2038,6 +2573,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           setPostData(updatedPostData);
           setArticleId(data.id || null);
           setCaptionId('');
+
+          // Auto analyze and propose config
+          const analysis = await analyzeAndApplyConfig(updatedPostData.title, updatedPostData.full_text);
+
+          const defaultPrompt = getDefaultPromptTemplate(
+            selectedPlatform,
+            updatedPostData.title,
+            updatedPostData.full_text,
+            analysis.tone,
+            analysis.length,
+            analysis.emphasis
+          );
+          setActivePrompt(defaultPrompt);
 
           // Auto-generate a unique prompt title based on the scraped article title
           const basePromptTitle = updatedPostData.title ? (updatedPostData.title.length > 150 ? updatedPostData.title.slice(0, 147) + '...' : updatedPostData.title) : 'Bài viết';
@@ -2618,7 +3166,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         {(['facebook', 'threads', 'instagram'] as const).map((p) => (
                           <button
                             key={p}
-                            onClick={() => setPromptPlatform(p)}
+                            onClick={() => handlePromptPlatformChange(p)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${promptPlatform === p
                               ? 'bg-white text-primary shadow-sm border border-gray-200'
                               : 'text-text-muted hover:text-text'
@@ -4181,6 +4729,546 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
         </div>
 
+        {/* SAVE PROMPT CONFIGURATION MODAL (US-2.07) */}
+        <AnimatePresence>
+          {isSaveConfigModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsSaveConfigModalOpen(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                    Lưu cấu hình prompt mới
+                  </h3>
+                  <button
+                    onClick={() => setIsSaveConfigModalOpen(false)}
+                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tên cấu hình</label>
+                    <input
+                      type="text"
+                      value={newConfigName}
+                      onChange={(e) => setNewConfigName(e.target.value)}
+                      placeholder="Ví dụ: Giọng văn thân thiện FB, Tin tức trang trọng..."
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is-new-config-default"
+                      checked={isNewConfigDefault}
+                      onChange={(e) => setIsNewConfigDefault(e.target.checked)}
+                      className="w-4 h-4 rounded text-primary focus:ring-primary/30 border-gray-300 dark:border-zinc-700"
+                    />
+                    <label htmlFor="is-new-config-default" className="text-xs font-semibold text-slate-600 dark:text-zinc-400 cursor-pointer select-none">
+                      Đặt làm cấu hình mặc định cho nền tảng {selectedPlatform}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSaveConfigModalOpen(false)}
+                    className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveConfig}
+                    disabled={isSavingConfig}
+                    className="flex-1 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5"
+                  >
+                    {isSavingConfig ? <Loader2 size={12} className="animate-spin" /> : null}
+                    Lưu cấu hình
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* PROMPT CONFIGURATION WIZARD MODAL (US-2.08) */}
+        <AnimatePresence>
+          {isWizardOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans text-xs"
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-7 max-w-lg w-full flex flex-col gap-5 focus-visible:outline-none"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-primary animate-pulse" />
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider font-sans">
+                      Wizard: Thiết lập Prompt Cấu hình
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => { if (!isGeneratingWizardPrompt) setIsWizardOpen(false); }}
+                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent"
+                    disabled={isGeneratingWizardPrompt}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Progress bar */}
+                {wizardStep <= 5 && (
+                  <div className="flex flex-col gap-1.5 shrink-0 font-sans">
+                    <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                      <span>Tiến độ thiết lập</span>
+                      <span>Bước {wizardStep} / 5</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-purple-600 transition-all duration-300"
+                        style={{ width: `${(wizardStep / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step Content */}
+                <div className="flex-1 overflow-y-auto max-h-[60vh] py-2 flex flex-col gap-4 font-sans">
+                  {wizardStep === 1 && (
+                    <div className="flex flex-col gap-3 font-sans">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                        Bước 1: Nền tảng mục tiêu
+                      </h4>
+                      <p className="text-[11px] text-text-muted font-sans">Chọn mạng xã hội bạn dự kiến xuất bản bài viết nhiều nhất:</p>
+                      <div className="grid grid-cols-3 gap-3 font-sans">
+                        {(['facebook', 'threads', 'instagram'] as const).map((p) => {
+                          const isSel = wizardData.platform === p;
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setWizardData(d => ({ ...d, platform: p }))}
+                              className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                                isSel
+                                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                  : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 bg-transparent'
+                              }`}
+                            >
+                              {p === 'facebook' && <Facebook size={20} className="text-[#1877F2]" />}
+                              {p === 'instagram' && <Instagram size={20} className="text-pink-600" />}
+                              {p === 'threads' && <ThreadsIcon size={20} className="text-black dark:text-white" />}
+                              <span className="text-[10px] font-black uppercase text-slate-700 dark:text-zinc-300 font-sans">{p}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {wizardStep === 2 && (
+                    <div className="flex flex-col gap-3 font-sans">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                        Bước 2: Chọn Văn phong (Tone)
+                      </h4>
+                      <p className="text-[11px] text-text-muted font-sans">Giọng văn (Văn phong) AI sẽ sử dụng để viết caption:</p>
+                      <div className="grid grid-cols-2 gap-2 font-sans">
+                        {['Chuyên nghiệp', 'Thân thiện', 'Hài hước', 'Sắc sảo', 'Storytelling', 'Trang trọng', 'Đơn giản', 'Khác'].map((t) => {
+                          const isSel = t === 'Khác' ? showCustomToneInput : (wizardData.tone === t && !showCustomToneInput);
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => {
+                                if (t === 'Khác') {
+                                  setShowCustomToneInput(true);
+                                  setWizardData(d => ({ ...d, tone: customTone || '' }));
+                                } else {
+                                  setShowCustomToneInput(false);
+                                  setWizardData(d => ({ ...d, tone: t }));
+                                }
+                              }}
+                              className={`px-4 py-2.5 rounded-xl border text-left font-bold text-[11px] cursor-pointer transition-all font-sans ${
+                                isSel
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 text-slate-700 dark:text-zinc-300 bg-transparent'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {showCustomToneInput && (
+                        <div className="flex flex-col gap-1.5 mt-2 animate-fade-in">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nhập văn phong khác</label>
+                          <input
+                            type="text"
+                            value={customTone}
+                            onChange={(e) => {
+                              setCustomTone(e.target.value);
+                              setWizardData(d => ({ ...d, tone: e.target.value }));
+                            }}
+                            placeholder="Ví dụ: Mỉa mai, Đầy cảm thông, Nghiêm khắc..."
+                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {wizardStep === 3 && (
+                    <div className="flex flex-col gap-3 font-sans">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                        Bước 3: Độ dài bài viết
+                      </h4>
+                      <p className="text-[11px] text-text-muted font-sans">Giới hạn số từ ước lượng cho bài viết của bạn:</p>
+                      <div className="flex flex-col gap-2 font-sans">
+                        {['Ngắn (dưới 200 từ)', 'Vừa (200-500 từ)', 'Dài (trên 500 từ)', 'Khác'].map((l) => {
+                          const isSel = l === 'Khác' ? showCustomLengthInput : (wizardData.length === l && !showCustomLengthInput);
+                          return (
+                            <button
+                              key={l}
+                              type="button"
+                              onClick={() => {
+                                if (l === 'Khác') {
+                                  setShowCustomLengthInput(true);
+                                  setWizardData(d => ({ ...d, length: customLength || '' }));
+                                } else {
+                                  setShowCustomLengthInput(false);
+                                  setWizardData(d => ({ ...d, length: l }));
+                                }
+                              }}
+                              className={`px-4 py-3.5 rounded-xl border text-left font-bold text-[11px] cursor-pointer transition-all font-sans ${
+                                isSel
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 text-slate-700 dark:text-zinc-300 bg-transparent'
+                              }`}
+                            >
+                              {l}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {showCustomLengthInput && (
+                        <div className="flex flex-col gap-1.5 mt-2 animate-fade-in">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nhập độ dài khác</label>
+                          <input
+                            type="text"
+                            value={customLength}
+                            onChange={(e) => {
+                              setCustomLength(e.target.value);
+                              setWizardData(d => ({ ...d, length: e.target.value }));
+                            }}
+                            placeholder="Ví dụ: Siêu ngắn (dưới 50 từ), Cực dài (trên 1000 từ)..."
+                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {wizardStep === 4 && (
+                    <div className="flex flex-col gap-3 font-sans">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                        Bước 4: Khía cạnh nhấn mạnh (Emphasis)
+                      </h4>
+                      <p className="text-[11px] text-text-muted font-sans">Nhập thủ công hoặc chọn nhanh mục tiêu nhấn mạnh của nội dung bài đăng:</p>
+                      <input
+                        type="text"
+                        value={wizardData.emphasis}
+                        onChange={(e) => setWizardData(d => ({ ...d, emphasis: e.target.value }))}
+                        placeholder="Ví dụ: Tính năng sản phẩm, Chương trình ưu đãi, Yếu tố cảm xúc..."
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                      />
+                      <div className="flex flex-wrap gap-1.5 mt-1 font-sans">
+                        {['Lợi ích sản phẩm', 'Khuyến mãi 50%', 'Chia sẻ kiến thức bổ ích', 'Đánh giá chân thực', 'Câu chuyện cảm xúc', 'Cảnh báo rủi ro'].map((emp) => (
+                          <button
+                            key={emp}
+                            type="button"
+                            onClick={() => setWizardData(d => ({ ...d, emphasis: emp }))}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-[10px] font-bold text-slate-600 dark:text-zinc-300 cursor-pointer border-none font-sans"
+                          >
+                            {emp}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {wizardStep === 5 && (
+                    <div className="flex flex-col gap-3.5 font-sans">
+                      <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                        Bước 5: Thiết lập cấu hình
+                      </h4>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">Tên cấu hình mới</label>
+                        <input
+                          type="text"
+                          required
+                          value={wizardData.name}
+                          onChange={(e) => setWizardData(d => ({ ...d, name: e.target.value }))}
+                          placeholder="Ví dụ: Cấu hình Storytelling của tôi..."
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 font-sans">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">Số lượng biến thể caption sinh ra</label>
+                        <div className="flex gap-2 font-sans">
+                          {[2, 3].map((v) => (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => setWizardData(d => ({ ...d, variantCount: v }))}
+                              className={`flex-1 py-2.5 rounded-xl border font-bold text-[11px] cursor-pointer transition-all font-sans ${
+                                wizardData.variantCount === v
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 text-slate-700 dark:text-zinc-300 bg-transparent'
+                              }`}
+                            >
+                              {v} biến thể (Variant {v === 2 ? 'A/B' : 'A/B/C'})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 font-sans">
+                        <input
+                          type="checkbox"
+                          id="wizard-is-default"
+                          checked={wizardData.isDefault}
+                          onChange={(e) => setWizardData(d => ({ ...d, isDefault: e.target.checked }))}
+                          className="w-4 h-4 rounded text-primary focus:ring-primary/30 border-gray-300 dark:border-zinc-700"
+                        />
+                        <label htmlFor="wizard-is-default" className="text-xs font-semibold text-slate-600 dark:text-zinc-400 cursor-pointer select-none font-sans">
+                          Đặt làm cấu hình mặc định cho nền tảng {wizardData.platform}
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {wizardStep === 6 && (
+                    <div className="flex flex-col gap-3 font-sans">
+                      <div className="flex items-center justify-between font-sans">
+                        <h4 className="text-xs font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider font-sans">
+                          Kết quả: Prompt Mẫu Được AI Tạo Ra
+                        </h4>
+                        <span className="text-[9px] bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 font-black px-2 py-0.5 rounded font-sans">
+                          Sinh bởi Gemini AI
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-muted font-sans">Bạn có thể chỉnh sửa lại nội dung prompt mẫu này nếu cần thiết:</p>
+                      <textarea
+                        rows={8}
+                        value={wizardResultPrompt}
+                        onChange={(e) => setWizardResultPrompt(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none font-medium leading-relaxed font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-3 mt-1 shrink-0 font-sans">
+                  {wizardStep > 1 && wizardStep <= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setWizardStep(s => s - 1)}
+                      className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 px-5 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                    >
+                      Quay lại
+                    </button>
+                  )}
+
+                  {wizardStep < 5 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (wizardStep === 2 && showCustomToneInput) {
+                          if (!customTone.trim()) {
+                            alert(language === 'vi' ? 'Vui lòng nhập văn phong của bạn' : 'Please enter your tone');
+                            return;
+                          }
+                          if (!isValidCustomInput(customTone)) {
+                            alert(language === 'vi' ? 'Vui lòng nhập văn phong hợp lệ (từ 2-50 ký tự, không chứa từ quá dài hoặc kí tự đặc biệt)' : 'Please enter a valid tone (2-50 chars, no long words or special characters)');
+                            return;
+                          }
+                        }
+                        if (wizardStep === 3 && showCustomLengthInput) {
+                          if (!customLength.trim()) {
+                            alert(language === 'vi' ? 'Vui lòng nhập độ dài mong muốn' : 'Please enter your length');
+                            return;
+                          }
+                          if (!isValidCustomInput(customLength)) {
+                            alert(language === 'vi' ? 'Vui lòng nhập độ dài hợp lệ (từ 2-50 ký tự, không chứa từ quá dài hoặc kí tự đặc biệt)' : 'Please enter a valid length (2-50 chars, no long words or special characters)');
+                            return;
+                          }
+                        }
+                        setWizardStep(s => s + 1);
+                      }}
+                      className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                    >
+                      Tiếp tục
+                    </button>
+                  ) : wizardStep === 5 ? (
+                    <button
+                      type="button"
+                      onClick={handleGenerateWizardPrompt}
+                      disabled={isGeneratingWizardPrompt || !wizardData.name.trim()}
+                      className="flex-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary-hover hover:to-purple-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
+                    >
+                      {isGeneratingWizardPrompt ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                      Tạo Prompt tự động
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep(5)}
+                        className="bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 px-5 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                      >
+                        Quay lại
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyWizardResult}
+                        className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 font-sans"
+                      >
+                        Lưu & Áp dụng
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CREATE AUTHOR PROFILE & TRAIN MODAL (US-2.09) */}
+        <AnimatePresence>
+          {isAuthorModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget && !isTrainingAuthor) setIsAuthorModalOpen(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                    {language === 'vi' ? 'Tạo văn phong tác giả mới' : 'Create new author style'}
+                  </h3>
+                  <button
+                    onClick={() => { if (!isTrainingAuthor) setIsAuthorModalOpen(false); }}
+                    disabled={isTrainingAuthor}
+                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent disabled:opacity-50"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {isTrainingAuthor ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+                      <Loader2 size={36} className="text-primary animate-spin" />
+                      <p className="text-xs font-bold text-slate-700 dark:text-zinc-300 animate-pulse text-center font-sans">
+                        {trainingStatusText}
+                      </p>
+                      <p className="text-[10px] text-slate-400 text-center font-sans">
+                        {language === 'vi'
+                          ? 'Vui lòng không đóng trình duyệt. AntBiz đang cào dữ liệu và thiết lập Few-shot cho bạn.'
+                          : 'Please do not close. AntBiz is scraping data and setting up few-shot examples for you.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                          {language === 'vi' ? 'Tên tác giả / Văn phong' : 'Author Name / Style'}
+                        </label>
+                        <input
+                          type="text"
+                          value={newAuthorName}
+                          onChange={(e) => setNewAuthorName(e.target.value)}
+                          placeholder={language === 'vi' ? 'Ví dụ: Kênh 14 Phong Cách, Báo Dân Trí...' : 'E.g., Style Blog A...'}
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                          {language === 'vi' ? 'Link Fanpage / Bài viết đối thủ' : 'Fanpage / Article URL of Competitor'}
+                        </label>
+                        <input
+                          type="url"
+                          value={newAuthorUrl}
+                          onChange={(e) => setNewAuthorUrl(e.target.value)}
+                          placeholder={language === 'vi' ? 'Dán link bài viết từ gocnhinmoi.com.vn...' : 'https://gocnhinmoi.com.vn/...'}
+                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                        />
+                        <span className="text-[9px] text-slate-400 leading-relaxed font-sans">
+                          {language === 'vi'
+                            ? '* Hệ thống sẽ dùng bộ cào dữ liệu chuẩn để lấy các bài đăng mẫu làm dữ liệu ví dụ huấn luyện.'
+                            : '* The system will scrape posts from this URL for few-shot style training.'}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-3 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAuthorModalOpen(false)}
+                          className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                        >
+                          {language === 'vi' ? 'Hủy' : 'Cancel'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateAuthorProfile}
+                          className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
+                        >
+                          <Sparkles size={12} />
+                          {language === 'vi' ? 'Huấn luyện' : 'Train Style'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
         <AnimatePresence>
           {isExplorerOpen && (
@@ -4593,7 +5681,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-              onClick={(e) => { if (e.target === e.currentTarget) setIsAiPromptDialogOpen(false); }}
             >
               <motion.div
                 initial={{ scale: 0.96, y: 20, opacity: 0 }}
@@ -4654,7 +5741,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigSocialPlatform')}</label>
                         <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800/80 w-fit">
                           {(['facebook', 'threads', 'instagram'] as const).map((p) => (
-                            <button key={p} type="button" onClick={() => setPromptPlatform(p)}
+                            <button key={p} type="button" onClick={() => handlePromptPlatformChange(p)}
                               className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                                 promptPlatform === p
                                   ? 'bg-white dark:bg-zinc-800 text-primary dark:text-primary shadow-sm border border-zinc-200/50 dark:border-zinc-700/50'
@@ -4663,6 +5750,142 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                               {p}
                             </button>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* --- GENERATION CONFIGURATION DIALOG PANEL (US-2.07) --- */}
+                      <div className="bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-zinc-800 pb-3.5">
+                          <div className="flex items-center gap-2">
+                            <Layers size={14} className="text-primary" />
+                            <span className="text-[10px] font-black text-slate-700 dark:text-zinc-350 uppercase tracking-wider">Cấu hình tham số sinh bài</span>
+                          </div>
+
+                          {/* Dropdown saved configs & Save/Delete button */}
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <select
+                              value={selectedConfigId}
+                              onChange={(e) => handleSelectConfig(e.target.value)}
+                              className="flex-1 sm:flex-initial appearance-none bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-semibold text-slate-700 dark:text-zinc-300 focus:outline-none pr-8 cursor-pointer relative"
+                            >
+                              <option value="">{language === 'vi' ? '── Cấu hình đã lưu ──' : '── Saved Configs ──'}</option>
+                              {savedConfigs.map((config) => (
+                                <option key={config.id} value={config.id}>
+                                  {config.name} {config.is_default ? '(Mặc định)' : ''}
+                                </option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={selectedAuthorId}
+                              onChange={(e) => {
+                                if (e.target.value === '__create_new__') {
+                                  setIsAuthorModalOpen(true);
+                                  setSelectedAuthorId('');
+                                } else {
+                                  setSelectedAuthorId(e.target.value);
+                                }
+                              }}
+                              className="flex-1 sm:flex-initial appearance-none bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-semibold text-slate-700 dark:text-zinc-300 focus:outline-none pr-8 cursor-pointer relative"
+                            >
+                              <option value="">{language === 'vi' ? '── Văn phong mặc định ──' : '── Default Style ──'}</option>
+                              {authorProfiles.map((profile) => (
+                                <option key={profile.id} value={profile.id}>
+                                  {profile.name} {profile.tuning_status === 'training' ? ' (Đang học...)' : ''}
+                                </option>
+                              ))}
+                              <option value="__create_new__" className="text-primary font-bold">
+                                {language === 'vi' ? '+ Tạo văn phong mới' : '+ Create new style'}
+                              </option>
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsSaveConfigModalOpen(true)}
+                              className="p-2 rounded-xl bg-primary/10 hover:bg-primary hover:text-white text-primary transition-all flex items-center justify-center border-none cursor-pointer"
+                              title={language === 'vi' ? 'Lưu cấu hình hiện tại' : 'Save current configuration'}
+                            >
+                              <Save size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Config grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Tone selection */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Văn phong (Tone)</label>
+                            <select
+                              value={tone}
+                              onChange={(e) => setTone(e.target.value)}
+                              className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-zinc-300 font-semibold focus:outline-none cursor-pointer"
+                            >
+                              {(() => {
+                                const defaultTones = ['Chuyên nghiệp', 'Thân thiện', 'Hài hước', 'Sắc sảo', 'Storytelling', 'Trang trọng', 'Đơn giản'];
+                                const allTones = [...defaultTones];
+                                if (tone && !defaultTones.includes(tone)) {
+                                  allTones.push(tone);
+                                }
+                                return allTones.map((t) => (
+                                  <option key={t} value={t}>{t}</option>
+                                ));
+                              })()}
+                            </select>
+                          </div>
+
+                          {/* Length selection */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Độ dài</label>
+                            <select
+                              value={length}
+                              onChange={(e) => setLength(e.target.value)}
+                              className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-zinc-300 font-semibold focus:outline-none cursor-pointer"
+                            >
+                              {(() => {
+                                const defaultLengths = ['Ngắn (dưới 200 từ)', 'Vừa (200-500 từ)', 'Dài (trên 500 từ)'];
+                                const allLengths = [...defaultLengths];
+                                if (length && !defaultLengths.includes(length)) {
+                                  allLengths.push(length);
+                                }
+                                return allLengths.map((l) => (
+                                  <option key={l} value={l}>{l}</option>
+                                ));
+                              })()}
+                            </select>
+                          </div>
+
+                          {/* Variant count selection */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Số biến thể A/B Test</label>
+                            <div className="flex gap-2">
+                              {[2, 3].map((num) => (
+                                <button
+                                  key={num}
+                                  type="button"
+                                  onClick={() => setVariantCount(num as 2 | 3)}
+                                  className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                    variantCount === num
+                                      ? 'bg-primary text-white border-primary shadow-sm'
+                                      : 'bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-500 hover:text-slate-700'
+                                  }`}
+                                >
+                                  {num} Biến thể
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Emphasis aspect */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Khía cạnh nhấn mạnh</label>
+                            <input
+                              type="text"
+                              value={emphasis}
+                              onChange={(e) => setEmphasis(e.target.value)}
+                              placeholder="Ví dụ: khuyến mãi, thông số kỹ thuật..."
+                              className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-zinc-350 font-semibold focus:outline-none placeholder:text-slate-400"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -4679,9 +5902,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
-                          <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
-                            className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
-                            <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
+                          <button type="button" onClick={handleStartWizard} disabled={isGenerating}
+                            className="flex items-center gap-1.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary-hover hover:to-purple-700 disabled:opacity-40 text-white text-[10px] font-black px-3.5 py-1.5 rounded-xl transition-all border-none cursor-pointer shadow-sm hover:shadow active:scale-[0.98]">
+                            <Sparkles size={11} className="animate-pulse" />
                             {t('aiCreator.promptConfigSmartPromptBtn')}
                           </button>
                         </div>

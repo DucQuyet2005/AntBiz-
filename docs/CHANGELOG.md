@@ -5,6 +5,43 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.2] - 2026-07-01
+
+### Added
+- **Unit & Integration Test Suite cho Prompt Config Wizard**:
+  - Viết file test Vitest `__tests__/api/promptWizard.test.ts` kiểm thử toàn diện các luồng của bộ câu hỏi định hướng.
+  - Test các tổ hợp input nền tảng/tone văn phong/độ dài để kiểm tra độ tin cậy của prompt sinh ra từ Gemini.
+  - Integration test toàn luồng: Gọi Wizard sinh prompt $\rightarrow$ Lưu cấu hình vào DB $\rightarrow$ Đồng bộ lên UI.
+  - Đạt tỷ lệ bao phủ dòng lệnh (Line Coverage) của API route là **85.71%** và `auth.ts` là **91.66%**, 100% test cases pass.
+
+### Changed
+- **Gộp Wizard vào nút Tạo Prompt thông minh**: Di chuyển và tích hợp nút kích hoạt Wizard 5 bước trực tiếp vào nút **"Tạo Prompt thông minh"** trong Dialog soạn thảo chính, gỡ bỏ tất cả các nút Wizard lẻ loi khác để tối giản hóa UI.
+- **Tránh lời dẫn giải thừa thãi của AI viết bài**: Bổ sung chỉ thị nghiêm ngặt `"TUYỆT ĐỐI KHÔNG có lời dẫn giải, không 'Ok', không 'Đây là bài viết'. Trả về TRỰC TIẾP bài đăng hoàn chỉnh."` vào template prompt do Gemini sinh ra trong Wizard.
+- **Cơ chế chống click nhầm ra ngoài**: Loại bỏ tính năng tự động đóng modal/dialog khi click vào vùng mờ (overlay) đối với Dialog Prompt chính và Modal Wizard. Chỉ cho phép đóng khi bấm nút **[X]**.
+- **Chuyển đổi platform thông minh trong prompt**: Khi chuyển đổi các nền tảng (Facebook, Threads, Instagram), hệ thống tự động tìm kiếm và thay đổi các chữ tên platform tương ứng trong Prompt tùy chỉnh đang soạn thảo.
+- **Bộ lọc heuristics chặn spam phím rác**: Tích hợp kiểm duyệt nâng cao khi nhập custom tone/length: chặn từ lặp 1 ký tự (ví dụ `"ộ i i"`) và chặn các tổ hợp phím QWERTY spam liên tiếp (như `"dsadadadd"`).
+
+---
+## [1.6.1] - 2026-07-01
+
+### Added
+- **API phân tích bài viết bằng Gemini (`POST /api/prompt-configs/analyze`)**: Tự động phân tích tiêu đề và nội dung bài viết khi cào để đề xuất Tone, Length, Emphasis phù hợp nhất.
+- **Tự động hóa cấu hình prompt khi cào báo**: Khi cào dữ liệu thành công từ URL hoặc Live Explorer, hệ thống tự động điền sẵn các tham số cấu hình gợi ý của AI và sinh prompt mẫu tương ứng.
+- **Hiển thị đếm số từ tiếng Việt (~words)**: Tích hợp bộ ước lượng đếm số từ tiếng Việt hiển thị song song cùng số ký tự tại các vùng đếm trong AI Creator và Caption Editor (định dạng `... ký tự (~... từ) / ... ký tự`).
+- **Giao diện quản lý cấu hình chuyên biệt tại trang Prompts**: Tích hợp Tab Switcher "Thư viện Prompt" & "Cấu hình tham số AI" trên trang Prompts. Hỗ trợ xem danh sách, Sửa (qua Modal Edit chuyên biệt), Xóa cấu hình, và Đặt cấu hình làm mặc định cho từng platform.
+- **Bộ Câu Hỏi Định Hướng (Prompt Config Wizard - Phase 2)**:
+  - Tích hợp nút **"🪄 Wizard"** ngay bên cạnh ô Cấu hình đã lưu ở Dialog prompt của AI Creator.
+  - Thiết kế Modal Wizard 5 bước bằng Framer Motion: chọn nền tảng, tone, độ dài, nhấn mạnh, variant count & đặt tên.
+  - Xây dựng API route `POST /api/prompt-configs/from-wizard` sử dụng Gemini AI sinh prompt động tương ứng với 5 lựa chọn.
+  - Hiển thị màn hình kết quả cho phép chỉnh sửa prompt, chọn mặc định, tự động lưu cấu hình và tự điền form sáng tạo caption.
+
+### Changed
+- **Tích hợp Lưu cấu hình prompt tự động**: Xóa nút đĩa mềm lưu cấu hình riêng lẻ, tự động thực hiện lưu kép cả prompt lẫn tham số cấu hình (Tone, Length, Emphasis) khi người dùng bấm nút "Lưu và Sử dụng" ở chân Dialog prompt.
+
+### Fixed
+- **Sửa lỗi giới hạn ký tự prompt (Zod 400 Bad Request)**: Tự động rút gọn (truncate) nội dung bài viết cào được trong hàm sinh prompt mẫu xuống tối đa 3000 ký tự để luôn vượt qua giới hạn độ dài 8000 ký tự của schema validation.
+
+---
 ## [1.6.0] - 2026-06-26
 
 ### Added

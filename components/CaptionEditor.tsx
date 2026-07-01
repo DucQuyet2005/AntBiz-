@@ -230,7 +230,7 @@ const CaptionEditor = ({
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
             isOverLimit ? 'bg-red-50 dark:bg-red-950/20 text-red-500' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
           }`}>
-            {content.length.toLocaleString()} / {charLimit.toLocaleString()} ký tự
+            {content.length.toLocaleString()} ký tự (~{content.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} ký tự
           </span>
           
           <AnimatePresence mode="wait">
