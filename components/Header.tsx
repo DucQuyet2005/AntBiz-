@@ -180,9 +180,12 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   // Fetch Notifications
   const fetchNotifications = async (silent = false) => {
+    if (!navigator.onLine) return; // skip silently when offline
     if (!silent) setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession() reads from localStorage — no network call, no Failed to fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const [listRes, countRes] = await Promise.all([
@@ -224,8 +227,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
+      if (!navigator.onLine) return; // skip silently when offline
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // getSession() reads from localStorage — no network call, no Failed to fetch
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user || !active) return;
 
         realtimeChannel = supabase

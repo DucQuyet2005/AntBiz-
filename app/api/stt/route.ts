@@ -1,5 +1,9 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
+
+// VPS production config: cho phép route chạy tối đa 120 giây
+// (Groq Whisper ~10s + 2x Gemini calls ~10s mỗi cái + retry buffer)
+export const maxDuration = 120;
 
 // STT: Groq Whisper (free tier, no credit card)
 // Rewrite: Gemini (text only — much cheaper than audio tokens)
@@ -19,15 +23,27 @@ const ALLOWED_AUDIO_TYPES = [
   'video/quicktime',
 ];
 
-const REWRITE_SYSTEM_PROMPT = `Bạn là một content writer chuyên nghiệp, chuyên viết bài đăng mạng xã hội thu hút.
-Dưới đây là nội dung thô từ giọng nói của một KOL/content creator (có thể là transcript tự động, có lỗi, từ đệm, nói lắp hoặc chỉ là vài ý chính bullet points).
-Hãy viết lại thành một bài đăng mạng xã hội hoàn chỉnh, tự nhiên, thu hút người đọc:
-- Giữ nguyên ý chính và cá tính/giọng điệu của người nói
-- Loại bỏ từ đệm ("ừm", "à", "thì là"), lặp lại, nói lắp
-- Thêm hook mạnh ở đầu, CTA ở cuối nếu phù hợp
-- Đề xuất 3-5 hashtag phù hợp ở cuối bài
+const CORRECT_PROMPT = `Bạn là một trợ lý hiệu đính và biên tập nhẹ tiếng Việt.
+Dưới đây là văn bản được chuyển tự động từ giọng nói (speech-to-text), có thể có lỗi chính tả, thiếu dấu câu, từ đệm, hoặc diễn đạt lủng củng.
+Nhiệm vụ của bạn:
+- Sửa lỗi chính tả tiếng Việt (dấu thanh, phụ âm sai, từ sai)
+- Thêm dấu câu đúng chỗ (dấu phẩy, dấu chấm, dấu hỏi, dấu hai chấm...)
+- Loại bỏ từ đệm vô nghĩa ("ừm", "à", "thì là", "ờ", nói lắp)
+- Sửa nhẹ văn phong: câu văn mạch lạc hơn, từ ngữ tự nhiên hơn, tránh lặp từ
+- GIỮ NGUYÊN ý chính, cấu trúc và giọng điệu của người nói
+- KHÔNG viết lại hoàn toàn, KHÔNG thêm ý mới, KHÔNG rút gọn nội dung
 
-CHỈ TRẢ VỀ BÀI VIẾT HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG có lời dẫn, giới thiệu hay bất kỳ ký tự nào ngoài nội dung bài đăng.`;
+CHỈ TRẢ VỀ VĂN BẢN ĐÃ HIỆU ĐÍNH. KHÔNG có lời dẫn hay giải thích.`;
+
+const TITLE_PROMPT = `Bạn là một tiêu đề editor chuyên nghiệp.
+Dưới đây là nội dung một bài viết. Hãy sinh ra một tiêu đề ngắn gọn, sút tích và lôi cuốn cho bài viết đó.
+Yêu cầu:
+- Tối đa 12 từ
+- Không có dấu nọm kép, không có tiền tố như "Tiêu đề:", "Bài viết:"
+- Ngôn ngữ phù hợp với nội dung (tiếng Việt nếu nội dung tiếng Việt)
+- Phản ánh đúng chủ đề chính
+
+CHỈ TRẢ VỀ DUY NHẤT TIÊU ĐỀ. KHÔNG giải thích gì thêm.`;
 
 /**
  * Transcribe audio via Groq Whisper API.
@@ -56,40 +72,123 @@ async function transcribeWithGroq(file: File, groqKey: string): Promise<string> 
   return transcript.trim();
 }
 
-/**
- * Rewrite raw transcript into a polished social post via Gemini.
- * Uses text-only tokens (cheap) — no audio involved here.
- */
-async function rewriteWithGemini(inputText: string, geminiKey: string): Promise<string> {
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+/** Delay helper for retry backoff */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: `${REWRITE_SYSTEM_PROMPT}\n\n---\nNỘI DUNG GỐC:\n${inputText}\n---`,
-            },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0.8 },
-    }),
+/** Retryable status codes — transient server errors ONLY, NOT quota errors */
+const RETRYABLE_STATUS = new Set([503, 502, 504]); // 429 = quota exhausted, never retry
+const MAX_RETRIES = 2;        // chỉ 2 lần — ít hơn để tránh timeout trên VPS
+const BASE_DELAY_MS = 500;    // 500ms → 1s (giảm xuống từ 1s → 2s)
+const GEMINI_TIMEOUT_MS = 25_000; // 25s per Gemini call (VPS network SLA)
+
+/** Parse Gemini retryDelay from a 429 error body, return seconds or null */
+function parseRetryDelay(errText: string): number | null {
+  try {
+    const body = JSON.parse(errText);
+    const details: any[] = body?.error?.details ?? [];
+    for (const d of details) {
+      if (d['@type']?.includes('RetryInfo') && d.retryDelay) {
+        const match = String(d.retryDelay).match(/(\d+)/);
+        if (match) return parseInt(match[1], 10);
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Shared helper: one Gemini text-in, text-out call with exponential backoff retry */
+async function callGemini(
+  prompt: string,
+  inputText: string,
+  geminiKey: string,
+  temperature = 0.2,
+  label = 'Gemini'
+): Promise<string> {
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: `${prompt}\n\n---\n${inputText}\n---` }] }],
+    generationConfig: { temperature },
   });
 
-  if (!response.ok) {
+  let lastError = '';
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // AbortController để timeout mỗi call — quan trọng trên VPS tờ một số network
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      if (fetchErr?.name === 'AbortError') {
+        throw new Error(`[STT] ${label} timed out after ${GEMINI_TIMEOUT_MS / 1000}s`);
+      }
+      throw fetchErr;
+    }
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
+      return text.trim();
+    }
+
     const errText = await response.text();
-    throw new Error(`[STT] Gemini rewrite failed (${response.status}): ${errText}`);
+    lastError = errText;
+
+    if (RETRYABLE_STATUS.has(response.status) && attempt < MAX_RETRIES) {
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 500ms, 1s
+      console.warn(`[STT] ${label} got ${response.status}, retry ${attempt}/${MAX_RETRIES - 1} in ${delay}ms...`);
+      await sleep(delay);
+      continue;
+    }
+
+    // 429 = quota exhausted — never retry, surface wait time to caller
+    if (response.status === 429) {
+      const waitSec = parseRetryDelay(errText);
+      const waitMsg = waitSec ? ` Thử lại sau ${waitSec} giây.` : '';
+      throw new Error(`[STT] ${label} quota exhausted (429).${waitMsg}`);
+    }
+
+    // Other non-retryable or exhausted retries — throw so caller can fallback
+    throw new Error(`[STT] ${label} failed (${response.status}): ${lastError}`);
   }
 
-  const data = await response.json();
-  const rewritten: string =
-    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-  return rewritten.trim();
+  throw new Error(`[STT] ${label} failed after ${MAX_RETRIES} retries: ${lastError}`);
+}
+
+/**
+ * Correct spelling, punctuation and filler words in raw transcript via Gemini.
+ */
+async function correctWithGemini(inputText: string, geminiKey: string): Promise<string> {
+  return callGemini(
+    `${CORRECT_PROMPT}\n\nVĂN BẢN GỐC:`,
+    inputText,
+    geminiKey,
+    0.2,
+    'Correction'
+  );
+}
+
+/**
+ * Generate a short, catchy title from the corrected text via Gemini.
+ */
+async function generateTitleWithGemini(inputText: string, geminiKey: string): Promise<string> {
+  return callGemini(
+    `${TITLE_PROMPT}\n\nNỘI DUNG:`,
+    inputText,
+    geminiKey,
+    0.7,
+    'TitleGen'
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -138,7 +237,15 @@ export async function POST(request: NextRequest) {
 
     // 4. STT via Groq Whisper (only when file is provided)
     if (file && file.size > 0) {
-      if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
+      const isAllowedType = ALLOWED_AUDIO_TYPES.includes(file.type) || 
+                            file.type.startsWith('audio/webm') || 
+                            file.type.startsWith('audio/ogg') ||
+                            file.type.startsWith('audio/mpeg') ||
+                            file.type.startsWith('audio/wav') ||
+                            file.type.startsWith('audio/mp3') ||
+                            file.type.startsWith('audio/m4a') ||
+                            file.type.startsWith('audio/x-m4a');
+      if (!isAllowedType) {
         return NextResponse.json(
           { error: `Định dạng file không hỗ trợ: ${file.type}. Dùng MP3, MP4, M4A, WAV, hoặc WebM.` },
           { status: 400 }
@@ -171,14 +278,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Rewrite via Gemini (text only — không tốn audio tokens)
-    const rewriteInput = bullets
-      ? `${transcript}\n\nBổ sung ý chính từ người dùng:\n${bullets}`
-      : transcript;
+    // 6. Correct spelling/punctuation + generate title via Gemini — run in parallel
+    //    Use allSettled so one failure doesn't abort the other
+    const correctionInput = bullets ? `${transcript}\n\n${bullets}` : transcript;
 
-    const rewrittenPost = await rewriteWithGemini(rewriteInput, geminiKey);
+    const [correctionResult, titleResult] = await Promise.allSettled([
+      correctWithGemini(correctionInput, geminiKey),
+      generateTitleWithGemini(correctionInput, geminiKey),
+    ]);
 
-    return NextResponse.json({ transcript, rewritten_post: rewrittenPost });
+    const correctedTranscript =
+      correctionResult.status === 'fulfilled'
+        ? correctionResult.value
+        : (console.warn('[STT] Correction unavailable, using raw transcript:', (correctionResult as PromiseRejectedResult).reason?.message), transcript);
+
+    const generatedTitle =
+      titleResult.status === 'fulfilled'
+        ? titleResult.value
+        : (console.warn('[STT] Title generation unavailable:', (titleResult as PromiseRejectedResult).reason?.message), '');
+
+    if (generatedTitle) console.log(`[STT] Generated title: "${generatedTitle}"`);
+
+    return NextResponse.json({
+      transcript,
+      rewritten_post: correctedTranscript,
+      generated_title: generatedTitle,
+    });
   } catch (error: any) {
     console.error('[STT API] Error:', error);
     return NextResponse.json(

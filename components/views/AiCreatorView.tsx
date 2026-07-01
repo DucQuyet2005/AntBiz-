@@ -34,7 +34,10 @@ import {
   FileText,
   Save,
   Wand2,
-  RotateCcw
+  RotateCcw,
+  Mic,
+  UploadCloud,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -44,6 +47,7 @@ import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
+import { createClient } from '@/utils/supabase/client';
 
 
 // Threads Custom SVG Logo
@@ -1757,6 +1761,305 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     full_text: ''
   });
 
+  // Input Ingestion Mode selection state (crawl vs manual)
+  const [inputMode, setInputMode] = useState<'crawl' | 'manual'>('crawl');
+  const [isVoiceAssistantExpanded, setIsVoiceAssistantExpanded] = useState(false);
+
+  // Drag and Drop Image & Document Handlers
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isParsingDoc, setIsParsingDoc] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  // Original Post Full Content Viewer Modal State
+  const [isOriginalPostModalOpen, setIsOriginalPostModalOpen] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDraggingFile(false);
+  };
+
+  const handleUploadFiles = async (files: File[]) => {
+    setDocError(null);
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const docFiles = files.filter(f => {
+      const ext = f.name.toLowerCase();
+      return ext.endsWith('.pdf') || ext.endsWith('.docx') || ext.endsWith('.doc');
+    });
+
+    // 1. Xử lý file ảnh
+    if (imageFiles.length > 0) {
+      const urls = postData.imageUrl ? postData.imageUrl.split('\n').filter(Boolean) : [];
+      for (const file of imageFiles) {
+        const reader = new FileReader();
+        const loadPromise = new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+        });
+        reader.readAsDataURL(file);
+        const dataUrl = await loadPromise;
+        urls.push(dataUrl);
+      }
+      setPostData(prev => ({ ...prev, imageUrl: urls.join('\n') }));
+    }
+
+    // 2. Xử lý file tài liệu
+    if (docFiles.length > 0) {
+      const docFile = docFiles[0]; // Xử lý file tài liệu đầu tiên
+      setIsParsingDoc(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', docFile);
+
+        const res = await fetch('/api/parse-doc', {
+          method: 'POST',
+          body: fd
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || (language === 'vi' ? 'Lỗi trích xuất tài liệu' : 'Failed to extract document'));
+
+        const extractedText = data.text || '';
+        if (extractedText) {
+          setPostData(prev => ({
+            ...prev,
+            full_text: extractedText,
+            description: extractedText,
+            title: prev.title || docFile.name.replace(/\.[^/.]+$/, ''), // Lấy tên file làm tiêu đề nếu trống
+          }));
+        }
+      } catch (err: any) {
+        setDocError(err.message);
+      } finally {
+        setIsParsingDoc(false);
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await handleUploadFiles(files);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      await handleUploadFiles(files);
+    }
+  };
+
+  const handleDeleteImage = (indexToDelete: number) => {
+    const urls = postData.imageUrl.split('\n').filter(Boolean);
+    const newUrls = urls.filter((_, idx) => idx !== indexToDelete);
+    setPostData({ ...postData, imageUrl: newUrls.join('\n') });
+  };
+
+  // Voice / STT Mode State
+  const voiceFileInputRef = useRef<HTMLInputElement>(null);
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [sttError, setSttError] = useState<string | null>(null);
+
+  // Direct In-App Recording States
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordDuration, setRecordDuration] = useState(0);
+  const [showMicGuide, setShowMicGuide] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+
+  // Format record duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startRecording = async () => {
+    setSttError(null);
+    audioChunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'ghi-am-truc-tiep.webm', { type: 'audio/webm' });
+        setVoiceFile(file);
+      };
+
+      // Set up canvas waveform
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const drawWaveform = () => {
+        if (!canvasRef.current || !analyserRef.current) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        analyserRef.current.getByteTimeDomainData(dataArray);
+        
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#4F46E5'; // primary color
+        ctx.beginPath();
+        
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * height) / 2;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          
+          x += sliceWidth;
+        }
+        
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        
+        animationFrameRef.current = requestAnimationFrame(drawWaveform);
+      };
+
+      drawWaveform();
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordDuration(0);
+      
+      timerRef.current = setInterval(() => {
+        setRecordDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error('Microphone error:', err);
+      setShowMicGuide(true);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+    }
+  };
+
+  const cancelRecording = () => {
+    setIsRecording(false);
+    setVoiceFile(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+    }
+  };
+
+  const handleTranscribeAndRewrite = async () => {
+    if (!voiceFile) return;
+    setIsTranscribing(true);
+    setSttError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', voiceFile);
+      
+      const res = await fetch('/api/stt', {
+        method: 'POST',
+        body: fd
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lỗi xử lý giọng nói');
+      
+      const finalText = data.rewritten_post || data.transcript || '';
+      if (finalText) {
+        setPostData(prev => ({
+          ...prev,
+          full_text: finalText,
+          description: finalText,
+          title: prev.title || data.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
+        }));
+      }
+    } catch (err: any) {
+      setSttError(err.message);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // Auto-fill author = tên user hiện tại, ngày = hôm nay khi vào mode manual
+  useEffect(() => {
+    if (inputMode !== 'manual') return;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const u = session.user;
+      const displayName =
+        u.user_metadata?.full_name ||
+        u.user_metadata?.name ||
+        u.email?.split('@')[0] ||
+        '';
+      const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      setPostData(prev => ({
+        ...prev,
+        author: prev.author || displayName,
+        published_at: prev.published_at || todayISO,
+      }));
+    });
+  }, [inputMode]);
+
   // Toggles for Custom Display Components in Social Previews
   const [toggles, setToggles] = useState({
     showTitle: true,
@@ -2414,16 +2717,48 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
           {/* STEP 1: Left column inputs form */}
           {step === 1 && (
-            <motion.div
-              layout
+            <div
               key="step1-inputs"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
               className="lg:col-span-8 flex flex-col gap-6 order-1"
             >
-              {/* URL Context Importer */}
+              {/* Segmented Mode Selector for input ingestion (crawl vs manual) */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 flex items-center justify-between shadow-sm shrink-0">
+                <div className="flex bg-slate-50 dark:bg-zinc-950 rounded-xl p-1 border border-slate-100 dark:border-zinc-900 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('crawl');
+                    }}
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
+                      inputMode === 'crawl'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-muted hover:text-text bg-transparent'
+                    }`}
+                  >
+                    <Globe size={13} />
+                    {language === 'vi' ? 'Cào dữ liệu tự động' : 'Auto-crawl from Link'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('manual');
+                    }}
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
+                      inputMode === 'manual'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-muted hover:text-text bg-transparent'
+                    }`}
+                  >
+                    <Mic size={13} />
+                    {language === 'vi' ? 'Tự viết tay & Giọng nói' : 'Write / Voice Draft'}
+                  </button>
+                </div>
+              </div>
+
+              {/* URL Context Importer & AI Generation Setup */}
+              {inputMode === 'crawl' && (
+                <>
+                  {/* URL Context Importer */}
               <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -2662,6 +2997,347 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 </div>
               </div>
+            </>
+          )}
+
+          {/* Luồng 2: Tự viết tay & Giọng nói tích hợp */}
+          {inputMode === 'manual' && (
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+                <Layers size={18} className="text-primary" />
+                <h3 className="text-lg font-bold text-text">{language === 'vi' ? 'Tự viết tay & Giọng nói tích hợp' : 'Write & Voice Integrated Post'}</h3>
+              </div>
+
+              {/* Form fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Post Title'}</label>
+                  <input
+                    type="text"
+                    value={postData.title}
+                    onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold"
+                    placeholder={language === 'vi' ? 'Nhập tiêu đề bài viết của bạn tại đây...' : 'Enter post title here...'}
+                  />
+                </div>
+
+                {/* Speech to Text Collapsible Accordion */}
+                <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
+                  <div className="flex items-center justify-between w-full select-none">
+                    <div className="flex items-center gap-2">
+                      <Mic size={15} className="text-primary" />
+                      <span className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Trợ lý Giọng nói (Speech-to-Text)' : 'Voice Assistant (Speech-to-Text)'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsVoiceAssistantExpanded(!isVoiceAssistantExpanded)}
+                      className="bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-0 cursor-pointer flex items-center gap-1 shadow-sm"
+                    >
+                      {isVoiceAssistantExpanded ? (
+                        <>
+                          {language === 'vi' ? 'Thu gọn' : 'Collapse'} <span>▲</span>
+                        </>
+                      ) : (
+                        <>
+                          {language === 'vi' ? 'Mở rộng' : 'Expand'} <span>▼</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {isVoiceAssistantExpanded && (
+                    <div className="flex flex-col gap-4 mt-1">
+                      {isRecording ? (
+                        /* Live Recording Panel */
+                        <div className="border border-dashed border-primary bg-primary/5 rounded-xl p-4 text-center flex flex-col items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-widest">{language === 'vi' ? 'Đang ghi âm...' : 'Recording...'}</span>
+                          </div>
+                          
+                          {/* Live Waveform Canvas */}
+                          <div className="w-full bg-white rounded-lg overflow-hidden border border-gray-150 shadow-inner">
+                            <canvas ref={canvasRef} width={400} height={60} className="w-full h-[60px]" />
+                          </div>
+
+                          <div className="text-lg font-mono font-bold text-text-muted mt-1">
+                            {formatDuration(recordDuration)}
+                          </div>
+                          <div className="flex items-center gap-3 w-full justify-center">
+                            <button
+                              type="button"
+                              onClick={stopRecording}
+                              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-red-200 cursor-pointer border-0 flex items-center gap-1.5"
+                            >
+                              <span className="w-2 h-2 bg-white rounded-sm" />
+                              {language === 'vi' ? 'Hoàn thành' : 'Done'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelRecording}
+                              className="bg-white border border-gray-200 text-text-muted hover:text-text px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              {language === 'vi' ? 'Hủy' : 'Cancel'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Audio File Upload or Record Trigger */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Mic Trigger */}
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            className="bg-primary hover:bg-primary-hover text-white rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 border-0 shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[120px]"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                              <Mic size={20} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[11px] font-black uppercase tracking-wider block">{language === 'vi' ? 'Ghi âm trực tiếp' : 'Direct Record'}</span>
+                              <span className="text-[9px] opacity-75 mt-0.5 block">{language === 'vi' ? 'Sử dụng Micro của thiết bị' : 'Use system microphone'}</span>
+                            </div>
+                          </button>
+
+                          {/* Upload audio file */}
+                          <div 
+                            onClick={() => voiceFileInputRef.current?.click()}
+                            className="border-2 border-dashed border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer hover:bg-primary/5 transition-all text-text-muted hover:text-primary min-h-[120px]"
+                          >
+                            <UploadCloud size={24} className="opacity-80" />
+                            <div className="text-center">
+                              <span className="text-[11px] font-black uppercase tracking-wider block">{language === 'vi' ? 'Tải tệp âm thanh' : 'Upload Audio File'}</span>
+                              <span className="text-[9px] text-text-muted mt-0.5 block">MP3, WAV, WEBM, M4A</span>
+                            </div>
+                            <input 
+                              type="file"
+                              ref={voiceFileInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setVoiceFile(file);
+                                  setSttError(null);
+                                }
+                              }}
+                              accept="audio/*"
+                              className="hidden"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Micro Permission Guide Alert */}
+                      {showMicGuide && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-800 leading-relaxed font-medium">
+                          <span>⚠️</span>
+                          <div className="flex-1">
+                            {language === 'vi' 
+                              ? 'Không thể truy cập Micro. Vui lòng kiểm tra quyền thiết bị trong cài đặt trình duyệt và thử lại.' 
+                              : 'Cannot access microphone. Please verify device permissions in browser settings.'}
+                          </div>
+                          <button onClick={() => setShowMicGuide(false)} className="text-amber-500 hover:text-amber-700 font-bold">×</button>
+                        </div>
+                      )}
+
+                      {/* Selected audio file preview & Transcribe button */}
+                      {voiceFile && !isRecording && (
+                        <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-gray-150 dark:border-zinc-800/80 flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-text truncate max-w-[70%]">🎵 {voiceFile.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setVoiceFile(null)}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                            >
+                              {language === 'vi' ? 'Xóa' : 'Remove'}
+                            </button>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={handleTranscribeAndRewrite}
+                            disabled={isTranscribing}
+                            className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white w-full py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                          >
+                            {isTranscribing ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                {language === 'vi' ? 'Đang dịch giọng nói...' : 'Transcribing voice...'}
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 size={12} />
+                                {language === 'vi' ? 'Dịch giọng nói bằng AI' : 'Transcribe & Rewrite with AI'}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {sttError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed">
+                          <span>⚠️</span>
+                          <div className="flex-1 font-semibold">{sttError}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Chuyên mục' : 'Category'}</label>
+                  <input
+                    type="text"
+                    value={postData.category}
+                    onChange={(e) => setPostData({ ...postData, category: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder={language === 'vi' ? 'VD: Tin tức, Công nghệ...' : 'e.g. World Cup, Tech...'}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tác giả' : 'Author'}</label>
+                  <input
+                    type="text"
+                    value={postData.author}
+                    onChange={(e) => setPostData({ ...postData, author: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Ngày xuất bản' : 'Published Date'}</label>
+                  <input
+                    type="text"
+                    value={postData.published_at}
+                    onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Lượt xem' : 'Views Count'}</label>
+                  <input
+                    type="text"
+                    value={postData.views}
+                    onChange={(e) => setPostData({ ...postData, views: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* Drag and Drop Document Area */}
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Hình ảnh bài viết' : 'Post Images'}</label>
+                  
+                  {/* Image Previews grid */}
+                  {postData.imageUrl && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
+                      {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
+                        <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
+                          <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteImage(idx)}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-0 cursor-pointer shadow-sm"
+                            title="Xóa hình ảnh này"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                      isDraggingFile
+                        ? 'border-primary bg-primary/5'
+                        : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
+                    }`}
+                  >
+                    <UploadCloud size={28} className="text-text-muted opacity-80" />
+                    <div>
+                      <span className="text-xs font-extrabold text-text uppercase tracking-wider block">
+                        {language === 'vi' ? 'Kéo thả file vào đây hoặc click để chọn' : 'Drag & drop files here or click to browse'}
+                      </span>
+                      <span className="text-[10px] text-text-muted mt-1 block">
+                        {language === 'vi' ? 'Hỗ trợ: PDF, Word (docx, doc) hoặc Hình ảnh (JPEG, PNG)' : 'Supports: PDF, Word (docx, doc) or Images (JPEG, PNG)'}
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*,.pdf,.docx,.doc"
+                      multiple
+                      className="hidden"
+                    />
+                  </div>
+
+                  {isParsingDoc && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-text-muted mt-2">
+                      <Loader2 size={14} className="animate-spin text-primary" />
+                      <span>{language === 'vi' ? 'Đang trích xuất nội dung từ tài liệu...' : 'Parsing document content...'}</span>
+                    </div>
+                  )}
+
+                  {docError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed mt-2">
+                      <span>⚠️</span>
+                      <div className="flex-1 font-semibold">{docError}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Từ khóa (Tags)' : 'Tags'}</label>
+                  <input
+                    type="text"
+                    value={postData.tags}
+                    onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="VD: world cup, the do, su van minh"
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-1.5 relative">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Nội dung chi tiết bài viết' : 'Detailed Post Content'}</label>
+                  
+                  {/* Drop zone visual indicator directly on the textarea */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className="relative w-full"
+                  >
+                    <textarea
+                      value={postData.full_text}
+                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value, description: e.target.value })}
+                      rows={12}
+                      className={`w-full bg-[#F8F9FE] dark:bg-black/40 border rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all ${
+                        isDraggingFile ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-[#E4E6F8] dark:border-zinc-800'
+                      }`}
+                      placeholder={language === 'vi' ? 'Nhập nội dung bài viết gốc của bạn tại đây hoặc kéo thả file Word, PDF vào ô này...' : 'Enter your original post content here, or drag and drop Word / PDF file into this box...'}
+                    />
+                    {isDraggingFile && (
+                      <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-xl flex items-center justify-center pointer-events-none">
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                          <UploadCloud size={14} />
+                          {language === 'vi' ? 'Thả tài liệu để trích xuất text' : 'Drop document to extract text'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
               {/* AI Caption Generator - moved to dialog */}
               <div className="hidden">
                 {/* Decorative glow */}
@@ -2983,14 +3659,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
           {(step === 1 || step === 2) && (
-            <motion.div
-              layout
-              transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            <div
               className={`lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
             >
               {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
@@ -3082,17 +3756,30 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Preview Content */}
-                <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
-                  <div className="h-44 bg-gray-100 relative">
+                <div 
+                  onClick={() => setIsOriginalPostModalOpen(true)}
+                  className="border border-gray-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white dark:bg-black/20 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group relative"
+                  title={language === 'vi' ? 'Click để xem toàn bộ bài viết gốc' : 'Click to view full original post'}
+                >
+                  <div className="h-44 bg-gray-100 relative overflow-hidden">
                     {postData.imageUrl ? (
                       <img
                         src={postData.imageUrl.split('\n')[0].trim()}
                         alt={postData.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-80"></div>
                     )}
+                    
+                    {/* Hover indicator overlay */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="bg-white/95 dark:bg-zinc-900/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                        <Eye size={13} />
+                        {language === 'vi' ? 'XEM TOÀN BỘ BÀI' : 'VIEW FULL POST'}
+                      </span>
+                    </div>
+
                     {postData.category && (
                       <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
                         {postData.category}
@@ -3200,7 +3887,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* STEP 2: Right column A/B testing variants workspace */}
@@ -4918,6 +5605,284 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
           </AnimatePresence>,
           document.body
         )}
+
+        {/* Original Post Detail Modal */}
+        {isOriginalPostModalOpen && createPortal(
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 p-6 shrink-0">
+                <div className="flex items-center gap-2">
+                  <FileText className="text-primary" size={18} />
+                  <h3 className="text-base font-bold text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Chi tiết bài đăng gốc' : 'Original Post Details'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsOriginalPostModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-750 text-slate-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer border-0"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+                {/* Image Gallery Grid */}
+                {postData.imageUrl && (() => {
+                  const imageUrls = postData.imageUrl.split('\n').map(url => url.trim()).filter(Boolean);
+                  if (imageUrls.length === 0) return null;
+                  
+                  if (imageUrls.length === 1) {
+                    return (
+                      <div 
+                        onClick={() => {
+                          setLightboxIndex(0);
+                          setIsLightboxOpen(true);
+                        }}
+                        className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 cursor-pointer group relative shrink-0 animate-in fade-in duration-300"
+                      >
+                        <img 
+                          src={imageUrls[0]} 
+                          alt={postData.title} 
+                          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-350"
+                        />
+                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                          <span className="bg-white/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                            <Eye size={12} />
+                            {language === 'vi' ? 'XEM ẢNH PHÓNG TO' : 'ZOOM IMAGE'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const colCount = Math.min(imageUrls.length, 4);
+                  const gridClass = `grid gap-3 shrink-0 ${
+                    colCount === 2 
+                      ? 'grid-cols-2' 
+                      : colCount === 3 
+                        ? 'grid-cols-3' 
+                        : 'grid-cols-2 sm:grid-cols-4'
+                  }`;
+
+                  return (
+                    <div className={gridClass}>
+                      {imageUrls.slice(0, 4).map((url, idx) => {
+                        const isLast = idx === 3 && imageUrls.length > 4;
+                        return (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              setLightboxIndex(idx);
+                              setIsLightboxOpen(true);
+                            }}
+                            className="aspect-square rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 cursor-pointer group relative"
+                          >
+                            <img 
+                              src={url} 
+                              alt={`Gallery ${idx}`} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350"
+                            />
+                            {isLast ? (
+                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-[2px] transition-all group-hover:bg-black/50">
+                                <span className="text-white text-xl font-black">+{imageUrls.length - 4}</span>
+                                <span className="text-white/80 text-[8px] font-bold uppercase tracking-widest mt-0.5">
+                                  {language === 'vi' ? 'Xem thêm' : 'View more'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
+                                <span className="bg-white/95 text-primary text-[10px] font-black p-2.5 rounded-xl shadow-md">
+                                  <Eye size={12} />
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-zinc-950 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800 shrink-0">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                      {language === 'vi' ? 'Tác giả' : 'Author'}
+                    </span>
+                    <span className="text-xs text-text font-semibold flex items-center gap-1">
+                      <User size={13} className="text-primary shrink-0" />
+                      {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                      {language === 'vi' ? 'Ngày đăng' : 'Published At'}
+                    </span>
+                    <span className="text-xs text-text font-semibold flex items-center gap-1">
+                      <Calendar size={13} className="text-primary shrink-0" />
+                      {postData.published_at || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                      {language === 'vi' ? 'Chuyên mục' : 'Category'}
+                    </span>
+                    <span className="text-xs text-text font-semibold flex items-center gap-1">
+                      <Layers size={13} className="text-primary shrink-0" />
+                      {postData.category || (language === 'vi' ? 'Mặc định' : 'Default')}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                      {language === 'vi' ? 'Lượt xem' : 'Views'}
+                    </span>
+                    <span className="text-xs text-text font-semibold flex items-center gap-1">
+                      <Eye size={13} className="text-amber-500 shrink-0" />
+                      {postData.views || '0'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                {postData.tags && (
+                  <div className="flex flex-wrap gap-1.5 shrink-0">
+                    {postData.tags.split(',').map((tag, idx) => {
+                      const trimmed = tag.trim();
+                      if (!trimmed) return null;
+                      return (
+                        <span key={idx} className="bg-primary/5 text-primary border border-primary/10 px-3 py-1 rounded-full text-[10px] font-bold">
+                          #{trimmed}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Title */}
+                <div className="flex flex-col gap-2 shrink-0">
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                    {language === 'vi' ? 'Tiêu đề' : 'Title'}
+                  </span>
+                  <h4 className="text-lg font-extrabold text-[#1E293B] dark:text-zinc-100 leading-tight">
+                    {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                  </h4>
+                </div>
+
+                {/* Content */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                    {language === 'vi' ? 'Nội dung chi tiết' : 'Detailed Content'}
+                  </span>
+                  <div className="bg-slate-50 dark:bg-zinc-950 p-5 rounded-2xl border border-slate-100 dark:border-zinc-800 text-xs text-text leading-relaxed whitespace-pre-wrap font-medium">
+                    {postData.full_text || postData.description || (language === 'vi' ? 'Không có nội dung.' : 'No content available.')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-gray-100 dark:border-zinc-800 p-6 shrink-0 bg-slate-50 dark:bg-zinc-900/30 flex justify-end">
+                <button
+                  onClick={() => setIsOriginalPostModalOpen(false)}
+                  className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer border-0"
+                >
+                  {language === 'vi' ? 'Đóng' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Fullscreen Lightbox Gallery Modal */}
+        {isLightboxOpen && postData.imageUrl && (() => {
+          const imageUrls = postData.imageUrl.split('\n').map(url => url.trim()).filter(Boolean);
+          if (imageUrls.length === 0) return null;
+          
+          const currentUrl = imageUrls[lightboxIndex] || imageUrls[0];
+          
+          const handleNext = (e?: React.MouseEvent) => {
+            e?.stopPropagation();
+            setLightboxIndex((prev) => (prev + 1) % imageUrls.length);
+          };
+          
+          const handlePrev = (e?: React.MouseEvent) => {
+            e?.stopPropagation();
+            setLightboxIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+          };
+
+          return createPortal(
+            <div 
+              onClick={() => setIsLightboxOpen(false)}
+              className="fixed inset-0 bg-black/95 backdrop-blur-md z-[1000] flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="absolute top-6 right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1002]"
+              >
+                <X size={20} />
+              </button>
+
+              {/* Navigation Arrows */}
+              {imageUrls.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1001] active:scale-95"
+                  >
+                    <span className="text-xl">◀</span>
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1001] active:scale-95"
+                  >
+                    <span className="text-xl">▶</span>
+                  </button>
+                </>
+              )}
+
+              {/* Main Image */}
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[85vw] max-h-[75vh] rounded-2xl overflow-hidden shadow-2xl relative"
+              >
+                <img 
+                  src={currentUrl} 
+                  alt={`Zoom view ${lightboxIndex + 1}`} 
+                  className="max-w-full max-h-[75vh] object-contain animate-in zoom-in-95 duration-200"
+                />
+              </div>
+
+              {/* Pagination Info */}
+              <div className="text-white/60 text-xs font-bold mt-4 z-[1001] bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5">
+                {language === 'vi' ? 'Ảnh' : 'Image'} {lightboxIndex + 1} / {imageUrls.length}
+              </div>
+
+              {/* Thumbnails list at bottom (if multiple images) */}
+              {imageUrls.length > 1 && (
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 mt-6 max-w-[80vw] overflow-x-auto py-2 px-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-sm custom-scrollbar"
+                >
+                  {imageUrls.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setLightboxIndex(idx)}
+                      className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                        idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>,
+            document.body
+          );
+        })()}
 
       </div>
     </EditableTextContext.Provider>
