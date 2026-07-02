@@ -7,6 +7,7 @@ const smartPromptSchema = z.object({
   title: z.string(),
   content: z.string(),
   platform: z.enum(['facebook', 'thread', 'instagram', 'threads']),
+  style: z.string().optional(),
 });
 
 /**
@@ -24,7 +25,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, content, platform } = smartPromptSchema.parse(body);
+    const { title, content, platform, style } = smartPromptSchema.parse(body);
+
+    const STYLE_LABELS: Record<string, string> = {
+      formal: 'Trang trọng & Báo chí (văn phong chuyên nghiệp, bố cục rõ ràng)',
+      storytelling: 'Kể chuyện cảm xúc (dẫn dắt cảm xúc, chạm đến trái tim)',
+      persuasive: 'Thuyết phục (nhấn mạnh lợi ích, kêu gọi hành động)',
+      snappy: 'Ngắn gọn & Sắc bén (súc tích, viral, dưới 250 ký tự)',
+      humorous: 'Hài hước & Dí dỏm (châm biếm nhẹ, gần gũi giới trẻ)',
+      controversial: 'Giật gân & Tranh luận (táo bạo, gây tranh luận tích cực)',
+      visual: 'Gợi hình ảnh (ngắn gọn, emoji, caption đẹp cho Instagram)',
+      lifestyle: 'Phong cách sống (chân thực, cảm xúc, cộng đồng)',
+      product: 'Giới thiệu sản phẩm (tập trung tính năng & lợi ích)',
+    };
+    const styleLabel = style ? (STYLE_LABELS[style] || style) : 'phù hợp với nền tảng';
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const primaryModelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -35,16 +49,17 @@ Hãy viết một Prompt (câu lệnh) chi tiết để yêu cầu một AI khá
 
 Dữ liệu đầu vào:
 - Nền tảng: ${platform}
+- Phong cách yêu cầu: ${styleLabel}
 - Tiêu đề bài báo: ${title}
 - Nội dung tóm tắt: ${content}
 
 Yêu cầu đối với Prompt bạn tạo ra:
-1. Prompt phải mô tả rõ vai trò của AI (Content Marketer).
+1. Prompt phải mô tả rõ vai trò của AI (Content Marketer với phong cách: ${styleLabel}).
 2. Prompt phải hướng dẫn cách khai thác nội dung từ bài báo trên.
-3. Prompt phải quy định rõ văn phong phù hợp với ${platform}.
-4. Prompt phải yêu cầu cấu trúc bài viết (Hook, Body, CTA, Hashtag).
-5. Prompt được tạo ra phải quy định nghiêm ngặt yêu cầu AI viết bài: TUYỆT ĐỐI KHÔNG có lời dẫn giải, không chào hỏi, không có câu chuyển tiếp hay lời dẫn (như "Tuyệt vời!", "Dưới đây là...", "---"), không có bất kỳ ký tự nào ngoài nội dung bài viết hoàn chỉnh.
-6. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẾP nội dung prompt.`;
+3. Prompt phải quy định rõ văn phong phù hợp với ${platform} theo phong cách “${styleLabel}”.
+4. Prompt phải yêu cầu cấu trúc bài viết phù hợp với phong cách (Hook, Body, CTA, Hashtag nếu cần).
+5. Prompt được tạo ra phải quy định nghiêm ngặt yêu cầu AI viết bài: TUYỆT ĐỐI KHÔNG có lời dẫn giải, không chào hỏi, không có câu chuyển tiếp hay lời dẫn, không có bất kỳ ký tự nào ngoài nội dung bài viết hoàn chỉnh.
+6. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẼP nội dung prompt.`;
 
     let result;
     try {
