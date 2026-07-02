@@ -19,12 +19,12 @@ export const PLATFORM_MAX_LENGTH = {
   instagram: 2200,
 };
 
-const POPULAR_EMOJIS = [
+export const POPULAR_EMOJIS = [
   '🔥', '✨', '👍', '❤️', '👏', '🙌', '💡', '🚀', '📌', '🎯',
   '📢', '⏰', '👇', '👉', '✅', '⚠️', '⭐', '💬', '🎉', '💼'
 ];
 
-const convertToUnicodeBold = (text: string): string => {
+export const convertToUnicodeBold = (text: string): string => {
   const diffs = {
     upperDiff: 119743,
     lowerDiff: 119737,
@@ -41,7 +41,7 @@ const convertToUnicodeBold = (text: string): string => {
   }).join('');
 };
 
-const convertToUnicodeItalic = (text: string): string => {
+export const convertToUnicodeItalic = (text: string): string => {
   return Array.from(text).map(char => {
     const code = char.charCodeAt(0);
     if (code >= 65 && code <= 90) {
@@ -185,18 +185,38 @@ const CaptionEditor = ({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    if (start === end) return;
+    const wrapper = type === 'bold' ? '**' : '*';
+
+    if (start === end) {
+      const newContent = content.substring(0, start) + wrapper + wrapper + content.substring(end);
+      setContent(newContent);
+      handleSave(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + wrapper.length, start + wrapper.length);
+      }, 0);
+      return;
+    }
 
     const selectedText = content.substring(start, end);
-    const styledText = type === 'bold' ? convertToUnicodeBold(selectedText) : convertToUnicodeItalic(selectedText);
+    let styledText;
+    let newEnd = end;
+
+    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper)) {
+      styledText = selectedText.slice(wrapper.length, -wrapper.length);
+      newEnd = start + styledText.length;
+    } else {
+      styledText = `${wrapper}${selectedText}${wrapper}`;
+      newEnd = start + styledText.length;
+    }
+
     const newContent = content.substring(0, start) + styledText + content.substring(end);
-    
     setContent(newContent);
     handleSave(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start, start + styledText.length);
+      textarea.setSelectionRange(start, newEnd);
     }, 0);
   };
 
@@ -289,24 +309,6 @@ const CaptionEditor = ({
       >
         {isEditing && (
           <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-slate-900/50 rounded-t-xl select-none">
-            <button
-              type="button"
-              onClick={() => applyStyling('bold')}
-              className="px-2 py-0.5 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded font-bold text-xs text-slate-700 dark:text-slate-350 select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent"
-              title="In đậm Unicode"
-            >
-              B
-            </button>
-            <button
-              type="button"
-              onClick={() => applyStyling('italic')}
-              className="px-2 py-0.5 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded italic text-xs text-slate-700 dark:text-slate-355 select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent"
-              title="In nghiêng Unicode"
-            >
-              I
-            </button>
-            <div className="w-px h-3.5 bg-gray-200 dark:bg-slate-800 mx-1.5" />
-            
             {/* Emoji Selector */}
             <div className="relative">
               <button
