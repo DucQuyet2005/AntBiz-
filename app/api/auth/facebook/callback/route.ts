@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
       } catch (igErr) {
         console.warn(`[Facebook Callback] Lỗi quét Instagram cho Page ${page.name}:`, igErr);
       }
+    }
     if (state === 'instagram' && instagramLinkedCount === 0) {
       return NextResponse.redirect(`${origin}/settings?connected=failed&platform=instagram&error=${encodeURIComponent('Không tìm thấy tài khoản Instagram Business nào liên kết với Trang Facebook của bạn.')}`);
     }
