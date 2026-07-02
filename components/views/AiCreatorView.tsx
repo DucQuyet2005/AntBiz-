@@ -5791,9 +5791,41 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                           </div>
                           <div className="grid grid-cols-3 gap-4">
                             {([
-                              { id: 'facebook' as const, label: 'Facebook', icon: '🌐', activeCls: 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-455 ring-2 ring-blue-500', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
-                              { id: 'threads'  as const, label: 'Threads',  icon: '💬', activeCls: 'border-gray-800 bg-gray-50 dark:bg-zinc-900 text-gray-800 dark:text-zinc-105 ring-2 ring-gray-800 dark:ring-zinc-650', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
-                              { id: 'instagram' as const, label: 'Instagram', icon: '📸', activeCls: 'border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 text-pink-700 dark:text-pink-455 ring-2 ring-pink-500', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
+                              {
+                                id: 'facebook' as const,
+                                label: 'Facebook',
+                                icon: (selected: boolean) => (
+                                  <svg className="w-8 h-8 transition-transform group-hover:scale-110 duration-300" viewBox="0 0 24 24" fill={selected ? "#FFFFFF" : "#1877F2"}>
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                  </svg>
+                                ),
+                                activeCls: 'bg-[#1877F2] border-[#1877F2] text-white shadow-lg shadow-blue-500/20 dark:shadow-none ring-2 ring-blue-500/50',
+                                inactiveCls: 'border-zinc-200 dark:border-zinc-800 bg-transparent text-slate-700 dark:text-zinc-300 hover:bg-slate-50/50 dark:hover:bg-zinc-900/30'
+                              },
+                              {
+                                id: 'threads' as const,
+                                label: 'Threads',
+                                icon: (selected: boolean) => (
+                                  <svg className="w-8 h-8 transition-transform group-hover:scale-110 duration-300" viewBox="0 0 24 24" fill={selected ? (language === 'vi' ? '#000000' : '#FFFFFF') : 'currentColor'}>
+                                    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+                                  </svg>
+                                ),
+                                activeCls: 'bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-950 shadow-lg shadow-zinc-900/10 dark:shadow-none ring-2 ring-zinc-800/40 dark:ring-zinc-250/40',
+                                inactiveCls: 'border-zinc-200 dark:border-zinc-800 bg-transparent text-slate-700 dark:text-zinc-300 hover:bg-slate-50/50 dark:hover:bg-zinc-900/30'
+                              },
+                              {
+                                id: 'instagram' as const,
+                                label: 'Instagram',
+                                icon: (selected: boolean) => (
+                                  <svg className={`w-8 h-8 transition-transform group-hover:scale-110 duration-300 ${selected ? "" : "text-[#E1306C]"}`} viewBox="0 0 24 24" fill="none" stroke={selected ? "#FFFFFF" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                                  </svg>
+                                ),
+                                activeCls: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] border-transparent text-white shadow-lg shadow-pink-500/20 dark:shadow-none ring-2 ring-pink-500/30',
+                                inactiveCls: 'border-zinc-200 dark:border-zinc-800 bg-transparent text-slate-700 dark:text-zinc-300 hover:bg-slate-50/50 dark:hover:bg-zinc-900/30'
+                              },
                             ]).map(({ id, label, icon, activeCls, inactiveCls }) => {
                               const isSelected = selectedPlatforms.has(id);
                               return (
@@ -5812,15 +5844,17 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                                     }
                                     setSelectedPlatforms(next);
                                   }}
-                                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all cursor-pointer select-none text-center h-36 ${
+                                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all cursor-pointer select-none text-center h-36 group ${
                                     isSelected ? activeCls : inactiveCls
                                   }`}
                                 >
-                                  <span className="text-3xl">{icon}</span>
+                                  {icon(isSelected)}
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-black uppercase tracking-wider">{label}</span>
-                                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] text-white transition-all ${
-                                      isSelected ? 'bg-primary border-primary' : 'border-gray-300'
+                                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] transition-all ${
+                                      isSelected 
+                                        ? (id === 'threads' ? 'bg-zinc-950 border-zinc-950 dark:bg-white dark:border-white text-white dark:text-zinc-950' : 'bg-white border-white text-primary') 
+                                        : 'border-zinc-300 dark:border-zinc-700'
                                     }`}>
                                       {isSelected && '✓'}
                                     </span>
