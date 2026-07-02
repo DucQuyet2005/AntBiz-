@@ -611,14 +611,58 @@ export default function AiCreatorView() {
   // ... (existing code)
 
   const handleProceedToABTest = async () => {
-    if (!activePrompt) {
-      alert(language === 'vi' ? 'Vui lòng cấu hình prompt trước khi sinh bài viết.' : 'Please configure a prompt before generating.');
-      return;
+    let resolvedActivePrompt = activePrompt;
+    if (!resolvedActivePrompt) {
+      const defaultPrompt = getDefaultPromptTemplate(
+        selectedPlatform,
+        postData.title || (language === 'vi' ? 'Bài viết tự soạn' : 'Manual post'),
+        postData.full_text || postData.description || ''
+      );
+      resolvedActivePrompt = defaultPrompt;
+      setActivePrompt(defaultPrompt);
     }
 
-    if (!url.trim() && !articleId) {
-      alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
-      return;
+    let resolvedArticleId = articleId;
+
+    if (inputMode === 'manual') {
+      if (!postData.title.trim() || !postData.full_text.trim()) {
+        alert(language === 'vi' ? 'Vui lòng nhập tiêu đề và nội dung bài viết.' : 'Please enter the title and detailed content of the post.');
+        return;
+      }
+
+      if (!resolvedArticleId) {
+        setIsGeneratingAB(true);
+        try {
+          const saveRes = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: postData.title,
+              full_text: postData.full_text,
+              category: postData.category,
+              author: postData.author,
+              imageUrl: postData.imageUrl
+            })
+          });
+          if (!saveRes.ok) {
+            const errJson = await saveRes.json().catch(() => ({ error: 'Lỗi lưu bài viết' }));
+            throw new Error(errJson.error || 'Failed to save');
+          }
+          const savedData = await saveRes.json();
+          resolvedArticleId = savedData.id;
+          setArticleId(savedData.id);
+        } catch (err: any) {
+          console.error('[Manual Save Error]:', err);
+          alert(language === 'vi' ? `Không thể lưu bài viết tự soạn: ${err.message}` : `Cannot save manual article: ${err.message}`);
+          setIsGeneratingAB(false);
+          return;
+        }
+      }
+    } else {
+      if (!url.trim() && !resolvedArticleId) {
+        alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
+        return;
+      }
     }
 
     setSelectedVariantId('');
@@ -659,14 +703,14 @@ export default function AiCreatorView() {
 
     const streamVariant = async (variantId: string, variantIndex: number, groupId: string) => {
       const abortSignal = abortControllerRef.current?.signal;
-      const customPromptText = buildVariantPrompt(variantIndex, activePrompt);
+      const customPromptText = buildVariantPrompt(variantIndex, resolvedActivePrompt);
       try {
         const res = await fetch('/api/captions/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: url.trim() || undefined,
-            articleId: articleId || undefined,
+            articleId: resolvedArticleId || undefined,
             customPrompt: customPromptText,
             platform: selectedPlatform,
             variantGroupId: groupId,
@@ -2755,10 +2799,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
               </div>
 
-              {/* URL Context Importer & AI Generation Setup */}
+              {/* URL Context Importer */}
               {inputMode === 'crawl' && (
-                <>
-                  {/* URL Context Importer */}
               <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -2812,8 +2854,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </button>
                 </div>
               </div>
-
-              {/* ─── AI PROMPT CONFIGURATION BAR ─── */}
+            )}
               <button
                 id="tour-creator-prompt"
                 type="button"
@@ -2997,8 +3038,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   </div>
                 </div>
               </div>
-            </>
-          )}
 
           {/* Luồng 2: Tự viết tay & Giọng nói tích hợp */}
           {inputMode === 'manual' && (
@@ -3022,7 +3061,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Speech to Text Collapsible Accordion */}
-                <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
+                <div className="md:col-span-2 bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
                   <div className="flex items-center justify-between w-full select-none">
                     <div className="flex items-center gap-2">
                       <Mic size={15} className="text-primary" />
@@ -3184,48 +3223,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   )}
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Chuyên mục' : 'Category'}</label>
-                  <input
-                    type="text"
-                    value={postData.category}
-                    onChange={(e) => setPostData({ ...postData, category: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder={language === 'vi' ? 'VD: Tin tức, Công nghệ...' : 'e.g. World Cup, Tech...'}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tác giả' : 'Author'}</label>
-                  <input
-                    type="text"
-                    value={postData.author}
-                    onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Ngày xuất bản' : 'Published Date'}</label>
-                  <input
-                    type="text"
-                    value={postData.published_at}
-                    onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Lượt xem' : 'Views Count'}</label>
-                  <input
-                    type="text"
-                    value={postData.views}
-                    onChange={(e) => setPostData({ ...postData, views: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder="0"
-                  />
-                </div>
-
                 {/* Drag and Drop Document Area */}
                 <div className="md:col-span-2 flex flex-col gap-1.5">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Hình ảnh bài viết' : 'Post Images'}</label>
@@ -3294,16 +3291,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                   )}
                 </div>
 
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Từ khóa (Tags)' : 'Tags'}</label>
-                  <input
-                    type="text"
-                    value={postData.tags}
-                    onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder="VD: world cup, the do, su van minh"
-                  />
-                </div>
+
 
                 <div className="md:col-span-2 flex flex-col gap-1.5 relative">
                   <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Nội dung chi tiết bài viết' : 'Detailed Post Content'}</label>
@@ -3570,95 +3558,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </button>
               </div>
 
-              {/* Manual Edit Form */}
-              <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
-                  <Layers size={18} className="text-primary" />
-                  <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
-                    <input
-                      type="text"
-                      value={postData.title}
-                      onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                      placeholder={t('aiCreator.labelTitle')}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
-                    <input
-                      type="text"
-                      value={postData.category}
-                      onChange={(e) => setPostData({ ...postData, category: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
-                    <input
-                      type="text"
-                      value={postData.author}
-                      onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
-                    <input
-                      type="text"
-                      value={postData.published_at}
-                      onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
-                    <input
-                      type="text"
-                      value={postData.views}
-                      onChange={(e) => setPostData({ ...postData, views: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
-                    <textarea
-                      value={postData.imageUrl}
-                      onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
-                      rows={3}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
-                      placeholder="Nhập mỗi URL hình ảnh trên một dòng..."
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
-                    <input
-                      type="text"
-                      value={postData.tags}
-                      onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
-                    <textarea
-                      value={postData.full_text}
-                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
-                      rows={10}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 

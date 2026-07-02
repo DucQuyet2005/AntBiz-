@@ -27,11 +27,8 @@ export async function POST(request: NextRequest) {
     const { title, content, platform } = smartPromptSchema.parse(body);
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Sử dụng model 2.5-flash mới nhất với system instruction để cực kỳ nghiêm ngặt
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      systemInstruction: "Bạn là một chuyên gia Prompt Engineering. Bạn CHỈ trả về nội dung prompt được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là prompt'. Chỉ trả về duy nhất nội dung prompt.",
-    });
+    const primaryModelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const systemInstruction = "Bạn là một chuyên gia Prompt Engineering. Bạn CHỈ trả về nội dung prompt được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là prompt'. Chỉ trả về duy nhất nội dung prompt.";
 
     const instruction = `Bạn là một chuyên gia Prompt Engineering.
 Hãy viết một Prompt (câu lệnh) chi tiết để yêu cầu một AI khác viết bài đăng mạng xã hội.
@@ -49,7 +46,21 @@ Yêu cầu đối với Prompt bạn tạo ra:
 5. Prompt được tạo ra phải quy định nghiêm ngặt yêu cầu AI viết bài: TUYỆT ĐỐI KHÔNG có lời dẫn giải, không chào hỏi, không có câu chuyển tiếp hay lời dẫn (như "Tuyệt vời!", "Dưới đây là...", "---"), không có bất kỳ ký tự nào ngoài nội dung bài viết hoàn chỉnh.
 6. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẾP nội dung prompt.`;
 
-    const result = await model.generateContent(instruction);
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: primaryModelName, systemInstruction });
+      result = await model.generateContent(instruction);
+    } catch (err: any) {
+      const errMsg = err.message || '';
+      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
+        const fallbackModelName = primaryModelName === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
+        console.warn(`[Gemini API 429] falling back to ${fallbackModelName}`);
+        const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName, systemInstruction });
+        result = await fallbackModel.generateContent(instruction);
+      } else {
+        throw err;
+      }
+    }
     const response = await result.response;
     const smartPromptText = response.text();
 
