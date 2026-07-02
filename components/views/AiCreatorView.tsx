@@ -5805,8 +5805,8 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                               {
                                 id: 'threads' as const,
                                 label: 'Threads',
-                                icon: (selected: boolean) => (
-                                  <svg className="w-8 h-8 transition-transform group-hover:scale-110 duration-300" viewBox="0 0 24 24" fill={selected ? (language === 'vi' ? '#000000' : '#FFFFFF') : 'currentColor'}>
+                                icon: (_selected: boolean) => (
+                                  <svg className="w-8 h-8 transition-transform group-hover:scale-110 duration-300" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
                                   </svg>
                                 ),
