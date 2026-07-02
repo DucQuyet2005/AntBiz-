@@ -26,6 +26,7 @@ import {
   Eye,
   Sliders,
   Send,
+  Download,
   X
 } from 'lucide-react';
 import Link from 'next/link';
@@ -114,6 +115,15 @@ export default function ContentCalendarView() {
     }
   }, [selectedPlatforms, pathname, router]);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFromDate, setExportFromDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [exportToDate, setExportToDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [selectedCell, setSelectedCell] = useState<{ date: Date; hour: number; posts: any[] } | null>(null);
@@ -122,6 +132,16 @@ export default function ContentCalendarView() {
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const [dragOverTime, setDragOverTime] = useState<{ dayIndex: number; timeStr: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleExport = (type: 'ical' | 'csv') => {
+    const url = `/api/calendar/export/${type}?from=${encodeURIComponent(exportFromDate)}&to=${encodeURIComponent(exportToDate)}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `calendar.${type === 'ical' ? 'ics' : 'csv'}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // FullCalendar States & Refs
   const calendarRef = useRef<any>(null);
@@ -896,6 +916,15 @@ export default function ContentCalendarView() {
             </button>
           </div>
         </div>
+
+        {/* Export Button */}
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 shrink-0"
+        >
+          <Download size={14} />
+          <span>{language === 'vi' ? 'Xuất lịch' : 'Export'}</span>
+        </button>
       </div>
 
       {/* Main Split Grid (Sidebar & Calendar Grid) */}
@@ -1461,6 +1490,101 @@ export default function ContentCalendarView() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showExportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.35 }}
+              className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-5 select-none"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Download size={18} className="stroke-[2.5]" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-850 dark:text-slate-100 uppercase tracking-wider">
+                    {language === 'vi' ? 'Xuất lịch đăng bài' : 'Export Editorial Calendar'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="p-1 rounded-xl text-slate-400 hover:text-slate-650 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-0"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Date pickers */}
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    {language === 'vi' ? 'Từ ngày' : 'From Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={exportFromDate}
+                    onChange={(e) => setExportFromDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200/60 dark:border-zinc-800 rounded-xl p-3 text-xs font-bold text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    {language === 'vi' ? 'Đến ngày' : 'To Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={exportToDate}
+                    onChange={(e) => setExportToDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200/60 dark:border-zinc-800 rounded-xl p-3 text-xs font-bold text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3.5 mt-2">
+                <button
+                  onClick={() => {
+                    handleExport('ical');
+                    setShowExportModal(false);
+                  }}
+                  className="bg-primary hover:bg-primary-hover text-white py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border-0 shadow-md shadow-primary/10 flex items-center justify-center gap-2"
+                >
+                  <Download size={13} />
+                  <span>iCal (.ics)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleExport('csv');
+                    setShowExportModal(false);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border-0 shadow-md shadow-emerald-600/10 flex items-center justify-center gap-2"
+                >
+                  <Download size={13} />
+                  <span>CSV (.csv)</span>
+                </button>
+              </div>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="w-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border-0 active:scale-95"
+              >
+                {language === 'vi' ? 'Hủy bỏ' : 'Cancel'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PopupDialog
         isOpen={!!popup?.isOpen}

@@ -180,6 +180,9 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   // Fetch Notifications
   const fetchNotifications = async (silent = false) => {
+    if (typeof window !== 'undefined' && !navigator.onLine) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && silent) return;
+
     if (!silent) setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -224,6 +227,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !active) return;

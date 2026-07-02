@@ -1390,25 +1390,7 @@ export default function ArticleDetailView() {
             </div>
           )}
 
-          {/* Image Cards Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {activeArticle.images.map((img: any, idx: number) => (
-              <div key={idx} className="relative h-[240px] rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
-                <img
-                  src={img.url}
-                  alt={`Image ${idx}`}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {img.caption && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
-                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
-                      {img.caption}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+
 
         </div>
 

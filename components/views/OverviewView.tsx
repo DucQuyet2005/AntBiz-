@@ -21,6 +21,24 @@ import {
   Shield
 } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then(mod => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const AreaChart = dynamic(
+  () => import('recharts').then(mod => mod.AreaChart),
+  { ssr: false }
+);
+const Area = dynamic(
+  () => import('recharts').then(mod => mod.Area),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import('recharts').then(mod => mod.Tooltip),
+  { ssr: false }
+);
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -180,6 +198,29 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     dailyVolume: [] as { dateString: string; dayLabel: string; dateNum: number; count: number }[],
     recentPosts: [] as { id: string; platform: string; status: string; scheduled_at: string; imgUrl: string; title: string }[]
   });
+
+  const [summaryStats, setSummaryStats] = useState({
+    total: 0,
+    published: 0,
+    pending: 0,
+    failed: 0,
+    cancelled: 0,
+    successRateByPlatform: { facebook: 100, instagram: 100, threads: 100, blog: 100 } as Record<string, number>
+  });
+  const [trendingStats, setTrendingStats] = useState<any[]>([]);
+
+  const sparklineData = useMemo(() => {
+    return trendingStats.map(item => ({
+      name: item.dayLabel,
+      total: (item.facebook || 0) + (item.instagram || 0) + (item.threads || 0) + (item.blog || 0)
+    }));
+  }, [trendingStats]);
+
+  const overallSuccessRate = useMemo(() => {
+    const total = summaryStats.published + summaryStats.failed;
+    if (total === 0) return 100;
+    return Math.round((summaryStats.published / total) * 100);
+  }, [summaryStats.published, summaryStats.failed]);
 
   const [allPosts, setAllPosts] = useState<any[]>([]);
   const [chartTimeframe, setChartTimeframe] = useState<'week' | 'month'>('week');
@@ -342,6 +383,28 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         };
       });
 
+      // Fetch stats summary
+      try {
+        const resSummary = await fetch('/api/stats/summary');
+        if (resSummary.ok) {
+          const dataSummary = await resSummary.json();
+          setSummaryStats(dataSummary);
+        }
+      } catch (e) {
+        console.error('Failed to fetch summary stats:', e);
+      }
+
+      // Fetch stats trending
+      try {
+        const resTrending = await fetch('/api/stats/trending');
+        if (resTrending.ok) {
+          const dataTrending = await resTrending.json();
+          setTrendingStats(dataTrending);
+        }
+      } catch (e) {
+        console.error('Failed to fetch trending stats:', e);
+      }
+
       setStats({
         publishedCount: published,
         pendingCount: pending,
@@ -381,8 +444,14 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       )
       .subscribe();
 
+    // Auto-refresh stats every 5 minutes (300000 ms)
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 300000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -674,42 +743,138 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         </div>
       </motion.div>
 
-      {/* 4 horizontal stats columns */}
+      {/* 3 Widget Cards - Dynamic Multichannel Stats */}
       <motion.div
         id="tour-stats"
-        className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300"
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       >
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hôm nay' : 'Today'}</span>
-          <span className="text-xl sm:text-2xl md:text-lg lg:text-base xl:text-xl font-extrabold text-[#1C1E2A] dark:text-white mt-2.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todayValue}>
-            {todayValue}
-          </span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todaySubtext}>
-            {todaySubtext}
-          </span>
+        {/* Card 1: Tổng bài đăng (7 ngày qua) */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Tổng bài đăng (7 ngày)' : 'Total Posts (7 Days)'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {summaryStats.total}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+              <Send size={15} />
+            </div>
+          </div>
+          
+          {/* Mini Sparkline Chart using Recharts */}
+          <div className="h-[60px] w-full mt-4 flex items-end">
+            {sparklineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                  <defs>
+                    <linearGradient id="colorSpark" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--color-slate-950)', border: 'none', borderRadius: '10px', fontSize: '9px', color: '#fff', fontFamily: 'sans-serif' }}
+                    labelStyle={{ display: 'none' }}
+                    itemStyle={{ color: '#fff', padding: '2px 0' }}
+                    formatter={(value: any, name: any, props: any) => [
+                      `${value} ${language === 'vi' ? 'bài' : 'posts'} (${props.payload.name})`,
+                      ''
+                    ]}
+                  />
+                  <Area type="monotone" dataKey="total" stroke="#F97316" strokeWidth={1.5} fillOpacity={1} fill="url(#colorSpark)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <span className="text-[10px] text-slate-450 dark:text-slate-500 italic w-full text-center">
+                {language === 'vi' ? 'Đang tải dữ liệu...' : 'Loading trending data...'}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Bài đã tạo' : 'Articles created'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{stats.articlesCount}</span>
-          <span className="text-[10px] text-emerald-600 font-black mt-1.5 flex items-center gap-0.5">
-            <ArrowUpRight size={10} /> +12% {language === 'vi' ? 'so tuần trước' : 'vs last week'}
-          </span>
+        {/* Card 2: Tỉ lệ thành công */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Tỉ lệ thành công' : 'Success Rate'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {overallSuccessRate}%
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <CheckCircle2 size={15} />
+            </div>
+          </div>
+
+          {/* Platform breakdown list */}
+          <div className="flex flex-col gap-2 mt-4 pt-2 border-t border-slate-100 dark:border-white/5">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-blue-600 dark:text-blue-400 shrink-0"><Facebook size={12} /></span>
+                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                  {summaryStats.successRateByPlatform.facebook ?? 100}%
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-pink-600 dark:text-pink-400 shrink-0"><Instagram size={12} /></span>
+                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                  {summaryStats.successRateByPlatform.instagram ?? 100}%
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-slate-800 dark:text-white shrink-0"><ThreadsIcon size={12} /></span>
+                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                  {summaryStats.successRateByPlatform.threads ?? 100}%
+                </span>
+              </div>
+            </div>
+            <span className="text-[9px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
+              {language === 'vi' 
+                ? `${summaryStats.published}/${summaryStats.published + summaryStats.failed} bài đăng thành công`
+                : `${summaryStats.published}/${summaryStats.published + summaryStats.failed} posts successfully published`
+              }
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Tỷ lệ thành công' : 'Success rate'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{successRateStr}</span>
-          <span className="text-[10px] text-slate-555 dark:text-slate-400 font-bold mt-1.5">{successCountStr}</span>
-        </div>
+        {/* Card 3: Bài sắp tới */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Bài sắp tới (Lên lịch)' : 'Upcoming Scheduled'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {summaryStats.pending}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+              <Zap size={15} />
+            </div>
+          </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-550 font-bold uppercase tracking-wider">{language === 'vi' ? 'Đăng tiếp theo' : 'Next schedule'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{nextPostTimeStr}</span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{nextPostSubtext}</span>
+          {/* Next schedule preview details */}
+          <div className="flex flex-col gap-1 mt-4 pt-2 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+              {language === 'vi' ? 'Đăng tiếp theo:' : 'Next publish time:'}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-slate-800 dark:text-white">
+                {nextPostTimeStr}
+              </span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800">
+                {nextPostSubtext}
+              </span>
+            </div>
+          </div>
         </div>
       </motion.div>
 
