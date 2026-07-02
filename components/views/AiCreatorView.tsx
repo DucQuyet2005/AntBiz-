@@ -5772,86 +5772,55 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                 <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-5 custom-scrollbar">
                   {activeAiTab === 'editor' ? (
                     <>
-                      {/* ── 1. Multi-select Platform Checkboxes ── */}
+                      {/* ── Platform pills: bấm để chọn/hủy + chuyển tab ── */}
                       <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng muốn cấu hình</label>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng cấu hình</label>
+                        <div className="flex gap-1.5 flex-wrap">
                           {([
-                            { id: 'facebook' as const, label: 'Facebook', color: 'blue', checkCls: 'border-blue-400 bg-blue-500', textActive: 'text-blue-700 dark:text-blue-400', bgActive: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50' },
-                            { id: 'threads' as const, label: 'Threads', color: 'gray', checkCls: 'border-gray-600 bg-gray-700', textActive: 'text-gray-800 dark:text-zinc-200', bgActive: 'bg-gray-100 dark:bg-zinc-800/60 border-gray-300 dark:border-zinc-700' },
-                            { id: 'instagram' as const, label: 'Instagram', color: 'pink', checkCls: 'border-pink-400 bg-pink-500', textActive: 'text-pink-700 dark:text-pink-400', bgActive: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800/50' },
-                          ]).map(({ id, label, checkCls, textActive, bgActive }) => {
-                            const isChecked = selectedPlatforms.has(id);
+                            { id: 'facebook' as const, label: 'Facebook',  activeCls: 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40 border-blue-600',  selectedCls: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' },
+                            { id: 'threads'  as const, label: 'Threads',   activeCls: 'bg-gray-800 dark:bg-zinc-200 text-white dark:text-gray-900 shadow-md shadow-gray-300 dark:shadow-zinc-700/40 border-gray-800 dark:border-zinc-200', selectedCls: 'bg-gray-100 dark:bg-zinc-800/60 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-700' },
+                            { id: 'instagram' as const, label: 'Instagram', activeCls: 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md shadow-pink-200 dark:shadow-pink-900/40 border-pink-500', selectedCls: 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-800/50' },
+                          ]).map(({ id, label, activeCls, selectedCls }) => {
+                            const isSelected = selectedPlatforms.has(id);
+                            const isActive   = activePromptTab === id;
                             return (
                               <button
                                 key={id}
                                 type="button"
                                 onClick={() => {
-                                  const next = new Set(selectedPlatforms);
-                                  if (isChecked && next.size > 1) {
-                                    next.delete(id);
-                                    // If removed tab was active, switch to first remaining
-                                    if (activePromptTab === id) {
+                                  if (isActive) {
+                                    // Deselect if not the last one
+                                    if (selectedPlatforms.size > 1) {
+                                      const next = new Set(selectedPlatforms);
+                                      next.delete(id);
+                                      setSelectedPlatforms(next);
                                       setActivePromptTab([...next][0]);
                                     }
+                                  } else if (isSelected) {
+                                    // Already selected but not active → just switch tab
+                                    setActivePromptTab(id);
                                   } else {
-                                    next.add(id);
+                                    // Not selected → add and switch to it
+                                    setSelectedPlatforms(new Set([...selectedPlatforms, id]));
+                                    setActivePromptTab(id);
                                   }
-                                  setSelectedPlatforms(next);
                                 }}
-                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer ${
-                                  isChecked
-                                    ? `${bgActive} ${textActive}`
-                                    : 'border-gray-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-gray-300 dark:hover:border-zinc-600'
+                                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all cursor-pointer select-none ${
+                                  isActive   ? activeCls :
+                                  isSelected ? selectedCls :
+                                  'border-gray-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:text-slate-600 dark:hover:text-zinc-400'
                                 }`}
+                                title={isActive && selectedPlatforms.size > 1 ? 'Bấm để hủy chọn' : isSelected ? 'Bấm để xem tab này' : 'Bấm để thêm nền tảng'}
                               >
-                                <span className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-all ${
-                                  isChecked ? checkCls + ' border-transparent' : 'border-gray-300 dark:border-zinc-600'
-                                }`}>
-                                  {isChecked && (
-                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                    </svg>
-                                  )}
-                                </span>
                                 {label}
+                                {isActive && selectedPlatforms.size > 1 && (
+                                  <span className="ml-1.5 opacity-70 text-[9px]">×</span>
+                                )}
                               </button>
                             );
                           })}
                         </div>
                       </div>
-
-                      {/* ── 2. Platform Tab Bar (only selected platforms) ── */}
-                      {selectedPlatforms.size > 1 && (
-                        <div className="flex gap-0.5 bg-slate-100 dark:bg-zinc-900 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 w-fit">
-                          {(['facebook', 'threads', 'instagram'] as const)
-                            .filter(p => selectedPlatforms.has(p))
-                            .map(p => {
-                              const tabColors: Record<string, string> = {
-                                facebook: 'data-[active=true]:text-blue-700 data-[active=true]:bg-blue-50 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400',
-                                threads: 'data-[active=true]:text-gray-800 data-[active=true]:bg-white dark:data-[active=true]:bg-zinc-800 dark:data-[active=true]:text-zinc-100',
-                                instagram: 'data-[active=true]:text-pink-700 data-[active=true]:bg-pink-50 dark:data-[active=true]:bg-pink-950/40 dark:data-[active=true]:text-pink-400',
-                              };
-                              const labels: Record<string, string> = { facebook: 'Facebook', threads: 'Threads', instagram: 'Instagram' };
-                              const isActive = activePromptTab === p;
-                              return (
-                                <button
-                                  key={p}
-                                  type="button"
-                                  data-active={isActive}
-                                  onClick={() => setActivePromptTab(p)}
-                                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border ${
-                                    isActive
-                                      ? `shadow-sm border-transparent ${tabColors[p].replace('data-[active=true]:', '')}`
-                                      : 'border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300'
-                                  }`}
-                                >
-                                  {labels[p]}
-                                </button>
-                              );
-                            })}
-                        </div>
-                      )}
 
                       {/* ── 3. Style Radio Group ── */}
                       <div className="flex flex-col gap-2">
