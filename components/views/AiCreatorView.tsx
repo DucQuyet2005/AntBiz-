@@ -2267,7 +2267,8 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
     views: '',
     tags: '',
     imageUrl: '',
-    full_text: ''
+    full_text: '',
+    body: [] as any[]
   });
 
   // Input Ingestion Mode selection state (crawl vs manual)
@@ -2768,7 +2769,8 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.full_text || data.description || ''
+            full_text: data.full_text || data.description || '',
+            body: data.body || []
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -2860,7 +2862,8 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.full_text || data.description || ''
+            full_text: data.full_text || data.description || '',
+            body: data.body || []
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -6231,13 +6234,13 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
         {/* Original Post Detail Modal */}
         {isOriginalPostModalOpen && createPortal(
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 p-6 shrink-0">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 p-6 shrink-0 bg-slate-50/50 dark:bg-zinc-900/50">
                 <div className="flex items-center gap-2">
                   <FileText className="text-primary" size={18} />
-                  <h3 className="text-base font-bold text-text uppercase tracking-wider">
-                    {language === 'vi' ? 'Chi tiết bài đăng gốc' : 'Original Post Details'}
+                  <h3 className="text-sm font-black text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Xem demo bài viết gốc' : 'Demo Original Article'}
                   </h3>
                 </div>
                 <button
@@ -6248,166 +6251,175 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                 </button>
               </div>
 
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
-                {/* Image Gallery Grid */}
-                {postData.imageUrl && (() => {
-                  const imageUrls = postData.imageUrl.split('\n').map(url => url.trim()).filter(Boolean);
-                  if (imageUrls.length === 0) return null;
-                  
-                  if (imageUrls.length === 1) {
-                    return (
-                      <div 
-                        onClick={() => {
-                          setLightboxIndex(0);
-                          setIsLightboxOpen(true);
-                        }}
-                        className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 cursor-pointer group relative shrink-0 animate-in fade-in duration-300"
-                      >
-                        <img 
-                          src={imageUrls[0]} 
-                          alt={postData.title} 
-                          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-350"
-                        />
-                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                          <span className="bg-white/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
-                            <Eye size={12} />
-                            {language === 'vi' ? 'XEM ẢNH PHÓNG TO' : 'ZOOM IMAGE'}
-                          </span>
+              {/* Scrollable Content (Newspaper layout) */}
+              <div className="flex-1 overflow-y-auto bg-[#ffffff] dark:bg-zinc-950 flex flex-col custom-scrollbar">
+                
+                {/* 1. Header Web Newspaper Mock */}
+                <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 border-b border-slate-150 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm backdrop-blur-md">
+                  {/* Logo Group */}
+                  <div className="flex flex-col gap-0.5 select-none">
+                    <span className="text-red-650 font-black text-lg tracking-tighter uppercase font-sans">
+                      GócNhìnMới
+                    </span>
+                    <span className="text-[8px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+                      Mạng xã hội
+                    </span>
+                  </div>
+
+                  {/* Mock Search Input */}
+                  <div className="hidden sm:flex items-center gap-2 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3.5 py-1.5 rounded-full w-64 select-none">
+                    <Search size={12} className="text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm bài viết, tác giả..." 
+                      className="bg-transparent border-none text-[10px] font-bold outline-none text-slate-700 dark:text-zinc-200 placeholder-slate-400/80 w-full cursor-not-allowed"
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Article Wrapper */}
+                <div className="px-6 py-8 md:px-12 flex gap-10 max-w-4xl mx-auto w-full">
+                  {/* Left Column: Sticky Action Panel (like real web) */}
+                  <div className="hidden md:flex flex-col items-center gap-5 pt-2 select-none">
+                    <div className="sticky top-20 flex flex-col gap-4 items-center">
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-blue-600 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <Facebook size={15} />
+                      </button>
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <Link2 size={15} />
+                      </button>
+                      <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 my-1" />
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-[#FFF1F2] dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <ThumbsUp size={15} />
+                      </button>
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-400 hover:text-indigo-550 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <MessageSquare size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Main Article Body */}
+                  <div className="flex-1 flex flex-col">
+                    
+                    {/* Category tag */}
+                    {postData.category && (
+                      <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-3 block select-none">
+                        {postData.category.startsWith('#') ? postData.category : `#${postData.category}`}
+                      </span>
+                    )}
+
+                    {/* Headline Title */}
+                    <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-zinc-100 leading-tight mb-5 tracking-tight font-sans">
+                      {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                    </h1>
+
+                    {/* Lead description (Sapo block) */}
+                    {postData.description && (
+                      <div className="bg-slate-50 dark:bg-zinc-900/40 p-4 border-l-4 border-red-550 rounded-r-2xl text-xs md:text-sm text-slate-650 dark:text-slate-300 font-bold mb-6 leading-relaxed">
+                        {postData.description}
+                      </div>
+                    )}
+
+                    {/* Author & Publication metadata */}
+                    <div className="flex items-center gap-3 mb-8 border-b border-slate-100 dark:border-zinc-800/80 pb-4 select-none">
+                      {/* Round Avatar mockup */}
+                      <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0">
+                        {postData.author ? postData.author.slice(0, 2) : 'CD'}
+                      </div>
+                      
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                          {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
+                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 font-bold">
+                          <span>{postData.published_at || new Date().toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
                         </div>
                       </div>
-                    );
-                  }
-
-                  const colCount = Math.min(imageUrls.length, 4);
-                  const gridClass = `grid gap-3 shrink-0 ${
-                    colCount === 2 
-                      ? 'grid-cols-2' 
-                      : colCount === 3 
-                        ? 'grid-cols-3' 
-                        : 'grid-cols-2 sm:grid-cols-4'
-                  }`;
-
-                  return (
-                    <div className={gridClass}>
-                      {imageUrls.slice(0, 4).map((url, idx) => {
-                        const isLast = idx === 3 && imageUrls.length > 4;
-                        return (
-                          <div 
-                            key={idx}
-                            onClick={() => {
-                              setLightboxIndex(idx);
-                              setIsLightboxOpen(true);
-                            }}
-                            className="aspect-square rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 cursor-pointer group relative"
-                          >
-                            <img 
-                              src={url} 
-                              alt={`Gallery ${idx}`} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350"
-                            />
-                            {isLast ? (
-                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-[2px] transition-all group-hover:bg-black/50">
-                                <span className="text-white text-xl font-black">+{imageUrls.length - 4}</span>
-                                <span className="text-white/80 text-[8px] font-bold uppercase tracking-widest mt-0.5">
-                                  {language === 'vi' ? 'Xem thêm' : 'View more'}
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                                <span className="bg-white/95 text-primary text-[10px] font-black p-2.5 rounded-xl shadow-md">
-                                  <Eye size={12} />
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
                     </div>
-                  );
-                })()}
 
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-zinc-950 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800 shrink-0">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                      {language === 'vi' ? 'Tác giả' : 'Author'}
-                    </span>
-                    <span className="text-xs text-text font-semibold flex items-center gap-1">
-                      <User size={13} className="text-primary shrink-0" />
-                      {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                      {language === 'vi' ? 'Ngày đăng' : 'Published At'}
-                    </span>
-                    <span className="text-xs text-text font-semibold flex items-center gap-1">
-                      <Calendar size={13} className="text-primary shrink-0" />
-                      {postData.published_at || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                      {language === 'vi' ? 'Chuyên mục' : 'Category'}
-                    </span>
-                    <span className="text-xs text-text font-semibold flex items-center gap-1">
-                      <Layers size={13} className="text-primary shrink-0" />
-                      {postData.category || (language === 'vi' ? 'Mặc định' : 'Default')}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                      {language === 'vi' ? 'Lượt xem' : 'Views'}
-                    </span>
-                    <span className="text-xs text-text font-semibold flex items-center gap-1">
-                      <Eye size={13} className="text-amber-500 shrink-0" />
-                      {postData.views || '0'}
-                    </span>
+                    {/* Article Body Content */}
+                    <div className="article-body-sections text-slate-700 dark:text-slate-350">
+                      {postData.body && postData.body.length > 0 ? (
+                        postData.body.map((block: any, idx: number) => {
+                          if (block.type === 'heading2') {
+                            return (
+                              <h2 key={idx} className="text-base md:text-lg font-black text-slate-800 dark:text-zinc-100 mt-8 mb-4 border-l-4 border-red-550 pl-3 leading-snug">
+                                {block.text}
+                              </h2>
+                            );
+                          }
+                          if (block.type === 'heading3') {
+                            return (
+                              <h3 key={idx} className="text-sm md:text-base font-extrabold text-slate-800 dark:text-zinc-200 mt-6 mb-3">
+                                {block.text}
+                              </h3>
+                            );
+                          }
+                          if (block.type === 'image' && block.url) {
+                            return (
+                              <div key={idx} className="w-full my-6 flex flex-col items-center select-none animate-in fade-in duration-300">
+                                <img 
+                                  src={block.url} 
+                                  alt={block.caption || 'Article Image'} 
+                                  className="w-full max-h-[380px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                />
+                                {block.caption && (
+                                  <span className="text-[10px] md:text-xs text-slate-400 font-bold italic mt-2 text-center bg-slate-50 dark:bg-zinc-900/30 px-3.5 py-1 rounded">
+                                    {block.caption}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                          // Paragraph
+                          return (
+                            <p key={idx} className="text-xs md:text-sm text-slate-750 dark:text-slate-300 mb-4 leading-relaxed font-semibold">
+                              {block.text}
+                            </p>
+                          );
+                        })
+                      ) : (
+                        // Fallback parsing for full_text
+                        (postData.full_text || postData.description || '').split('\n\n').map((para, pIdx) => {
+                          const trimmed = para.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <p key={pIdx} className="text-xs md:text-sm text-slate-755 dark:text-slate-300 mb-4 leading-relaxed font-semibold">
+                              {trimmed}
+                            </p>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Hashtags list */}
+                    {postData.tags && (
+                      <div className="flex flex-wrap gap-2 pt-6 border-t border-slate-150 dark:border-zinc-800 mt-6 select-none">
+                        {postData.tags.split(',').map((tag, idx) => {
+                          const trimmed = tag.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                              #{trimmed}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
                   </div>
                 </div>
 
-                {/* Tags */}
-                {postData.tags && (
-                  <div className="flex flex-wrap gap-1.5 shrink-0">
-                    {postData.tags.split(',').map((tag, idx) => {
-                      const trimmed = tag.trim();
-                      if (!trimmed) return null;
-                      return (
-                        <span key={idx} className="bg-primary/5 text-primary border border-primary/10 px-3 py-1 rounded-full text-[10px] font-bold">
-                          #{trimmed}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Title */}
-                <div className="flex flex-col gap-2 shrink-0">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                    {language === 'vi' ? 'Tiêu đề' : 'Title'}
-                  </span>
-                  <h4 className="text-lg font-extrabold text-[#1E293B] dark:text-zinc-100 leading-tight">
-                    {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
-                  </h4>
-                </div>
-
-                {/* Content */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                    {language === 'vi' ? 'Nội dung chi tiết' : 'Detailed Content'}
-                  </span>
-                  <div className="bg-slate-50 dark:bg-zinc-950 p-5 rounded-2xl border border-slate-100 dark:border-zinc-800 text-xs text-text leading-relaxed whitespace-pre-wrap font-medium">
-                    {postData.full_text || postData.description || (language === 'vi' ? 'Không có nội dung.' : 'No content available.')}
-                  </div>
-                </div>
               </div>
 
               {/* Footer */}
               <div className="border-t border-gray-100 dark:border-zinc-800 p-6 shrink-0 bg-slate-50 dark:bg-zinc-900/30 flex justify-end">
                 <button
                   onClick={() => setIsOriginalPostModalOpen(false)}
-                  className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer border-0"
+                  className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer border-0"
                 >
                   {language === 'vi' ? 'Đóng' : 'Close'}
                 </button>

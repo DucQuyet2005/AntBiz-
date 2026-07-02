@@ -145,7 +145,8 @@ export async function GET(request: NextRequest) {
       tags: tagsString,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
-      url: targetUrl
+      url: targetUrl,
+      body: cleanData.body || []
     });
   } catch (error: any) {
     console.error(`[Scrape API] Error scraping ${targetUrl}:`, error);
@@ -204,7 +205,8 @@ export async function POST(request: NextRequest) {
       published_at: new Date().toISOString(),
       views: '0',
       url: mockUrl,
-      imageUrl: imageUrl || ''
+      imageUrl: imageUrl || '',
+      body: [{ type: 'paragraph', text: full_text }]
     });
   } catch (error: any) {
     console.error('[Scrape API POST] Error:', error);
