@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
 
+  const state = searchParams.get('state') || 'facebook';
+
   if (error || !code) {
     console.error('[Facebook Callback] OAuth error:', error);
-    return NextResponse.redirect(`${origin}/settings?connected=failed&platform=facebook&error=${encodeURIComponent(error || 'Missing code')}`);
+    return NextResponse.redirect(`${origin}/settings?connected=failed&platform=${state}&error=${encodeURIComponent(error || 'Missing code')}`);
   }
 
   const appId = process.env.FB_APP_ID || '';
@@ -65,6 +67,8 @@ export async function GET(request: NextRequest) {
       throw new Error('Tài khoản Facebook này không quản lý Page nào.');
     }
 
+    let instagramLinkedCount = 0;
+
     // 4. Lưu từng Page và quét Instagram Business tương ứng
     for (const page of pages) {
       // Lưu Facebook Page vào database
@@ -106,15 +110,19 @@ export async function GET(request: NextRequest) {
           }, {
             onConflict: 'user_id,platform,account_id'
           });
+          instagramLinkedCount++;
         }
       } catch (igErr) {
         console.warn(`[Facebook Callback] Lỗi quét Instagram cho Page ${page.name}:`, igErr);
       }
+    if (state === 'instagram' && instagramLinkedCount === 0) {
+      return NextResponse.redirect(`${origin}/settings?connected=failed&platform=instagram&error=${encodeURIComponent('Không tìm thấy tài khoản Instagram Business nào liên kết với Trang Facebook của bạn.')}`);
     }
 
-    return NextResponse.redirect(`${origin}/settings?connected=success&platform=facebook`);
+    return NextResponse.redirect(`${origin}/settings?connected=success&platform=${state}`);
   } catch (err: any) {
     console.error('[Facebook Callback] Process Error:', err);
-    return NextResponse.redirect(`${origin}/settings?connected=failed&platform=facebook&error=${encodeURIComponent(err.message || 'Unknown')}`);
+    const state = request.nextUrl.searchParams.get('state') || 'facebook';
+    return NextResponse.redirect(`${origin}/settings?connected=failed&platform=${state}&error=${encodeURIComponent(err.message || 'Unknown')}`);
   }
 }
