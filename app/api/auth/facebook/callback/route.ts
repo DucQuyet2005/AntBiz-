@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  const origin = request.nextUrl.origin;
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
 
   if (error || !code) {
     console.error('[Facebook Callback] OAuth error:', error);

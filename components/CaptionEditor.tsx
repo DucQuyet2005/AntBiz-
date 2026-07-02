@@ -228,7 +228,7 @@ const CaptionEditor = ({
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           {(() => {
-            const isThreads = platform === 'threads' || platform === 'thread';
+            const isThreads = platform === 'thread';
             let counterClass = 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400';
             if (isOverLimit) {
               counterClass = 'bg-red-50 dark:bg-red-950/20 text-red-500';
@@ -369,7 +369,7 @@ const CaptionEditor = ({
               if (!content) {
                 return <span className="text-gray-400 dark:text-slate-500 italic">Nhấp để chỉnh sửa nội dung...</span>;
               }
-              const isThreads = platform === 'threads' || platform === 'thread';
+              const isThreads = platform === 'thread';
               if (isThreads) {
                 const lastQIndex = Math.max(content.lastIndexOf('?'), content.lastIndexOf('？'));
                 if (lastQIndex !== -1) {
