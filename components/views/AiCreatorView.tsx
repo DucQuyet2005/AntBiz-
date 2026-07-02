@@ -855,6 +855,13 @@ export default function AiCreatorView() {
   const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
   const [customPromptTitle, setCustomPromptTitle] = useState('');
+  const [promptConfigStep, setPromptConfigStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (isAiPromptDialogOpen) {
+      setPromptConfigStep(1);
+    }
+  }, [isAiPromptDialogOpen]);
 
   const handleTabSwitch = (newTab: 'editor' | 'generator') => {
     setActiveAiTab(newTab);
@@ -5772,126 +5779,165 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                 <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-5 custom-scrollbar">
                   {activeAiTab === 'editor' ? (
                     <>
-                      {/* ── Platform pills: bấm để chọn/hủy + chuyển tab ── */}
-                      <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nền tảng cấu hình</label>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {([
-                            { id: 'facebook' as const, label: 'Facebook',  activeCls: 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40 border-blue-600',  selectedCls: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' },
-                            { id: 'threads'  as const, label: 'Threads',   activeCls: 'bg-gray-800 dark:bg-zinc-200 text-white dark:text-gray-900 shadow-md shadow-gray-300 dark:shadow-zinc-700/40 border-gray-800 dark:border-zinc-200', selectedCls: 'bg-gray-100 dark:bg-zinc-800/60 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-700' },
-                            { id: 'instagram' as const, label: 'Instagram', activeCls: 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md shadow-pink-200 dark:shadow-pink-900/40 border-pink-500', selectedCls: 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-800/50' },
-                          ]).map(({ id, label, activeCls, selectedCls }) => {
-                            const isSelected = selectedPlatforms.has(id);
-                            const isActive   = activePromptTab === id;
-                            return (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => {
-                                  if (isActive) {
-                                    // Deselect if not the last one
-                                    if (selectedPlatforms.size > 1) {
-                                      const next = new Set(selectedPlatforms);
+                      {promptConfigStep === 1 ? (
+                        <div className="flex flex-col gap-6 py-4">
+                          <div className="flex flex-col gap-2">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-zinc-200">
+                              {language === 'vi' ? 'Bước 1: Chọn nền tảng đăng tải' : 'Step 1: Select Platforms'}
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-zinc-400">
+                              {language === 'vi' ? 'Chọn các mạng xã hội bạn muốn tạo nội dung bài đăng.' : 'Choose the social networks you want to generate content for.'}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            {([
+                              { id: 'facebook' as const, label: 'Facebook', icon: '🌐', activeCls: 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-455 ring-2 ring-blue-500', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
+                              { id: 'threads'  as const, label: 'Threads',  icon: '💬', activeCls: 'border-gray-800 bg-gray-50 dark:bg-zinc-900 text-gray-800 dark:text-zinc-105 ring-2 ring-gray-800 dark:ring-zinc-650', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
+                              { id: 'instagram' as const, label: 'Instagram', icon: '📸', activeCls: 'border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 text-pink-700 dark:text-pink-455 ring-2 ring-pink-500', inactiveCls: 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 text-slate-500' },
+                            ]).map(({ id, label, icon, activeCls, inactiveCls }) => {
+                              const isSelected = selectedPlatforms.has(id);
+                              return (
+                                <button
+                                  key={id}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = new Set(selectedPlatforms);
+                                    if (isSelected && next.size > 1) {
                                       next.delete(id);
-                                      setSelectedPlatforms(next);
-                                      setActivePromptTab([...next][0]);
+                                      if (activePromptTab === id) {
+                                        setActivePromptTab([...next][0]);
+                                      }
+                                    } else {
+                                      next.add(id);
                                     }
-                                  } else if (isSelected) {
-                                    // Already selected but not active → just switch tab
-                                    setActivePromptTab(id);
-                                  } else {
-                                    // Not selected → add and switch to it
-                                    setSelectedPlatforms(new Set([...selectedPlatforms, id]));
-                                    setActivePromptTab(id);
-                                  }
-                                }}
-                                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all cursor-pointer select-none ${
-                                  isActive   ? activeCls :
-                                  isSelected ? selectedCls :
-                                  'border-gray-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:text-slate-600 dark:hover:text-zinc-400'
-                                }`}
-                                title={isActive && selectedPlatforms.size > 1 ? 'Bấm để hủy chọn' : isSelected ? 'Bấm để xem tab này' : 'Bấm để thêm nền tảng'}
-                              >
-                                {label}
-                                {isActive && selectedPlatforms.size > 1 && (
-                                  <span className="ml-1.5 opacity-70 text-[9px]">×</span>
-                                )}
-                              </button>
-                            );
-                          })}
+                                    setSelectedPlatforms(next);
+                                  }}
+                                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all cursor-pointer select-none text-center h-36 ${
+                                    isSelected ? activeCls : inactiveCls
+                                  }`}
+                                >
+                                  <span className="text-3xl">{icon}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-black uppercase tracking-wider">{label}</span>
+                                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] text-white transition-all ${
+                                      isSelected ? 'bg-primary border-primary' : 'border-gray-300'
+                                    }`}>
+                                      {isSelected && '✓'}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex flex-col gap-5">
+                          <div className="flex flex-col gap-1">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-zinc-200">
+                              {language === 'vi' ? 'Bước 2: Cấu hình Prompt chi tiết' : 'Step 2: Detailed Prompt Configuration'}
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-zinc-400">
+                              {language === 'vi' ? 'Thiết lập phong cách và viết câu lệnh AI cho từng nền tảng.' : 'Set prompt style and write AI instructions for each platform.'}
+                            </p>
+                          </div>
 
-                      {/* ── 3. Style Radio Group ── */}
-                      <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          Phong cách Prompt — <span className="capitalize">{activePromptTab}</span>
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(PLATFORM_STYLES[activePromptTab] || []).map(({ id, label, description }) => {
-                            const styleColors: Record<string, { ring: string; bg: string; text: string; dot: string }> = {
-                              facebook: { ring: 'ring-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
-                              threads: { ring: 'ring-gray-600', bg: 'bg-gray-100 dark:bg-zinc-800/60 border-gray-300 dark:border-zinc-700', text: 'text-gray-800 dark:text-zinc-200', dot: 'bg-gray-700' },
-                              instagram: { ring: 'ring-pink-400', bg: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800/50', text: 'text-pink-700 dark:text-pink-300', dot: 'bg-pink-500' },
-                            };
-                            const sc = styleColors[activePromptTab] || styleColors.facebook;
-                            const isSelected = (promptStylePerPlatform[activePromptTab] || '') === id;
-                            return (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => {
-                                  setPromptStylePerPlatform(prev => ({ ...prev, [activePromptTab]: id }));
-                                  // Auto-fill template if title/content available
-                                  if (postData.title && (postData.full_text || postData.description)) {
-                                    const tmpl = getStylePromptTemplate(activePromptTab, id, postData.title, postData.full_text || postData.description);
-                                    setPromptPerPlatform(prev => ({ ...prev, [activePromptTab]: tmpl }));
-                                    setActivePrompt(tmpl);
-                                  }
-                                }}
-                                className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                                  isSelected
-                                    ? `${sc.bg} ring-1 ${sc.ring}`
-                                    : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-900'
-                                }`}
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-2 h-2 rounded-full transition-all ${isSelected ? sc.dot : 'bg-gray-300 dark:bg-zinc-600'}`} />
-                                  <span className={`text-[10px] font-black ${isSelected ? sc.text : 'text-slate-600 dark:text-zinc-300'}`}>{label}</span>
-                                </div>
-                                <span className="text-[9px] text-slate-400 dark:text-zinc-500 leading-snug pl-3.5">{description}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                          {/* Platform tabs selector row */}
+                          {selectedPlatforms.size > 1 && (
+                            <div className="flex gap-1.5 bg-slate-100 dark:bg-zinc-900 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 w-fit">
+                              {(['facebook', 'threads', 'instagram'] as const)
+                                .filter(p => selectedPlatforms.has(p))
+                                .map(p => {
+                                  const labels: Record<string, string> = { facebook: 'Facebook', threads: 'Threads', instagram: 'Instagram' };
+                                  const isActive = activePromptTab === p;
+                                  return (
+                                    <button
+                                      key={p}
+                                      type="button"
+                                      onClick={() => setActivePromptTab(p)}
+                                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border ${
+                                        isActive
+                                          ? 'bg-white dark:bg-zinc-800 text-primary shadow-sm border-transparent'
+                                          : 'border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300'
+                                      }`}
+                                    >
+                                      {labels[p]}
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          )}
 
-                      {/* ── 4. Prompt Textarea (per-platform) ── */}
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
-                          <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating || !postData.title}
-                            className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
-                            <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
-                            {t('aiCreator.promptConfigSmartPromptBtn')}
-                          </button>
+                          {/* Style Radio Group */}
+                          <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                              Phong cách Prompt — <span className="capitalize">{activePromptTab}</span>
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(PLATFORM_STYLES[activePromptTab] || []).map(({ id, label, description }) => {
+                                const styleColors: Record<string, { ring: string; bg: string; text: string; dot: string }> = {
+                                  facebook: { ring: 'ring-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
+                                  threads: { ring: 'ring-gray-600', bg: 'bg-gray-100 dark:bg-zinc-800/60 border-gray-300 dark:border-zinc-700', text: 'text-gray-800 dark:text-zinc-200', dot: 'bg-gray-700' },
+                                  instagram: { ring: 'ring-pink-400', bg: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800/50', text: 'text-pink-700 dark:text-pink-300', dot: 'bg-pink-500' },
+                                };
+                                const sc = styleColors[activePromptTab] || styleColors.facebook;
+                                const isSelected = (promptStylePerPlatform[activePromptTab] || '') === id;
+                                return (
+                                  <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => {
+                                      setPromptStylePerPlatform(prev => ({ ...prev, [activePromptTab]: id }));
+                                      if (postData.title && (postData.full_text || postData.description)) {
+                                        const tmpl = getStylePromptTemplate(activePromptTab, id, postData.title, postData.full_text || postData.description);
+                                        setPromptPerPlatform(prev => ({ ...prev, [activePromptTab]: tmpl }));
+                                        setActivePrompt(tmpl);
+                                      }
+                                    }}
+                                    className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                      isSelected
+                                        ? `${sc.bg} ring-1 ${sc.ring}`
+                                        : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-900'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`w-2 h-2 rounded-full transition-all ${isSelected ? sc.dot : 'bg-gray-300 dark:bg-zinc-600'}`} />
+                                      <span className={`text-[10px] font-black ${isSelected ? sc.text : 'text-slate-600 dark:text-zinc-300'}`}>{label}</span>
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 dark:text-zinc-500 leading-snug pl-3.5">{description}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Prompt Textarea */}
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
+                              <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating || !postData.title}
+                                className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
+                                <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
+                                {t('aiCreator.promptConfigSmartPromptBtn')}
+                              </button>
+                            </div>
+                            <textarea
+                              value={promptPerPlatform[activePromptTab] || ''}
+                              onChange={(e) => {
+                                setPromptPerPlatform(prev => ({ ...prev, [activePromptTab]: e.target.value }));
+                                setActivePrompt(e.target.value);
+                              }}
+                              placeholder={`Nhập câu lệnh hướng dẫn AI tạo nội dung cho ${activePromptTab}...`}
+                              rows={10}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
+                            />
+                            {/* Custom prompt name */}
+                            <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
+                              placeholder={t('aiCreator.promptConfigNamePlaceholder')}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
+                            />
+                          </div>
                         </div>
-                        <textarea
-                          value={promptPerPlatform[activePromptTab] || ''}
-                          onChange={(e) => {
-                            setPromptPerPlatform(prev => ({ ...prev, [activePromptTab]: e.target.value }));
-                            setActivePrompt(e.target.value);
-                          }}
-                          placeholder={`Nhập câu lệnh hướng dẫn AI tạo nội dung cho ${activePromptTab}...`}
-                          rows={12}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
-                        />
-                        {/* Custom prompt name */}
-                        <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
-                          placeholder={t('aiCreator.promptConfigNamePlaceholder')}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
-                        />
-                      </div>
+                      )}
                     </>
                   ) : (
                     /* ─── TAB 2: SINH PROMPT BẰNG MẪU (Thư viện) ─── */
@@ -5961,45 +6007,68 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                 </div>
 
                 {/* Dialog Footer */}
-                <div className="border-t border-gray-150 dark:border-zinc-800/60 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-3 shrink-0">
+                <div className="border-t border-gray-150 dark:border-zinc-800/60 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/40 flex items-center justify-between gap-3 shrink-0">
                   {activeAiTab === 'editor' ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentPrompt = promptPerPlatform[activePromptTab] || activePrompt;
-                          if (!currentPrompt) return;
-                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
-                          const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: currentPrompt, platform: activePromptTab };
-                          setSelectedPrompt(newPrompt);
-                          setActivePrompt(currentPrompt);
-                          setIsAiPromptDialogOpen(false);
-                        }}
-                        disabled={!promptPerPlatform[activePromptTab] && !activePrompt}
-                        className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
-                      >
-                        {t('aiCreator.promptConfigBtnUseOnly')}
-                      </button>
+                    promptConfigStep === 1 ? (
+                      <>
+                        <div />
+                        <button
+                          type="button"
+                          onClick={() => setPromptConfigStep(2)}
+                          disabled={selectedPlatforms.size === 0}
+                          className="bg-primary hover:bg-primary/95 text-white disabled:opacity-50 px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
+                        >
+                          {language === 'vi' ? 'Tiếp tục' : 'Next'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setPromptConfigStep(1)}
+                          className="bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                        >
+                          {language === 'vi' ? 'Quay lại' : 'Back'}
+                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentPrompt = promptPerPlatform[activePromptTab] || activePrompt;
+                              if (!currentPrompt) return;
+                              const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
+                              const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: currentPrompt, platform: activePromptTab };
+                              setSelectedPrompt(newPrompt);
+                              setActivePrompt(currentPrompt);
+                              setIsAiPromptDialogOpen(false);
+                            }}
+                            disabled={!promptPerPlatform[activePromptTab] && !activePrompt}
+                            className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                          >
+                            {t('aiCreator.promptConfigBtnUseOnly')}
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const currentPrompt = promptPerPlatform[activePromptTab] || activePrompt;
-                          if (!currentPrompt) return;
-                          setActivePrompt(currentPrompt);
-                          const savedPrompt = await handleSaveCurrentPrompt();
-                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
-                          const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: currentPrompt, platform: activePromptTab };
-                          setSelectedPrompt(newPrompt);
-                          setIsAiPromptDialogOpen(false);
-                        }}
-                        disabled={(!promptPerPlatform[activePromptTab] && !activePrompt) || isSavingPrompt}
-                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
-                      >
-                        {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
-                        {t('aiCreator.promptConfigBtnSaveUse')}
-                      </button>
-                    </>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const currentPrompt = promptPerPlatform[activePromptTab] || activePrompt;
+                              if (!currentPrompt) return;
+                              setActivePrompt(currentPrompt);
+                              const savedPrompt = await handleSaveCurrentPrompt();
+                              const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
+                              const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: currentPrompt, platform: activePromptTab };
+                              setSelectedPrompt(newPrompt);
+                              setIsAiPromptDialogOpen(false);
+                            }}
+                            disabled={(!promptPerPlatform[activePromptTab] && !activePrompt) || isSavingPrompt}
+                            className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
+                          >
+                            {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
+                            {t('aiCreator.promptConfigBtnSaveUse')}
+                          </button>
+                        </div>
+                      </>
+                    )
                   ) : (
                     <button
                       type="button"
