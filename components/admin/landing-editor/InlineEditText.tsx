@@ -125,8 +125,8 @@ export default function InlineEditText({
   }
 
   return (
-    <div className="relative group/inline-edit inline-block w-full">
-      <div
+    <span className="relative group/inline-edit inline-block w-full">
+      <span
         ref={editorRef}
         contentEditable={true}
         suppressContentEditableWarning={true}
@@ -161,7 +161,7 @@ export default function InlineEditText({
 
       {/* Char limit counter & validation warning */}
       {isFocused && (
-        <div className="absolute right-0 top-full mt-1 flex items-center gap-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2.5 py-1 rounded-lg shadow-lg z-50 text-[10px] font-bold select-none text-slate-500 animate-in fade-in slide-in-from-top-1 duration-150">
+        <span className="absolute right-0 top-full mt-1 flex items-center gap-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2.5 py-1 rounded-lg shadow-lg z-50 text-[10px] font-bold select-none text-slate-500 animate-in fade-in slide-in-from-top-1 duration-150">
           {error && (
             <span className="text-red-500 flex items-center gap-1">
               <AlertCircle size={10} /> {error}
@@ -170,8 +170,8 @@ export default function InlineEditText({
           <span className={charCount > maxLength ? 'text-red-500' : 'text-slate-400'}>
             {charCount}/{maxLength}
           </span>
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 }
