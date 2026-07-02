@@ -412,18 +412,18 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             onClick={isEditor ? (e) => { e.preventDefault(); onEditClick?.('heroSlides', 'slideImage', currentSlide); } : undefined}
           >
             {isEditor && (
-              <div className="absolute inset-0 border-4 border-dashed border-primary/45 bg-black/25 opacity-0 group-hover/hero-bg:opacity-100 transition-opacity flex items-center justify-center z-30 duration-300">
-                <div className="bg-[#ffffff] text-primary px-5 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-xs uppercase tracking-wide transform translate-y-2 group-hover/hero-bg:translate-y-0 transition-all duration-300">
-                  <UploadCloud size={16} /> Thay đổi ảnh nền banner
-                </div>
+              <div className="absolute inset-0 border-4 border-dashed border-primary/45 bg-black/10 opacity-0 group-hover/hero-bg:opacity-100 transition-opacity z-20 duration-300 pointer-events-none">
+                <span className="absolute top-6 right-6 bg-[#ffffff] text-primary px-4 py-2.5 rounded-full font-black shadow-2xl flex items-center gap-2 text-xs uppercase tracking-wide pointer-events-auto">
+                  <UploadCloud size={16} /> Thay đổi ảnh nền
+                </span>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
         
-        <div className="absolute inset-x-4 bottom-16 md:bottom-24 flex flex-col items-center justify-center text-center max-w-4xl mx-auto z-10 px-4">
-          <motion.h1 key={`title-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-white text-3xl md:text-5xl font-black tracking-tight leading-tight mb-4 select-none drop-shadow-md uppercase w-full">
+        <div className="absolute inset-x-4 bottom-16 md:bottom-24 flex flex-col items-center justify-center text-center max-w-4xl mx-auto z-40 px-4 pointer-events-none">
+          <motion.h1 key={`title-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-white text-3xl md:text-5xl font-black tracking-tight leading-tight mb-4 select-none drop-shadow-md uppercase w-full pointer-events-auto">
             <InlineEditText
               value={currentHero?.tagline || ''}
               isEditor={isEditor}
@@ -437,7 +437,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
               }}
             />
           </motion.h1>
-          <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow w-full">
+          <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow w-full pointer-events-auto">
             <InlineEditText
               value={currentHero?.description || ''}
               isEditor={isEditor}
@@ -456,6 +456,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
+            className="pointer-events-auto"
           >
             <Link
               href="/login"
