@@ -4432,7 +4432,138 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
         {/* CREATE AUTHOR PROFILE & TRAIN MODAL (US-2.09) */}
         <AnimatePresence>
-          {isAuthorModalOpen && (
+          
+        {/* BRAND STYLE CONFIGURATION MODAL */}
+        <AnimatePresence>
+          {isStyleModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget && !isSavingConfig) setIsStyleModalOpen(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                    {editingConfigId ? (language === 'vi' ? 'Chỉnh sửa văn phong' : 'Edit brand style') : (language === 'vi' ? 'Tạo văn phong mới' : 'Create brand style')}
+                  </h3>
+                  <button
+                    onClick={() => { if (!isSavingConfig) setIsStyleModalOpen(false); }}
+                    disabled={isSavingConfig}
+                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent disabled:opacity-50"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                      {language === 'vi' ? 'Tên văn phong' : 'Style Name'}
+                    </label>
+                    <input
+                      type="text"
+                      value={styleFormName}
+                      onChange={(e) => setStyleFormName(e.target.value)}
+                      placeholder={language === 'vi' ? 'Ví dụ: Giọng GenZ Vui Vẻ, Chuyên nghiệp sâu...' : 'E.g., GenZ Fun, Corporate...'}
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                        {language === 'vi' ? 'Giọng điệu (Tone)' : 'Tone'}
+                      </label>
+                      <select
+                        value={styleFormTone}
+                        onChange={(e) => setStyleFormTone(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-sans"
+                      >
+                        <option value="Chuyên nghiệp">Chuyên nghiệp</option>
+                        <option value="Hài hước">Hài hước</option>
+                        <option value="Đồng cảm">Đồng cảm</option>
+                        <option value="GenZ">GenZ</option>
+                        <option value="Học thuật">Học thuật</option>
+                        <option value="Trẻ trung">Trẻ trung</option>
+                        <option value="Thuyết phục">Thuyết phục</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                        {language === 'vi' ? 'Độ dài (Length)' : 'Length'}
+                      </label>
+                      <select
+                        value={styleFormLength}
+                        onChange={(e) => setStyleFormLength(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-sans"
+                      >
+                        <option value="Ngắn">Ngắn ( &lt;150 từ )</option>
+                        <option value="Vừa">Vừa ( 200-450 từ )</option>
+                        <option value="Dài">Dài ( 500-1000 từ )</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                      {language === 'vi' ? 'Quy tắc bổ sung (tùy chọn)' : 'Custom Rules (optional)'}
+                    </label>
+                    <textarea
+                      value={styleFormCustomRules}
+                      onChange={(e) => setStyleFormCustomRules(e.target.value)}
+                      placeholder={language === 'vi' ? 'Ví dụ: Không dùng từ lóng quá đà, viết tắt...' : 'E.g., No excessive slang...'}
+                      rows={3}
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-sans"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="checkbox"
+                      id="styleFormIsDefault"
+                      checked={styleFormIsDefault}
+                      onChange={(e) => setStyleFormIsDefault(e.target.checked)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer"
+                    />
+                    <label htmlFor="styleFormIsDefault" className="text-xs font-bold text-slate-650 dark:text-zinc-400 cursor-pointer font-sans select-none">
+                      {language === 'vi' ? 'Đặt làm mặc định cho mọi bài đăng' : 'Set as default style'}
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsStyleModalOpen(false)}
+                      disabled={isSavingConfig}
+                      className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                    >
+                      {language === 'vi' ? 'Hủy' : 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveStyleConfig}
+                      disabled={isSavingConfig}
+                      className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
+                    >
+                      {isSavingConfig ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                      {language === 'vi' ? 'Lưu cấu hình' : 'Save Style'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+{isAuthorModalOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -495,7 +495,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             const insertPayload: Record<string, unknown> = {
               article_id: article.id,
               prompt_id: dbPromptId || null,
-              author_profile_id: authorProfileId || null,
               created_by: user.id,
               platform: targetPlatform === 'threads' ? 'thread' : targetPlatform,
               ai_content: generatedText,
@@ -504,6 +503,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };
+            // author_profile_id: chỉ thêm nếu cột tồn tại (migration US-2.09 đã chạy)
+            // TODO: Thêm lại khi migration 20260701_us2_09_author_profiles.sql được áp dụng
+            // if (authorProfileId) insertPayload.author_profile_id = authorProfileId;
 
             // Only set variant_group_id when grouping multiple variants together
             if (variantGroupId) {

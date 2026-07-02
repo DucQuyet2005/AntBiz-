@@ -182,7 +182,15 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const fetchNotifications = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Bọc getUser riêng để tránh unhandled TypeError khi server vừa restart
+      let user: any = null;
+      try {
+        const { data } = await supabase.auth.getUser();
+        user = data?.user;
+      } catch {
+        // Network chưa sẵn sàng (e.g. dev server đang khởi động) — bỏ qua silently
+        return;
+      }
       if (!user) return;
 
       const [listRes, countRes] = await Promise.all([
@@ -208,7 +216,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       }
     } catch (err: any) {
       if (err?.message?.includes('Failed to fetch') || err instanceof TypeError) {
-        console.warn('Network issue fetching notifications in Header (Failed to fetch/offline).');
+        // Lỗi mạng tạm thời — không log error để tránh spam console
       } else {
         console.error('Error fetching notifications in Header:', err);
       }
@@ -225,7 +233,13 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
     const setupRealtime = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        let user: any = null;
+        try {
+          const { data } = await supabase.auth.getUser();
+          user = data?.user;
+        } catch {
+          return; // Network chưa sẵn sàng
+        }
         if (!user || !active) return;
 
         realtimeChannel = supabase

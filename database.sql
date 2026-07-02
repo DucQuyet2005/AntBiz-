@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- AUTO-POST PIPELINE â€” Supabase Migration
 -- Cháº¡y trong Supabase Dashboard > SQL Editor
 -- ============================================================
@@ -543,8 +543,7 @@ WHERE user_id IS NULL AND is_default = FALSE;
 
 -- 4. Tao index UNIQUE cho quy chuan nguoi dung theo ten
 CREATE UNIQUE INDEX IF NOT EXISTS unique_user_platform_preset_name 
-ON public.platform_presets (user_id, platform, name) 
-WHERE user_id IS NOT NULL;
+ON public.platform_presets (user_id, platform, name);
 
 -- 5. Tao index UNIQUE cho quy chuan he thong theo ten
 CREATE UNIQUE INDEX IF NOT EXISTS unique_system_platform_preset_name 
