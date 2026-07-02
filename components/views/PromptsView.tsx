@@ -143,6 +143,16 @@ export default function PromptsView() {
     setPage(1);
   }, [search, platformFilter, tagsFilter]);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [page]);
+
   // Filter prompts in memory
   const filteredPrompts = useMemo(() => {
     return allPrompts.filter((prompt) => {

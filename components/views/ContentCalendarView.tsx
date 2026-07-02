@@ -29,10 +29,13 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
+import dynamic from 'next/dynamic';
+
+const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string; key?: any }) => (
@@ -47,7 +50,9 @@ export default function ContentCalendarView() {
   const [loading, setLoading] = useState(true);
   
   const searchParams = useSearchParams();
-  const targetPostId = searchParams.get('postId');
+  const router = useRouter();
+  const pathname = usePathname();
+  const targetPostId = searchParams ? searchParams.get('postId') : null;
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
 
   const showPopup = useCallback((message: string, type: PopupType = 'info') => {
@@ -61,6 +66,53 @@ export default function ContentCalendarView() {
     'instagram',
     'threads'
   ]);
+
+  // 1. Sync from URL on mount & when URL search params change (Back/Forward button support)
+  useEffect(() => {
+    if (!searchParams) return;
+    const platParam = searchParams.get('platforms');
+    if (platParam) {
+      const newPlats = platParam.split(',').map(p => {
+        const lower = p.trim().toLowerCase();
+        if (lower === 'fb') return 'facebook';
+        if (lower === 'ig') return 'instagram';
+        return lower;
+      }).filter(p => ['facebook', 'instagram', 'threads'].includes(p));
+
+      const sortedCurrent = [...selectedPlatforms].sort().join(',');
+      const sortedNew = [...newPlats].sort().join(',');
+      if (sortedCurrent !== sortedNew && newPlats.length > 0) {
+        setSelectedPlatforms(newPlats);
+      }
+    } else {
+      if (selectedPlatforms.length !== 3) {
+        setSelectedPlatforms(['facebook', 'instagram', 'threads']);
+      }
+    }
+  }, [searchParams]);
+
+  // 2. Sync to URL when selectedPlatforms changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlPlatforms = selectedPlatforms.map(p => {
+      if (p === 'facebook') return 'fb';
+      if (p === 'instagram') return 'ig';
+      return p;
+    });
+
+    const currentPlats = params.get('platforms') || '';
+    const sortedCurrent = currentPlats.split(',').sort().join(',');
+    const sortedNew = [...urlPlatforms].sort().join(',');
+
+    if (sortedCurrent !== sortedNew) {
+      if (urlPlatforms.length === 0) {
+        params.delete('platforms');
+      } else {
+        params.set('platforms', urlPlatforms.join(','));
+      }
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [selectedPlatforms, pathname, router]);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -70,6 +122,63 @@ export default function ContentCalendarView() {
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const [dragOverTime, setDragOverTime] = useState<{ dayIndex: number; timeStr: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // FullCalendar States & Refs
+  const calendarRef = useRef<any>(null);
+  const [activeView, setActiveView] = useState('timeGridWeek');
+  const [calendarTitle, setCalendarTitle] = useState('');
+  const [confirmDrop, setConfirmDrop] = useState<{
+    isOpen: boolean;
+    eventId: string;
+    newStart: string;
+    oldStart: string;
+    title: string;
+    revert: () => void;
+    commit: () => Promise<void>;
+  } | null>(null);
+
+  // Query Cache
+  const cacheRef = useRef<Record<string, any>>({});
+  const clearCache = useCallback(() => {
+    cacheRef.current = {};
+  }, []);
+
+  // Fetch events function for FullCalendar (Lazy loading according to viewport)
+  const fetchCalendarEvents = useCallback(async (fetchInfo: any, successCallback: any, failureCallback: any) => {
+    const fromStr = fetchInfo.startStr;
+    const toStr = fetchInfo.endStr;
+    const cacheKey = `${fromStr}_${toStr}_${selectedPlatforms.join(',')}`;
+
+    if (cacheRef.current[cacheKey]) {
+      successCallback(cacheRef.current[cacheKey]);
+      return;
+    }
+
+    try {
+      const url = `/api/calendar?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&platforms=${encodeURIComponent(selectedPlatforms.join(','))}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          cacheRef.current[cacheKey] = json.data;
+          successCallback(json.data);
+        } else {
+          successCallback([]);
+        }
+      } else {
+        failureCallback(new Error('Failed to fetch calendar data'));
+      }
+    } catch (err) {
+      console.error('Error fetching calendar events:', err);
+      failureCallback(err);
+    }
+  }, [selectedPlatforms]);
+
+  // Refetch when platform filter changes
+  useEffect(() => {
+    clearCache();
+    calendarRef.current?.getApi()?.refetchEvents();
+  }, [selectedPlatforms, clearCache]);
 
   // Mini calendar month state — starts at today's month
   const [miniCalMonth, setMiniCalMonth] = useState<Date>(() => {
@@ -110,6 +219,9 @@ export default function ContentCalendarView() {
     sunday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(sunday);
     setHighlightedDate(targetDate);
+    
+    // Navigate FullCalendar to the selected date
+    calendarRef.current?.getApi()?.gotoDate(targetDate);
   }, []);
 
   useEffect(() => {
@@ -175,6 +287,9 @@ export default function ContentCalendarView() {
         sunday.setHours(0, 0, 0, 0);
         setCurrentWeekStart(sunday);
         setHighlightedDate(date);
+
+        // Auto navigate FullCalendar
+        calendarRef.current?.getApi()?.gotoDate(date);
       }
     }
   }, [targetPostId, posts]);
@@ -193,6 +308,10 @@ export default function ContentCalendarView() {
         method: 'POST',
       });
       if (res.ok) {
+        showPopup(language === 'vi' ? 'Đã hủy lịch đăng bài thành công!' : 'Successfully cancelled scheduled post!', 'success');
+        setSelectedCell(null);
+        clearCache();
+        calendarRef.current?.getApi()?.refetchEvents();
         await fetchPosts();
       } else {
         const errJson = await res.json().catch(() => ({}));
@@ -204,30 +323,34 @@ export default function ContentCalendarView() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [fetchPosts, showPopup]);
+  }, [fetchPosts, showPopup, clearCache, language]);
 
-  const handleReschedule = useCallback(async (postId: string, newScheduledAt: string) => {
+  const handleReschedule = useCallback(async (postId: string, newScheduledAt: string, onRevert?: () => void) => {
     setActionLoadingId(postId);
     try {
       const res = await fetch(`/api/scheduled-posts/${postId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduledAt: newScheduledAt }),
       });
       if (res.ok) {
         showPopup(language === 'vi' ? 'Đã dời lịch đăng bài thành công!' : 'Successfully rescheduled post!', 'success');
+        clearCache();
+        calendarRef.current?.getApi()?.refetchEvents();
         await fetchPosts();
       } else {
         const errJson = await res.json().catch(() => ({}));
         showPopup(errJson.error || 'Lỗi khi thay đổi lịch đăng bài', 'error');
+        if (onRevert) onRevert();
       }
     } catch (err) {
       console.error('Reschedule error:', err);
       showPopup('Lỗi kết nối khi dời lịch đăng bài', 'error');
+      if (onRevert) onRevert();
     } finally {
       setActionLoadingId(null);
     }
-  }, [fetchPosts, showPopup, language]);
+  }, [fetchPosts, showPopup, language, clearCache]);
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, postId: string) => {
     e.dataTransfer.setData('text/plain', postId);
@@ -295,7 +418,7 @@ export default function ContentCalendarView() {
     newScheduledDate.setHours(hours, minutes, 0, 0);
 
     await handleReschedule(postId, newScheduledDate.toISOString());
-  }, [handleReschedule]);
+  }, [handleReschedule, posts]);
 
   // Check if today is within current week
   const isCurrentWeekToday = () => {
@@ -316,16 +439,12 @@ export default function ContentCalendarView() {
   });
 
   const handlePrevWeek = useCallback(() => {
-    const newStart = new Date(currentWeekStart);
-    newStart.setDate(currentWeekStart.getDate() - 7);
-    setCurrentWeekStart(newStart);
-  }, [currentWeekStart]);
+    calendarRef.current?.getApi()?.prev();
+  }, []);
 
   const handleNextWeek = useCallback(() => {
-    const newStart = new Date(currentWeekStart);
-    newStart.setDate(currentWeekStart.getDate() + 7);
-    setCurrentWeekStart(newStart);
-  }, [currentWeekStart]);
+    calendarRef.current?.getApi()?.next();
+  }, []);
 
   const handleToday = useCallback(() => {
     const today = new Date();
@@ -335,6 +454,112 @@ export default function ContentCalendarView() {
     sunday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(sunday);
     setHighlightedDate(new Date());
+    calendarRef.current?.getApi()?.today();
+  }, []);
+
+  const handleViewChange = useCallback((viewType: string) => {
+    setActiveView(viewType);
+    calendarRef.current?.getApi()?.changeView(viewType);
+  }, []);
+
+  const handleDatesSet = useCallback((info: any) => {
+    setCalendarTitle(info.view.title);
+    const startOfView = new Date(info.start);
+    setCurrentWeekStart(startOfView);
+  }, []);
+
+  const handleEventClick = useCallback((info: any) => {
+    const post = info.event.extendedProps.post;
+    const posts = info.event.extendedProps.posts;
+    if (posts && posts.length > 0) {
+      setSelectedCell({
+        date: new Date(info.event.startStr || info.event.start),
+        hour: new Date(info.event.startStr || info.event.start).getHours(),
+        posts: posts
+      });
+    } else if (post) {
+      setSelectedCell({
+        date: new Date(post.scheduled_at),
+        hour: new Date(post.scheduled_at).getHours(),
+        posts: [post]
+      });
+    }
+  }, []);
+
+  const handleEventDrop = useCallback((info: any) => {
+    const { event, oldEvent } = info;
+    if (event.extendedProps.status !== 'pending') {
+      info.revert();
+      return;
+    }
+
+    const newStart = event.start;
+    const oldStart = oldEvent.start;
+
+    setConfirmDrop({
+      isOpen: true,
+      eventId: event.id,
+      newStart: newStart.toISOString(),
+      oldStart: oldStart.toISOString(),
+      title: event.title,
+      revert: () => info.revert(),
+      commit: async () => {
+        await handleReschedule(event.id, newStart.toISOString(), () => info.revert());
+      }
+    });
+  }, [handleReschedule]);
+
+  const renderEventContent = useCallback((eventInfo: any) => {
+    const { platform, platforms, isMultiple, status } = eventInfo.event.extendedProps;
+    let icon = null;
+    let bgClass = '';
+
+    if (isMultiple) {
+      bgClass = 'bg-indigo-650';
+      icon = (
+        <div className="flex gap-0.5 items-center shrink-0">
+          {(platforms || []).map((plat: string, idx: number) => {
+            if (plat === 'facebook') return <Facebook key={idx} size={9} className="text-white fill-white shrink-0" />;
+            if (plat === 'instagram') return <Instagram key={idx} size={9} className="text-white shrink-0" />;
+            if (plat === 'threads') return <ThreadsIcon key={idx} size={9} className="text-white shrink-0" />;
+            return <Globe key={idx} size={9} className="text-white shrink-0" />;
+          })}
+        </div>
+      );
+    } else {
+      if (platform === 'facebook') {
+        icon = <Facebook size={11} className="text-white fill-white shrink-0" />;
+        bgClass = 'bg-[#1877F2]';
+      } else if (platform === 'instagram') {
+        icon = <Instagram size={11} className="text-white shrink-0" />;
+        bgClass = 'bg-[#E4405F]';
+      } else if (platform === 'threads') {
+        icon = <ThreadsIcon size={11} className="text-white shrink-0" />;
+        bgClass = 'bg-black text-white';
+      } else {
+        icon = <Globe size={11} className="text-white shrink-0" />;
+        bgClass = 'bg-emerald-600';
+      }
+    }
+
+    let statusText = '';
+    if (!isMultiple) {
+      if (status === 'posted') {
+        statusText = ' ✓';
+      } else if (status === 'failed') {
+        statusText = ' ⚠️';
+      } else if (status === 'cancelled') {
+        statusText = ' ✕';
+      }
+    }
+
+    return (
+      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-white text-[10px] w-full h-full overflow-hidden ${bgClass}`}>
+        {icon}
+        <span className="font-extrabold truncate flex-1">{eventInfo.event.title}</span>
+        {statusText && <span className="text-[8px] font-black shrink-0">{statusText}</span>}
+      </div>
+    );
   }, []);
 
   const getDayAndPosition = (scheduledAtStr: string, weekStart: Date) => {
@@ -542,6 +767,57 @@ export default function ContentCalendarView() {
         .dark .platform-filter-btn {
           border-color: #52525b; /* zinc-600 */
         }
+        
+        /* FullCalendar custom variables for premium theme */
+        .fc {
+          font-family: inherit;
+          --fc-border-color: #f1f5f9;
+          --fc-page-bg-color: transparent;
+          --fc-today-bg-color: rgba(99, 102, 241, 0.04);
+          --fc-event-bg-color: #1877F2;
+          --fc-event-border-color: transparent;
+          --fc-neutral-bg-color: transparent;
+        }
+        .dark .fc {
+          --fc-border-color: #27272a;
+          --fc-today-bg-color: rgba(99, 102, 241, 0.08);
+        }
+        .fc .fc-col-header-cell {
+          padding: 8px 0;
+          font-weight: 800;
+          text-transform: uppercase;
+          font-size: 10px;
+          letter-spacing: 0.05em;
+          color: #94a3b8;
+        }
+        .fc .fc-col-header-cell-cushion {
+          color: inherit;
+          text-decoration: none;
+        }
+        .fc-theme-standard .fc-scrollgrid {
+          border: 1px solid var(--fc-border-color) !important;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        .fc .fc-timegrid-slot {
+          height: 48px !important;
+        }
+        .fc .fc-timegrid-slot-label {
+          font-size: 10px;
+          font-weight: 700;
+          color: #94a3b8;
+        }
+        .fc .fc-event {
+          border-radius: 8px !important;
+          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          border: none !important;
+          overflow: hidden;
+        }
+        .fc .fc-daygrid-event {
+          margin-top: 2px !important;
+          margin-bottom: 2px !important;
+          padding: 2px 4px !important;
+        }
       `}</style>
 
       {/* Top Header: Floating bar */}
@@ -555,8 +831,8 @@ export default function ContentCalendarView() {
               <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest leading-none mb-1">
                 {language === 'vi' ? 'Lên lịch đăng bài' : 'Editorial Calendar'}
               </span>
-              <h1 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight leading-none">
-                {getHeaderTitle()}
+              <h1 className="text-xl font-black text-slate-805 dark:text-slate-200 tracking-tight leading-none">
+                {calendarTitle || getHeaderTitle()}
               </h1>
             </div>
           </div>
@@ -585,11 +861,45 @@ export default function ContentCalendarView() {
               <ChevronRight size={15} />
             </button>
           </div>
+
+          {/* View Switcher Controls */}
+          <div className="flex items-center bg-slate-150 dark:bg-black p-1.5 rounded-2xl border border-slate-200/40 dark:border-zinc-850 select-none">
+            <button
+              onClick={() => handleViewChange('dayGridMonth')}
+              className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-0 ${
+                activeView === 'dayGridMonth'
+                  ? 'bg-white dark:bg-zinc-650 shadow-sm text-slate-800 dark:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              {language === 'vi' ? 'Tháng' : 'Month'}
+            </button>
+            <button
+              onClick={() => handleViewChange('timeGridWeek')}
+              className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-0 ${
+                activeView === 'timeGridWeek'
+                  ? 'bg-white dark:bg-zinc-650 shadow-sm text-slate-800 dark:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              {language === 'vi' ? 'Tuần' : 'Week'}
+            </button>
+            <button
+              onClick={() => handleViewChange('timeGridDay')}
+              className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-0 ${
+                activeView === 'timeGridDay'
+                  ? 'bg-white dark:bg-zinc-650 shadow-sm text-slate-800 dark:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              {language === 'vi' ? 'Ngày' : 'Day'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Split Grid (Sidebar & Calendar Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
         {/* LEFT COLUMN: Sidebar (Create, Mini Calendar, Platform Toggles) */}
         <div className="col-span-12 lg:col-span-3 bg-white border border-slate-100 rounded-2xl p-5 flex flex-col gap-6 shadow-sm shadow-slate-100/40">
@@ -778,572 +1088,85 @@ export default function ContentCalendarView() {
               </button>
             </div>
           </div>
-
-
-
         </div>
 
-        {/* RIGHT COLUMN: Google-Calendar-style Hourly Grid */}
-        <div className="hidden md:flex col-span-12 lg:col-span-9 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm shadow-slate-100/40 flex-col gap-4 overflow-x-auto">
-          <div className="min-w-[750px] flex flex-col gap-4">
-
-            {/* Main Grid Header Rows for Days */}
-            <div className="grid grid-cols-[80px_1fr] items-stretch pr-2">
-              <div className="flex flex-col justify-end text-[10px] text-slate-400 font-extrabold pb-3 border-b border-slate-100 text-right pr-4 tracking-wider select-none">
-                GMT+07
-              </div>
-
-              <div className="grid grid-cols-7 border-b border-slate-100 pb-3 gap-x-3 text-center">
-                {weekDates.map((date, idx) => {
-                  const isTodayDate = isToday(date);
-                  const isSelected = highlightedDate && isDateMatch(highlightedDate, date);
-                  const dayNum = date.getDate();
-                  const dayLabel = getDayLabel(date);
-
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => handleSelectDay(date)}
-                      className="flex flex-col items-center select-none relative cursor-pointer group"
-                    >
-                      <span className={`text-[10px] font-black uppercase tracking-wider transition-colors duration-300 ${isTodayDate
-                          ? 'text-primary font-black'
-                          : isSelected
-                            ? 'text-primary font-black'
-                            : 'text-slate-400 group-hover:text-slate-600'
-                        }`}>
-                        {dayLabel}
-                      </span>
-                      <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black mt-1 transition-all duration-300 ${isTodayDate
-                          ? 'bg-primary text-white shadow-md shadow-primary/20'
-                          : isSelected
-                            ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm scale-105'
-                            : 'text-slate-800 hover:bg-slate-100'
-                        }`}>
-                        {dayNum}
-                      </span>
-                      {isTodayDate && (
-                        <div className="absolute bottom-[-13px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+        {/* RIGHT COLUMN: FullCalendar Grid */}
+        <div className="col-span-12 lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-hidden relative h-[780px]">
+          {/* Horizontal Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/40 rounded-2xl border border-slate-100 dark:border-zinc-850 backdrop-blur-md mb-2">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-black text-slate-550 dark:text-zinc-400 uppercase tracking-widest leading-none">
+                {language === 'vi' ? 'Lọc theo kênh:' : 'Filter by platform:'}
+              </span>
+              <span className="bg-primary/10 text-primary text-[10px] font-black px-2.5 py-0.5 rounded-full select-none">
+                {language === 'vi' ? `Kênh đang lọc: ${selectedPlatforms.length}` : `Active: ${selectedPlatforms.length}`}
+              </span>
             </div>
-
-            {/* Time Grid Viewport */}
-            {loading ? (
-              <div className="h-[600px] flex items-center justify-center border border-slate-100 rounded-2xl">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="animate-spin text-primary" size={32} />
-                  <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{t('common.loading')}</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                ref={scrollRef}
-                className="h-[600px] overflow-y-auto relative border border-slate-100 dark:border-white/5 rounded-2xl bg-white select-none scrollbar-thin overflow-x-visible shadow-inner"
+            <div className="flex items-center gap-2">
+              {/* Facebook Chip */}
+              <button
+                onClick={() => handleTogglePlatform('facebook')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  selectedPlatforms.includes('facebook')
+                    ? 'border-blue-200 bg-blue-50/30 text-blue-700 dark:border-blue-550/30 dark:bg-blue-950/20 dark:text-blue-400'
+                    : 'border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-900'
+                }`}
               >
-                <div className="grid grid-cols-[80px_1fr] relative h-[1440px] overflow-x-visible">
+                <Facebook size={12} className={selectedPlatforms.includes('facebook') ? 'text-blue-650' : 'text-slate-400'} />
+                <span>Facebook</span>
+              </button>
 
-                  {/* Hours Left Column */}
-                  <div className="border-r border-slate-100 dark:border-white/5 bg-white dark:bg-black flex flex-col z-20">
-                    {hoursArray.map(hour => (
-                      <div key={hour} className="h-[60px] flex items-center justify-end pr-4 text-[10px] text-slate-400 font-bold select-none">
-                        {hour > 0 ? formatHour(hour) : ''}
-                      </div>
-                    ))}
-                  </div>
+              {/* Instagram Chip */}
+              <button
+                onClick={() => handleTogglePlatform('instagram')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  selectedPlatforms.includes('instagram')
+                    ? 'border-pink-200 bg-pink-50/30 text-pink-700 dark:border-pink-550/30 dark:bg-pink-950/20 dark:text-pink-400'
+                    : 'border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-900'
+                }`}
+              >
+                <Instagram size={12} className={selectedPlatforms.includes('instagram') ? 'text-pink-555' : 'text-slate-400'} />
+                <span>Instagram</span>
+              </button>
 
-                  {/* Grid Columns Area */}
-                  <div ref={gridContainerRef} className="relative h-full grid grid-cols-7 overflow-x-visible">
-
-                    {/* Horizontal Grid Lines */}
-                    <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
-                      {hoursArray.map(hour => (
-                        <div key={hour} className="h-[60px] border-b border-slate-100/70 dark:border-white/5 first:border-t-0"></div>
-                      ))}
-                    </div>
-
-                    {/* Vertical Column Borders and Highlights */}
-                    <div className="absolute inset-0 grid grid-cols-7 pointer-events-none z-0">
-                      {weekDates.map((date, i) => {
-                        const isHighlighted = highlightedDate && isDateMatch(highlightedDate, date);
-                        return (
-                          <div
-                            key={i}
-                            className={`border-r border-slate-100/70 dark:border-white/5 h-full last:border-r-0 transition-all duration-300 ${isHighlighted ? 'bg-primary/[0.04]' : ''
-                              }`}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Droppable Columns Overlay */}
-                    <div className="absolute inset-0 grid grid-cols-7 z-0">
-                      {weekDates.map((date, dayIdx) => (
-                        <div
-                          key={dayIdx}
-                          className="h-full w-full relative"
-                          onDragOver={(e) => handleDragOver(e, dayIdx)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, dayIdx, date)}
-                        >
-                          {dragOverTime && dragOverTime.dayIndex === dayIdx && (
-                            <div
-                              className="absolute left-0 right-0 border-t border-dashed border-primary/80 pointer-events-none z-30"
-                              style={{
-                                top: `${parseInt(dragOverTime.timeStr.split(':')[0]) * 60 + parseInt(dragOverTime.timeStr.split(':')[1])}px`
-                              }}
-                            >
-                              <span className="absolute right-1 -top-3.5 bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">
-                                {dragOverTime.timeStr}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Dynamic Time Line with Radar Pulse Indicator */}
-                    {isCurrentWeekToday() && (
-                      <div
-                        className="absolute left-0 right-0 pointer-events-none z-30 font-sans"
-                        style={{
-                          top: `${currentTimeOffset}px`,
-                        }}
-                      >
-                        <div className="relative w-full h-full">
-                          {/* Pulse indicator at the left border of the current day column */}
-                          <div
-                            className="absolute w-2.5 h-2.5 bg-primary rounded-full -top-[4.5px] z-40 shadow-sm shadow-primary/30"
-                            style={{
-                              left: `${(todayIndex / 7) * 100}%`,
-                              transform: 'translateX(-50%)'
-                            }}
-                          >
-                            <span className="absolute -inset-1.5 rounded-full bg-primary/30 animate-ping pointer-events-none" />
-                          </div>
-                          {/* High-contrast solid line for the active day column */}
-                          <div
-                            className="absolute h-[1.5px] bg-primary z-30"
-                            style={{
-                              left: `${(todayIndex / 7) * 100}%`,
-                              width: `${100 / 7}%`
-                            }}
-                          />
-                          {/* Low-contrast timeline extending across the rest of the week */}
-                          <div className="absolute left-0 right-0 h-[1px] bg-primary/25 z-10" />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Post Event Cards */}
-                    {(() => {
-                      // 1. Phân loại posts theo từng ngày trong tuần (0 đến 6)
-                      const dayPostsArray: any[][] = Array.from({ length: 7 }, () => []);
-
-                      filteredPosts.forEach(post => {
-                        const pos = getDayAndPosition(post.scheduled_at, currentWeekStart);
-                        if (!pos) return;
-                        dayPostsArray[pos.dayIndex].push({
-                          ...post,
-                          pos
-                        });
-                      });
-
-                      // 2. Gom nhóm các post trong cùng khoảng 1 giờ (60 phút) của từng ngày
-                      const allGroups: any[][] = [];
-
-                      dayPostsArray.forEach((dayPosts) => {
-                        if (dayPosts.length === 0) return;
-
-                        // Sắp xếp các bài đăng theo thời gian tăng dần
-                        dayPosts.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-
-                        let currentGroup: any[] = [dayPosts[0]];
-
-                        for (let i = 1; i < dayPosts.length; i++) {
-                          const prevPost = currentGroup[currentGroup.length - 1];
-                          const currPost = dayPosts[i];
-
-                          const prevTime = new Date(prevPost.scheduled_at).getTime();
-                          const currTime = new Date(currPost.scheduled_at).getTime();
-
-                          // Nếu khoảng cách giữa bài đăng này và bài đăng trước đó trong nhóm <= 60 phút
-                          if (currTime - prevTime < 3600000) {
-                            currentGroup.push(currPost);
-                          } else {
-                            allGroups.push(currentGroup);
-                            currentGroup = [currPost];
-                          }
-                        }
-                        allGroups.push(currentGroup);
-                      });
-
-                      // 3. Render các nhóm bài đăng
-                      return allGroups.map((groupPosts) => {
-                        const count = groupPosts.length;
-                        const firstPost = groupPosts[0];
-                        const { dayIndex, hours, minutes } = firstPost.pos;
-
-                        if (count === 1) {
-                          const post = firstPost;
-                          const { timeStr } = post.pos;
-                          const topOffset = hours * 60 + minutes;
-                          const cardHeight = 54;
-
-                          const platform = post.platform?.toLowerCase() || 'blog';
-                          let borderClass = '';
-                          let bgGradient = '';
-                          let textClass = '';
-                          let iconBg = '';
-                          let platformIcon = null;
-
-                          if (post.status === 'posted') {
-                            borderClass = 'border-slate-300 dark:border-zinc-800';
-                            bgGradient = 'from-slate-100 dark:from-zinc-800/80 to-slate-200/85 dark:to-zinc-900/80';
-                            textClass = 'text-slate-400 dark:text-slate-300';
-                            iconBg = 'bg-slate-200/70 dark:bg-zinc-900/80 text-slate-400 dark:text-slate-300';
-                            if (platform === 'facebook') {
-                              platformIcon = <Facebook size={11} className="fill-slate-400 text-slate-400 dark:fill-slate-400 dark:text-slate-300" />;
-                            } else if (platform === 'instagram') {
-                              platformIcon = <Instagram size={11} className="text-slate-400 dark:text-slate-300" />;
-                            } else if (platform === 'threads' || platform === 'thread') {
-                              platformIcon = <ThreadsIcon size={11} className="text-slate-400 dark:text-slate-300" />;
-                            } else {
-                              platformIcon = <Globe size={11} className="text-slate-400 dark:text-slate-300" />;
-                            }
-                          } else {
-                            borderClass = 'border-amber-500/30 hover:border-amber-500/65 dark:border-amber-700/45';
-                            bgGradient = 'from-amber-50 dark:from-amber-950/40 to-amber-100/70 dark:to-amber-900/30';
-                            textClass = 'text-amber-800 dark:text-amber-200';
-                            iconBg = 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400';
-                            platformIcon = <Globe size={11} className="text-amber-750 dark:text-amber-450" />;
-
-                            if (platform === 'facebook') {
-                              borderClass = 'border-blue-600/35 hover:border-blue-600/70 dark:border-blue-700/50';
-                              bgGradient = 'from-blue-50 dark:from-blue-950/40 to-blue-100/70 dark:to-blue-900/30';
-                              textClass = 'text-blue-900 dark:text-blue-200';
-                              iconBg = 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400';
-                              platformIcon = <Facebook size={11} className="fill-blue-600 text-blue-600 dark:fill-blue-400 dark:text-blue-400" />;
-                            } else if (platform === 'instagram') {
-                              borderClass = 'border-pink-500/35 hover:border-pink-500/70 dark:border-pink-700/50';
-                              bgGradient = 'from-pink-50 dark:from-pink-950/40 to-rose-100/70 dark:to-rose-900/30';
-                              textClass = 'text-pink-900 dark:text-pink-200';
-                              iconBg = 'bg-pink-100 dark:bg-pink-950/40 text-pink-650 dark:text-pink-400';
-                              platformIcon = <Instagram size={11} className="text-pink-650 dark:text-pink-400" />;
-                            } else if (platform === 'threads' || platform === 'thread') {
-                              borderClass = 'border-slate-800/35 hover:border-slate-800/70 dark:border-slate-700/65';
-                              bgGradient = 'from-slate-100 dark:from-slate-800/75 to-slate-200/70 dark:to-slate-700/60';
-                              textClass = 'text-slate-950 dark:text-slate-200';
-                              iconBg = 'bg-slate-200 dark:bg-black text-slate-800 dark:text-slate-200';
-                              platformIcon = <ThreadsIcon size={11} className="text-black dark:text-white" />;
-                            } else if (platform === 'blog') {
-                              borderClass = 'border-emerald-600/35 hover:border-emerald-600/70 dark:border-emerald-700/40';
-                              bgGradient = 'from-emerald-50 dark:from-emerald-950/40 to-teal-100/70 dark:to-emerald-900/30';
-                              textClass = 'text-emerald-900 dark:text-emerald-200';
-                              iconBg = 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400';
-                              platformIcon = <Globe size={11} className="text-emerald-755 dark:text-emerald-450" />;
-                            }
-                          }
-
-                          let statusIcon = null;
-                          if (post.status === 'posted') {
-                            statusIcon = <span className="bg-emerald-100 text-emerald-700 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✓</span>;
-                          } else if (post.status === 'failed') {
-                            statusIcon = <span className="bg-rose-100 text-rose-600 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">⚠️</span>;
-                          } else if (post.status === 'cancelled') {
-                            statusIcon = <span className="bg-slate-100 text-slate-500 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-sm">✕</span>;
-                          }
-
-                          const title = post.captions?.articles?.title || post.captions?.ai_content?.substring(0, 30) + '...';
-                          const isRightSide = dayIndex >= 4;
-                          const popoverPositionClass = isRightSide ? 'right-[102%]' : 'left-[102%]';
-
-                          return (
-                            <div
-                              key={post.id}
-                              draggable={post.status !== 'posted'}
-                              onDragStart={(e) => {
-                                if (post.status === 'posted') {
-                                  e.preventDefault();
-                                  return;
-                                }
-                                handleDragStart(e, post.id);
-                              }}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => e.preventDefault()}
-                              onDrop={(e) => handleDrop(e, dayIndex, weekDates[dayIndex])}
-                              onClick={() => setSelectedCell({ date: new Date(post.scheduled_at), hour: new Date(post.scheduled_at).getHours(), posts: [post] })}
-                              style={{
-                                gridColumnStart: dayIndex + 1,
-                                gridColumnEnd: dayIndex + 2,
-                                top: `${topOffset}px`,
-                                height: `${cardHeight}px`
-                              }}
-                              className={`absolute left-1 right-1 rounded-2xl p-2.5 text-[10px] font-bold border-2 shadow-sm flex flex-col justify-between transition-all duration-300 z-10 group overflow-visible bg-gradient-to-r ${bgGradient} ${borderClass} ${textClass} ${post.status === 'posted'
-                                  ? 'cursor-not-allowed opacity-75 dark:opacity-80'
-                                  : 'cursor-pointer hover:-translate-y-[1px] hover:shadow-md'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between gap-1 select-none">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <span className={`w-4 h-4 rounded-lg flex items-center justify-center shadow-inner ${iconBg}`}>
-                                    {platformIcon}
-                                  </span>
-                                  <span className="truncate text-[9px] font-black tracking-wide font-mono opacity-80">{timeStr}</span>
-                                </div>
-                                {statusIcon}
-                              </div>
-
-                              <span className="truncate text-[9.5px] leading-tight font-black mt-1 tracking-tight select-none">
-                                {title}
-                              </span>
-
-                              {/* HOVER PREVIEW POPOVER */}
-                              <div className={`hidden ${draggedPostId ? '' : 'group-hover:block'} absolute ${popoverPositionClass} top-[-15px] w-[330px] bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-white/5 rounded-2xl shadow-2xl z-50 text-text p-4 cursor-default animate-popover border-collapse`}>
-
-                                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
-                                      <Sparkles size={11} className="animate-pulse" />
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-                                      {language === 'vi' ? 'Bản mô phỏng A/B' : 'A/B Mock Preview'}
-                                    </span>
-                                  </div>
-                                  <span className={`text-[8px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${post.status === 'posted' ? 'bg-emerald-50 text-emerald-600' :
-                                      post.status === 'failed' ? 'bg-rose-50 text-rose-600' :
-                                        post.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-600'
-                                    }`}>
-                                    {post.status}
-                                  </span>
-                                </div>
-
-                                {platform === 'facebook' && (
-                                  <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                                    <div className="flex items-center gap-2.5 mb-2.5">
-                                      <div className="w-8 h-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-bold text-xs shadow-inner select-none">AB</div>
-                                      <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-slate-800 flex items-center gap-0.5 select-none">
-                                          AntBiz Official
-                                          <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold">✓</span>
-                                        </span>
-                                        <span className="text-[8px] text-slate-400 font-semibold">Scheduled: {timeStr} · 🌍</span>
-                                      </div>
-                                    </div>
-                                    <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-3 font-semibold">
-                                      {post.captions?.edited_content || post.captions?.ai_content || 'No content available'}
-                                    </p>
-                                    {post.captions?.articles?.images?.[0]?.url && (
-                                      <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
-                                        <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
-                                      </div>
-                                    )}
-                                    <div className="flex border-t border-slate-100 pt-2.5 text-[9px] text-slate-450 font-bold justify-between select-none">
-                                      <span className="hover:text-blue-600 cursor-pointer font-bold">👍 {language === 'vi' ? 'Thích' : 'Like'}</span>
-                                      <span className="hover:text-blue-600 cursor-pointer font-bold">💬 {language === 'vi' ? 'Bình luận' : 'Comment'}</span>
-                                      <span className="hover:text-blue-600 cursor-pointer font-bold">↩ {language === 'vi' ? 'Chia sẻ' : 'Share'}</span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {platform === 'instagram' && (
-                                  <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                                    <div className="flex items-center gap-2.5 mb-2.5">
-                                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs p-[1px] select-none">
-                                        <div className="w-full h-full rounded-full bg-slate-150 dark:bg-black flex items-center justify-center text-slate-800 dark:text-slate-200 text-[9px] font-black">AB</div>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
-                                        <span className="text-[8px] text-slate-400 font-semibold">Instagram Post · {timeStr}</span>
-                                      </div>
-                                    </div>
-                                    {post.captions?.articles?.images?.[0]?.url && (
-                                      <div className="aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100">
-                                        <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
-                                      </div>
-                                    )}
-                                    <p className="text-[10px] text-slate-700 leading-normal line-clamp-3 font-semibold">
-                                      <span className="font-black mr-1.5 text-slate-900">antbiz_official</span>
-                                      {post.captions?.edited_content || post.captions?.ai_content}
-                                    </p>
-                                  </div>
-                                )}
-
-                                {(platform === 'threads' || platform === 'thread') && (
-                                  <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                                    <div className="flex items-start gap-2.5 mb-2">
-                                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs select-none">T</div>
-                                      <div className="flex-1 flex flex-col">
-                                        <div className="flex justify-between items-center select-none">
-                                          <span className="text-[10px] font-black text-slate-800">antbiz_official</span>
-                                          <span className="text-[8px] text-slate-450 font-semibold">{timeStr}</span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-3 mt-1.5 font-semibold">
-                                          {post.captions?.edited_content || post.captions?.ai_content}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    {post.captions?.articles?.images?.[0]?.url && (
-                                      <div className="aspect-[1.91/1] w-full rounded-xl overflow-hidden mb-3 ml-10 max-w-[calc(100%-40px)] border border-slate-100">
-                                        <img src={post.captions.articles.images[0].url} alt="Post asset" className="w-full h-full object-cover" />
-                                      </div>
-                                    )}
-                                    <div className="flex items-center gap-4 text-slate-400 mt-2.5 ml-10 select-none">
-                                      <Heart size={12} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                      <MessageCircle size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
-                                      <Repeat2 size={12} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                      <Share2 size={12} className="hover:text-indigo-500 cursor-pointer transition-colors" />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {platform === 'blog' && (
-                                  <div className="border border-slate-100 rounded-2xl p-3.5 bg-white text-left font-sans shadow-sm">
-                                    <div className="flex items-center gap-2.5 mb-2.5">
-                                      <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs select-none">B</div>
-                                      <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-slate-800">AntBiz Blog</span>
-                                        <span className="text-[8px] text-slate-400 font-semibold">Publication · {timeStr}</span>
-                                      </div>
-                                    </div>
-                                    <h4 className="text-[10px] font-black text-emerald-800 truncate mb-1">
-                                      {post.captions?.articles?.title}
-                                    </h4>
-                                    <p className="text-[9.5px] text-slate-500 leading-relaxed line-clamp-3 mb-2.5 font-semibold">
-                                      {post.captions?.edited_content || post.captions?.ai_content || post.captions?.articles?.description}
-                                    </p>
-                                  </div>
-                                )}
-
-                                <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 select-none">
-                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">
-                                    {language === 'vi' ? 'Lên lịch tự động' : 'Auto scheduled'}
-                                  </span>
-
-                                  {post.status === 'pending' && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCancel(post.id);
-                                      }}
-                                      disabled={actionLoadingId === post.id}
-                                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-3 py-2 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
-                                    >
-                                      {actionLoadingId === post.id ? <Loader2 size={10} className="animate-spin" /> : null}
-                                      <span>{language === 'vi' ? 'Hủy lịch đăng' : 'Cancel Post'}</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          // Stacked layout for multiple posts in same interval
-                          const topOffset = hours * 60 + minutes;
-                          const cardHeight = 54;
-                          const dateOfPost = new Date(firstPost.scheduled_at);
-                          const uniquePlatforms = Array.from(new Set(groupPosts.map(gp => gp.platform?.toLowerCase())));
-
-                          const allPosted = groupPosts.every(gp => gp.status === 'posted' || gp.status === 'failed' || gp.status === 'cancelled' || new Date(gp.scheduled_at) < currentTime);
-
-                          return (
-                            <React.Fragment key={`multiple-${dayIndex}-${hours}-${minutes}`}>
-                              {/* Render helper layers underneath to show stacked deck of cards (only extending upwards) */}
-                              {Array.from({ length: Math.min(count - 1, 3) }).map((_, i) => {
-                                const layerIndex = i + 1;
-                                return (
-                                  <div
-                                    key={`layer-${dayIndex}-${hours}-${minutes}-${layerIndex}`}
-                                    style={{
-                                      gridColumnStart: dayIndex + 1,
-                                      gridColumnEnd: dayIndex + 2,
-                                      top: `${topOffset - layerIndex * 3.5}px`,
-                                      height: `${cardHeight}px`,
-                                      zIndex: 20 - layerIndex,
-                                    }}
-                                    className={`absolute left-1 right-1 rounded-2xl border shadow-sm pointer-events-none ${allPosted
-                                        ? 'bg-zinc-200 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700/60'
-                                        : 'bg-indigo-100 dark:bg-indigo-950 border-primary/20'
-                                      }`}
-                                  />
-                                );
-                              })}
-
-                              {/* Main Card (Fully solid/opaque background) */}
-                              <div
-                                onClick={() => {
-                                  setSelectedCell({ date: dateOfPost, hour: hours, posts: groupPosts });
-                                }}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => handleDrop(e, dayIndex, weekDates[dayIndex])}
-                                style={{
-                                  gridColumnStart: dayIndex + 1,
-                                  gridColumnEnd: dayIndex + 2,
-                                  top: `${topOffset}px`,
-                                  zIndex: 20,
-                                  height: `${cardHeight}px`
-                                }}
-                                className={`absolute left-1 right-1 rounded-2xl p-2 border shadow-md flex flex-col justify-between overflow-hidden transition-all group ${allPosted
-                                    ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 cursor-pointer hover:bg-zinc-250 dark:hover:bg-zinc-700'
-                                    : 'bg-indigo-50 dark:bg-indigo-900 border border-primary/25 dark:border-primary/45 cursor-pointer hover:shadow-primary/10 hover:-translate-y-[0.5px] active:scale-[0.98]'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between gap-1 select-none">
-                                  <span className={`whitespace-nowrap text-[8px] font-black px-1.5 py-0.5 rounded-md ${allPosted
-                                      ? 'bg-zinc-300 dark:bg-black text-zinc-600 dark:text-zinc-400 border dark:border-white/5'
-                                      : 'bg-primary/20 text-primary'
-                                    }`}>
-                                    {count} {language === 'vi' ? 'bài' : 'posts'}
-                                  </span>
-                                  <div className="flex gap-1 items-center">
-                                    {uniquePlatforms.map((plat, idx) => {
-                                      if (allPosted) {
-                                        if (plat === 'facebook') {
-                                          return <Facebook key={idx} size={10} className="text-slate-400 dark:text-slate-500 fill-slate-400 dark:fill-slate-500" />;
-                                        } else if (plat === 'threads' || plat === 'thread') {
-                                          return <ThreadsIcon key={idx} size={10} className="text-slate-400 dark:text-slate-500" />;
-                                        } else if (plat === 'instagram') {
-                                          return <Instagram key={idx} size={10} className="text-slate-400 dark:text-slate-500" />;
-                                        } else if (plat === 'blog') {
-                                          return <Globe key={idx} size={10} className="text-slate-400 dark:text-slate-500" />;
-                                        }
-                                      } else {
-                                        if (plat === 'facebook') {
-                                          return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2] dark:fill-blue-400 dark:text-blue-400" />;
-                                        } else if (plat === 'threads' || plat === 'thread') {
-                                          return <ThreadsIcon key={idx} size={10} className="text-black dark:text-white" />;
-                                        } else if (plat === 'instagram') {
-                                          return <Instagram key={idx} size={10} className="text-pink-650 dark:text-pink-400" />;
-                                        } else if (plat === 'blog') {
-                                          return <Globe key={idx} size={10} className="text-emerald-700 dark:text-emerald-400" />;
-                                        }
-                                      }
-                                      return null;
-                                    })}
-                                  </div>
-                                </div>
-                                <span className={`text-[7.5px] font-extrabold tracking-wide uppercase select-none truncate ${allPosted
-                                    ? 'text-slate-400 dark:text-slate-500'
-                                    : 'text-primary group-hover:text-primary-hover'
-                                  }`}>
-                                  {language === 'vi' ? 'Bấm để xem' : 'Click to view'}
-                                </span>
-                              </div>
-                            </React.Fragment>
-                          );
-                        }
-                      });
-                    })()}
-                  </div>
-
-                </div>
-              </div>
-            )}
+              {/* Threads Chip */}
+              <button
+                onClick={() => handleTogglePlatform('threads')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  selectedPlatforms.includes('threads')
+                    ? 'border-slate-800 bg-slate-900 text-white dark:border-zinc-700 dark:bg-white dark:text-slate-950'
+                    : 'border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-900'
+                }`}
+              >
+                <ThreadsIcon size={12} className={selectedPlatforms.includes('threads') ? 'text-white dark:text-slate-950' : 'text-slate-400'} />
+                <span>Threads</span>
+              </button>
+            </div>
           </div>
 
+          <CalendarComponent
+            ref={calendarRef}
+            initialView="timeGridWeek"
+            headerToolbar={false}
+            editable={true}
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={true}
+            weekends={true}
+            locale={language === 'vi' ? 'vi' : 'en'}
+            events={fetchCalendarEvents}
+            eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventContent={renderEventContent}
+            datesSet={handleDatesSet}
+            allDaySlot={false}
+            slotDuration="00:30:00"
+            snapDuration="00:15:00"
+            slotMinTime="00:00:00"
+            slotMaxTime="24:00:00"
+            height={700}
+            scrollTime="07:00:00"
+          />
         </div>
 
         {/* Mobile Timeline List View */}
@@ -1555,29 +1378,9 @@ export default function ContentCalendarView() {
                         <div className="flex justify-end gap-2 mt-1">
                           {post.status === 'pending' && (
                             <button
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.stopPropagation();
-                                setActionLoadingId(post.id);
-                                try {
-                                  const res = await fetch(`/api/scheduled-posts/${post.id}/cancel`, {
-                                    method: 'POST',
-                                  });
-                                  if (res.ok) {
-                                    const updatedPosts = selectedCell.posts.map(p =>
-                                      p.id === post.id ? { ...p, status: 'cancelled' } : p
-                                    );
-                                    setSelectedCell({ ...selectedCell, posts: updatedPosts });
-                                    await fetchPosts();
-                                  } else {
-                                    const errJson = await res.json().catch(() => ({}));
-                                    showPopup(errJson.error || 'Lỗi khi hủy lịch đăng bài', 'error');
-                                  }
-                                } catch (err) {
-                                  console.error('Cancel error:', err);
-                                  showPopup('Lỗi kết nối khi hủy lịch đăng bài', 'error');
-                                } finally {
-                                  setActionLoadingId(null);
-                                }
+                                handleCancel(post.id);
                               }}
                               disabled={actionLoadingId === post.id}
                               className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-rose-200/50 disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1"
@@ -1602,6 +1405,62 @@ export default function ContentCalendarView() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {confirmDrop && (
+        <div className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+          <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-white/5 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center border border-amber-200/50">
+                <AlertTriangle className="text-amber-600 w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-black text-slate-805 dark:text-slate-100 uppercase tracking-wide">
+                {language === 'vi' ? 'Xác nhận chuyển lịch đăng' : 'Confirm Reschedule'}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold">
+              {language === 'vi'
+                ? `Bạn có chắc chắn muốn thay đổi lịch đăng bài viết "${confirmDrop.title}"?`
+                : `Are you sure you want to reschedule "${confirmDrop.title}"?`}
+            </p>
+            
+            <div className="bg-slate-50 dark:bg-zinc-900/50 rounded-xl p-3.5 border border-slate-100 dark:border-zinc-800 flex flex-col gap-2.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400 font-bold">{language === 'vi' ? 'Thời gian cũ:' : 'Old Time:'}</span>
+                <span className="text-slate-700 dark:text-slate-200 font-mono font-bold">
+                  {new Date(confirmDrop.oldStart).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs border-t border-slate-100 dark:border-zinc-800 pt-2.5">
+                <span className="text-slate-400 font-bold">{language === 'vi' ? 'Thời gian mới:' : 'New Time:'}</span>
+                <span className="text-primary font-mono font-bold">
+                  {new Date(confirmDrop.newStart).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3.5 mt-2">
+              <button
+                onClick={() => {
+                  confirmDrop.revert();
+                  setConfirmDrop(null);
+                }}
+                className="flex-1 bg-slate-100 dark:bg-black hover:bg-slate-200 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer border dark:border-white/5 active:scale-95"
+              >
+                {language === 'vi' ? 'Hủy' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => {
+                  confirmDrop.commit();
+                  setConfirmDrop(null);
+                }}
+                className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border-0 shadow-lg shadow-primary/20"
+              >
+                {language === 'vi' ? 'Xác nhận' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <PopupDialog
         isOpen={!!popup?.isOpen}

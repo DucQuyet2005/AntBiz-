@@ -70,6 +70,16 @@ export default function NotificationsPage() {
     });
   }, []);
 
+  // Scroll to top when currentPage changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
   const fetchNotifications = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {

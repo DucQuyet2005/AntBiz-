@@ -65,3 +65,6 @@ export async function PATCH(
 
   return NextResponse.json({ data: updatedPost });
 }
+
+export { PATCH as PUT };
+

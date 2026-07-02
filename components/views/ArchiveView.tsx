@@ -76,6 +76,16 @@ export default function ArchiveView() {
     setCurrentPage(1);
   }, [platformFilter, sortBy, searchQuery]);
 
+  // Scroll to top when currentPage changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
   useEffect(() => {
     async function fetchCaptions() {
       try {
@@ -96,6 +106,11 @@ export default function ArchiveView() {
               description,
               views,
               images
+            ),
+            scheduled_posts (
+              id,
+              status,
+              scheduled_at
             )
           `)
           .neq('status', 'draft')
@@ -278,6 +293,28 @@ export default function ArchiveView() {
     const art = cap.articles || {};
     const images = Array.isArray(art.images) ? art.images : [];
     const mainImage = images.length > 0 ? images[0].url : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
+
+    // Resolve publish status from database scheduled_posts history
+    let resolvedStatus = cap.status;
+    const schedPosts = cap.scheduled_posts || [];
+    if (schedPosts.length > 0) {
+      const sortedSched = [...schedPosts].sort((a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime());
+      const latestPost = sortedSched[0];
+      if (cap.status === 'posted' || latestPost.status === 'posted') {
+        resolvedStatus = 'posted';
+      } else if (latestPost.status === 'cancelled') {
+        resolvedStatus = 'cancelled';
+      } else if (latestPost.status === 'failed') {
+        resolvedStatus = 'failed';
+      } else if (latestPost.status === 'pending') {
+        resolvedStatus = 'scheduled';
+      }
+    } else {
+      if (cap.status === 'approved') {
+        resolvedStatus = 'approved';
+      }
+    }
+
     return {
       id: cap.id,
       type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
@@ -293,7 +330,7 @@ export default function ArchiveView() {
       link: `/archive/${art.id || ''}`,
       gradient: '',
       created_at: cap.created_at,
-      status: cap.status
+      status: resolvedStatus
     };
   });
 
@@ -480,13 +517,26 @@ export default function ArchiveView() {
                     </span>
 
                     {/* Publish Status Badge */}
-                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
-                      ? 'bg-emerald-600/80 border border-emerald-500/30'
-                      : 'bg-amber-600/80 border border-amber-500/30'
+                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
+                      item.status === 'posted'
+                        ? 'bg-emerald-600/80 border border-emerald-500/30'
+                        : item.status === 'cancelled'
+                          ? 'bg-slate-500/80 border border-slate-400/30'
+                          : item.status === 'failed'
+                            ? 'bg-rose-600/80 border border-rose-500/30'
+                            : item.status === 'scheduled'
+                              ? 'bg-indigo-600/80 border border-indigo-500/30'
+                              : 'bg-amber-600/80 border border-amber-500/30'
                       }`}>
                       {item.status === 'posted'
                         ? (language === 'vi' ? 'Đã đăng' : 'Published')
-                        : (language === 'vi' ? 'Chưa đăng' : 'Draft')
+                        : item.status === 'cancelled'
+                          ? (language === 'vi' ? 'Đã hủy' : 'Cancelled')
+                          : item.status === 'failed'
+                            ? (language === 'vi' ? 'Thất bại' : 'Failed')
+                            : item.status === 'scheduled'
+                              ? (language === 'vi' ? 'Đã lên lịch' : 'Scheduled')
+                              : (language === 'vi' ? 'Đã duyệt' : 'Approved')
                       }
                     </span>
                   </div>

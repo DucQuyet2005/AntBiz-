@@ -305,10 +305,11 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         });
       }
 
-      // Get 4 most recent scheduled posts for visual activity log
+      // Get 4 most recent scheduled posts (only pending or posted) for visual activity log
       const { data: recentPostsData } = await supabase
         .from('scheduled_posts')
         .select('id, platform, status, scheduled_at, image_urls, captions(ai_content, edited_content, articles(title, images))')
+        .in('status', ['posted', 'pending'])
         .order('created_at', { ascending: false })
         .limit(4);
 
@@ -363,6 +364,27 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Subscribe to realtime updates on scheduled_posts
+    const channel = supabase
+      .channel('scheduled-posts-overview-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scheduled_posts',
+        },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = () => {
