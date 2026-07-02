@@ -11,16 +11,18 @@ export interface FacebookPublishResult {
  */
 export async function publishToFacebookPage(
   message: string,
-  imageUrls: string[] = []
+  imageUrls: string[] = [],
+  customPageId?: string,
+  customToken?: string
 ): Promise<FacebookPublishResult> {
-  const pageId = process.env.FB_PAGE_ID;
-  const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  const pageId = customPageId || process.env.FB_PAGE_ID;
+  const token = customToken || process.env.FB_PAGE_ACCESS_TOKEN;
   const graphVersion = process.env.FB_GRAPH_API_VERSION || 'v19.0';
 
   if (!pageId || !token) {
     return {
       success: false,
-      error: 'Thông tin xác thực Facebook (FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN) bị thiếu trong cấu hình biến môi trường',
+      error: 'Thông tin xác thực Facebook (FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN) bị thiếu trong cấu hình biến môi trường và tham số gọi hàm',
     };
   }
 

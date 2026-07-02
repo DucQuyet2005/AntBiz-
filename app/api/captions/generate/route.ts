@@ -3,6 +3,7 @@ import { requireUserWithRole } from '@/lib/api/auth';
 import { createClient } from '@supabase/supabase-js';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
+import { validateThreadsLength } from '@/lib/validations/threads';
 
 // Create a service role client to bypass RLS for articles insertion
 function createServiceClient() {
@@ -57,7 +58,8 @@ export async function POST(request: NextRequest) {
 
     const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId } = body;
 
-    if (!promptId && !customPrompt) {
+    const isThreads = platform === 'threads' || platform === 'thread';
+    if (!promptId && !customPrompt && !isThreads) {
       return NextResponse.json({ error: 'Thiếu promptId' }, { status: 400 });
     }
 
@@ -207,6 +209,22 @@ export async function POST(request: NextRequest) {
       targetPlatform = promptRecord.platform;
     } else {
       promptContent = customPrompt;
+    }
+
+    // Đọc prompt mặc định cho Threads từ file hệ thống nếu không truyền prompt cụ thể
+    if (!promptContent && (targetPlatform === 'threads' || targetPlatform === 'thread')) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(process.cwd(), 'prompts', 'threads', 'system.md');
+        let fileContent = fs.readFileSync(filePath, 'utf-8');
+        fileContent = fileContent
+          .replace(/\{\{title\}\}/g, article.title || '')
+          .replace(/\{\{content\}\}/g, article.description || article.full_text || '');
+        promptContent = fileContent;
+      } catch (err) {
+        console.error('Error reading/replacing prompts/threads/system.md:', err);
+      }
     }
 
     // Compare prompts if regenerating (oldCaptionId is provided)
@@ -390,11 +408,30 @@ CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ
           // Save generated caption to database if we have content
           let captionId = '';
           if (generatedText) {
+            // Validator kiểm tra độ dài Threads
+            if (targetPlatform === 'threads' || targetPlatform === 'thread') {
+              const validation = validateThreadsLength(generatedText);
+              if (!validation.isValid) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    `data: ${JSON.stringify({
+                      error: `Độ dài nội dung Threads (${validation.length} ký tự) vượt quá giới hạn 280 ký tự.`,
+                      done: true,
+                    })}\n\n`
+                  )
+                );
+                controller.close();
+                return;
+              }
+            }
+
+            const dbPlatform = (targetPlatform === 'threads' || targetPlatform === 'thread') ? 'thread' : targetPlatform;
+
             const insertPayload: Record<string, unknown> = {
               article_id: article.id,
               prompt_id: dbPromptId || null,
               created_by: user.id,
-              platform: targetPlatform === 'threads' ? 'thread' : targetPlatform,
+              platform: dbPlatform,
               ai_content: generatedText,
               status: 'draft',
               variant_index: resolvedVariantIndex,

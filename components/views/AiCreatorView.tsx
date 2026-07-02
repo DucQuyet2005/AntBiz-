@@ -208,7 +208,7 @@ const EditableText = ({
   const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
   const captionLimits = {
     facebook: 63206,
-    threads: 5000,
+    threads: 280,
     instagram: 2200
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
@@ -271,9 +271,26 @@ const EditableText = ({
                       </button>
                     )}
                   </div>
-                  <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-                  </div>
+                  {(() => {
+                    let counterColor = 'text-gray-400';
+                    if (value.length > charLimit) {
+                      counterColor = 'text-rose-600';
+                    } else if (field === 'threads') {
+                      const len = value.length;
+                      if (len <= 200) {
+                        counterColor = 'text-emerald-600';
+                      } else if (len <= 260) {
+                        counterColor = 'text-amber-500';
+                      } else {
+                        counterColor = 'text-rose-600';
+                      }
+                    }
+                    return (
+                      <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                        {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {value.length > charLimit && (
                   <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -313,11 +330,37 @@ const EditableText = ({
     >
       <div className="flex flex-col w-full">
         <span className="whitespace-pre-wrap">
-          {value ? (
-            shouldFold ? (
+          {value ? (() => {
+            const isThreads = field === 'threads';
+            const renderThreadsText = (text: string) => {
+              const lastQIndex = Math.max(text.lastIndexOf('?'), text.lastIndexOf('？'));
+              if (lastQIndex === -1) return text;
+              let start = 0;
+              for (let i = lastQIndex - 1; i >= 0; i--) {
+                if (['.', '!', '?', '？', '\n'].includes(text[i])) {
+                  start = i + 1;
+                  break;
+                }
+              }
+              const before = text.substring(0, start);
+              const question = text.substring(start, lastQIndex + 1);
+              const after = text.substring(lastQIndex + 1);
+              return (
+                <>
+                  {before}
+                  <u className="underline decoration-indigo-500 decoration-2 underline-offset-2">{question}</u>
+                  {after}
+                </>
+              );
+            };
+            const renderTextContent = (text: string) => {
+              return isThreads ? renderThreadsText(text) : text;
+            };
+
+            return shouldFold ? (
               !isExpanded ? (
                 <>
-                  {value.substring(0, 280)}...
+                  {renderTextContent(value.substring(0, 280))}...
                   <button
                     type="button"
                     onClick={(e) => {
@@ -331,7 +374,7 @@ const EditableText = ({
                 </>
               ) : (
                 <>
-                  {value}
+                  {renderTextContent(value)}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -345,9 +388,9 @@ const EditableText = ({
                 </>
               )
             ) : (
-              value
-            )
-          ) : isGeneratingAB ? (
+              renderTextContent(value)
+            );
+          })() : isGeneratingAB ? (
             <span className="text-gray-400 italic flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin text-primary shrink-0" />
               {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
@@ -380,9 +423,26 @@ const EditableText = ({
                   </button>
                 )}
               </div>
-              <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-              </div>
+              {(() => {
+                let counterColor = 'text-gray-400';
+                if (value.length > charLimit) {
+                  counterColor = 'text-rose-600';
+                } else if (field === 'threads') {
+                  const len = value.length;
+                  if (len <= 200) {
+                    counterColor = 'text-emerald-600';
+                  } else if (len <= 260) {
+                    counterColor = 'text-amber-500';
+                  } else {
+                    counterColor = 'text-rose-600';
+                  }
+                }
+                return (
+                  <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                  </div>
+                );
+              })()}
             </div>
             {value.length > charLimit && (
               <div className="text-[8px] text-rose-600 font-extrabold text-right">

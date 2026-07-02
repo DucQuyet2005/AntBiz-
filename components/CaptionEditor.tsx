@@ -13,9 +13,9 @@ interface CaptionEditorProps {
 
 export const PLATFORM_MAX_LENGTH = {
   facebook: 63206,
-  threads: 5000,
+  threads: 280,
   linkedin: 1300,
-  thread: 5000,
+  thread: 280,
   instagram: 2200,
 };
 
@@ -227,11 +227,27 @@ const CaptionEditor = ({
       {/* Editor Header / Status */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-            isOverLimit ? 'bg-red-50 dark:bg-red-950/20 text-red-500' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
-          }`}>
-            {content.length.toLocaleString()} / {charLimit.toLocaleString()} ký tự
-          </span>
+          {(() => {
+            const isThreads = platform === 'threads' || platform === 'thread';
+            let counterClass = 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400';
+            if (isOverLimit) {
+              counterClass = 'bg-red-50 dark:bg-red-950/20 text-red-500';
+            } else if (isThreads) {
+              const len = content.length;
+              if (len <= 200) {
+                counterClass = 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400';
+              } else if (len <= 260) {
+                counterClass = 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400';
+              } else {
+                counterClass = 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400';
+              }
+            }
+            return (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${counterClass}`}>
+                {content.length.toLocaleString()} / {charLimit.toLocaleString()} ký tự
+              </span>
+            );
+          })()}
           
           <AnimatePresence mode="wait">
             {saveStatus === 'saving' && (
@@ -349,7 +365,35 @@ const CaptionEditor = ({
           />
         ) : (
           <div className="p-3 text-[11px] text-text leading-relaxed whitespace-pre-wrap min-h-[60px] cursor-text">
-            {content || <span className="text-gray-400 dark:text-slate-500 italic">Nhấp để chỉnh sửa nội dung...</span>}
+            {(() => {
+              if (!content) {
+                return <span className="text-gray-400 dark:text-slate-500 italic">Nhấp để chỉnh sửa nội dung...</span>;
+              }
+              const isThreads = platform === 'threads' || platform === 'thread';
+              if (isThreads) {
+                const lastQIndex = Math.max(content.lastIndexOf('?'), content.lastIndexOf('？'));
+                if (lastQIndex !== -1) {
+                  let start = 0;
+                  for (let i = lastQIndex - 1; i >= 0; i--) {
+                    if (['.', '!', '?', '？', '\n'].includes(content[i])) {
+                      start = i + 1;
+                      break;
+                    }
+                  }
+                  const before = content.substring(0, start);
+                  const question = content.substring(start, lastQIndex + 1);
+                  const after = content.substring(lastQIndex + 1);
+                  return (
+                    <span>
+                      {before}
+                      <u className="underline decoration-indigo-500 decoration-2 underline-offset-2">{question}</u>
+                      {after}
+                    </span>
+                  );
+                }
+              }
+              return content;
+            })()}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-40 transition-opacity">
               <Edit2 size={12} className="text-primary" />
             </div>
