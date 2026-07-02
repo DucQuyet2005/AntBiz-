@@ -7,8 +7,7 @@ const updateConfigSchema = z.object({
   params: z.object({
     tone: z.string().optional(),
     length: z.string().optional(),
-    variant_count: z.number().int().min(2).max(3).optional(),
-    emphasis: z.string().optional(),
+    custom_rules: z.string().optional(),
   }).optional(),
   is_default: z.boolean().optional(),
 });
@@ -64,13 +63,12 @@ export async function PUT(
     const updateData: Record<string, any> = {};
     if (parsed.data.name !== undefined) {
       const newName = parsed.data.name.trim();
-      // Nếu đổi tên, kiểm tra trùng tên cấu hình khác cùng user và platform
+      // Nếu đổi tên, kiểm tra trùng tên cấu hình khác cùng user
       if (newName !== currentConfig.name) {
         const { data: existingConfig, error: checkError } = await supabase
           .from('prompt_configs')
           .select('id')
           .eq('user_id', user.id)
-          .eq('platform', currentConfig.platform)
           .eq('name', newName)
           .neq('id', id)
           .maybeSingle();
@@ -82,7 +80,7 @@ export async function PUT(
 
         if (existingConfig) {
           return NextResponse.json(
-            { error: `Tên cấu hình "${newName}" đã tồn tại cho nền tảng này. Vui lòng chọn tên khác.` },
+            { error: `Tên cấu hình "${newName}" đã tồn tại. Vui lòng chọn tên khác.` },
             { status: 400 }
           );
         }
@@ -103,13 +101,12 @@ export async function PUT(
 
     updateData.updated_at = new Date().toISOString();
 
-    // 2. Nếu chuyển trạng thái sang default = true, reset các config khác cùng platform về false
+    // 2. Nếu chuyển trạng thái sang default = true, reset các config khác về false
     if (updateData.is_default === true && !currentConfig.is_default) {
       const { error: resetError } = await supabase
         .from('prompt_configs')
         .update({ is_default: false })
         .eq('user_id', user.id)
-        .eq('platform', currentConfig.platform)
         .eq('is_default', true)
         .neq('id', id);
 

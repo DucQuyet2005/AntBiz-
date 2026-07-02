@@ -14,21 +14,10 @@ export async function GET(request: NextRequest) {
     ]);
     if (unauthorized) return unauthorized;
 
-    const { searchParams } = new URL(request.url);
-    const platform = searchParams.get('platform');
-
-    if (!platform) {
-      return NextResponse.json({ error: 'Thiếu tham số platform' }, { status: 400 });
-    }
-
-    // Chuẩn hoá platform 'threads' thành 'thread' để khớp db enum
-    const dbPlatform = platform === 'threads' ? 'thread' : platform;
-
     const { data: config, error } = await supabase
       .from('prompt_configs')
       .select('*')
       .eq('user_id', user.id)
-      .eq('platform', dbPlatform)
       .eq('is_default', true)
       .maybeSingle();
 

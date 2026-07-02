@@ -4,12 +4,10 @@ import { z } from 'zod';
 
 const createConfigSchema = z.object({
   name: z.string().min(1, 'Tên cấu hình không được để trống'),
-  platform: z.enum(['facebook', 'thread', 'instagram', 'threads']),
   params: z.object({
     tone: z.string().optional(),
     length: z.string().optional(),
-    variant_count: z.number().int().min(2).max(3).optional(),
-    emphasis: z.string().optional(),
+    custom_rules: z.string().optional(),
   }).default({}),
   is_default: z.boolean().default(false),
 });
@@ -27,20 +25,11 @@ export async function GET(request: NextRequest) {
     ]);
     if (unauthorized) return unauthorized;
 
-    const { searchParams } = new URL(request.url);
-    const platform = searchParams.get('platform');
-
     let query = supabase
       .from('prompt_configs')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-
-    if (platform) {
-      // Chuẩn hoá platform 'threads' thành 'thread' để khớp enum trong db
-      const dbPlatform = platform === 'threads' ? 'thread' : platform;
-      query = query.eq('platform', dbPlatform);
-    }
 
     const { data: configs, error } = await query;
 
@@ -84,15 +73,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, platform, params, is_default } = parsed.data;
-    const dbPlatform = platform === 'threads' ? 'thread' : platform;
+    const { name, params, is_default } = parsed.data;
 
-    // 1. Kiểm tra trùng tên cấu hình của user này trên cùng platform
+    // 1. Kiểm tra trùng tên cấu hình của user này
     const { data: existingConfig, error: checkError } = await supabase
       .from('prompt_configs')
       .select('id')
       .eq('user_id', user.id)
-      .eq('platform', dbPlatform)
       .eq('name', name.trim())
       .maybeSingle();
 
@@ -103,18 +90,17 @@ export async function POST(request: NextRequest) {
 
     if (existingConfig) {
       return NextResponse.json(
-        { error: `Tên cấu hình "${name}" đã tồn tại cho nền tảng ${platform}. Vui lòng chọn tên khác.` },
+        { error: `Tên cấu hình "${name}" đã tồn tại. Vui lòng chọn tên khác.` },
         { status: 400 }
       );
     }
 
-    // 2. Nếu đặt làm mặc định, đặt tất cả config cùng platform khác của user này về false
+    // 2. Nếu đặt làm mặc định, đặt tất cả config khác của user này về false
     if (is_default) {
       const { error: resetError } = await supabase
         .from('prompt_configs')
         .update({ is_default: false })
         .eq('user_id', user.id)
-        .eq('platform', dbPlatform)
         .eq('is_default', true);
 
       if (resetError) {
@@ -129,7 +115,6 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         name: name.trim(),
-        platform: dbPlatform,
         params,
         is_default,
       })

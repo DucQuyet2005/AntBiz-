@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
+import { getRichStyleContent } from '@/lib/api/styleDictionary';
 import { createClient } from '@supabase/supabase-js';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
@@ -55,10 +56,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
     }
 
-    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId, authorProfileId } = body;
+    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId, authorProfileId, stylePresetId, platformPresetId } = body;
 
-    if (!promptId && !customPrompt) {
-      return NextResponse.json({ error: 'Thiếu promptId' }, { status: 400 });
+    if (!promptId && !customPrompt && !stylePresetId && !platform && !platformPresetId) {
+      return NextResponse.json({ error: 'Thiếu thông số cấu hình nội dung (promptId, stylePresetId, hoặc platform)' }, { status: 400 });
     }
 
     if (customPrompt && !platform) {
@@ -178,12 +179,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    // 3. Fetch Prompt
+    // 3. Fetch Prompts (Dual-Layer Model + Backward Compatibility)
     let promptContent = '';
     let dbPromptId: string | null = null;
     let dbPromptName: string = '';
     let targetPlatform = platform;
 
+    // --- LỚP 1: QUY CHUẨN KÊNH (Platform Presets) ---
+    let platformRules = '';
+    if (platformPresetId) {
+      const { data: platformData } = await supabaseService
+        .from('platform_presets')
+        .select('rules')
+        .eq('id', platformPresetId)
+        .maybeSingle();
+      if (platformData) {
+        platformRules = platformData.rules;
+      }
+    }
+
+    if (!platformRules && platform) {
+      const p = platform === 'threads' ? 'thread' : platform;
+      // Load all presets for this platform and select default
+      const { data: presets } = await supabaseService
+        .from('platform_presets')
+        .select('*')
+        .eq('platform', p)
+        .or(`user_id.eq.${user.id},user_id.is.null`);
+
+      if (presets && presets.length > 0) {
+        const userDefault = presets.find((pr: any) => pr.user_id === user.id && pr.is_default);
+        const userFirst = presets.find((pr: any) => pr.user_id === user.id);
+        const systemDefault = presets.find((pr: any) => !pr.user_id && pr.is_default);
+        const systemFirst = presets.find((pr: any) => !pr.user_id);
+
+        const selectedPreset = userDefault || userFirst || systemDefault || systemFirst;
+        if (selectedPreset) {
+          platformRules = selectedPreset.rules;
+        }
+      }
+    }
+
+    // --- LỚP 2: VĂN PHONG THƯƠNG HIỆU (User Style Presets) ---
+    let styleContent = '';
+    if (stylePresetId && stylePresetId !== 'none') {
+      const { data: styleData } = await userSupabase
+        .from('prompt_configs')
+        .select('*')
+        .eq('id', stylePresetId)
+        .maybeSingle();
+
+      if (styleData && styleData.params) {
+        const { tone, custom_rules } = styleData.params;
+        styleContent = `Tone giọng yêu cầu: ${tone || 'Tự do'}`;
+        if (custom_rules) {
+          styleContent += `\n*   ${custom_rules}`;
+        }
+      }
+    }
+
+    // --- LỚP 3: YÊU CẦU CỤ THỂ (Old Prompts - Backward Compatibility) ---
     if (promptId) {
       const { data: promptRecord, error: promptError } = await userSupabase
         .from('prompts')
@@ -194,18 +249,13 @@ export async function POST(request: NextRequest) {
 
       if (promptError) {
         console.error('[Generate API] error fetching prompt:', promptError);
-        return NextResponse.json({ error: 'Không thể tải prompt' }, { status: 500 });
+      } else if (promptRecord) {
+        promptContent = promptRecord.content;
+        dbPromptId = promptRecord.id;
+        dbPromptName = promptRecord.name || 'N/A';
+        targetPlatform = promptRecord.platform;
       }
-
-      if (!promptRecord) {
-        return NextResponse.json({ error: 'Không tìm thấy prompt hợp lệ' }, { status: 404 });
-      }
-
-      promptContent = promptRecord.content;
-      dbPromptId = promptRecord.id;
-      dbPromptName = promptRecord.name || 'N/A';
-      targetPlatform = promptRecord.platform;
-    } else {
+    } else if (customPrompt) {
       promptContent = customPrompt;
     }
 
@@ -289,7 +339,7 @@ export async function POST(request: NextRequest) {
             resolvedModel = profile.tuned_model_id;
             console.log(`[Generate API] Using Google AI Studio Tuned Model: ${resolvedModel}`);
           }
-          
+
           // Add few-shot context as a strong guide or fallback
           if (profile.sample_posts && profile.sample_posts.length > 0) {
             const examples = profile.sample_posts.slice(0, 3).map((post: string, index: number) => {
@@ -321,27 +371,35 @@ Yêu cầu bắt buộc: Hãy viết bài viết mới bắt chước hoàn hả
       return NextResponse.json({ error: 'Chưa cấu hình model cho Gemini' }, { status: 500 });
     }
 
-    const promptText = `
-${promptContent}
-${authorFewShotPrompt}
+    const platformLabel = (platform || '').charAt(0).toUpperCase() + (platform || '').slice(1);
+    const truncatedTitle = article.title && article.title.length > 300 ? article.title.slice(0, 300) + '...' : article.title;
+    const fullText = article.full_text || article.description || '';
+    const truncatedContent = fullText.length > 3000 ? fullText.slice(0, 3000) + '... (Nội dung rút gọn)' : fullText;
 
----
-Original Article (Full Preprocessed Data):
-Title: ${article.title || ''}
-Description: ${article.description || ''}
-Category: ${article.category || ''}
-Author: ${article.author || ''}
-Published At: ${article.published_at || ''}
-Views: ${article.views || ''}
-Tags: ${(article.tags || []).join(', ')}
-Images: ${JSON.stringify(article.images || [], null, 2)}
-Body Blocks: ${JSON.stringify(article.body || [], null, 2)}
-Full Text Content:
-${article.full_text ? article.full_text.substring(0, 8000) : ''}
----
+    const presetRulesStr = platformRules || '(Chưa chọn quy chuẩn nền tảng)';
+    const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
+    const styleSectionStr = styleContent ? `*   ${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
-CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ LỜI DẪN GIẢI, GIỚI THIỆU, LỜI CHÀO HỎI HỢP LỆ HAY CÁC KÝ TỰ PHÂN CÁCH NHƯ "Tuyệt vời!", "Dưới đây là...", "---", KHÔNG CÓ BẤT KỲ KÝ TỰ NÀO NGOÀI BÀI ĐĂNG MẠNG XÃ HỘI.
-`;
+    const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
+
+**Nền tảng:** ${platformLabel}
+
+**Dữ liệu đầu vào:**
+*   **Tiêu đề bài báo:** "${truncatedTitle || '(Chưa có tiêu đề)'}"
+*   **Nội dung tóm tắt:** "${truncatedContent || '(Chưa có nội dung)'}"
+
+**Hướng dẫn khai thác nội dung:**
+*   ${presetRulesStr}
+${customSectionStr}
+**Văn phong:**
+${styleSectionStr}
+**Cấu trúc bài viết:**
+1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
+2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
+3.  Call to Action (CTA): Gợi mở tương tác, đặt câu hỏi cho độc giả.
+4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
+${authorFewShotPrompt ? `\n${authorFewShotPrompt}\n` : ''}
+TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
 
     const isTunedModel = resolvedModel.startsWith('tunedModels/');
     const modelPath = isTunedModel ? resolvedModel : `models/${resolvedModel}`;

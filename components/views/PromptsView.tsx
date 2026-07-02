@@ -398,8 +398,8 @@ export default function PromptsView() {
       if (!res.ok) {
         const detailMsg = Array.isArray(json?.details)
           ? json.details
-              .map((d: { field: string; message: string }) => d.message)
-              .join("; ")
+            .map((d: { field: string; message: string }) => d.message)
+            .join("; ")
           : null;
         throw new Error(detailMsg || json?.error || t("prompts.cannotSave"));
       }
@@ -543,18 +543,16 @@ export default function PromptsView() {
         <button
           type="button"
           onClick={() => setActiveTab('prompts')}
-          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${
-            activeTab === 'prompts' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeTab === 'prompts' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
+            }`}
         >
           {language === 'vi' ? 'Thư viện Prompt' : 'Prompt Library'}
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('configs')}
-          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${
-            activeTab === 'configs' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
-          }`}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeTab === 'configs' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
+            }`}
         >
           {language === 'vi' ? 'Cấu hình tham số AI' : 'AI Parameters'}
         </button>
@@ -562,304 +560,299 @@ export default function PromptsView() {
 
       {activeTab === 'prompts' && (
         <React.Fragment>
-      <div className="flex flex-col gap-2">
-        {/* Row 1: Search + Platform filter + Multi-select tags dropdown */}
-        <div className="flex items-center gap-2 flex-wrap text-xs">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("prompts.searchPlaceholder")}
-              className="w-full bg-card border border-gray-200/60 dark:border-zinc-800/80 rounded-xl py-1.5 pl-9 pr-3 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted text-text dark:bg-zinc-900"
-            />
-          </div>
+          <div className="flex flex-col gap-2">
+            {/* Row 1: Search + Platform filter + Multi-select tags dropdown */}
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="relative w-full max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("prompts.searchPlaceholder")}
+                  className="w-full bg-card border border-gray-200/60 dark:border-zinc-800/80 rounded-xl py-1.5 pl-9 pr-3 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted text-text dark:bg-zinc-900"
+                />
+              </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setPlatformFilter("")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${
-                platformFilter === ""
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
-              }`}
-            >
-              {t("prompts.all")}
-            </button>
-            {PLATFORM_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setPlatformFilter(opt.value)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${
-                  platformFilter === opt.value
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
-                }`}
-              >
-                <PlatformIcon platform={opt.value} size={12} />
-                {opt.label}
-              </button>
-            ))}
-          </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPlatformFilter("")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${platformFilter === ""
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
+                    }`}
+                >
+                  {t("prompts.all")}
+                </button>
+                {PLATFORM_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPlatformFilter(opt.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${platformFilter === opt.value
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
+                      }`}
+                  >
+                    <PlatformIcon platform={opt.value} size={12} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
 
-          {/* Tags multi-select dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-              className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-            >
-              {t("prompts.filterByTag", { count: tagsFilter.length })}
-            </button>
-            {isTagDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsTagDropdownOpen(false)} />
-                <div className="absolute left-0 mt-1.5 w-48 bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-1.5 shadow-lg z-20 max-h-56 overflow-y-auto">
-                  {allDbTags.length === 0 ? (
-                    <div className="text-[11px] text-text-muted p-2 text-center">{t("prompts.noTags")}</div>
-                  ) : (
-                    allDbTags.map((tag) => {
-                      const isSelected = tagsFilter.includes(tag);
-                      return (
-                        <label
-                          key={tag}
-                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer select-none text-text"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
-                              setTagsFilter((prev) =>
-                                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                              );
-                            }}
-                            className="rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary/20 dark:bg-zinc-850"
-                          />
-                          {tag}
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </>
+              {/* Tags multi-select dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                  className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                >
+                  {t("prompts.filterByTag", { count: tagsFilter.length })}
+                </button>
+                {isTagDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsTagDropdownOpen(false)} />
+                    <div className="absolute left-0 mt-1.5 w-48 bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-1.5 shadow-lg z-20 max-h-56 overflow-y-auto">
+                      {allDbTags.length === 0 ? (
+                        <div className="text-[11px] text-text-muted p-2 text-center">{t("prompts.noTags")}</div>
+                      ) : (
+                        allDbTags.map((tag) => {
+                          const isSelected = tagsFilter.includes(tag);
+                          return (
+                            <label
+                              key={tag}
+                              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer select-none text-text"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setTagsFilter((prev) =>
+                                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                                  );
+                                }}
+                                className="rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary/20 dark:bg-zinc-850"
+                              />
+                              {tag}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <span className="text-xs text-text-muted ml-auto font-medium">
+                {total} prompts
+              </span>
+            </div>
+
+            {/* Row 2: Selected tags chips */}
+            {tagsFilter.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                <span className="text-xs font-bold text-text-muted shrink-0">
+                  {t("prompts.filteringBy")}
+                </span>
+                {tagsFilter.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setTagsFilter((prev) => prev.filter((t) => t !== tag))}
+                    className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary text-white shadow-sm inline-flex items-center gap-1 transition-all cursor-pointer hover:bg-primary-hover"
+                  >
+                    {tag}
+                    <X size={10} />
+                  </button>
+                ))}
+                <button
+                  onClick={() => setTagsFilter([])}
+                  className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors ml-1 cursor-pointer"
+                >
+                  {t("prompts.clearAllFilters")}
+                </button>
+              </div>
             )}
           </div>
 
-          <span className="text-xs text-text-muted ml-auto font-medium">
-            {total} prompts
-          </span>
-        </div>
-
-        {/* Row 2: Selected tags chips */}
-        {tagsFilter.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap text-xs">
-            <span className="text-xs font-bold text-text-muted shrink-0">
-              {t("prompts.filteringBy")}
-            </span>
-            {tagsFilter.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setTagsFilter((prev) => prev.filter((t) => t !== tag))}
-                className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary text-white shadow-sm inline-flex items-center gap-1 transition-all cursor-pointer hover:bg-primary-hover"
-              >
-                {tag}
-                <X size={10} />
-              </button>
-            ))}
-            <button
-              onClick={() => setTagsFilter([])}
-              className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors ml-1 cursor-pointer"
-            >
-              {t("prompts.clearAllFilters")}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {actionError && (
-        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
-          <AlertCircle size={14} />
-          {actionError}
-        </div>
-      )}
-
-      {/* List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
-          <Loader2 className="animate-spin text-primary" size={16} />
-          {t("common.loading")}
-        </div>
-      ) : loadError ? (
-        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
-          <AlertCircle size={14} />
-          {loadError}
-        </div>
-      ) : paginatedPrompts.length === 0 ? (
-        <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
-          <p className="font-bold text-xs text-text">
-            {search || platformFilter || tagsFilter.length > 0
-              ? t("prompts.noMatching")
-              : t("prompts.noPromptsYet")}
-          </p>
-          <p className="text-text-muted text-xs font-semibold">
-            {search || platformFilter || tagsFilter.length > 0
-              ? t("prompts.tryChangingFilters")
-              : t("prompts.createFirstPrompt")}
-          </p>
-          {(search || platformFilter || tagsFilter.length > 0) && (
-            <button
-              onClick={() => {
-                setSearch("");
-                setPlatformFilter("");
-                setTagsFilter([]);
-              }}
-              className="mt-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
-            >
-              {t("prompts.clearAllFilters")}
-            </button>
+          {actionError && (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
+              <AlertCircle size={14} />
+              {actionError}
+            </div>
           )}
-        </div>
-      ) : (
-        <div style={{ minHeight: totalPages > 1 ? '764px' : undefined }} className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max content-start">
-          {paginatedPrompts.map((prompt) => (
-            <div
-              key={prompt.id}
-              id={`prompt-${prompt.id}`}
-              className={`bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start ${
-                prompt.id === promptIdParam ? 'animate-highlight-glow' : ''
-              }`}
-            >
-              <div className="h-6 flex items-center justify-between gap-3 shrink-0 overflow-hidden mb-2">
-                <div className="flex items-center gap-1.5 overflow-hidden flex-wrap max-h-6">
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-flex items-center gap-1 shrink-0 ${PLATFORM_BADGE_CLASS[prompt.platform]}`}
-                  >
-                    <PlatformIcon platform={prompt.platform} size={10} />
-                    {PLATFORM_LABEL[prompt.platform]}
-                  </span>
-                  {prompt.cloned_from && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-gray-150 dark:bg-zinc-800 text-text-muted dark:text-zinc-400 shrink-0">
-                      {t("prompts.clonedBadge")}
-                    </span>
-                  )}
-                  {prompt.tags.map((tag) => {
-                    const isSelected = tagsFilter.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        onClick={() =>
-                          setTagsFilter((prev) =>
-                            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                          )
-                        }
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer shrink-0 ${
-                          isSelected
-                            ? "bg-[#C4F0E1] dark:bg-emerald-900/40 text-[#1F4C3F] dark:text-emerald-400 ring-1 ring-[#1F4C3F]/30 dark:ring-emerald-800/30"
-                            : "bg-[#C4F0E1]/40 dark:bg-emerald-950/20 text-[#1F4C3F] dark:text-emerald-400 hover:bg-[#C4F0E1] dark:hover:bg-emerald-900/30"
-                        }`}
+
+          {/* List */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
+              <Loader2 className="animate-spin text-primary" size={16} />
+              {t("common.loading")}
+            </div>
+          ) : loadError ? (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
+              <AlertCircle size={14} />
+              {loadError}
+            </div>
+          ) : paginatedPrompts.length === 0 ? (
+            <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
+              <p className="font-bold text-xs text-text">
+                {search || platformFilter || tagsFilter.length > 0
+                  ? t("prompts.noMatching")
+                  : t("prompts.noPromptsYet")}
+              </p>
+              <p className="text-text-muted text-xs font-semibold">
+                {search || platformFilter || tagsFilter.length > 0
+                  ? t("prompts.tryChangingFilters")
+                  : t("prompts.createFirstPrompt")}
+              </p>
+              {(search || platformFilter || tagsFilter.length > 0) && (
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setPlatformFilter("");
+                    setTagsFilter([]);
+                  }}
+                  className="mt-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
+                >
+                  {t("prompts.clearAllFilters")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ minHeight: totalPages > 1 ? '764px' : undefined }} className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max content-start">
+              {paginatedPrompts.map((prompt) => (
+                <div
+                  key={prompt.id}
+                  id={`prompt-${prompt.id}`}
+                  className={`bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start ${prompt.id === promptIdParam ? 'animate-highlight-glow' : ''
+                    }`}
+                >
+                  <div className="h-6 flex items-center justify-between gap-3 shrink-0 overflow-hidden mb-2">
+                    <div className="flex items-center gap-1.5 overflow-hidden flex-wrap max-h-6">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-flex items-center gap-1 shrink-0 ${PLATFORM_BADGE_CLASS[prompt.platform]}`}
                       >
-                        {tag}
+                        <PlatformIcon platform={prompt.platform} size={10} />
+                        {PLATFORM_LABEL[prompt.platform]}
+                      </span>
+                      {prompt.cloned_from && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-gray-150 dark:bg-zinc-800 text-text-muted dark:text-zinc-400 shrink-0">
+                          {t("prompts.clonedBadge")}
+                        </span>
+                      )}
+                      {prompt.tags.map((tag) => {
+                        const isSelected = tagsFilter.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() =>
+                              setTagsFilter((prev) =>
+                                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                              )
+                            }
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer shrink-0 ${isSelected
+                                ? "bg-[#C4F0E1] dark:bg-emerald-900/40 text-[#1F4C3F] dark:text-emerald-400 ring-1 ring-[#1F4C3F]/30 dark:ring-emerald-800/30"
+                                : "bg-[#C4F0E1]/40 dark:bg-emerald-950/20 text-[#1F4C3F] dark:text-emerald-400 hover:bg-[#C4F0E1] dark:hover:bg-emerald-900/30"
+                              }`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleClone(prompt)}
+                        disabled={cloningId === prompt.id}
+                        title={t("prompts.cloneTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all active:scale-95 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        {cloningId === prompt.id ? (
+                          <Loader2 size={13} className="animate-spin text-primary" />
+                        ) : (
+                          <Copy size={13} className="transition-transform duration-300 scale-100 rotate-0" />
+                        )}
                       </button>
-                    );
-                  })}
-                </div>
+                      <button
+                        onClick={() => openEditModal(prompt)}
+                        title={t("prompts.editTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(prompt)}
+                        disabled={
+                          isCheckingDelete && deletingPrompt?.id === prompt.id
+                        }
+                        title={t("prompts.deleteTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={13} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleClone(prompt)}
-                    disabled={cloningId === prompt.id}
-                    title={t("prompts.cloneTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all active:scale-95 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    {cloningId === prompt.id ? (
-                      <Loader2 size={13} className="animate-spin text-primary" />
-                    ) : (
-                      <Copy size={13} className="transition-transform duration-300 scale-100 rotate-0" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openEditModal(prompt)}
-                    title={t("prompts.editTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(prompt)}
-                    disabled={
-                      isCheckingDelete && deletingPrompt?.id === prompt.id
-                    }
-                    title={t("prompts.deleteTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <Trash2 size={13} />
-                    )}
-                  </button>
+                  <div className="flex flex-col flex-1 min-h-0 justify-start mt-1">
+                    <h2 className="text-xs font-black text-slate-800 dark:text-white truncate h-5 leading-5 w-full" title={prompt.name}>
+                      {prompt.name}
+                    </h2>
+                    <p className="text-[11px] text-text-muted dark:text-zinc-400 line-clamp-3 whitespace-pre-line leading-relaxed font-semibold mt-1">
+                      {prompt.content}
+                    </p>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination Footer */}
+          {!loading && filteredPrompts.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-150 dark:border-zinc-800 pt-4 mt-2 select-none text-xs font-bold">
+              <div className="text-[11px] text-text-muted">
+                {t('prompts.showingPrompts', {
+                  start: total === 0 ? 0 : (page - 1) * pageSize + 1,
+                  end: Math.min(page * pageSize, total),
+                  total: total
+                })}
               </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
 
-              <div className="flex flex-col flex-1 min-h-0 justify-start mt-1">
-                <h2 className="text-xs font-black text-slate-800 dark:text-white truncate h-5 leading-5 w-full" title={prompt.name}>
-                  {prompt.name}
-                </h2>
-                <p className="text-[11px] text-text-muted dark:text-zinc-400 line-clamp-3 whitespace-pre-line leading-relaxed font-semibold mt-1">
-                  {prompt.content}
-                </p>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${page === p
+                        ? 'bg-primary text-white shadow-md shadow-primary/20'
+                        : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-card'
+                      }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </React.Fragment>
       )}
-
-      {/* Pagination Footer */}
-      {!loading && filteredPrompts.length > 0 && totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-gray-150 dark:border-zinc-800 pt-4 mt-2 select-none text-xs font-bold">
-          <div className="text-[11px] text-text-muted">
-            {t('prompts.showingPrompts', {
-              start: total === 0 ? 0 : (page - 1) * pageSize + 1,
-              end: Math.min(page * pageSize, total),
-              total: total
-            })}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
-                  page === p
-                    ? 'bg-primary text-white shadow-md shadow-primary/20'
-                    : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-card'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-    </React.Fragment>
-  )}
 
       {/* --- Tab configs content --- */}
       {activeTab === 'configs' && (
@@ -1142,11 +1135,10 @@ export default function PromptsView() {
                     onClick={() =>
                       setForm((f) => ({ ...f, platform: opt.value }))
                     }
-                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
-                      form.platform === opt.value
+                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${form.platform === opt.value
                         ? "bg-primary text-white border-primary shadow-sm"
                         : "bg-bg text-text-muted border-gray-200/70 hover:text-text"
-                    }`}
+                      }`}
                   >
                     <PlatformIcon platform={opt.value} size={13} />
                     {opt.label}
@@ -1270,11 +1262,10 @@ export default function PromptsView() {
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleteState.phase === "deleting"}
-                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
-                  deleteState.captionCount > 0
+                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${deleteState.captionCount > 0
                     ? "bg-amber-500 hover:bg-amber-600 text-white"
                     : "bg-red-600 hover:bg-red-700 text-white"
-                }`}
+                  }`}
               >
                 {deleteState.phase === "deleting" && (
                   <Loader2 size={16} className="animate-spin" />

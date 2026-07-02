@@ -19,6 +19,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { createClient } from '@/utils/supabase/client';
 import { useFont, fonts } from '@/contexts/FontContext';
+import PlatformPresetsTab from './PlatformPresetsTab';
 
 // API Plug / Connection icon custom SVG to match mockup
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
@@ -31,6 +32,8 @@ export default function SettingsView() {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { font, setFont } = useFont();
+
+  const [activeTab, setActiveTab] = useState<'general' | 'platform-presets'>('general');
 
   // State for interactive inputs
   const [openaiConnected, setOpenaiConnected] = useState(true);
@@ -92,12 +95,41 @@ export default function SettingsView() {
     <div className="flex flex-col gap-6">
       
       {/* Title Header */}
-      <div className="mt-2">
-        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('settings.title')}</h1>
-        <p className="text-text-muted">{t('settings.subtitle')}</p>
+      <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('settings.title')}</h1>
+          <p className="text-text-muted">{t('settings.subtitle')}</p>
+        </div>
       </div>
 
-      {/* Two Column Grid */}
+      {/* Tabs Header */}
+      <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-white/5 w-fit">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            activeTab === 'general'
+              ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
+          }`}
+        >
+          <Settings size={16} />
+          {language === 'vi' ? 'Cài đặt chung' : 'General Settings'}
+        </button>
+        <button
+          onClick={() => setActiveTab('platform-presets')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            activeTab === 'platform-presets'
+              ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
+          }`}
+        >
+          <FileText size={16} />
+          {language === 'vi' ? 'Quy chuẩn nền tảng' : 'Platform Presets'}
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'general' ? (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column: API Integrations (Theme-Aware Color Card) */}
@@ -464,6 +496,9 @@ export default function SettingsView() {
         </div>
 
       </div>
+      ) : (
+        <PlatformPresetsTab />
+      )}
 
     </div>
   );
