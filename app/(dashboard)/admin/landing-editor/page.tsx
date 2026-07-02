@@ -457,6 +457,25 @@ export default function LandingEditor() {
 
     // 1. HERO SLIDES
     if (section === 'heroSlides') {
+      if (field === 'slideImage' && index !== undefined) {
+        const slide = config.heroSlides[index];
+        return (
+          <div className="flex flex-col gap-4">
+            <div className="bg-primary/5 p-3 rounded-lg border border-primary/20 mb-2">
+              <span className="font-extrabold text-xs text-primary uppercase">Thay thế ảnh nền Banner {index + 1}</span>
+            </div>
+            <ImageUploader 
+              value={slide?.bgImageUrl || ''} 
+              onChange={v => {
+                const newSlides = [...config.heroSlides];
+                newSlides[index].bgImageUrl = v;
+                updateConfig('heroSlides', 'data', newSlides);
+              }} 
+            />
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">

@@ -11,7 +11,8 @@ import {
   ChevronDown,
   HelpCircle,
   Sun,
-  Moon
+  Moon,
+  UploadCloud
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -406,9 +407,18 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className="absolute inset-0 bg-cover bg-center"
+            className={`absolute inset-0 bg-cover bg-center ${isEditor ? 'cursor-pointer group/hero-bg' : ''}`}
             style={{ backgroundImage: `url('${currentHero?.bgImageUrl}')` }}
-          />
+            onClick={isEditor ? (e) => { e.preventDefault(); onEditClick?.('heroSlides', 'slideImage', currentSlide); } : undefined}
+          >
+            {isEditor && (
+              <div className="absolute inset-0 border-4 border-dashed border-primary/45 bg-black/25 opacity-0 group-hover/hero-bg:opacity-100 transition-opacity flex items-center justify-center z-30 duration-300">
+                <div className="bg-[#ffffff] text-primary px-5 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-xs uppercase tracking-wide transform translate-y-2 group-hover/hero-bg:translate-y-0 transition-all duration-300">
+                  <UploadCloud size={16} /> Thay đổi ảnh nền banner
+                </div>
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
         
@@ -502,17 +512,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           </>
         )}
 
-        {/* Editor Centered Edit Button */}
-        {isEditor && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditClick?.('heroSlides', 'slideConfig'); }}
-              className="bg-[#ffffff] hover:bg-[#f8fafc] text-primary px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
-            >
-              <Edit2 size={16} /> {t('landingEditor.editBanners')}
-            </button>
-          </div>
-        )}
+        {/* Centered edit button removed in favor of direct click-on-image upload modal */}
       </div>
 
       {/* 4. INTRODUCTION (ABOUT) */}
