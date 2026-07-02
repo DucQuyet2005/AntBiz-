@@ -680,6 +680,22 @@ export const EditableText = ({
   );
 };
 
+const parseStyleString = (styleStr: string): React.CSSProperties => {
+  if (!styleStr) return {};
+  const obj: Record<string, string> = {};
+  styleStr.split(';').forEach((pair) => {
+    const parts = pair.split(':');
+    if (parts.length >= 2) {
+      const key = parts[0].trim().replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+      const val = parts.slice(1).join(':').trim();
+      if (key && val) {
+        obj[key] = val;
+      }
+    }
+  });
+  return obj as React.CSSProperties;
+};
+
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const router = useRouter();
@@ -3400,6 +3416,190 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
                   </span>
                 </div>
               </button>
+
+              {/* Original Article Detailed Preview */}
+              {postData.title && (
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-6 font-sans">
+                  
+                  {/* Title & Category info */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
+                    <h3 className="text-xs font-black text-text uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText size={16} className="text-primary" />
+                      {language === 'vi' ? 'Bản xem trước bài viết gốc cào về' : 'Original Scraped Article Preview'}
+                    </h3>
+                    <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900/30">
+                      {language === 'vi' ? 'Thành công' : 'Scraped'}
+                    </span>
+                  </div>
+
+                  {/* High Fidelity Clone Area */}
+                  <div className="border border-slate-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-[#ffffff] dark:bg-zinc-950 flex flex-col shadow-sm">
+                    
+                    {/* Mock Newspaper Header */}
+                    <div className="bg-white/95 dark:bg-zinc-950/95 border-b border-slate-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between shrink-0">
+                      <div className="flex flex-col gap-0.5 select-none">
+                        <span className="text-red-650 font-black text-base tracking-tighter uppercase font-sans">
+                          GócNhìnMới
+                        </span>
+                        <span className="text-[7px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+                          Mạng xã hội
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-full w-48 select-none">
+                        <Search size={10} className="text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-450 dark:text-zinc-500">Tìm kiếm...</span>
+                      </div>
+                    </div>
+
+                    {/* Article Content Area */}
+                    <div className="px-5 py-6 md:px-8 flex gap-6 max-w-3xl mx-auto w-full max-h-[480px] overflow-y-auto scrollbar-thin">
+                      
+                      {/* Left Column Sticky Mock Actions */}
+                      <div className="hidden sm:flex flex-col items-center gap-4 pt-1 select-none">
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <Facebook size={13} />
+                        </button>
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <Link2 size={13} />
+                        </button>
+                        <div className="w-px h-5 bg-slate-200 dark:bg-zinc-800 my-0.5" />
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <ThumbsUp size={13} />
+                        </button>
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <MessageSquare size={13} />
+                        </button>
+                      </div>
+
+                      {/* Right Main Content */}
+                      <div className="flex-1 flex flex-col min-w-0">
+                        {/* Category */}
+                        {postData.category && (
+                          <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2.5 block select-none">
+                            {postData.category.startsWith('#') ? postData.category : `#${postData.category}`}
+                          </span>
+                        )}
+
+                        {/* Title */}
+                        <h1 className="text-lg md:text-2xl font-black text-slate-900 dark:text-zinc-100 leading-tight mb-4 tracking-tight font-sans">
+                          {postData.title}
+                        </h1>
+
+                        {/* Description/Sapo */}
+                        {postData.description && (
+                          <div className="bg-slate-50 dark:bg-zinc-900/40 p-3.5 border-l-4 border-red-550 rounded-r-xl text-xs md:text-sm text-slate-650 dark:text-slate-300 font-bold mb-5 leading-relaxed">
+                            {postData.description}
+                          </div>
+                        )}
+
+                        {/* Author Info */}
+                        <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
+                          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-955/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0">
+                            {postData.author ? postData.author.slice(0, 2) : 'CD'}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                              {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
+                            </span>
+                            <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
+                              <span>{postData.published_at || new Date().toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sections & Blocks rendering */}
+                        <div className="article-body-sections text-slate-700 dark:text-slate-350 min-h-[150px]">
+                          {postData.body && postData.body.length > 0 ? (
+                            postData.body.map((block: any, idx: number) => {
+                              // If it's a Spotlight section block, render it using dangerouslySetInnerHTML
+                              if (block.type === 'section') {
+                                return (
+                                  <section 
+                                    key={idx}
+                                    className={`${block.className || ''} py-6 my-4 rounded-xl border border-slate-150 dark:border-zinc-800 overflow-hidden shadow-sm`}
+                                    style={block.style ? parseStyleString(block.style) : undefined}
+                                    dangerouslySetInnerHTML={{ __html: block.html || '' }}
+                                  />
+                                );
+                              }
+                              
+                              if (block.type === 'heading2') {
+                                return (
+                                  <h2 key={idx} className="text-sm md:text-base font-black text-slate-800 dark:text-zinc-100 mt-6 mb-3 border-l-4 border-red-550 pl-2.5 leading-snug">
+                                    {block.text}
+                                  </h2>
+                                );
+                              }
+                              
+                              if (block.type === 'heading3') {
+                                return (
+                                  <h3 key={idx} className="text-xs md:text-sm font-extrabold text-slate-800 dark:text-zinc-200 mt-5 mb-2">
+                                    {block.text}
+                                  </h3>
+                                );
+                              }
+                              
+                              if (block.type === 'image' && block.url) {
+                                return (
+                                  <div key={idx} className="w-full my-5 flex flex-col items-center select-none">
+                                    <img 
+                                      src={block.url} 
+                                      alt={block.caption || 'Article Image'} 
+                                      className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                    />
+                                    {block.caption && (
+                                      <span className="text-[9px] md:text-xs text-slate-400 font-bold italic mt-1.5 text-center bg-slate-50 dark:bg-zinc-900/30 px-3 py-0.5 rounded">
+                                        {block.caption}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              
+                              return (
+                                <p key={idx} className="text-xs md:text-sm text-slate-750 dark:text-slate-300 mb-3.5 leading-relaxed font-semibold">
+                                  {block.text}
+                                </p>
+                              );
+                            })
+                          ) : (
+                            (postData.full_text || postData.description || '').split('\n\n').map((para, pIdx) => {
+                              const trimmed = para.trim();
+                              if (!trimmed) return null;
+                              return (
+                                <p key={pIdx} className="text-xs md:text-sm text-slate-755 dark:text-slate-300 mb-3 leading-relaxed font-semibold">
+                                  {trimmed}
+                                </p>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Tags */}
+                        {postData.tags && (
+                          <div className="flex flex-wrap gap-1.5 pt-5 border-t border-slate-150 dark:border-zinc-800 mt-5 select-none">
+                            {postData.tags.split(',').map((tag, idx) => {
+                              const trimmed = tag.trim();
+                              if (!trimmed) return null;
+                              return (
+                                <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                                  #{trimmed}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
 
               {/* AI Prompt Editor - moved to dialog */}
               <div className="hidden">
