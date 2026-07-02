@@ -49,7 +49,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 import PromptSuggestionSection from '../PromptSuggestionSection';
-import CaptionEditor, { convertToUnicodeBold, convertToUnicodeItalic, POPULAR_EMOJIS } from '../CaptionEditor';
+import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
 import { createClient } from '@/utils/supabase/client';
@@ -335,10 +335,6 @@ export const EditableText = ({
   const currentStatus = statusKey && currentVariant ? currentVariant[statusKey] : 'draft';
   const isLocked = currentStatus === 'scheduled' || currentStatus === 'posted';
 
-  const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'saved_as_original' | 'error'>('idle');
-  const [showEmojiPanel, setShowEmojiPanel] = React.useState(false);
-  const emojiContainerRef = React.useRef<HTMLDivElement>(null);
-
   React.useEffect(() => {
     if (isEditing) {
       if (textarea && textareaRef.current) {
@@ -347,17 +343,6 @@ export const EditableText = ({
       }
     }
   }, [isEditing, value, textarea]);
-
-  // Click outside to close emoji panel
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (emojiContainerRef.current && !emojiContainerRef.current.contains(event.target as Node)) {
-        setShowEmojiPanel(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const [isExpanded, setIsExpanded] = React.useState(false);
   const shouldFold = textarea && value && value.length > 280;
@@ -369,7 +354,6 @@ export const EditableText = ({
   const saveToServer = async (currentContent: string, saveAsOriginal = false) => {
     if (!currentVariant || !articleId) return;
 
-    setSaveStatus('saving');
     try {
       const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
                       selectedPlatform === 'threads' ? 'threadsCaptionId' :
@@ -396,9 +380,7 @@ export const EditableText = ({
         if (res.ok) {
           const resData = await res.json();
           const updatedStatus = resData.data.status;
-          
-          setSaveStatus(saveAsOriginal ? 'saved_as_original' : 'saved');
-          
+
           // Sync changes to the global state
           const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
                                 selectedPlatform === 'threads' ? 'originalThreads' :
@@ -419,10 +401,6 @@ export const EditableText = ({
                 : v
             )
           );
-
-          setTimeout(() => setSaveStatus('idle'), 3000);
-        } else {
-          setSaveStatus('error');
         }
       } else {
         // Perform POST to create new caption draft
@@ -430,7 +408,7 @@ export const EditableText = ({
                               selectedPlatform === 'threads' ? 'originalThreads' :
                               'originalInstagram';
         const aiContent = currentVariant[originalField] || currentVariant[selectedPlatform] || currentContent;
-        
+
         const res = await fetch('/api/captions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -446,8 +424,6 @@ export const EditableText = ({
           const resData = await res.json();
           const newId = resData.data.id;
           const newStatus = resData.data.status;
-          
-          setSaveStatus('saved');
 
           // Sync variants
           const statusKeyName = selectedPlatform === 'facebook' ? 'facebookStatus' :
@@ -465,48 +441,29 @@ export const EditableText = ({
                 : v
             )
           );
-          
-          setTimeout(() => setSaveStatus('idle'), 3000);
-        } else {
-          setSaveStatus('error');
         }
       }
     } catch (err) {
       console.error('[AutoSave error]:', err);
-      setSaveStatus('error');
     }
   };
 
+
   const lastSavedContentRef = React.useRef(value);
 
-  // Debounced auto-save effect
+  // Debounced auto-save — all edits are saved as original
   React.useEffect(() => {
     if (isEditing && isCaptionField) {
       if (value === lastSavedContentRef.current) return;
 
       const timer = setTimeout(() => {
-        saveToServer(value);
+        saveToServer(value, true);
         lastSavedContentRef.current = value;
       }, 2000);
 
       return () => clearTimeout(timer);
     }
   }, [value, isEditing, isCaptionField]);
-
-  const triggerManualSave = (currentContent: string) => {
-    saveToServer(currentContent, false);
-    lastSavedContentRef.current = currentContent;
-  };
-
-  const triggerSaveAsOriginal = (currentContent: string) => {
-    const confirmMsg = language === 'vi'
-      ? 'Bạn có chắc chắn muốn lưu nội dung này đè lên bản AI gốc? Hành động này sẽ cập nhật mốc so sánh gốc của AI.'
-      : 'Are you sure you want to save this content as the new AI original? This will update the base AI content.';
-    if (window.confirm(confirmMsg)) {
-      saveToServer(currentContent, true);
-      lastSavedContentRef.current = currentContent;
-    }
-  };
 
   const applyStyling = (type: 'bold' | 'italic') => {
     const textarea = textareaRef.current;
@@ -570,89 +527,7 @@ export const EditableText = ({
     return (
       <div className="w-full relative">
         {textarea ? (
-          <div className="flex flex-col w-full relative">
-            {/* Floating Action Toolbar */}
-            {isCaptionField && (
-              <div className="absolute -top-12 left-0 z-50 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-2 py-0.5 flex items-center gap-1 shadow-lg select-none whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
-                {/* Emoji popover */}
-                <div className="relative" ref={emojiContainerRef}>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setShowEmojiPanel(!showEmojiPanel)}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded text-xs cursor-pointer border-0 bg-transparent flex items-center justify-center transition-colors"
-                    title="Emoji"
-                  >
-                    😊
-                  </button>
-                  {showEmojiPanel && (
-                    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-xl shadow-xl p-2 z-50 grid grid-cols-5 gap-1 w-44">
-                      {POPULAR_EMOJIS.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => {
-                            insertEmoji(emoji);
-                            setShowEmojiPanel(false);
-                          }}
-                          className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/8 rounded text-sm transition-colors cursor-pointer select-none border-0 bg-transparent"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="w-px h-3.5 bg-gray-200 dark:bg-zinc-800 mx-0.5" />
-
-                {/* Action buttons (Lưu nháp, Lưu thay bản gốc) */}
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); triggerManualSave(value); }}
-                  className="px-2 py-1 text-[9px] text-slate-650 dark:text-zinc-350 hover:bg-slate-100 dark:hover:bg-zinc-800 font-extrabold rounded-lg border-0 cursor-pointer transition-colors"
-                >
-                  {language === 'vi' ? 'Lưu nháp' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); triggerSaveAsOriginal(value); }}
-                  className="px-2.5 py-1 text-[9px] bg-primary/10 hover:bg-primary/20 text-primary font-extrabold rounded-lg border-0 cursor-pointer transition-colors"
-                >
-                  {language === 'vi' ? 'Lưu bản gốc' : 'Save original'}
-                </button>
-
-                {/* Save Status indicators */}
-                {saveStatus !== 'idle' && (
-                  <>
-                    <div className="w-px h-3.5 bg-gray-200 dark:bg-zinc-800 mx-0.5" />
-                    <span className="text-[9px] font-bold px-1 select-none">
-                      {saveStatus === 'saving' && (
-                        <span className="text-primary flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" />
-                        </span>
-                      )}
-                      {saveStatus === 'saved' && (
-                        <span className="text-emerald-500">
-                          ✓ {language === 'vi' ? 'Đã lưu' : 'Saved'}
-                        </span>
-                      )}
-                      {saveStatus === 'saved_as_original' && (
-                        <span className="text-blue-500">
-                          ✓ {language === 'vi' ? 'Đã lưu bản gốc' : 'Saved original'}
-                        </span>
-                      )}
-                      {saveStatus === 'error' && (
-                        <span className="text-rose-500">
-                          ⚠️
-                        </span>
-                      )}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
-
+          <div className="flex flex-col w-full">
             <textarea
               ref={textareaRef}
               autoFocus
@@ -666,29 +541,8 @@ export const EditableText = ({
               className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:outline-none focus:ring-0 leading-relaxed transition-all"
             />
             {isCaptionField && charLimit && (
-              <div className="flex items-center justify-between mt-1 text-[9px] font-bold text-gray-400 select-none border-t border-gray-100 dark:border-zinc-800 pt-1">
-                <div>
-                  {hasChanged && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        const confirmMsg = language === 'vi'
-                          ? 'Bạn có chắc chắn muốn hủy các thay đổi và quay lại nội dung gốc do AI tạo ra?'
-                          : 'Are you sure you want to discard your edits and revert to the original AI content?';
-                        if (window.confirm(confirmMsg)) {
-                          handleUpdateVariantField(variantId, field, originalValue || '');
-                        }
-                      }}
-                      className="flex items-center gap-1 text-[9px] font-extrabold text-rose-600 hover:text-rose-700 transition-colors select-none cursor-pointer border-none bg-transparent p-0"
-                      title={language === 'vi' ? 'Hủy chỉnh sửa, khôi phục bản AI gốc' : 'Discard edits, revert to original AI'}
-                    >
-                      <RotateCcw size={9} />
-                      {language === 'vi' ? 'Về bản gốc AI' : 'Revert to original AI'}
-                    </button>
-                  )}
-                </div>
-                <div className={value.length > charLimit ? 'text-rose-600' : ''}>
+              <div className="flex justify-end mt-1 text-[9px] font-bold select-none border-t border-gray-100 dark:border-zinc-800 pt-1">
+                <div className={value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}>
                   {value.length.toLocaleString()} / {charLimit.toLocaleString()}
                 </div>
               </div>

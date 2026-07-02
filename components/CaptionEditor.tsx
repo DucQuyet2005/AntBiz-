@@ -67,7 +67,7 @@ const CaptionEditor = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedContent, setLastSavedContent] = useState(initialContent);
-  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
+
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,7 +99,6 @@ const CaptionEditor = ({
     const handleOutsideClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsEditing(false);
-        setShowEmojiPanel(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -220,27 +219,7 @@ const CaptionEditor = ({
     }, 0);
   };
 
-  const insertEmoji = (emoji: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      const newContent = content + emoji;
-      setContent(newContent);
-      handleSave(newContent);
-      return;
-    }
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const newContent = content.substring(0, start) + emoji + content.substring(end);
-    
-    setContent(newContent);
-    handleSave(newContent);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
-    }, 0);
-  };
 
   return (
     <div ref={containerRef} className={`flex flex-col gap-2 w-full ${className}`}>
@@ -307,38 +286,7 @@ const CaptionEditor = ({
         } ${isOverLimit ? 'border-red-200 dark:border-red-900/50' : ''}`}
         onClick={() => setIsEditing(true)}
       >
-        {isEditing && (
-          <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-slate-900/50 rounded-t-xl select-none">
-            {/* Emoji Selector */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowEmojiPanel(!showEmojiPanel)}
-                className="p-1 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded text-xs select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent flex items-center justify-center"
-                title="Emoji"
-              >
-                😊
-              </button>
-              {showEmojiPanel && (
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-xl shadow-xl p-2 z-50 grid grid-cols-5 gap-1 w-44">
-                  {POPULAR_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => {
-                        insertEmoji(emoji);
-                        setShowEmojiPanel(false);
-                      }}
-                      className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/8 rounded text-sm transition-colors cursor-pointer select-none border-0 bg-transparent"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {isEditing ? (
           <textarea
