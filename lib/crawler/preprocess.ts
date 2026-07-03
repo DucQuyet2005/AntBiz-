@@ -499,7 +499,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         return;
       }
 
-      if (tagName === 'img') {
+      // Avoid matching tags section or tag links
+      const className = cheerioEl.attr('class') || '';
+      const id = cheerioEl.attr('id') || '';
+      const tagRegex = /(^|[-_])tags?([-_]|$)/i;
+      if (
+        tagRegex.test(className) || 
+        tagRegex.test(id) || 
+        cheerioEl.parents('[class*="tag"], [id*="tag"]').length > 0 ||
+        cheerioEl.find('a[href*="/tag/"]').length > 0 ||
+        (tagName === 'a' && (cheerioEl.attr('href')?.includes('/tag/') || cheerioEl.attr('href')?.includes('/hashtag/')))
+      ) {
+        return;
+      }
+
+            if (tagName === 'img') {
         const src = cheerioEl.attr('src') || '';
         if (
           !src ||

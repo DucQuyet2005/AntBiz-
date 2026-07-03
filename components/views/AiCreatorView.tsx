@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Link2,
+  Cpu,
   Globe,
   Check,
   Facebook,
@@ -3875,6 +3876,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     type="text"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isFetching) {
+                        e.preventDefault();
+                        handleFetch();
+                      }
+                    }}
                     className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
                     placeholder={t('aiCreator.searchPlace')}
                   />
@@ -3895,6 +3902,58 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </div>
               </div>
 )}
+              {/* Crawl Empty State Placeholder */}
+              {inputMode === 'crawl' && !postData.title && (
+                <div className="bg-slate-50/30 dark:bg-zinc-900/10 backdrop-blur-md border border-dashed border-slate-200 dark:border-zinc-850 rounded-3xl p-12 flex flex-col items-center text-center justify-center min-h-[400px] font-sans shadow-inner">
+                  {/* Centered Graphic and Message */}
+                  <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-6 shadow-[0_0_50px_0_rgba(99,102,241,0.15)]">
+                    <Globe size={28} />
+                    <span className="absolute -top-1 -right-1 bg-amber-400 text-white rounded-full p-1 shadow-sm">
+                      <Sparkles size={11} />
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-sm font-extrabold text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Sẵn sàng trích xuất nội dung' : 'Ready to Scrape Content'}
+                  </h3>
+                  <p className="text-xs text-text-muted mt-2 max-w-sm leading-relaxed">
+                    {language === 'vi' 
+                      ? 'Nhập link bài viết ở trên để AI bắt đầu phân tích, trích xuất dữ liệu bài viết.' 
+                      : 'Enter a post URL above to let AI automatically extract and parse the content.'}
+                  </p>
+
+                  {/* Step Visualizer */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10 w-full max-w-xl relative">
+                    <div className="flex flex-col items-center gap-2.5 relative">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-text font-black border border-slate-200/50 dark:border-zinc-700 shadow-sm">
+                        <Link2 size={16} className="text-primary" />
+                      </div>
+                      <div className="text-[11px] font-bold text-text">
+                        {language === 'vi' ? '1. Dán URL bài viết' : '1. Paste URL'}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2.5 relative">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-text font-black border border-slate-200/50 dark:border-zinc-700 shadow-sm">
+                        <Cpu size={16} className="text-emerald-500" />
+                      </div>
+                      <div className="text-[11px] font-bold text-text">
+                        {language === 'vi' ? '2. AI phân tích tự động' : '2. AI Parsing'}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2.5 relative">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-text font-black border border-slate-200/50 dark:border-zinc-700 shadow-sm">
+                        <Sparkles size={16} className="text-amber-500" />
+                      </div>
+                      <div className="text-[11px] font-bold text-text">
+                        {language === 'vi' ? '3. Sinh caption đa kênh' : '3. Generate Caption'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Original Article Detailed Preview */}
               {inputMode === 'crawl' && postData.title && (
                 <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-6 font-sans">
@@ -4063,7 +4122,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               if (!trimmed) return null;
                               return (
                                 <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
-                                  #{trimmed}
+                                  {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
                                 </span>
                               );
                             })}
@@ -4863,7 +4922,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               )}
 
               {/* 3. Article Live Preview Card (Bài viết gốc) */}
-              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
+              {step === 2 && (
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
                   <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
                     <Smartphone size={16} className="text-primary" />
@@ -4932,7 +4992,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         if (!trimmed) return null;
                         return (
                           <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
-                            {trimmed}
+                            {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
                           </span>
                         );
                       })}
@@ -4946,10 +5006,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     </div>
                   </div>
                 </div>
+                </div>
+              )}
 
-                {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
+              {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
                 {step === 1 && (
-                  <div className="flex flex-col gap-4 border-t border-gray-100 pt-4 mt-1 font-sans">
+                  <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
 
 
                     {/* Platform Selection Tabs */}
@@ -5083,7 +5145,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     </motion.button>
                   </div>
                 )}
-              </div>
             </div>
           )}
 
@@ -6991,7 +7052,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           if (!trimmed) return null;
                           return (
                             <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                              #{trimmed}
+                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
                             </span>
                           );
                         })}
