@@ -4382,6 +4382,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Step 3 Actions */}
+                {schedulingError && (
+                  <div className="bg-red-50 border border-red-200 text-red-650 rounded-2xl p-4 text-xs font-bold mb-4 font-sans flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{schedulingError}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
                   <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
                     <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
