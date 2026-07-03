@@ -5,6 +5,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.3] - 2026-07-03
+
+### Fixed
+- **Sửa lỗi hiển thị Hashtag tại AI Creator**: Di chuyển khối thẻ hashtag nằm lên trên phần thông tin tác giả (Author Info) để tránh lỗi đè chữ, đồng thời căn chỉnh khoảng cách hợp lý trong cả giao diện Xem trước bài viết gốc lẫn Modal Xem chi tiết.
+
 ## [1.6.2] - 2026-07-01
 
 ### Added

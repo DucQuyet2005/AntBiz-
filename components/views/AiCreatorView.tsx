@@ -4029,6 +4029,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           </div>
                         )}
 
+                        {/* Tags */}
+                        {postData.tags && (
+                          <div className="flex flex-wrap gap-1.5 mb-4 select-none">
+                            {postData.tags.split(',').map((tag, idx) => {
+                              const trimmed = tag.trim();
+                              if (!trimmed) return null;
+                              return (
+                                <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                                  {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         {/* Author Info */}
                         <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
                           <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-955/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0">
@@ -4113,21 +4128,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             })
                           )}
                         </div>
-
-                        {/* Tags */}
-                        {postData.tags && (
-                          <div className="flex flex-wrap gap-1.5 pt-5 border-t border-slate-150 dark:border-zinc-800 mt-5 select-none">
-                            {postData.tags.split(',').map((tag, idx) => {
-                              const trimmed = tag.trim();
-                              if (!trimmed) return null;
-                              return (
-                                <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
-                                  {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
 
                       </div>
 
@@ -6970,6 +6970,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       </div>
                     )}
 
+                    {/* Hashtags list */}
+                    {postData.tags && (
+                      <div className="flex flex-wrap gap-2 mb-4 select-none">
+                        {postData.tags.split(',').map((tag, idx) => {
+                          const trimmed = tag.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Author & Publication metadata */}
                     <div className="flex items-center gap-3 mb-8 border-b border-slate-100 dark:border-zinc-800/80 pb-4 select-none">
                       {/* Round Avatar mockup */}
@@ -7043,21 +7058,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         })
                       )}
                     </div>
-
-                    {/* Hashtags list */}
-                    {postData.tags && (
-                      <div className="flex flex-wrap gap-2 pt-6 border-t border-slate-150 dark:border-zinc-800 mt-6 select-none">
-                        {postData.tags.split(',').map((tag, idx) => {
-                          const trimmed = tag.trim();
-                          if (!trimmed) return null;
-                          return (
-                            <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
 
                   </div>
                 </div>
