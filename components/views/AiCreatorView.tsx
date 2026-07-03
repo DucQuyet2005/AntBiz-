@@ -3418,7 +3418,7 @@ Cấu trúc: 1-2 dòng caption ấn tượng gợi hình ảnh → Câu kết k�
               </button>
 
               {/* Original Article Detailed Preview */}
-              {postData.title && (
+              {inputMode === 'crawl' && postData.title && (
                 <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-6 font-sans">
                   
                   {/* Title & Category info */}
