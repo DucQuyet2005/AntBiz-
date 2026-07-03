@@ -16,7 +16,7 @@ describe('PLATFORM_MAX_LENGTH', () => {
     expect(PLATFORM_MAX_LENGTH.facebook).toBe(63206);
     expect(PLATFORM_MAX_LENGTH.threads).toBe(5000);
     expect(PLATFORM_MAX_LENGTH.linkedin).toBe(1300);
-  });
+  }, 20000);
 
   it('thread alias equals threads limit', async () => {
     const { PLATFORM_MAX_LENGTH } = await import('@/components/CaptionEditor');

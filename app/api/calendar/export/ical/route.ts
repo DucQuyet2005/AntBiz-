@@ -1,17 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUserWithRole } from '@/lib/api/auth';
+import { requireUserWithRole, createServiceRoleClient, getCalendarToken } from '@/lib/api/auth';
 
 export async function GET(request: NextRequest) {
-  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
-  if (unauthorized) return unauthorized;
-
   const { searchParams } = new URL(request.url);
+  const token = searchParams.get('token');
+  const userId = searchParams.get('userId');
+
+  let supabaseClient: any;
+  let bypassAuth = false;
+
+  if (userId && token) {
+    const expectedToken = getCalendarToken(userId);
+    if (token === expectedToken) {
+      bypassAuth = true;
+      supabaseClient = createServiceRoleClient();
+    }
+  }
+
+  if (!bypassAuth) {
+    const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+    if (unauthorized) return unauthorized;
+    supabaseClient = supabase;
+  }
+
   const fromStr = searchParams.get('from');
   const toStr = searchParams.get('to');
 
-  let query = supabase
+  let query = supabaseClient
     .from('scheduled_posts')
     .select('id, platform, status, scheduled_at, created_at, captions(id, ai_content, edited_content, articles(id, title))');
+
+  if (bypassAuth && userId) {
+    query = query.eq('created_by', userId);
+  }
 
   if (fromStr) {
     query = query.gte('scheduled_at', fromStr);

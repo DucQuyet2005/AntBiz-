@@ -58,4 +58,24 @@ export async function requireUserWithRole(allowedRoles: ('admin' | 'marketer_ful
   }
 
   return { supabase, user, role: userData.role as 'admin' | 'marketer_full' | 'marketer_content', unauthorized: null };
+}
+
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
+
+export function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.NODE_ENV === 'test' ? 'test-secret-key' : undefined);
+  if (!url || !serviceKey) {
+    throw new Error('Thiếu cấu hình NEXT_PUBLIC_SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY');
+  }
+  return createSupabaseJsClient(url, serviceKey);
+}
+
+export function getCalendarToken(userId: string) {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.NODE_ENV === 'test' ? 'test-secret-key' : undefined);
+  if (!secret) {
+    throw new Error('Thiếu cấu hình SUPABASE_SERVICE_ROLE_KEY để sinh Token Lịch');
+  }
+  return createHash('sha256').update(`cal-${userId}-${secret}`).digest('hex');
 }

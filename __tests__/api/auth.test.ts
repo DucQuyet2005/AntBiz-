@@ -38,6 +38,9 @@ vi.mock('@/utils/supabase/server', () => ({
 // Mock Nodemailer
 const mockSendMail = vi.fn();
 vi.mock('nodemailer', () => ({
+  createTransport: () => ({
+    sendMail: mockSendMail,
+  }),
   default: {
     createTransport: () => ({
       sendMail: mockSendMail,
@@ -48,6 +51,9 @@ vi.mock('nodemailer', () => ({
 describe('Auth API - Forgot, Confirm & Reset Password', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SMTP_HOST = 'smtp.gmail.com';
+    process.env.SMTP_USER = 'test@example.com';
+    process.env.SMTP_PASS = 'password';
   });
 
   describe('POST /api/auth/forgot-password', () => {

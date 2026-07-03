@@ -5,11 +5,13 @@ import { POST as changePassword } from '@/app/api/users/me/change-password/route
 const mockGetUser = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockSignInWithPassword = vi.fn();
+const mockSignOut = vi.fn().mockResolvedValue({ error: null });
 const mockSupabaseServer = {
   auth: {
     getUser: mockGetUser,
     updateUser: mockUpdateUser,
     signInWithPassword: mockSignInWithPassword,
+    signOut: mockSignOut,
   },
 };
 
@@ -121,7 +123,7 @@ describe('Change Password API - POST /api/users/me/change-password', () => {
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'NewPassword123!' });
-    expect(mockAdminSignOut).toHaveBeenCalledWith('u1', 'global');
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
     expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: 'test@example.com',
       subject: expect.stringContaining('thay đổi mật khẩu thành công'),

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -385,7 +385,7 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
       // Fetch stats summary
       try {
-        const resSummary = await fetch('/api/stats/summary');
+        const resSummary = await fetch(`/api/stats/summary?timeframe=${chartTimeframe}`);
         if (resSummary.ok) {
           const dataSummary = await resSummary.json();
           setSummaryStats(dataSummary);
@@ -455,6 +455,17 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-fetch dashboard stats when chartTimeframe changes
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartTimeframe]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -816,25 +827,54 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
           {/* Platform breakdown list */}
           <div className="flex flex-col gap-2 mt-4 pt-2 border-t border-slate-100 dark:border-white/5">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="grid grid-cols-3 gap-1">
+              {/* Facebook */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'facebook' ? 'all' : 'facebook')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'facebook'
+                    ? 'border-blue-500 bg-blue-50/20 text-blue-700 dark:border-blue-500/50 dark:bg-blue-950/20'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Facebook' : 'Click to filter chart by Facebook'}
+              >
                 <span className="text-blue-600 dark:text-blue-400 shrink-0"><Facebook size={12} /></span>
-                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                <span className="text-[9px] font-black truncate">
                   {summaryStats.successRateByPlatform.facebook ?? 100}%
                 </span>
-              </div>
-              <div className="flex items-center gap-1.5 min-w-0">
+              </button>
+
+              {/* Instagram */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'instagram' ? 'all' : 'instagram')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'instagram'
+                    ? 'border-pink-500 bg-pink-50/20 text-pink-700 dark:border-pink-500/50 dark:bg-pink-950/20'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Instagram' : 'Click to filter chart by Instagram'}
+              >
                 <span className="text-pink-600 dark:text-pink-400 shrink-0"><Instagram size={12} /></span>
-                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                <span className="text-[9px] font-black truncate">
                   {summaryStats.successRateByPlatform.instagram ?? 100}%
                 </span>
-              </div>
-              <div className="flex items-center gap-1.5 min-w-0">
+              </button>
+
+              {/* Threads */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'threads' ? 'all' : 'threads')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'threads'
+                    ? 'border-slate-800 bg-slate-900/10 text-slate-950 dark:border-zinc-700 dark:bg-white/10 dark:text-white'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Threads' : 'Click to filter chart by Threads'}
+              >
                 <span className="text-slate-800 dark:text-white shrink-0"><ThreadsIcon size={12} /></span>
-                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 truncate">
+                <span className="text-[9px] font-black truncate">
                   {summaryStats.successRateByPlatform.threads ?? 100}%
                 </span>
-              </div>
+              </button>
             </div>
             <span className="text-[9px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
               {language === 'vi' 

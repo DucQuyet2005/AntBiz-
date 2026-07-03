@@ -1,10 +1,5 @@
-/**
- * lib/crawler/index.ts
- * TypeScript replacement for python/auto_post_pipeline.py → crawl_url()
- * Uses Playwright npm (same Chromium engine, no Python needed)
- */
-
 import { chromium } from 'playwright';
+import dns from 'dns';
 
 export interface CrawlResult {
   url: string;
@@ -16,10 +11,76 @@ export interface CrawlResult {
 }
 
 /**
+ * Kiểm tra xem URL đích có an toàn hay không (không trỏ vào IP nội bộ, localhost, loopback).
+ */
+export async function isSafeUrl(urlStr: string): Promise<boolean> {
+  try {
+    const parsed = new URL(urlStr);
+    const hostname = parsed.hostname;
+
+    // Chặn localhost, loopback trực tiếp
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]'
+    ) {
+      return false;
+    }
+
+    // DNS Lookup để lấy IP thực tế
+    const lookup = await dns.promises.lookup(hostname).catch(() => null);
+    if (!lookup) {
+      return false;
+    }
+    const ip = lookup.address;
+
+    // Kiểm tra các dải IPv4 riêng tư
+    if (ip.includes('.')) {
+      const parts = ip.split('.').map(Number);
+      if (parts.length !== 4 || parts.some(isNaN)) return false;
+
+      const isLoopback = parts[0] === 127;
+      const isPrivateA = parts[0] === 10;
+      const isPrivateB = parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31;
+      const isPrivateC = parts[0] === 192 && parts[1] === 168;
+      const isLinkLocal = parts[0] === 169 && parts[1] === 254;
+      const isZero = parts[0] === 0;
+
+      if (isLoopback || isPrivateA || isPrivateB || isPrivateC || isLinkLocal || isZero) {
+        return false;
+      }
+    }
+
+    // Kiểm tra các dải IPv6 riêng tư
+    if (ip.includes(':')) {
+      const cleanIp = ip.toLowerCase();
+      if (
+        cleanIp === '::1' ||
+        cleanIp === '::' ||
+        cleanIp.startsWith('fe80:') ||
+        cleanIp.startsWith('fc00:') ||
+        cleanIp.startsWith('fd00:')
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Hybrid Crawler: Dùng Playwright khi chạy Local (để lấy DOM đầy đủ và bypass Cloudflare/chặn bot dễ dàng),
  * tự động fallback sang Firecrawl API khi deploy lên Vercel Serverless.
  */
 export async function crawlUrl(url: string): Promise<CrawlResult> {
+  // SSRF Protection check
+  const isSafe = await isSafeUrl(url);
+  if (!isSafe) {
+    throw new Error('Địa chỉ URL đích không được phép truy cập (bị chặn bởi chính sách SSRF Protection).');
+  }
   // Ưu tiên chạy Playwright trên cả local và deploy. Chỉ dùng Firecrawl khi FORCE_FIRECRAWL === 'true'
   const usePlaywright = process.env.FORCE_FIRECRAWL !== 'true';
 

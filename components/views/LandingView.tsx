@@ -135,6 +135,14 @@ export const DEFAULT_CONFIG_EN = {
   }
 };
 
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
+    .replace(/javascript:\s*[^"']/gi, '');
+}
+
 interface Props {
   initialConfig?: any;
   isPreview?: boolean;
@@ -495,7 +503,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-6 leading-snug" style={{ color: 'var(--color-text)' }}>{config.sections.aboutTitle}</h2>
           </EditableField>
           <EditableField section="sections" field="aboutContent">
-            <p className="text-sm md:text-base leading-relaxed font-semibold max-w-3xl opacity-80" dangerouslySetInnerHTML={{ __html: config.sections.aboutContent }} />
+            <p className="text-sm md:text-base leading-relaxed font-semibold max-w-3xl opacity-80" dangerouslySetInnerHTML={{ __html: sanitizeHtml(config.sections.aboutContent) }} />
           </EditableField>
         </motion.div>
       </section>

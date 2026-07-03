@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireUserWithRole } from '@/lib/api/auth';
 
 const ALLOWED_HOSTNAME = 'gocnhinmoi.com.vn';
 
 function isAllowedUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+    // Chặn bypass SSRF qua thông tin đăng nhập trong URL
+    if (parsed.username || parsed.password) {
+      return false;
+    }
     return (
       parsed.hostname === ALLOWED_HOSTNAME ||
       parsed.hostname.endsWith('.' + ALLOWED_HOSTNAME)
@@ -15,6 +20,13 @@ function isAllowedUrl(url: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const { unauthorized } = await requireUserWithRole([
+    'admin',
+    'marketer_full',
+    'marketer_content',
+  ]);
+  if (unauthorized) return unauthorized;
+
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
 
@@ -112,15 +124,22 @@ export async function GET(request: NextRequest) {
     //   • Do NOT override replaceState → Next.js uses this safely during hydration
     //   • Capture-phase click listener → catches <Link> clicks before React handler
     //   • Both together ensure no navigation ever escapes the proxy iframe
-    //
+    const forwardedHost = request.headers ? request.headers.get('x-forwarded-host') : null;
+    const forwardedProto = (request.headers ? request.headers.get('x-forwarded-proto') : null) || 'http';
+    const host = request.headers ? request.headers.get('host') : null;
+    const externalHost = forwardedHost || host;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (externalHost ? `${forwardedProto}://${externalHost}` : request.nextUrl.origin);
+    const parentOrigin = new URL(siteUrl).origin;
+
     const interceptorScript = `<script>
 (function () {
   var PROXY = '/api/proxy?url=';
   var TARGET = ${JSON.stringify(targetUrl)};
+  var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
 
   /* ── Report current page URL to parent AntBiz window ── */
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: TARGET }, '*'); } catch (_) {}
+    try { window.parent.postMessage({ type: 'URL_CHANGE', url: TARGET }, PARENT_ORIGIN); } catch (_) {}
   }
   report();
   setInterval(report, 800);

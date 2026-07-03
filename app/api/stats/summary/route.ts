@@ -5,11 +5,15 @@ export async function GET(request: NextRequest) {
   const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { searchParams } = new URL(request.url);
+  const timeframe = searchParams.get('timeframe') || 'week';
+  const days = timeframe === 'month' ? 30 : 7;
+  const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
   const { data: posts, error } = await supabase
     .from('scheduled_posts')
     .select('platform, status, scheduled_at')
-    .gte('scheduled_at', sevenDaysAgo);
+    .gte('scheduled_at', fromDate);
 
   if (error) {
     console.error('[GET /api/stats/summary] Supabase error:', error);

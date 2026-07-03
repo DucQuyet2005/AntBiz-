@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { crawlUrl } from '@/lib/crawler';
+import { crawlUrl, isSafeUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
 import { createClient } from '@supabase/supabase-js';
+import { requireUserWithRole } from '@/lib/api/auth';
 
 // Khởi tạo client Supabase quyền Admin (Service Role) để bypass RLS trên bảng articles
 function createServiceClient() {
@@ -23,6 +24,13 @@ function createServiceClient() {
 }
 
 export async function GET(request: NextRequest) {
+  const { unauthorized } = await requireUserWithRole([
+    'admin',
+    'marketer_full',
+    'marketer_content',
+  ]);
+  if (unauthorized) return unauthorized;
+
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
 
@@ -35,6 +43,12 @@ export async function GET(request: NextRequest) {
     new URL(targetUrl);
   } catch {
     return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
+  }
+
+  // SSRF Validation
+  const isSafe = await isSafeUrl(targetUrl);
+  if (!isSafe) {
+    return NextResponse.json({ error: 'Địa chỉ URL không được phép truy cập (SSRF Protection)' }, { status: 400 });
   }
 
   try {

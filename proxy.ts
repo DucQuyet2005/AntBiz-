@@ -50,9 +50,7 @@ export async function proxy(request: NextRequest) {
     url.pathname === '/register' || 
     url.pathname === '/forgot-password' || 
     url.pathname === '/reset-password' || 
-    url.pathname.startsWith('/api/auth') || 
-    url.pathname.startsWith('/api/proxy') || 
-    url.pathname.startsWith('/api/scrape');
+    url.pathname.startsWith('/api/auth');
 
   // Lấy và kiểm tra thông tin user profile trong database
   let profileExists = false;
@@ -101,6 +99,13 @@ export async function proxy(request: NextRequest) {
 
   // 2. Nếu người dùng CHƯA ĐĂNG NHẬP hoặc không có profile hợp lệ mà cố tình truy cập các trang được bảo vệ (tất cả trừ public)
   if (!user && !isPublicRoute) {
+    // Với API, trả về JSON 401 thay vì redirect
+    if (url.pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Bạn cần đăng nhập để thực hiện hành động này' },
+        { status: 401 }
+      );
+    }
     url.pathname = '/'
     return NextResponse.redirect(url)
   }

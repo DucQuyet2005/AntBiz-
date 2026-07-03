@@ -63,14 +63,16 @@ describe('GET /api/captions/export', () => {
 
     (exportService.createExportJob as any).mockResolvedValue({ id: 'job-abc' });
     (exportService.getCaptionsForExport as any).mockResolvedValue([{ id: 1 }]);
+    (exportService.generateCaptionCSV as any).mockReturnValue('csv-content');
 
     const req = new NextRequest('http://localhost/api/captions/export');
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.job_id).toBe('job-abc');
-    expect(json.message).toContain('Đã hoàn thành xuất dữ liệu');
+    const body = await res.text();
+    expect(body).toBe('csv-content');
+    expect(res.headers.get('Content-Type')).toContain('text/csv');
+    expect(res.headers.get('Content-Disposition')).toContain('attachment; filename="antbiz_export_job-abc.csv"');
     expect(exportService.createExportJob).toHaveBeenCalled();
     expect(exportService.completeExportJob).toHaveBeenCalled();
   });

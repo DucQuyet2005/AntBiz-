@@ -149,6 +149,30 @@ describe('Dashboard Statistics API Endpoints', () => {
       // Threads success rate: 0 posted, 0 failed -> 100%
       expect(body.successRateByPlatform.threads).toBe(100);
     });
+
+    it('aggregates stats for custom timeframe (month vs week)', async () => {
+      const state = hoisted.getState();
+      
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      
+      // Add post scheduled 10 days ago (outside 7 days, inside 30 days)
+      state.mockScheduledPostsDb.push(
+        { id: 'sp5', platform: 'instagram', scheduled_at: tenDaysAgo.toISOString(), created_at: tenDaysAgo.toISOString(), status: 'posted' }
+      );
+      
+      // Default (week)
+      const reqWeek = new NextRequest('http://localhost/api/stats/summary?timeframe=week', { method: 'GET' });
+      const resWeek = await getSummary(reqWeek);
+      const bodyWeek = await resWeek.json();
+      expect(bodyWeek.total).toBe(4); // sp5 is excluded
+      
+      // Month
+      const reqMonth = new NextRequest('http://localhost/api/stats/summary?timeframe=month', { method: 'GET' });
+      const resMonth = await getSummary(reqMonth);
+      const bodyMonth = await resMonth.json();
+      expect(bodyMonth.total).toBe(5); // sp5 is included!
+    });
   });
 
   describe('GET /api/stats/trending', () => {

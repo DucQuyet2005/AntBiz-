@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getCaptionsForExport, generateCaptionCSV } from '@/lib/api/services/exportService';
+import { requireUserWithRole } from '@/lib/api/auth';
 
 /**
  * GET /api/captions/export/download
@@ -9,6 +10,13 @@ import { getCaptionsForExport, generateCaptionCSV } from '@/lib/api/services/exp
  * để truy vấn captions thực và trả về file CSV tải xuống.
  */
 export async function GET(request: NextRequest) {
+  const { user, role, unauthorized } = await requireUserWithRole([
+    'admin',
+    'marketer_full',
+    'marketer_content',
+  ]);
+  if (unauthorized) return unauthorized;
+
   const jobId = request.nextUrl.searchParams.get('jobId');
   if (!jobId) {
     return new Response('Thiếu mã yêu cầu (jobId).', { status: 400 });
@@ -20,13 +28,18 @@ export async function GET(request: NextRequest) {
     // Lấy thông tin job từ bảng audit_logs
     const { data: job, error: jobError } = await adminSupabase
       .from('audit_logs')
-      .select('after_value')
+      .select('after_value, actor_id')
       .eq('id', jobId)
       .single();
 
     if (jobError || !job) {
       console.error('[Download CSV] Job not found or error:', jobError);
       return new Response('Không tìm thấy yêu cầu xuất dữ liệu tương ứng.', { status: 404 });
+    }
+
+    // Kiểm tra quyền sở hữu: chỉ Admin hoặc người tạo Job mới được phép tải xuống
+    if (role !== 'admin' && job.actor_id !== user.id) {
+      return new Response('Bạn không có quyền tải tài liệu này.', { status: 403 });
     }
 
     const filters = job.after_value?.filters || {};

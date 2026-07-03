@@ -104,6 +104,7 @@ vi.mock('next/headers', () => ({
 
 import { GET as exportIcal } from '@/app/api/calendar/export/ical/route';
 import { GET as exportCsv } from '@/app/api/calendar/export/csv/route';
+import { GET as getCalendarTokenRoute } from '@/app/api/calendar/token/route';
 
 describe('Calendar Export API Endpoints', () => {
   beforeEach(() => {
@@ -142,6 +143,22 @@ describe('Calendar Export API Endpoints', () => {
       expect(body).toContain('DESCRIPTION:Kênh đăng: Facebook\\nTrạng thái: Chờ đăng (Scheduled)');
       expect(body).toContain('END:VCALENDAR');
     });
+
+    it('bypasses session auth when valid userId and calendar token are provided', async () => {
+      hoisted.mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('Unauthorized') });
+      
+      const { getCalendarToken } = await import('@/lib/api/auth');
+      const userId = 'u1';
+      const token = getCalendarToken(userId);
+      
+      const req = new NextRequest(`http://localhost/api/calendar/export/ical?userId=${userId}&token=${token}&from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z`, { method: 'GET' });
+      const res = await exportIcal(req);
+      expect(res.status).toBe(200);
+      
+      const body = await res.text();
+      expect(body).toContain('BEGIN:VCALENDAR');
+      expect(body).toContain('SUMMARY:[Facebook] FB Post');
+    });
   });
 
   describe('GET /api/calendar/export/csv', () => {
@@ -179,6 +196,27 @@ describe('Calendar Export API Endpoints', () => {
       expect(lines[3]).toContain('"Instagram"');
       expect(lines[3]).toContain('"\u200b21:30 20/06/2026"');
       expect(lines[3]).toContain('"Đã đăng"');
+    });
+  });
+
+  describe('GET /api/calendar/token', () => {
+    it('returns 401 if unauthorized', async () => {
+      hoisted.mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('Unauthorized') });
+      const req = new NextRequest('http://localhost/api/calendar/token', { method: 'GET' });
+      const res = await getCalendarTokenRoute(req);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns the secure calendar subscription token for user', async () => {
+      hoisted.mockGetUser.mockResolvedValue({ data: { user: { id: 'u1', email: 'user@test.com' } }, error: null });
+      const req = new NextRequest('http://localhost/api/calendar/token', { method: 'GET' });
+      const res = await getCalendarTokenRoute(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.userId).toBe('u1');
+      expect(json.token).toBeDefined();
+      expect(typeof json.token).toBe('string');
     });
   });
 });

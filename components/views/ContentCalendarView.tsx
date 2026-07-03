@@ -114,6 +114,25 @@ export default function ContentCalendarView() {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
   }, [selectedPlatforms, pathname, router]);
+  const [subscriptionUrl, setSubscriptionUrl] = useState<string>('');
+
+  // Fetch Webcal subscription link
+  useEffect(() => {
+    async function fetchToken() {
+      try {
+        const res = await fetch('/api/calendar/token');
+        if (res.ok) {
+          const { userId, token } = await res.json();
+          const host = window.location.host;
+          setSubscriptionUrl(`webcal://${host}/api/calendar/export/ical?userId=${userId}&token=${token}`);
+        }
+      } catch (err) {
+        console.error('Failed to fetch calendar token:', err);
+      }
+    }
+    fetchToken();
+  }, []);
+
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFromDate, setExportFromDate] = useState(() => {
@@ -516,6 +535,18 @@ export default function ContentCalendarView() {
     const newStart = event.start;
     const oldStart = oldEvent.start;
 
+    // Check if new scheduled time is in the past
+    if (newStart < new Date()) {
+      showPopup(
+        language === 'vi'
+          ? 'Không thể dời lịch đăng bài viết về thời gian trong quá khứ.'
+          : 'Cannot reschedule a post to a past date/time.',
+        'error'
+      );
+      info.revert();
+      return;
+    }
+
     setConfirmDrop({
       isOpen: true,
       eventId: event.id,
@@ -527,7 +558,7 @@ export default function ContentCalendarView() {
         await handleReschedule(event.id, newStart.toISOString(), () => info.revert());
       }
     });
-  }, [handleReschedule]);
+  }, [handleReschedule, showPopup, language]);
 
   const renderEventContent = useCallback((eventInfo: any) => {
     const { platform, platforms, isMultiple, status } = eventInfo.event.extendedProps;
@@ -1042,94 +1073,31 @@ export default function ContentCalendarView() {
               className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl py-3 pl-10 pr-3.5 text-xs font-bold text-slate-700 placeholder:text-slate-400/80 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all shadow-inner"
             />
           </div>
-
-          {/* Platform Filters - Slider Toggle style */}
-          <div className="flex flex-col gap-3.5 border-t border-slate-100 pt-5">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
-              {language === 'vi' ? 'Lịch của tôi' : 'My Calendars'}
-            </span>
-
-            <div className="flex flex-col gap-2.5 p-3 rounded-2xl border platform-filter-container bg-transparent">
-              {/* Facebook */}
-              <button
-                onClick={() => handleTogglePlatform('facebook')}
-                role="switch"
-                aria-checked={selectedPlatforms.includes('facebook')}
-                className={`platform-filter-btn flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${selectedPlatforms.includes('facebook')
-                    ? 'border-blue-200 dark:border-blue-500 bg-blue-50/30 dark:bg-blue-950/40'
-                    : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-700/80'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full transition-all ${selectedPlatforms.includes('facebook') ? 'bg-blue-600 scale-110 shadow-sm' : 'bg-slate-300 dark:bg-zinc-600'
-                    }`} />
-                  <span className={`text-xs font-bold ${selectedPlatforms.includes('facebook') ? 'text-blue-900 dark:text-blue-400 font-extrabold' : 'text-slate-500 dark:text-zinc-400'}`}>Facebook</span>
-                </div>
-                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors cursor-pointer ${selectedPlatforms.includes('facebook') ? 'bg-slate-400 dark:bg-zinc-500' : 'bg-slate-200 dark:bg-zinc-700'
-                  }`}>
-                  <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform ${selectedPlatforms.includes('facebook') ? 'translate-x-2.5' : 'translate-x-0'
-                    }`} />
-                </div>
-              </button>
-
-              {/* Instagram */}
-              <button
-                onClick={() => handleTogglePlatform('instagram')}
-                role="switch"
-                aria-checked={selectedPlatforms.includes('instagram')}
-                className={`platform-filter-btn flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${selectedPlatforms.includes('instagram')
-                    ? 'border-blue-200 dark:border-blue-500 bg-blue-50/30 dark:bg-blue-950/40'
-                    : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-700/80'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full transition-all ${selectedPlatforms.includes('instagram') ? 'bg-pink-500 scale-110 shadow-sm' : 'bg-slate-300 dark:bg-zinc-600'
-                    }`} />
-                  <span className={`text-xs font-bold ${selectedPlatforms.includes('instagram') ? 'text-pink-900 dark:text-pink-400 font-extrabold' : 'text-slate-500'}`}>Instagram</span>
-                </div>
-                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors cursor-pointer ${selectedPlatforms.includes('instagram') ? 'bg-slate-400 dark:bg-zinc-500' : 'bg-slate-200 dark:bg-zinc-700'
-                  }`}>
-                  <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform ${selectedPlatforms.includes('instagram') ? 'translate-x-2.5' : 'translate-x-0'
-                    }`} />
-                </div>
-              </button>
-
-              {/* Threads */}
-              <button
-                onClick={() => handleTogglePlatform('threads')}
-                role="switch"
-                aria-checked={selectedPlatforms.includes('threads')}
-                className={`platform-filter-btn flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${selectedPlatforms.includes('threads')
-                    ? 'border-blue-200 dark:border-blue-500 bg-blue-50/30 dark:bg-blue-950/40'
-                    : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-700/80'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full transition-all ${selectedPlatforms.includes('threads') ? 'bg-black dark:bg-white scale-110 shadow-sm' : 'bg-slate-300 dark:bg-zinc-600'
-                    }`} />
-                  <span className={`text-xs font-bold ${selectedPlatforms.includes('threads') ? 'text-zinc-900 dark:text-white font-extrabold' : 'text-slate-500 dark:text-zinc-400'}`}>Threads</span>
-                </div>
-                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors cursor-pointer ${selectedPlatforms.includes('threads') ? 'bg-slate-400 dark:bg-zinc-500' : 'bg-slate-200 dark:bg-zinc-700'
-                  }`}>
-                  <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform ${selectedPlatforms.includes('threads') ? 'translate-x-2.5' : 'translate-x-0'
-                    }`} />
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT COLUMN: FullCalendar Grid */}
         <div className="col-span-12 lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-hidden relative h-[780px]">
           {/* Horizontal Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/40 rounded-2xl border border-slate-100 dark:border-zinc-850 backdrop-blur-md mb-2">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-slate-550 dark:text-zinc-400 uppercase tracking-widest leading-none">
                 {language === 'vi' ? 'Lọc theo kênh:' : 'Filter by platform:'}
               </span>
               <span className="bg-primary/10 text-primary text-[10px] font-black px-2.5 py-0.5 rounded-full select-none">
                 {language === 'vi' ? `Kênh đang lọc: ${selectedPlatforms.length}` : `Active: ${selectedPlatforms.length}`}
               </span>
+              <button
+                onClick={() => setSelectedPlatforms(['facebook', 'instagram', 'threads'])}
+                className="text-[10px] font-black bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1 rounded-lg transition-all border-0 cursor-pointer active:scale-95 ml-2"
+              >
+                {language === 'vi' ? 'Chọn tất cả' : 'Select All'}
+              </button>
+              <button
+                onClick={() => setSelectedPlatforms([])}
+                className="text-[10px] font-black bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-500 dark:text-zinc-400 px-2.5 py-1 rounded-lg transition-all border-0 cursor-pointer active:scale-95 ml-1.5"
+              >
+                {language === 'vi' ? 'Bỏ chọn' : 'Clear'}
+              </button>
             </div>
             <div className="flex items-center gap-2">
               {/* Facebook Chip */}
@@ -1549,6 +1517,51 @@ export default function ContentCalendarView() {
                   />
                 </div>
               </div>
+
+              {/* Live Webcal Sync (Phase 2) */}
+              {subscriptionUrl && (
+                <div className="flex flex-col gap-2.5 bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📅</span>
+                    <label className="text-[10px] font-black text-slate-700 dark:text-zinc-300 uppercase tracking-widest leading-none">
+                      {language === 'vi' ? 'Đồng bộ tự động (Live Sync)' : 'Google Calendar Live Sync'}
+                    </label>
+                  </div>
+                  <p className="text-[9px] text-slate-500 leading-relaxed">
+                    {language === 'vi' 
+                      ? 'Đăng ký nhận lịch tự động cập nhật thời gian thực vào Google Calendar / Apple Calendar mà không cần tải file thủ công.'
+                      : 'Subscribe to get real-time updates directly into your Google/Apple Calendar without manual downloads.'}
+                  </p>
+                  
+                  <div className="flex items-stretch gap-2 mt-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={subscriptionUrl}
+                      className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-2.5 text-[9px] font-mono text-slate-600 dark:text-zinc-400 focus:outline-none flex-1 truncate"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(subscriptionUrl);
+                        showPopup(language === 'vi' ? 'Đã sao chép link đồng bộ!' : 'Subscription link copied!', 'success');
+                      }}
+                      className="bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-white px-3.5 rounded-xl text-[10px] font-black transition-all cursor-pointer border-0 active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                    >
+                      {language === 'vi' ? 'Sao chép' : 'Copy'}
+                    </button>
+                  </div>
+
+                  <a
+                    href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(subscriptionUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold transition-all text-[10px] cursor-pointer active:scale-95 text-center decoration-none shadow-sm flex items-center justify-center gap-1.5 mt-0.5"
+                  >
+                    <span>➕</span>
+                    <span>{language === 'vi' ? 'Thêm nhanh vào Google Calendar' : 'Add to Google Calendar'}</span>
+                  </a>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3.5 mt-2">
