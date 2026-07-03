@@ -2282,7 +2282,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return scrapeData.id as string;
   };
 
-  const compileFinalMessage = (variant: SocialVariant) => {
+  const compileFinalMessage = (variant: SocialVariant, targetPlatform: SocialPlatform = selectedPlatform) => {
     const parts: string[] = [];
 
     if (toggles.showTitle && variant.title) {
@@ -2294,7 +2294,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     if (toggles.showDescription) {
-      const descVal = variant[selectedPlatform] || '';
+      const descVal = variant[targetPlatform] || '';
       if (descVal.trim()) {
         parts.push(descVal.trim());
       }
@@ -2316,7 +2316,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return parts.join('\n\n');
   };
 
-  const ensureCaptionDraft = async () => {
+  const ensureCaptionDraft = async (targetPlatform: SocialPlatform = selectedPlatform) => {
     const selectedVariant = variants.find((v) => v.id === selectedVariantId);
     if (!selectedVariant) {
       throw new Error(
@@ -2326,14 +2326,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       );
     }
 
-    const finalCompiledContent = compileFinalMessage(selectedVariant);
+    const finalCompiledContent = compileFinalMessage(selectedVariant, targetPlatform);
 
-    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+    const platKey = targetPlatform === 'facebook' ? 'facebookCaptionId' :
+      targetPlatform === 'threads' ? 'threadsCaptionId' :
         'instagramCaptionId';
 
     // Platform-specific caption ID fallback
-    const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+    const activeCaptionId = selectedVariant[platKey] || (selectedVariant.id === 'A' ? captionId : undefined);
 
     if (activeCaptionId) {
       // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
@@ -2352,18 +2352,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
+      if (!selectedVariant[platKey]) {
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, [platKey]: activeCaptionId } : v))
         );
       }
       return activeCaptionId;
     }
 
     const getSelectedVariantCaption = () => {
-      if (selectedPlatform === 'facebook') return selectedVariant.facebook;
-      if (selectedPlatform === 'threads') return selectedVariant.threads;
-      if (selectedPlatform === 'instagram') return selectedVariant.instagram;
+      if (targetPlatform === 'facebook') return selectedVariant.facebook;
+      if (targetPlatform === 'threads') return selectedVariant.threads;
+      if (targetPlatform === 'instagram') return selectedVariant.instagram;
       return '';
     };
 
@@ -2377,13 +2377,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
-    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-      selectedPlatform === 'threads' ? 'originalThreads' :
+    const originalField = targetPlatform === 'facebook' ? 'originalFacebook' :
+      targetPlatform === 'threads' ? 'originalThreads' :
         'originalInstagram';
     const originalAiText = selectedVariant[originalField] || selectedContent;
 
     // Check if the user has edited the caption compared to the original AI content
-    const isEdited = selectedVariant[selectedPlatform] !== originalAiText;
+    const isEdited = selectedVariant[targetPlatform] !== originalAiText;
     const editedContentPayload = isEdited ? finalCompiledContent : null;
 
     const res = await fetch('/api/captions', {
@@ -2391,7 +2391,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
-        platform: toDatabasePlatform(selectedPlatform),
+        platform: toDatabasePlatform(targetPlatform),
         ai_content: originalAiText,
         edited_content: editedContentPayload,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
@@ -2411,9 +2411,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const newCaptionId = data.data.id;
-    setCaptionId(newCaptionId);
     setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId, [platKey]: newCaptionId } : v))
+      prev.map((v) => (v.id === selectedVariant.id ? { ...v, [platKey]: newCaptionId } : v))
     );
     return newCaptionId as string;
   };
@@ -2428,14 +2427,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       threads: { date: threadsDate, time: threadsTime },
       instagram: { date: instagramDate, time: instagramTime },
     };
-    const selectedSchedule = scheduleByPlatform[selectedPlatform];
-    const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
-
-    // Đảm bảo thời gian lên lịch phải ở tương lai so với thời điểm hiện tại
-    if (scheduledAt.getTime() <= Date.now()) {
-      setFacebookError('Thời gian lên lịch đăng bài bắt buộc phải ở tương lai.');
-      return;
-    }
 
     setIsSchedulingLoading(true);
     setSchedulingError(null);
@@ -2446,22 +2437,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       : [];
 
     try {
-      const draftCaptionId = await ensureCaptionDraft();
+      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+      if (targetPlatforms.length === 0) {
+        throw new Error(language === 'vi' ? 'Không xác định được nền tảng đăng từ Prompt' : 'No platforms found for the selected prompt');
+      }
 
-      // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
-      const res = await fetch('/api/scheduled-posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          captionId: draftCaptionId,
-          scheduledAt: scheduledAt.toISOString(),
-          imageUrls,
-        }),
-      });
+      for (const plat of targetPlatforms) {
+        const selectedSchedule = scheduleByPlatform[plat];
+        const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errData.error || `Lỗi từ hệ thống HTTP ${res.status}`);
+        if (scheduledAt.getTime() <= Date.now()) {
+          throw new Error(
+            language === 'vi'
+              ? `Thời gian lên lịch đăng bài cho ${plat} bắt buộc phải ở tương lai.`
+              : `Scheduled time for ${plat} must be in the future.`
+          );
+        }
+
+        const draftCaptionId = await ensureCaptionDraft(plat);
+
+        // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
+        const res = await fetch('/api/scheduled-posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            captionId: draftCaptionId,
+            scheduledAt: scheduledAt.toISOString(),
+            imageUrls,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(errData.error || `Lỗi khi lên lịch đăng bài cho ${plat}`);
+        }
       }
 
       setIsScheduled(true);
