@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { Plus, Pencil, Trash2, X, Loader2, Save, FileText, CheckCircle2 } from 'lucide-react';
+import { getDefaultTemplateForPlatform } from '@/lib/utils/presetParser';
 
 const platforms = [
   { id: 'facebook', label: 'Facebook' },
@@ -55,7 +56,7 @@ export default function PlatformPresetsTab() {
     } else {
       setEditItem(null);
       setName('');
-      setRules('');
+      setRules(getDefaultTemplateForPlatform(activePlatform));
       setIsDefault(false);
     }
     setIsEditing(true);
@@ -281,7 +282,7 @@ export default function PlatformPresetsTab() {
                   value={rules}
                   onChange={(e) => setRules(e.target.value)}
                   placeholder="Mô tả chi tiết các yêu cầu cho AI (độ dài, hashtag, emoji, cách chia đoạn...)"
-                  className="w-full h-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                  className="w-full h-80 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
                 />
               </div>
 

@@ -376,7 +376,7 @@ Yêu cầu bắt buộc: Hãy viết bài viết mới bắt chước hoàn hả
     const fullText = article.full_text || article.description || '';
     const truncatedContent = fullText.length > 3000 ? fullText.slice(0, 3000) + '... (Nội dung rút gọn)' : fullText;
 
-    const presetRulesStr = platformRules || '(Chưa chọn quy chuẩn nền tảng)';
+    const presetRulesStr = platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`;
     const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
     const styleSectionStr = styleContent ? `*   ${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 

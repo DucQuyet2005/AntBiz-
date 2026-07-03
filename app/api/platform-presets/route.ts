@@ -37,25 +37,56 @@ export async function GET(request: NextRequest) {
 
     const platform = platformEnum.parse(platformParam);
 
-    // Lấy quy chuẩn của riêng user này và quy chuẩn chung hệ thống (user_id IS NULL)
-    const { data: presets, error } = await supabase
+    // 1. Lấy quy chuẩn của riêng user này
+    let { data: presets, error } = await supabase
       .from('platform_presets')
       .select('*')
       .eq('platform', platform)
-      .or(`user_id.eq.${user.id},user_id.is.null`);
-
+      .eq('user_id', user.id);
+ 
     if (error) {
       console.error('[GET Platform Presets Error]:', error);
       return NextResponse.json({ error: 'Không thể tải danh sách quy chuẩn' }, { status: 500 });
     }
-
-    // Sắp xếp: Bản ghi của user lên trước, sau đó tới system default, sau đó xếp theo tên
+ 
+    // 2. Nếu user chưa có quy chuẩn nào cho nền tảng này, sao chép từ hệ thống (user_id IS NULL) sang cho user
+    if (!presets || presets.length === 0) {
+      const { data: systemPresets, error: sysError } = await supabase
+        .from('platform_presets')
+        .select('*')
+        .eq('platform', platform)
+        .is('user_id', null);
+ 
+      if (!sysError && systemPresets && systemPresets.length > 0) {
+        const presetsToCreate = systemPresets.map(sp => ({
+          platform: sp.platform,
+          name: sp.name,
+          rules: sp.rules,
+          is_default: true, // Đặt làm mặc định cho user
+          user_id: user.id,
+          updated_at: new Date().toISOString()
+        }));
+ 
+        const { data: inserted, error: insertError } = await supabase
+          .from('platform_presets')
+          .insert(presetsToCreate)
+          .select();
+ 
+        if (insertError) {
+          console.error('[GET Platform Presets Clone Error]:', insertError);
+        } else if (inserted) {
+          presets = inserted;
+        }
+      }
+    }
+ 
+    // Sắp xếp: Bản ghi của user lên trước, sau đó xếp theo tên
     const sortedPresets = (presets || []).sort((a: any, b: any) => {
-      if (a.user_id && !b.user_id) return -1;
-      if (!a.user_id && b.user_id) return 1;
+      if (a.is_default && !b.is_default) return -1;
+      if (!a.is_default && b.is_default) return 1;
       return a.name.localeCompare(b.name);
     });
-
+ 
     return NextResponse.json({ data: sortedPresets });
   } catch (error: any) {
     console.error('[GET Platform Presets Unexpected Error]:', error);

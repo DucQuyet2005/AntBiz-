@@ -1154,7 +1154,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     // Layer 1: Platform preset rules
     const selectedPreset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
-    const presetRules = selectedPreset?.rules || '(Chưa chọn quy chuẩn nền tảng)';
+    const presetRules = selectedPreset?.rules || `(Chưa chọn quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'})`;
 
     // Layer 2: Brand style
     const selectedStyle = savedConfigs.find((c: any) => c.id === selectedConfigId);
@@ -3320,7 +3320,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     {/* Layer 1: Platform Preset */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? '1. Quy chuẩn nền tảng' : '1. Platform Rules'}
+                        {language === 'vi' ? `1. Quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'}` : `1. ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'} Rules`}
                       </span>
                       <select value={selectedPlatformPresetId} onChange={(e) => setSelectedPlatformPresetId(e.target.value)}
                         className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
