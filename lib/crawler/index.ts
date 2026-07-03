@@ -41,15 +41,38 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
             'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         });
 
-        await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 30000 });
+        // Tối ưu cho VPS/Local: Chặn tài nguyên thừa (CSS, hình ảnh, fonts, quảng cáo, tracking)
+        // giúp crawl nhanh hơn 5-10 lần, tiết kiệm băng thông và CPU/RAM
+        await page.route('**/*', (route) => {
+          const type = route.request().resourceType();
+          const reqUrl = route.request().url().toLowerCase();
+          const blockTypes = ['image', 'stylesheet', 'media', 'font'];
+          const blockDomains = [
+            'google-analytics', 'googletagmanager', 'facebook', 'connect.facebook',
+            'doubleclick', 'adnxs', 'pubmatic', 'adsystem', 'analytics', 'ads'
+          ];
+          
+          const shouldBlock = blockTypes.includes(type) || 
+                              blockDomains.some(domain => reqUrl.includes(domain));
+                              
+          if (shouldBlock) {
+            route.abort();
+          } else {
+            route.continue();
+          }
+        });
+
+        // Dùng 'domcontentloaded' cực kỳ ổn định, tránh timeout do quảng cáo load vô tận
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
         
-        // Chờ skeleton loading (nếu có) biến mất trước khi bắt đầu cào dữ liệu
+        // Chờ skeleton loading (nếu có) biến mất
         try {
-          await page.waitForSelector('.animate-pulse', { state: 'detached', timeout: 10000 });
+          await page.waitForSelector('.animate-pulse', { state: 'detached', timeout: 3000 });
         } catch (e) {
-          // Bỏ qua nếu không có hoặc bị quá hạn chờ
+          // Bỏ qua nếu không có
         }
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
+
 
         // Cuộn trang xuống để load dynamic content / Spotlight content
         for (let i = 0; i < 8; i++) {

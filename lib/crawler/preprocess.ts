@@ -8,10 +8,13 @@ import * as cheerio from 'cheerio';
 import type { CrawlResult } from './index';
 
 export interface BodyBlock {
-  type: 'paragraph' | 'heading2' | 'heading3' | 'image';
+  type: 'paragraph' | 'heading2' | 'heading3' | 'image' | 'section';
   text?: string;
   url?: string;
   caption?: string;
+  className?: string;
+  style?: string;
+  html?: string;
 }
 
 export interface ImageBlock {
@@ -394,6 +397,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   const bodyBlocks: BodyBlock[] = [];
   const images: ImageBlock[] = [];
   const contentRoot = $('#html_content');
+  const isSpotlight = $('section').length > 2 && $('#html_content').length === 0;
+  let spotlightFullText = '';
 
   if (contentRoot.length) {
     contentRoot.find('[data-content-type]').each((_, el) => {
@@ -416,6 +421,70 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         }
       }
     });
+  } else if (isSpotlight) {
+    console.log('   📰 Phát hiện bài viết dạng Spotlight/E-Magazine. Đang cào các section...');
+    const seenImageUrls = new Set<string>();
+    const textSegments: string[] = [];
+
+    $('section').each((_, el) => {
+      const sec = $(el);
+      if (sec.closest('header, footer, nav, aside').length > 0) return;
+
+      const className = sec.attr('class') || '';
+      const id = sec.attr('id') || '';
+      if (/header|footer|comment|related|sidebar|nav/i.test(className) || /header|footer|comment|related|sidebar|nav/i.test(id)) {
+        return;
+      }
+
+      // Extract text segments for full_text
+      sec.find('p, h2, h3').each((_, textEl) => {
+        const text = cleanText($(textEl).text());
+        if (text && text.length > 20 && !textSegments.includes(text)) {
+          textSegments.push(text);
+        }
+      });
+
+      let html = sec.html() || '';
+      const cleanSec = cheerio.load(html);
+      cleanSec('script, iframe, noscript, style').remove();
+
+      // Normalize images inside section
+      cleanSec('img').each((_, imgEl) => {
+        const img = cleanSec(imgEl);
+        let src = img.attr('src') || '';
+
+        if (!src || src.startsWith('data:')) {
+          src = img.attr('data-src') || img.attr('data-lazy-src') || '';
+        }
+
+        if (src && src.startsWith('/')) {
+          const parsedUrl = new URL(raw.url);
+          src = `${parsedUrl.origin}${src}`;
+          img.attr('src', src);
+        }
+
+        img.removeClass('opacity-0');
+        img.css('opacity', '1');
+        img.removeAttr('loading');
+
+        if (src) {
+          seenImageUrls.add(src);
+          images.push({ url: src, caption: img.attr('alt') || '' });
+        }
+      });
+
+      html = cleanSec.html() || '';
+      const style = sec.attr('style') || '';
+
+      bodyBlocks.push({
+        type: 'section',
+        className,
+        style,
+        html
+      });
+    });
+
+    spotlightFullText = textSegments.join('\n\n');
   } else {
     // Fallback: parse generic p/h2/h3/div tags and images in DOM order within the determined scope
     const seenTexts = new Set<string>();
@@ -500,7 +569,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     }
   });
 
-  const full_text = bodyBlocks
+  const full_text = isSpotlight ? spotlightFullText : bodyBlocks
     .filter((b) => b.type !== 'image' && b.text)
     .map((b) => b.text!)
     .join('\n');

@@ -356,4 +356,67 @@ describe('PUT /api/captions/:id', () => {
       source: 'human',
     });
   });
+
+  it('rejects edit when caption status is scheduled', async () => {
+    hoisted.getState().mockCaptionsDb = [{
+      id: 'c1',
+      created_by: 'u1',
+      ai_content: 'AI original',
+      edited_content: 'draft edit',
+      status: 'scheduled',
+    }];
+
+    const req = new NextRequest('http://localhost/api/captions/c1', {
+      method: 'PUT',
+      body: JSON.stringify({ edited_content: 'Locked attempt' }),
+    });
+
+    const res = await PUT(req, params);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('Không thể chỉnh sửa');
+  });
+
+  it('rejects edit when caption status is posted', async () => {
+    hoisted.getState().mockCaptionsDb = [{
+      id: 'c1',
+      created_by: 'u1',
+      ai_content: 'AI original',
+      edited_content: 'draft edit',
+      status: 'posted',
+    }];
+
+    const req = new NextRequest('http://localhost/api/captions/c1', {
+      method: 'PUT',
+      body: JSON.stringify({ edited_content: 'Locked attempt' }),
+    });
+
+    const res = await PUT(req, params);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('Không thể chỉnh sửa');
+  });
+
+  it('overwrites ai_content and sets edited_content to null when save_as_original is true', async () => {
+    hoisted.getState().mockCaptionsDb = [{
+      id: 'c1',
+      created_by: 'u1',
+      ai_content: 'AI original',
+      edited_content: 'Human edit',
+      status: 'edited',
+    }];
+
+    const req = new NextRequest('http://localhost/api/captions/c1', {
+      method: 'PUT',
+      body: JSON.stringify({ save_as_original: true, ai_content: 'New Overwritten Original' }),
+    });
+
+    const res = await PUT(req, params);
+    expect(res.status).toBe(200);
+    
+    const dbRecord = hoisted.getState().mockCaptionsDb[0];
+    expect(dbRecord.ai_content).toBe('New Overwritten Original');
+    expect(dbRecord.edited_content).toBeNull();
+    expect(dbRecord.status).toBe('draft');
+  });
 });

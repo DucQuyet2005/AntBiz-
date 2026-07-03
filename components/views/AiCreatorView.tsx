@@ -34,7 +34,15 @@ import {
   FileText,
   Save,
   Wand2,
-  RotateCcw
+  RotateCcw,
+  Mic,
+  UploadCloud,
+  Trash2,
+  Lock,
+  Play,
+  Pause,
+  Bold,
+  Italic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -44,12 +52,13 @@ import PromptSuggestionSection from '../PromptSuggestionSection';
 import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
+import { createClient } from '@/utils/supabase/client';
 
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14, className = "" }: { size?: number; className?: string; key?: any }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>
-    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+  <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor" className={className}>
+    <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 48.0859 169.331 37.1716 161.965 28.0997C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.1C18.2707 46.6674 10.6341 72.2903 10.4062 96C10.6341 119.71 18.2707 145.333 32.7883 163.9C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z"/>
   </svg>
 );
 
@@ -68,6 +77,9 @@ interface SocialVariant {
   author: string;
   tags: string;
   captionId?: string;
+  facebookStatus?: 'draft' | 'edited' | 'approved' | 'scheduled' | 'posted';
+  threadsStatus?: 'draft' | 'edited' | 'approved' | 'scheduled' | 'posted';
+  instagramStatus?: 'draft' | 'edited' | 'approved' | 'scheduled' | 'posted';
 }
 
 type SocialPlatform = 'facebook' | 'threads' | 'instagram';
@@ -161,6 +173,9 @@ const createEmptyVariant = (id: string): SocialVariant => ({
   title: '',
   author: '',
   tags: '',
+  facebookStatus: 'draft',
+  threadsStatus: 'draft',
+  instagramStatus: 'draft',
 });
 
 const toDatabasePlatform = (platform: SocialPlatform) => (platform === 'threads' ? 'thread' : platform);
@@ -176,11 +191,103 @@ interface EditableTextContextProps {
   setEditState: (state: { variantId: string; field: keyof SocialVariant } | null) => void;
   handleUpdateVariantField: (variantId: string, field: keyof SocialVariant, value: string) => void;
   isGeneratingAB?: boolean;
+  variants: SocialVariant[];
+  setVariants: React.Dispatch<React.SetStateAction<SocialVariant[]>>;
+  articleId: string | null;
+  selectedPlatform: SocialPlatform;
+  selectedPrompt: any;
 }
 
 const EditableTextContext = React.createContext<EditableTextContextProps | null>(null);
 
-const EditableText = ({
+const CustomAudioPlayer = ({ src, fileName, language }: { src: string; fileName: string; language: 'vi' | 'en' }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration || 0);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setCurrentTime(val);
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return '00:00';
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, [src]);
+
+  return (
+    <div className="bg-slate-50 dark:bg-zinc-900 border border-gray-150 dark:border-zinc-800/80 rounded-2xl p-4 flex flex-col gap-3 w-full shadow-sm">
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={() => setIsPlaying(false)}
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="w-10 h-10 rounded-full bg-primary hover:bg-primary-hover text-white flex items-center justify-center cursor-pointer border-0 shadow transition-all hover:scale-105 active:scale-95 shrink-0"
+        >
+          {isPlaying ? <Pause size={18} fill="white" /> : <Play size={18} className="ml-0.5" fill="white" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold text-text truncate block mb-1">🎵 {fileName}</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="flex-1 h-1 bg-slate-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <span className="text-[10px] text-text-muted font-bold shrink-0">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const EditableText = ({
   variantId,
   field,
   value,
@@ -201,6 +308,12 @@ const EditableText = ({
   const setEditState = context?.setEditState ?? _setEditState;
   const handleUpdateVariantField = context?.handleUpdateVariantField ?? _handleUpdateVariantField;
   const isGeneratingAB = context?.isGeneratingAB ?? _isGeneratingAB;
+  const variants = context?.variants ?? [];
+  const setVariants = context?.setVariants;
+  const articleId = context?.articleId;
+  const selectedPlatform = context?.selectedPlatform ?? 'facebook';
+  const selectedPrompt = context?.selectedPrompt;
+
   const isEditing = editState?.variantId === variantId && editState?.field === field;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -213,6 +326,14 @@ const EditableText = ({
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
   const hasChanged = originalValue !== undefined && originalValue !== "" && value !== originalValue;
+
+  // Lock status calculation
+  const currentVariant = variants.find(v => v.id === variantId);
+  const statusKey = field === 'facebook' ? 'facebookStatus' :
+                    field === 'threads' ? 'threadsStatus' :
+                    field === 'instagram' ? 'instagramStatus' : null;
+  const currentStatus = statusKey && currentVariant ? currentVariant[statusKey] : 'draft';
+  const isLocked = currentStatus === 'scheduled' || currentStatus === 'posted';
 
   React.useEffect(() => {
     if (isEditing) {
@@ -230,6 +351,178 @@ const EditableText = ({
     setIsExpanded(false);
   }, [variantId, field]);
 
+  const saveToServer = async (currentContent: string, saveAsOriginal = false) => {
+    if (!currentVariant || !articleId) return;
+
+    try {
+      const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
+                      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+                      'instagramCaptionId';
+      const activeCaptionId = currentVariant[platKey] || currentVariant.captionId;
+
+      if (activeCaptionId) {
+        // Perform PUT update
+        const payload: any = {
+          edited_content: currentContent,
+          status: 'edited'
+        };
+        if (saveAsOriginal) {
+          payload.save_as_original = true;
+          payload.ai_content = currentContent;
+        }
+
+        const res = await fetch(`/api/captions/${activeCaptionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          const updatedStatus = resData.data.status;
+
+          // Sync changes to the global state
+          const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                                selectedPlatform === 'threads' ? 'originalThreads' :
+                                'originalInstagram';
+          const statusKeyName = selectedPlatform === 'facebook' ? 'facebookStatus' :
+                                selectedPlatform === 'threads' ? 'threadsStatus' :
+                                'instagramStatus';
+
+          setVariants?.((prev: any[]) =>
+            prev.map((v) =>
+              v.id === variantId
+                ? {
+                    ...v,
+                    [selectedPlatform]: currentContent,
+                    [statusKeyName]: updatedStatus,
+                    ...(saveAsOriginal ? { [originalField]: currentContent } : {})
+                  }
+                : v
+            )
+          );
+        }
+      } else {
+        // Perform POST to create new caption draft
+        const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+                              selectedPlatform === 'threads' ? 'originalThreads' :
+                              'originalInstagram';
+        const aiContent = currentVariant[originalField] || currentVariant[selectedPlatform] || currentContent;
+
+        const res = await fetch('/api/captions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article_id: articleId,
+            platform: toDatabasePlatform(selectedPlatform),
+            ai_content: aiContent,
+            edited_content: currentContent
+          })
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          const newId = resData.data.id;
+          const newStatus = resData.data.status;
+
+          // Sync variants
+          const statusKeyName = selectedPlatform === 'facebook' ? 'facebookStatus' :
+                                selectedPlatform === 'threads' ? 'threadsStatus' :
+                                'instagramStatus';
+          setVariants?.((prev: any[]) =>
+            prev.map((v) =>
+              v.id === variantId
+                ? {
+                    ...v,
+                    captionId: newId,
+                    [platKey]: newId,
+                    [statusKeyName]: newStatus
+                  }
+                : v
+            )
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[AutoSave error]:', err);
+    }
+  };
+
+
+  const lastSavedContentRef = React.useRef(value);
+
+  // Debounced auto-save — all edits are saved as original
+  React.useEffect(() => {
+    if (isEditing && isCaptionField) {
+      if (value === lastSavedContentRef.current) return;
+
+      const timer = setTimeout(() => {
+        saveToServer(value, true);
+        lastSavedContentRef.current = value;
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [value, isEditing, isCaptionField]);
+
+  const applyStyling = (type: 'bold' | 'italic') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const wrapper = type === 'bold' ? '**' : '*';
+
+    if (start === end) {
+      const newContent = value.substring(0, start) + wrapper + wrapper + value.substring(end);
+      handleUpdateVariantField(variantId, field, newContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + wrapper.length, start + wrapper.length);
+      }, 0);
+      return;
+    }
+
+    const selectedText = value.substring(start, end);
+    let styledText;
+    let newEnd = end;
+
+    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper)) {
+      styledText = selectedText.slice(wrapper.length, -wrapper.length);
+      newEnd = start + styledText.length;
+    } else {
+      styledText = `${wrapper}${selectedText}${wrapper}`;
+      newEnd = start + styledText.length;
+    }
+
+    const newContent = value.substring(0, start) + styledText + value.substring(end);
+    handleUpdateVariantField(variantId, field, newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, newEnd);
+    }, 0);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      handleUpdateVariantField(variantId, field, value + emoji);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newContent = value.substring(0, start) + emoji + value.substring(end);
+    
+    handleUpdateVariantField(variantId, field, newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+    }, 0);
+  };
+
   if (isEditing) {
     return (
       <div className="w-full relative">
@@ -245,10 +538,10 @@ const EditableText = ({
                 e.target.style.height = `${e.target.scrollHeight}px`;
               }}
               onBlur={() => setEditState(null)}
-              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/45 focus-visible:ring-offset-1 leading-relaxed transition-all"
+              className="w-full text-inherit bg-transparent p-0 border-0 outline-none resize-none focus:outline-none focus:ring-0 leading-relaxed transition-all"
             />
             {isCaptionField && charLimit && (
-              <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 pt-1">
+              <div className="flex flex-col gap-0.5 mt-1 border-t border-gray-100 dark:border-zinc-800 pt-1">
                 <div className="flex items-center justify-between mt-1">
                   <div>
                     {hasChanged && (
@@ -275,13 +568,8 @@ const EditableText = ({
                     {value.length.toLocaleString()} ký tự (~{value.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
                   </div>
                 </div>
-                {value.length > charLimit && (
-                  <div className="text-[8px] text-rose-600 font-extrabold text-right">
-                    {language === 'vi'
-                      ? `Vượt quá giới hạn ký tự của ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`
-                      : `Exceeds character limit for ${field === 'facebook' ? 'Facebook' : field === 'threads' ? 'Threads' : 'Instagram'}!`}
-                  </div>
-                )}
+              </div>
+                </div>
               </div>
             )}
           </div>
@@ -296,7 +584,7 @@ const EditableText = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') setEditState(null);
             }}
-            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/45 focus-visible:ring-offset-1 font-inherit transition-all"
+            className="w-full text-inherit bg-transparent p-0 border-0 outline-none focus:outline-none focus:ring-0 font-inherit transition-all"
           />
         )}
       </div>
@@ -307,9 +595,14 @@ const EditableText = ({
     <div
       onClick={(e) => {
         e.stopPropagation();
+        if (isLocked) return;
         setEditState({ variantId, field });
       }}
-      className={`group relative cursor-pointer hover:bg-primary/5 rounded px-1 -mx-1 transition-all duration-200 border border-transparent hover:border-primary/10 ${className}`}
+      className={`group relative rounded-xl px-2 py-1.5 transition-all duration-200 border border-dashed ${
+        isLocked
+          ? 'border-transparent cursor-default'
+          : 'border-transparent hover:border-primary bg-transparent hover:bg-primary/5 cursor-pointer'
+      } ${className}`}
     >
       <div className="flex flex-col w-full">
         <span className="whitespace-pre-wrap">
@@ -356,6 +649,15 @@ const EditableText = ({
             <span className="text-gray-300 italic">Nhấp để chỉnh sửa...</span>
           )}
         </span>
+
+        {/* Lock indicator */}
+        {isLocked && (
+          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-gray-450 bg-gray-50 dark:bg-zinc-800/40 px-2 py-0.5 rounded border border-gray-200/50 mt-1 select-none self-start">
+            <Lock size={9} />
+            {language === 'vi' ? 'Đã lên lịch / Đã đăng - Khóa chỉnh sửa' : 'Scheduled / Posted - Locked'}
+          </span>
+        )}
+
         {isCaptionField && charLimit && value && (
           <div className="flex flex-col gap-0.5 mt-1.5 border-t border-dashed border-gray-150 pt-1">
             <div className="flex items-center justify-between mt-1">
@@ -394,11 +696,29 @@ const EditableText = ({
           </div>
         )}
       </div>
-      <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
-        <Edit2 size={10} className="text-primary" />
-      </span>
+      {!isLocked && (
+        <span className="absolute right-1 top-1 opacity-0 group-hover:opacity-40 transition-opacity">
+          <Edit2 size={10} className="text-primary" />
+        </span>
+      )}
     </div>
   );
+};
+
+const parseStyleString = (styleStr: string): React.CSSProperties => {
+  if (!styleStr) return {};
+  const obj: Record<string, string> = {};
+  styleStr.split(';').forEach((pair) => {
+    const parts = pair.split(':');
+    if (parts.length >= 2) {
+      const key = parts[0].trim().replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+      const val = parts.slice(1).join(':').trim();
+      if (key && val) {
+        obj[key] = val;
+      }
+    }
+  });
+  return obj as React.CSSProperties;
 };
 
 export default function AiCreatorView() {
@@ -627,6 +947,13 @@ export default function AiCreatorView() {
   );
 
   const [customPromptTitle, setCustomPromptTitle] = useState('');
+  const [promptConfigStep, setPromptConfigStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (isAiPromptDialogOpen) {
+      setPromptConfigStep(1);
+    }
+  }, [isAiPromptDialogOpen]);
 
   const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
 
@@ -649,12 +976,157 @@ export default function AiCreatorView() {
   const [variantGroupId, setVariantGroupId] = useState<string | null>(null);
   const [regeneratingVariantId, setRegeneratingVariantId] = useState<string | null>(null);
 
+  // ─── Multi-platform prompt config ────────────────────────────────────────
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<'facebook' | 'threads' | 'instagram'>>(
+    new Set(['facebook'] as ('facebook' | 'threads' | 'instagram')[])
+  );
+  const [promptPerPlatform, setPromptPerPlatform] = useState<Record<string, string>>({
+    facebook: '', threads: '', instagram: ''
+  });
+  const [activePromptTab, setActivePromptTab] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
+  const [promptStylePerPlatform, setPromptStylePerPlatform] = useState<Record<string, string>>({
+    facebook: 'formal', threads: 'snappy', instagram: 'visual'
+  });
+
+
   // ... (existing code)
 
   const handleProceedToABTest = async () => {
-    if (!url.trim() && !articleId) {
-      alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
-      return;
+let resolvedActivePrompt = activePrompt;
+    if (!resolvedActivePrompt) {
+      const defaultPrompt = getDefaultPromptTemplate(
+        selectedPlatform,
+        postData.title || (language === 'vi' ? 'Bài viết tự soạn' : 'Manual post'),
+        postData.full_text || postData.description || ''
+      );
+      resolvedActivePrompt = defaultPrompt;
+      setActivePrompt(defaultPrompt);
+    }
+
+    let resolvedArticleId = articleId;
+
+    if (inputMode === 'manual') {
+      let currentFullText = postData.full_text;
+      let currentTitle = postData.title;
+
+      // 1. STT Auto-transcription if voiceFile is present but full_text is empty
+      if (voiceFile && !currentFullText.trim()) {
+        setIsAutoGenerating(true);
+        try {
+          const fd = new FormData();
+          fd.append('file', voiceFile);
+          const sttRes = await fetch('/api/stt', {
+            method: 'POST',
+            body: fd
+          });
+          if (sttRes.ok) {
+            const sttData = await sttRes.json();
+            currentFullText = sttData.rewritten_post || '';
+            currentTitle = currentTitle || sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, '');
+            
+            setPostData(prev => ({
+              ...prev,
+              full_text: currentFullText,
+              description: currentFullText,
+              title: currentTitle
+            }));
+          } else {
+            const sttErr = await sttRes.json().catch(() => ({ error: 'Lỗi dịch giọng nói tự động' }));
+            throw new Error(sttErr.error || 'STT transcription failed');
+          }
+        } catch (err: any) {
+          alert(language === 'vi' ? `Lỗi dịch giọng nói tự động: ${err.message}` : `Auto-transcription error: ${err.message}`);
+          setIsAutoGenerating(false);
+          return;
+        } finally {
+          setIsAutoGenerating(false);
+        }
+      }
+
+      // 2. Reject if both Title and Content are still empty
+      if (!currentTitle.trim() && !currentFullText.trim()) {
+        alert(language === 'vi' ? 'Vui lòng nhập tiêu đề, nội dung bài viết hoặc tải lên ghi âm giọng nói.' : 'Please enter the title, detailed content, or upload a voice recording.');
+        return;
+      }
+
+      // 3. Auto-fill missing fields if either title, content, category or tags is empty
+      if (!currentTitle.trim() || !currentFullText.trim() || !postData.category.trim() || !postData.tags.trim()) {
+        setIsAutoGenerating(true);
+        try {
+          const genRes = await fetch('/api/generate-missing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: currentTitle,
+              full_text: currentFullText,
+              category: postData.category,
+              tags: postData.tags
+            })
+          });
+          if (genRes.ok) {
+            const genData = await genRes.json();
+            if (genData.success && genData.data) {
+              const result = genData.data;
+              currentTitle = result.title || currentTitle;
+              currentFullText = result.full_text || currentFullText;
+              
+              setPostData(prev => ({
+                ...prev,
+                title: result.title || prev.title,
+                full_text: result.full_text || prev.full_text,
+                description: result.full_text || prev.description,
+                category: result.category || prev.category,
+                tags: result.tags || prev.tags
+              }));
+            }
+          } else {
+            const genErr = await genRes.json().catch(() => ({ error: 'Lỗi tự động sinh dữ liệu' }));
+            throw new Error(genErr.error || 'Failed to auto-generate missing fields');
+          }
+        } catch (err: any) {
+          console.error('[Auto Fill Error]:', err);
+          alert(language === 'vi' ? `Lỗi tự động sinh phần còn thiếu: ${err.message}` : `Auto-fill missing fields error: ${err.message}`);
+          setIsAutoGenerating(false);
+          return;
+        } finally {
+          setIsAutoGenerating(false);
+        }
+      }
+
+      // 4. Save manual article draft
+      if (!resolvedArticleId) {
+        setIsGeneratingAB(true);
+        try {
+          const saveRes = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: currentTitle,
+              full_text: currentFullText,
+              category: postData.category,
+              author: postData.author,
+              imageUrl: postData.imageUrl
+            })
+          });
+          if (!saveRes.ok) {
+            const errJson = await saveRes.json().catch(() => ({ error: 'Lỗi lưu bài viết' }));
+            throw new Error(errJson.error || 'Failed to save');
+          }
+          const savedData = await saveRes.json();
+          resolvedArticleId = savedData.id;
+          setArticleId(savedData.id);
+        } catch (err: any) {
+          console.error('[Manual Save Error]:', err);
+          alert(language === 'vi' ? `Không thể lưu bài viết tự soạn: ${err.message}` : `Cannot save manual article: ${err.message}`);
+          setIsGeneratingAB(false);
+          return;
+        }
+      }
+    } else {
+      if (!url.trim() && !resolvedArticleId) {
+        alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
+        return;
+      }
     }
 
     setSelectedVariantId('');
@@ -674,6 +1146,9 @@ export default function AiCreatorView() {
       title: postData.title,
       author: postData.author,
       tags: tagsStr,
+      facebookStatus: 'draft',
+      threadsStatus: 'draft',
+      instagramStatus: 'draft',
     }));
 
     setVariants(newVariants);
@@ -700,14 +1175,14 @@ export default function AiCreatorView() {
       const abortSignal = abortControllerRef.current?.signal;
       // API will handle merging everything using platformPresetId and stylePresetId.
       // We only send the user's custom instructions (textarea) plus variant modifiers.
-      const customPromptPayload = buildVariantPrompt(variantIndex, customPromptText);
+      const customPromptPayload = buildVariantPrompt(variantIndex, customPromptText || resolvedActivePrompt || '');
       try {
         const res = await fetch('/api/captions/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: url.trim() || undefined,
-            articleId: articleId || undefined,
+            articleId: resolvedArticleId || undefined,
             customPrompt: customPromptPayload,
             platform: selectedPlatform,
             variantGroupId: groupId,
@@ -951,17 +1426,22 @@ export default function AiCreatorView() {
     if (!postData.title || !(postData.full_text || postData.description)) return;
     setIsGeneratingSmartPrompt(true);
     try {
+      const currentStyle = promptStylePerPlatform[activePromptTab] || 'formal';
       const res = await fetch('/api/prompts/generate-smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: postData.title,
           content: postData.full_text || postData.description,
-          platform: selectedPlatform
+          platform: activePromptTab,
+          style: currentStyle,
         }),
       });
       const data = await res.json();
       if (data.smartPrompt) {
+        // Update promptPerPlatform for the active tab
+        setPromptPerPlatform(prev => ({ ...prev, [activePromptTab]: data.smartPrompt }));
+        // Keep activePrompt in sync
         setActivePrompt(data.smartPrompt);
       }
     } catch (error) {
@@ -1027,7 +1507,8 @@ export default function AiCreatorView() {
   };
 
   const handleSaveCurrentPrompt = async () => {
-    if (!activePrompt) return null;
+    const promptContent = promptPerPlatform[activePromptTab] || activePrompt;
+    if (!promptContent) return null;
     setIsSavingPrompt(true);
     setSaveSuccess(false);
     try {
@@ -1037,9 +1518,9 @@ export default function AiCreatorView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: finalTitle,
-          content: activePrompt,
-          platform: promptPlatform,
-          tags: ['AI Generated', promptPlatform]
+          content: promptContent,
+          platform: activePromptTab,
+          tags: ['AI Generated', activePromptTab, promptStylePerPlatform[activePromptTab] || 'formal']
         }),
       });
       if (res.ok) {
@@ -1107,6 +1588,7 @@ export default function AiCreatorView() {
     handleUpdateVariantField(variantId, selectedPlatform as any, lastGeneratedAiContent);
     setLastGeneratedAiContent(null);
   };
+
 
   const getDefaultPromptTemplate = (platform: string, title: string, content: string, toneVal?: string, lengthVal?: string, emphasisVal?: string) => {
     const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
@@ -2301,8 +2783,323 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     views: '',
     tags: '',
     imageUrl: '',
-    full_text: ''
+    full_text: '',
+    body: [] as any[]
   });
+
+  // Input Ingestion Mode selection state (crawl vs manual)
+  const [inputMode, setInputMode] = useState<'crawl' | 'manual'>('crawl');
+  const [isVoiceAssistantExpanded, setIsVoiceAssistantExpanded] = useState(false);
+
+  // Drag and Drop Image & Document Handlers
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isParsingDoc, setIsParsingDoc] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  // Original Post Full Content Viewer Modal State
+  const [isOriginalPostModalOpen, setIsOriginalPostModalOpen] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDraggingFile(false);
+  };
+
+  const handleUploadFiles = async (files: File[]) => {
+    setDocError(null);
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const docFiles = files.filter(f => {
+      const ext = f.name.toLowerCase();
+      return ext.endsWith('.pdf') || ext.endsWith('.docx') || ext.endsWith('.doc');
+    });
+
+    // 1. Xử lý file ảnh
+    if (imageFiles.length > 0) {
+      const urls = postData.imageUrl ? postData.imageUrl.split('\n').filter(Boolean) : [];
+      for (const file of imageFiles) {
+        const reader = new FileReader();
+        const loadPromise = new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+        });
+        reader.readAsDataURL(file);
+        const dataUrl = await loadPromise;
+        urls.push(dataUrl);
+      }
+      setPostData(prev => ({ ...prev, imageUrl: urls.join('\n') }));
+    }
+
+    // 2. Xử lý file tài liệu
+    if (docFiles.length > 0) {
+      const docFile = docFiles[0]; // Xử lý file tài liệu đầu tiên
+      setIsParsingDoc(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', docFile);
+
+        const res = await fetch('/api/parse-doc', {
+          method: 'POST',
+          body: fd
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || (language === 'vi' ? 'Lỗi trích xuất tài liệu' : 'Failed to extract document'));
+
+        const extractedText = data.text || '';
+        if (extractedText) {
+          setPostData(prev => ({
+            ...prev,
+            full_text: extractedText,
+            description: extractedText,
+            title: prev.title || docFile.name.replace(/\.[^/.]+$/, ''), // Lấy tên file làm tiêu đề nếu trống
+          }));
+        }
+      } catch (err: any) {
+        setDocError(err.message);
+      } finally {
+        setIsParsingDoc(false);
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await handleUploadFiles(files);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      await handleUploadFiles(files);
+    }
+  };
+
+  const handleDeleteImage = (indexToDelete: number) => {
+    const urls = postData.imageUrl.split('\n').filter(Boolean);
+    const newUrls = urls.filter((_, idx) => idx !== indexToDelete);
+    setPostData({ ...postData, imageUrl: newUrls.join('\n') });
+  };
+
+  // Voice / STT Mode State
+  const voiceFileInputRef = useRef<HTMLInputElement>(null);
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isAudioDragging, setIsAudioDragging] = useState(false);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [sttError, setSttError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (voiceFile) {
+      const url = URL.createObjectURL(voiceFile);
+      setAudioUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setAudioUrl(null);
+    }
+  }, [voiceFile]);
+
+  // Direct In-App Recording States
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordDuration, setRecordDuration] = useState(0);
+  const [showMicGuide, setShowMicGuide] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+
+  // Format record duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startRecording = async () => {
+    setSttError(null);
+    audioChunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'ghi-am-truc-tiep.webm', { type: 'audio/webm' });
+        setVoiceFile(file);
+      };
+
+      // Set up canvas waveform
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const drawWaveform = () => {
+        if (!canvasRef.current || !analyserRef.current) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        analyserRef.current.getByteTimeDomainData(dataArray);
+        
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#4F46E5'; // primary color
+        ctx.beginPath();
+        
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * height) / 2;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          
+          x += sliceWidth;
+        }
+        
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        
+        animationFrameRef.current = requestAnimationFrame(drawWaveform);
+      };
+
+      drawWaveform();
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordDuration(0);
+      
+      timerRef.current = setInterval(() => {
+        setRecordDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error('Microphone error:', err);
+      setShowMicGuide(true);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+    }
+  };
+
+  const cancelRecording = () => {
+    setIsRecording(false);
+    setVoiceFile(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+    }
+  };
+
+  const handleTranscribeAndRewrite = async () => {
+    if (!voiceFile) return;
+    setIsTranscribing(true);
+    setSttError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', voiceFile);
+      
+      const res = await fetch('/api/stt', {
+        method: 'POST',
+        body: fd
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lỗi xử lý giọng nói');
+      
+      const finalText = data.rewritten_post || data.transcript || '';
+      if (finalText) {
+        setPostData(prev => ({
+          ...prev,
+          full_text: finalText,
+          description: finalText,
+          title: prev.title || data.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
+        }));
+      }
+    } catch (err: any) {
+      setSttError(err.message);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // Auto-fill author = tên user hiện tại, ngày = hôm nay khi vào mode manual
+  useEffect(() => {
+    if (inputMode !== 'manual') return;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const u = session.user;
+      const displayName =
+        u.user_metadata?.full_name ||
+        u.user_metadata?.name ||
+        u.email?.split('@')[0] ||
+        '';
+      const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      setPostData(prev => ({
+        ...prev,
+        author: prev.author || displayName,
+        published_at: prev.published_at || todayISO,
+      }));
+    });
+  }, [inputMode]);
 
   // Toggles for Custom Display Components in Social Previews
   const [toggles, setToggles] = useState({
@@ -2488,7 +3285,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.full_text || data.description || ''
+            full_text: data.full_text || data.description || '',
+            body: data.body || []
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -2591,7 +3389,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             views: data.views || '',
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
-            full_text: data.full_text || data.description || ''
+            full_text: data.full_text || data.description || '',
+            body: data.body || []
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -2811,9 +3610,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     }
 
     const newCaptionId = data.data.id;
+    const newStatus = data.data.status || 'draft';
+    const statusKey = selectedPlatform === 'facebook' ? 'facebookStatus' :
+                      selectedPlatform === 'threads' ? 'threadsStatus' :
+                      'instagramStatus';
+
     setCaptionId(newCaptionId);
     setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId, [platKey]: newCaptionId } : v))
+      prev.map((v) => (v.id === selectedVariant.id ? {
+        ...v,
+        captionId: newCaptionId,
+        [platKey]: newCaptionId,
+        [statusKey]: newStatus
+      } : v))
     );
     return newCaptionId as string;
   };
@@ -2866,6 +3675,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
       setIsScheduled(true);
       setHasUnsavedChanges(false);
+      const statusKey = selectedPlatform === 'facebook' ? 'facebookStatus' :
+                        selectedPlatform === 'threads' ? 'threadsStatus' :
+                        'instagramStatus';
+      setVariants((prev) =>
+        prev.map((v) => (v.id === selectedVariantId ? { ...v, [statusKey]: 'scheduled' } : v))
+      );
     } catch (err: any) {
       setSchedulingError(err.message || 'Lỗi xảy ra trong quá trình lên lịch bài đăng');
     } finally {
@@ -2874,7 +3689,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   };
 
   return (
-    <EditableTextContext.Provider value={{ editState, setEditState, handleUpdateVariantField, isGeneratingAB }}>
+    <EditableTextContext.Provider value={{
+      editState,
+      setEditState,
+      handleUpdateVariantField,
+      isGeneratingAB,
+      variants,
+      setVariants,
+      articleId,
+      selectedPlatform,
+      selectedPrompt
+    }}>
       <div className="flex flex-col gap-6 w-full font-sans">
 
         {/* Top Header Row */}
@@ -2985,16 +3810,46 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
           {/* STEP 1: Left column inputs form */}
           {step === 1 && (
-            <motion.div
-              layout
+            <div
               key="step1-inputs"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
               className="lg:col-span-8 flex flex-col gap-6 order-1"
             >
+              {/* Segmented Mode Selector for input ingestion (crawl vs manual) */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 flex items-center justify-between shadow-sm shrink-0">
+                <div className="flex bg-slate-50 dark:bg-zinc-950 rounded-xl p-1 border border-slate-100 dark:border-zinc-900 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('crawl');
+                    }}
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
+                      inputMode === 'crawl'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-muted hover:text-text bg-transparent'
+                    }`}
+                  >
+                    <Globe size={13} />
+                    {language === 'vi' ? 'Cào dữ liệu tự động' : 'Auto-crawl from Link'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode('manual');
+                    }}
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
+                      inputMode === 'manual'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-muted hover:text-text bg-transparent'
+                    }`}
+                  >
+                    <Mic size={13} />
+                    {language === 'vi' ? 'Tự viết tay & Giọng nói' : 'Write / Voice Draft'}
+                  </button>
+                </div>
+              </div>
+
               {/* URL Context Importer */}
+              {inputMode === 'crawl' && (
               <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -3048,104 +3903,893 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   </button>
                 </div>
               </div>
+)}
+              {/* Original Article Detailed Preview */}
+              {inputMode === 'crawl' && postData.title && (
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-6 font-sans">
+                  
+                  {/* Title & Category info */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
+                    <h3 className="text-xs font-black text-text uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText size={16} className="text-primary" />
+                      {language === 'vi' ? 'Bản xem trước bài viết gốc cào về' : 'Original Scraped Article Preview'}
+                    </h3>
+                    <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900/30">
+                      {language === 'vi' ? 'Thành công' : 'Scraped'}
+                    </span>
+                  </div>
 
-              {/* Manual Edit Form */}
-              <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
-                  <Layers size={18} className="text-primary" />
-                  <h3 className="text-lg font-bold text-text">{t('aiCreator.editPostFields')}</h3>
+                  {/* High Fidelity Clone Area */}
+                  <div className="border border-slate-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-[#ffffff] dark:bg-zinc-950 flex flex-col shadow-sm">
+                    
+                    {/* Mock Newspaper Header */}
+                    <div className="bg-white/95 dark:bg-zinc-950/95 border-b border-slate-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between shrink-0">
+                      <div className="flex flex-col gap-0.5 select-none">
+                        <span className="text-red-650 font-black text-base tracking-tighter uppercase font-sans">
+                          GócNhìnMới
+                        </span>
+                        <span className="text-[7px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+                          Mạng xã hội
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-full w-48 select-none">
+                        <Search size={10} className="text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-450 dark:text-zinc-500">Tìm kiếm...</span>
+                      </div>
+                    </div>
+
+                    {/* Article Content Area */}
+                    <div className="px-5 py-6 md:px-8 flex gap-6 max-w-3xl mx-auto w-full max-h-[480px] overflow-y-auto scrollbar-thin">
+                      
+                      {/* Left Column Sticky Mock Actions */}
+                      <div className="hidden sm:flex flex-col items-center gap-4 pt-1 select-none">
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <Facebook size={13} />
+                        </button>
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <Link2 size={13} />
+                        </button>
+                        <div className="w-px h-5 bg-slate-200 dark:bg-zinc-800 my-0.5" />
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <ThumbsUp size={13} />
+                        </button>
+                        <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
+                          <MessageSquare size={13} />
+                        </button>
+                      </div>
+
+                      {/* Right Main Content */}
+                      <div className="flex-1 flex flex-col min-w-0">
+                        {/* Category */}
+                        {postData.category && (
+                          <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2.5 block select-none">
+                            {postData.category.startsWith('#') ? postData.category : `#${postData.category}`}
+                          </span>
+                        )}
+
+                        {/* Title */}
+                        <h1 className="text-lg md:text-2xl font-black text-slate-900 dark:text-zinc-100 leading-tight mb-4 tracking-tight font-sans">
+                          {postData.title}
+                        </h1>
+
+                        {/* Description/Sapo */}
+                        {postData.description && (
+                          <div className="bg-slate-50 dark:bg-zinc-900/40 p-3.5 border-l-4 border-red-550 rounded-r-xl text-xs md:text-sm text-slate-650 dark:text-slate-300 font-bold mb-5 leading-relaxed">
+                            {postData.description}
+                          </div>
+                        )}
+
+                        {/* Author Info */}
+                        <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
+                          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-955/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0">
+                            {postData.author ? postData.author.slice(0, 2) : 'CD'}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                              {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
+                            </span>
+                            <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
+                              <span>{postData.published_at || new Date().toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sections & Blocks rendering */}
+                        <div className="article-body-sections text-slate-700 dark:text-slate-350 min-h-[150px]">
+                          {postData.body && postData.body.length > 0 ? (
+                            postData.body.map((block: any, idx: number) => {
+                              // If it's a Spotlight section block, render it using dangerouslySetInnerHTML
+                              if (block.type === 'section') {
+                                return (
+                                  <section 
+                                    key={idx}
+                                    className={`${block.className || ''} py-6 my-4 rounded-xl border border-slate-150 dark:border-zinc-800 overflow-hidden shadow-sm`}
+                                    style={block.style ? parseStyleString(block.style) : undefined}
+                                    dangerouslySetInnerHTML={{ __html: block.html || '' }}
+                                  />
+                                );
+                              }
+                              
+                              if (block.type === 'heading2') {
+                                return (
+                                  <h2 key={idx} className="text-sm md:text-base font-black text-slate-800 dark:text-zinc-100 mt-6 mb-3 border-l-4 border-red-550 pl-2.5 leading-snug">
+                                    {block.text}
+                                  </h2>
+                                );
+                              }
+                              
+                              if (block.type === 'heading3') {
+                                return (
+                                  <h3 key={idx} className="text-xs md:text-sm font-extrabold text-slate-800 dark:text-zinc-200 mt-5 mb-2">
+                                    {block.text}
+                                  </h3>
+                                );
+                              }
+                              
+                              if (block.type === 'image' && block.url) {
+                                return (
+                                  <div key={idx} className="w-full my-5 flex flex-col items-center select-none">
+                                    <img 
+                                      src={block.url} 
+                                      alt={block.caption || 'Article Image'} 
+                                      className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                    />
+                                    {block.caption && (
+                                      <span className="text-[9px] md:text-xs text-slate-400 font-bold italic mt-1.5 text-center bg-slate-50 dark:bg-zinc-900/30 px-3 py-0.5 rounded">
+                                        {block.caption}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              
+                              return (
+                                <p key={idx} className="text-xs md:text-sm text-slate-750 dark:text-slate-300 mb-3.5 leading-relaxed font-semibold">
+                                  {block.text}
+                                </p>
+                              );
+                            })
+                          ) : (
+                            (postData.full_text || postData.description || '').split('\n\n').map((para, pIdx) => {
+                              const trimmed = para.trim();
+                              if (!trimmed) return null;
+                              return (
+                                <p key={pIdx} className="text-xs md:text-sm text-slate-755 dark:text-slate-300 mb-3 leading-relaxed font-semibold">
+                                  {trimmed}
+                                </p>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Tags */}
+                        {postData.tags && (
+                          <div className="flex flex-wrap gap-1.5 pt-5 border-t border-slate-150 dark:border-zinc-800 mt-5 select-none">
+                            {postData.tags.split(',').map((tag, idx) => {
+                              const trimmed = tag.trim();
+                              if (!trimmed) return null;
+                              return (
+                                <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                                  #{trimmed}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* AI Prompt Editor - moved to dialog */}
+              <div className="hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                      <Wand2 size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-text">AI Prompt Editor</h3>
+                      <p className="text-[11px] text-text-muted">Tinh chỉnh câu lệnh để AI tạo nội dung tốt nhất</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleGenerateSmartPrompt}
+                      disabled={isGeneratingSmartPrompt || isGenerating}
+                      className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm border border-primary/10"
+                    >
+                      <RefreshCw size={12} className={isGeneratingSmartPrompt ? "animate-spin" : ""} />
+                      Tạo Prompt thông minh từ bài viết
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTitle')}</label>
-                    <input
-                      type="text"
-                      value={postData.title}
-                      onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                      placeholder={t('aiCreator.labelTitle')}
-                    />
+                <div className="flex flex-col gap-6">
+                  {/* Main Prompt Area */}
+                  <div className="flex flex-col gap-4">
+                    <div className="relative group">
+                      <DebouncedTextarea
+                        value={activePrompt}
+                        onChange={setActivePrompt}
+                        placeholder="Nhập hướng dẫn của bạn tại đây hoặc sử dụng Prompt gợi ý..."
+                        rows={8}
+                        className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-2xl px-6 py-5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 resize-none leading-relaxed transition-all placeholder:text-gray-400 font-medium"
+                      />
+                      <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {saveSuccess && (
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-900/30 animate-in fade-in slide-in-from-right-2">
+                            {language === 'vi' ? 'Đã lưu!' : 'Saved!'}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleSaveCurrentPrompt}
+                          disabled={isSavingPrompt}
+                          className="p-2.5 rounded-xl bg-white dark:bg-black border border-gray-200 dark:border-white/5 text-gray-400 dark:text-slate-400 hover:text-primary hover:border-primary/30 dark:hover:border-primary/30 shadow-sm transition-all disabled:opacity-50"
+                          title="Lưu prompt này vào thư viện"
+                        >
+                          {isSavingPrompt ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* AI Output Preview (if generated) */}
+                    <AnimatePresence>
+                      {lastGeneratedAiContent && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 flex flex-col gap-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-emerald-700">
+                              <Sparkles size={16} />
+                              <span className="text-xs font-black uppercase tracking-wider">Kết quả từ AI</span>
+                            </div>
+                            <button
+                              onClick={() => setLastGeneratedAiContent(null)}
+                              className="text-emerald-400 hover:text-emerald-600 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                          <p className="text-sm text-emerald-900 leading-relaxed font-medium whitespace-pre-wrap">
+                            {lastGeneratedAiContent}
+                          </p>
+                          <div className="flex items-center gap-3 pt-2">
+                            <button
+                              onClick={() => handleSaveAiResult('A')}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all flex items-center gap-2"
+                            >
+                              <Check size={14} />
+                              Sử dụng cho Biến thể A
+                            </button>
+                            <button
+                              onClick={() => handleSaveAiResult('B')}
+                              className="bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                            >
+                              Dùng cho Biến thể B
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                        {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setPromptPlatform(p)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${promptPlatform === p
+                              ? 'bg-white text-primary shadow-sm border border-gray-200'
+                              : 'text-text-muted hover:text-text'
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleGenerateContent}
+                        disabled={isGenerating || !activePrompt}
+                        className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-2xl text-xs font-black shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 h-11"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Đang tạo...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Bắt đầu tạo nội dung AI
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelCategory')}</label>
-                    <input
-                      type="text"
-                      value={postData.category}
-                      onChange={(e) => setPostData({ ...postData, category: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelAuthor')}</label>
-                    <input
-                      type="text"
-                      value={postData.author}
-                      onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelPublishedAt')}</label>
-                    <input
-                      type="text"
-                      value={postData.published_at}
-                      onChange={(e) => setPostData({ ...postData, published_at: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelViews')}</label>
-                    <input
-                      type="text"
-                      value={postData.views}
-                      onChange={(e) => setPostData({ ...postData, views: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelImageUrl')}</label>
-                    <textarea
-                      value={postData.imageUrl}
-                      onChange={(e) => setPostData({ ...postData, imageUrl: e.target.value })}
-                      rows={3}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all"
-                      placeholder="Nhập mỗi URL hình ảnh trên một dòng..."
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelTags')}</label>
-                    <input
-                      type="text"
-                      value={postData.tags}
-                      onChange={(e) => setPostData({ ...postData, tags: e.target.value })}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col gap-1.5">
-                    <label className="text-xs font-extrabold text-text uppercase tracking-wider">{t('aiCreator.labelShortDesc')}</label>
-                    <textarea
-                      value={postData.full_text}
-                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value })}
-                      rows={10}
-                      className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all scroll-pb-4"
+                  {/* Bottom Suggestions Section */}
+                  <div className="border-t border-gray-100 pt-6">
+                    <PromptSuggestionSection
+                      articleId={articleId || ''}
+                      articleTitle={postData.title}
+                      articleContent={postData.description}
+                      platform={promptPlatform}
+                      onSelectPrompt={(content) => setActivePrompt(content)}
+                      onSavePrompt={handleSaveCurrentPrompt}
                     />
                   </div>
                 </div>
               </div>
-            </motion.div>
+
+          {/* Luồng 2: Tự viết tay & Giọng nói tích hợp */}
+          {inputMode === 'manual' && (
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+                <Layers size={18} className="text-primary" />
+                <h3 className="text-lg font-bold text-text">{language === 'vi' ? 'Tự viết tay & Giọng nói tích hợp' : 'Write & Voice Integrated Post'}</h3>
+              </div>
+
+              {/* Form fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Post Title'}</label>
+                  <input
+                    type="text"
+                    value={postData.title}
+                    onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold"
+                    placeholder={language === 'vi' ? 'Nhập tiêu đề bài viết của bạn tại đây...' : 'Enter post title here...'}
+                  />
+                </div>
+
+                {/* Speech to Text Collapsible Accordion */}
+                <div className="md:col-span-2 bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
+                  <div className="flex items-center justify-between w-full select-none">
+                    <div className="flex items-center gap-2">
+                      <Mic size={15} className="text-primary" />
+                      <span className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Trợ lý Giọng nói (Speech-to-Text)' : 'Voice Assistant (Speech-to-Text)'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsVoiceAssistantExpanded(!isVoiceAssistantExpanded)}
+                      className="bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-0 cursor-pointer flex items-center gap-1 shadow-sm"
+                    >
+                      {isVoiceAssistantExpanded ? (
+                        <>
+                          {language === 'vi' ? 'Thu gọn' : 'Collapse'} <span>▲</span>
+                        </>
+                      ) : (
+                        <>
+                          {language === 'vi' ? 'Mở rộng' : 'Expand'} <span>▼</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {isVoiceAssistantExpanded && (
+                    <div className="flex flex-col gap-4 mt-1">
+                      {isRecording ? (
+                        /* Live Recording Panel */
+                        <div className="border border-dashed border-primary bg-primary/5 rounded-xl p-4 text-center flex flex-col items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-widest">{language === 'vi' ? 'Đang ghi âm...' : 'Recording...'}</span>
+                          </div>
+                          
+                          {/* Live Waveform Canvas */}
+                          <div className="w-full bg-white rounded-lg overflow-hidden border border-gray-150 shadow-inner">
+                            <canvas ref={canvasRef} width={400} height={60} className="w-full h-[60px]" />
+                          </div>
+
+                          <div className="text-lg font-mono font-bold text-text-muted mt-1">
+                            {formatDuration(recordDuration)}
+                          </div>
+                          <div className="flex items-center gap-3 w-full justify-center">
+                            <button
+                              type="button"
+                              onClick={stopRecording}
+                              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-red-200 cursor-pointer border-0 flex items-center gap-1.5"
+                            >
+                              <span className="w-2 h-2 bg-white rounded-sm" />
+                              {language === 'vi' ? 'Hoàn thành' : 'Done'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelRecording}
+                              className="bg-white border border-gray-200 text-text-muted hover:text-text px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              {language === 'vi' ? 'Hủy' : 'Cancel'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Audio File Upload or Record Trigger */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Mic Trigger */}
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            className="bg-primary hover:bg-primary-hover text-white rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 border-0 shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[120px]"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                              <Mic size={20} />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[11px] font-black uppercase tracking-wider block">{language === 'vi' ? 'Ghi âm trực tiếp' : 'Direct Record'}</span>
+                              <span className="text-[9px] opacity-75 mt-0.5 block">{language === 'vi' ? 'Sử dụng Micro của thiết bị' : 'Use system microphone'}</span>
+                            </div>
+                          </button>
+
+                          {/* Upload audio file */}
+                          <div 
+                            onClick={() => voiceFileInputRef.current?.click()}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setIsAudioDragging(true);
+                            }}
+                            onDragLeave={() => setIsAudioDragging(false)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setIsAudioDragging(false);
+                              const file = e.dataTransfer.files?.[0];
+                              if (file) {
+                                if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.m4a') || file.name.endsWith('.webm') || file.name.endsWith('.mp4')) {
+                                  setVoiceFile(file);
+                                  setSttError(null);
+                                } else {
+                                  alert(language === 'vi' ? 'Vui lòng chỉ tải lên tệp âm thanh.' : 'Please upload audio files only.');
+                                }
+                              }
+                            }}
+                            className={`border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all min-h-[120px] ${
+                              isAudioDragging
+                                ? 'border-primary bg-primary/10 text-primary scale-[1.02]'
+                                : 'border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 text-text-muted hover:text-primary hover:bg-primary/5'
+                            }`}
+                          >
+                            <UploadCloud size={24} className={isAudioDragging ? "text-primary animate-bounce" : "opacity-80"} />
+                            <div className="text-center">
+                              <span className="text-[11px] font-black uppercase tracking-wider block">
+                                {isAudioDragging
+                                  ? (language === 'vi' ? 'Thả tệp vào đây' : 'Drop file here')
+                                  : (language === 'vi' ? 'Tải tệp âm thanh' : 'Upload Audio File')}
+                              </span>
+                              <span className="text-[9px] text-text-muted mt-0.5 block">MP3, WAV, WEBM, M4A</span>
+                            </div>
+                            <input 
+                              type="file"
+                              ref={voiceFileInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setVoiceFile(file);
+                                  setSttError(null);
+                                }
+                              }}
+                              accept="audio/*"
+                              className="hidden"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Micro Permission Guide Alert */}
+                      {showMicGuide && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-800 leading-relaxed font-medium">
+                          <span>⚠️</span>
+                          <div className="flex-1">
+                            {language === 'vi' 
+                              ? 'Không thể truy cập Micro. Vui lòng kiểm tra quyền thiết bị trong cài đặt trình duyệt và thử lại.' 
+                              : 'Cannot access microphone. Please verify device permissions in browser settings.'}
+                          </div>
+                          <button onClick={() => setShowMicGuide(false)} className="text-amber-500 hover:text-amber-700 font-bold">×</button>
+                        </div>
+                      )}
+
+                      {/* Selected audio file preview & Transcribe button */}
+                      {voiceFile && !isRecording && (
+                        <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-gray-150 dark:border-zinc-800/80 flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-text truncate max-w-[70%]">🎵 {voiceFile.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setVoiceFile(null)}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                            >
+                              {language === 'vi' ? 'Xóa' : 'Remove'}
+                            </button>
+                          </div>
+                          
+                          {audioUrl && (
+                            <CustomAudioPlayer src={audioUrl} fileName={voiceFile.name} language={language} />
+                          )}
+                          
+                          <button
+                            type="button"
+                            onClick={handleTranscribeAndRewrite}
+                            disabled={isTranscribing}
+                            className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white w-full py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                          >
+                            {isTranscribing ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                {language === 'vi' ? 'Đang dịch giọng nói...' : 'Transcribing voice...'}
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 size={12} />
+                                {language === 'vi' ? 'Dịch giọng nói bằng AI' : 'Transcribe & Rewrite with AI'}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {sttError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed">
+                          <span>⚠️</span>
+                          <div className="flex-1 font-semibold">{sttError}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Drag and Drop Document Area */}
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Hình ảnh bài viết' : 'Post Images'}</label>
+                  
+                  {/* Image Previews grid */}
+                  {postData.imageUrl && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
+                      {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
+                        <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
+                          <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteImage(idx)}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-0 cursor-pointer shadow-sm"
+                            title="Xóa hình ảnh này"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                      isDraggingFile
+                        ? 'border-primary bg-primary/5'
+                        : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
+                    }`}
+                  >
+                    <UploadCloud size={28} className="text-text-muted opacity-80" />
+                    <div>
+                      <span className="text-xs font-extrabold text-text uppercase tracking-wider block">
+                        {language === 'vi' ? 'Kéo thả file vào đây hoặc click để chọn' : 'Drag & drop files here or click to browse'}
+                      </span>
+                      <span className="text-[10px] text-text-muted mt-1 block">
+                        {language === 'vi' ? 'Hỗ trợ: PDF, Word (docx, doc) hoặc Hình ảnh (JPEG, PNG)' : 'Supports: PDF, Word (docx, doc) or Images (JPEG, PNG)'}
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*,.pdf,.docx,.doc"
+                      multiple
+                      className="hidden"
+                    />
+                  </div>
+
+                  {isParsingDoc && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-text-muted mt-2">
+                      <Loader2 size={14} className="animate-spin text-primary" />
+                      <span>{language === 'vi' ? 'Đang trích xuất nội dung từ tài liệu...' : 'Parsing document content...'}</span>
+                    </div>
+                  )}
+
+                  {docError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed mt-2">
+                      <span>⚠️</span>
+                      <div className="flex-1 font-semibold">{docError}</div>
+                    </div>
+                  )}
+                </div>
+
+
+
+                <div className="md:col-span-2 flex flex-col gap-1.5 relative">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Nội dung chi tiết bài viết' : 'Detailed Post Content'}</label>
+                  
+                  {/* Drop zone visual indicator directly on the textarea */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className="relative w-full"
+                  >
+                    <textarea
+                      value={postData.full_text}
+                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value, description: e.target.value })}
+                      rows={12}
+                      className={`w-full bg-[#F8F9FE] dark:bg-black/40 border rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all ${
+                        isDraggingFile ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-[#E4E6F8] dark:border-zinc-800'
+                      }`}
+                      placeholder={language === 'vi' ? 'Nhập nội dung bài viết gốc của bạn tại đây hoặc kéo thả file Word, PDF vào ô này...' : 'Enter your original post content here, or drag and drop Word / PDF file into this box...'}
+                    />
+                    {isDraggingFile && (
+                      <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-xl flex items-center justify-center pointer-events-none">
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                          <UploadCloud size={14} />
+                          {language === 'vi' ? 'Thả tài liệu để trích xuất text' : 'Drop document to extract text'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+              {/* AI Caption Generator - moved to dialog */}
+              <div className="hidden">
+                {/* Decorative glow */}
+                <div className="absolute -top-8 -right-8 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary shadow-sm">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-text">
+                        {language === 'vi' ? 'Sinh caption bằng AI' : 'AI Caption Generator'}
+                      </h2>
+                      <p className="text-[11px] text-text-muted">
+                        {language === 'vi' ? 'Chọn prompt → Bấm Tạo → AI sinh caption ngay' : 'Pick a prompt → Click Generate → AI writes instantly'}
+                      </p>
+                    </div>
+                  </div>
+                  {generateDone && (
+                    <span className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-3 py-1.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 size={13} />
+                      {language === 'vi' ? 'Đã điền vào Biến thể A' : 'Filled into Variant A'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Prompt selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Prompt AI' : 'AI Prompt'}
+                  </label>
+                  {promptsLoading ? (
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-primary/30 text-xs text-text-muted">
+                      <Loader2 size={14} className="animate-spin text-primary" />
+                      {language === 'vi' ? 'Đang tải prompts...' : 'Loading prompts...'}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        id="ai-prompt-select"
+                        value={selectedPromptId}
+                        onChange={(e) => { setSelectedPromptId(e.target.value); setGenerateError(null); }}
+                        className="w-full appearance-none bg-white border border-primary/30 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/30 pr-10 transition-all cursor-pointer font-semibold"
+                      >
+                        <option value="" disabled>
+                          {language === 'vi' ? '── Chọn một prompt ──' : '── Select a prompt ──'}
+                        </option>
+                        {prompts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{p.platform?.toUpperCase()}] {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                        <Layers size={14} />
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* AI Model Selection Switcher (craft/shape) */}
+                <div className="flex flex-col gap-2 bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-2xl p-4">
+                  <label className="text-[10px] font-black text-text uppercase tracking-widest">
+                    {language === 'vi' ? 'Engine AI (Mẫu ngôn ngữ)' : 'AI Engine (Language Model)'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('gpt4'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gpt4'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        }`}
+                    >
+                      <Sparkles size={12} className={selectedModel === 'gpt4' ? 'text-white' : 'text-primary'} />
+                      <span>GPT-4o</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gemini'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        }`}
+                    >
+                      <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
+                      <span>Gemini</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedModel('claude'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'claude'
+                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        }`}
+                    >
+                      <Wand2 size={12} className={selectedModel === 'claude' ? 'text-white' : 'text-amber-500'} />
+                      <span>Claude</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error banner (clarify) */}
+                {generateError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col gap-3 bg-red-50 border border-red-200 rounded-xl p-4"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-red-500 mt-0.5 shrink-0">⚠️</span>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <span className="text-xs text-red-800 font-bold">
+                          {language === 'vi' ? 'Lỗi sinh nội dung bằng AI' : 'AI Content Generation Error'}
+                        </span>
+                        <span className="text-[11px] text-red-700 leading-relaxed font-medium">
+                          {generateError.includes("prompt") || generateError.includes("Prompt")
+                            ? (language === 'vi'
+                              ? 'Vui lòng chọn một mẫu prompt hợp lệ trước khi bắt đầu tạo nội dung.'
+                              : 'Please select a valid prompt first before initiating caption creation.')
+                            : (language === 'vi'
+                              ? `Không thể kết nối với dịch vụ AI. Chi tiết: "${generateError}". Vui lòng kiểm tra lại cấu hình API key trong mục Cài đặt hoặc thử lại sau.`
+                              : `Could not connect to the AI service. Details: "${generateError}". Please check your API key configuration in Settings or try again later.`)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setGenerateError(null)}
+                        className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                        title={language === 'vi' ? 'Đóng' : 'Close'}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="flex gap-2 justify-end border-t border-red-100 pt-2.5">
+                      <button
+                        onClick={() => {
+                          setGenerateError(null);
+                          router.push('/settings');
+                        }}
+                        className="text-[10px] text-red-700 hover:text-red-900 hover:underline font-bold transition-all px-2 py-1 cursor-pointer"
+                      >
+                        {language === 'vi' ? 'Cấu hình API' : 'Configure API Key'}
+                      </button>
+                      <button
+                        onClick={handleGenerate}
+                        className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                      >
+                        <RefreshCw size={11} />
+                        {language === 'vi' ? 'Thử lại' : 'Retry'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Streaming output box (overdrive/delight) */}
+                <AnimatePresence>
+                  {(isGenerating || streamedCaption) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className={`relative bg-white border rounded-2xl p-4 overflow-hidden transition-all duration-500 ${generateDone
+                          ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20"
+                          : "border-primary/30"
+                        }`}
+                    >
+                      {/* Shimmer bar while generating */}
+                      {isGenerating && (
+                        <div className="absolute top-0 left-0 right-0 h-1 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%] animate-[shimmer_1.5s_linear_infinite]" />
+                        </div>
+                      )}
+
+                      {/* Floating particles delight/overdrive */}
+                      {generateDone && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                          <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full top-[10%] left-[20%] animate-ping" />
+                          <div className="absolute w-1 h-1 bg-primary rounded-full top-[80%] left-[85%] animate-ping delay-300" />
+                          <div className="absolute w-2 h-2 bg-amber-400 rounded-full top-[40%] left-[90%] animate-ping delay-700" />
+                          <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full top-[70%] left-[10%] animate-ping delay-1000" />
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          {isGenerating && <Loader2 size={11} className="animate-spin" />}
+                          {isGenerating
+                            ? (language === 'vi' ? 'AI đang sinh nội dung...' : 'AI is writing...')
+                            : (language === 'vi' ? 'Nội dung đã sinh' : 'Generated content')}
+                        </span>
+                        {isGenerating && (
+                          <button
+                            onClick={handleCancelGenerate}
+                            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-500 font-bold transition-colors cursor-pointer"
+                          >
+                            <X size={11} />
+                            {language === 'vi' ? 'Huỷ' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-text leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
+                        {streamedCaption}
+                        {isGenerating && (
+                          <span className="inline-block w-0.5 h-3.5 bg-primary align-middle ml-0.5 animate-[blink_0.8s_step-end_infinite]" />
+                        )}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Generate button */}
+                <button
+                  id="ai-generate-btn"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !selectedPromptId || promptsLoading}
+                  className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 px-6 rounded-2xl font-extrabold shadow-lg shadow-primary/25 text-sm transition-all hover:scale-[1.01] active:scale-95 cursor-pointer relative overflow-hidden"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {language === 'vi' ? 'Đang tạo caption...' : 'Generating caption...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      {language === 'vi' ? 'Tạo Caption AI' : 'Generate AI Caption'}
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
           )}
 
           {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
           {(step === 1 || step === 2) && (
-            <motion.div
-              layout
-              transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+            <div
               className={`lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
             >
               {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
@@ -3240,17 +4884,30 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </div>
 
                 {/* Preview Content */}
-                <div className="border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white">
-                  <div className="h-44 bg-gray-100 relative">
+                <div 
+                  onClick={() => setIsOriginalPostModalOpen(true)}
+                  className="border border-gray-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white dark:bg-black/20 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group relative"
+                  title={language === 'vi' ? 'Click để xem toàn bộ bài viết gốc' : 'Click to view full original post'}
+                >
+                  <div className="h-44 bg-gray-100 relative overflow-hidden">
                     {postData.imageUrl ? (
                       <img
                         src={postData.imageUrl.split('\n')[0].trim()}
                         alt={postData.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-80"></div>
                     )}
+                    
+                    {/* Hover indicator overlay */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="bg-white/95 dark:bg-zinc-900/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                        <Eye size={13} />
+                        {language === 'vi' ? 'XEM TOÀN BỘ BÀI' : 'VIEW FULL POST'}
+                      </span>
+                    </div>
+
                     {postData.category && (
                       <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
                         {postData.category}
@@ -3302,6 +4959,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
                 {step === 1 && (
                   <div className="flex flex-col gap-4 border-t border-gray-100 pt-4 mt-1 font-sans">
+
 
                     {/* Platform Selection Tabs */}
                     <div className="flex flex-col gap-1.5">
@@ -3435,7 +5093,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* STEP 2: Right column A/B testing variants workspace */}
@@ -5064,6 +6722,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
 
 
+
         {/* Onboarding Tour Overlay */}
         {mounted && createPortal(
           <AnimatePresence>
@@ -5168,6 +6827,293 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           </AnimatePresence>,
           document.body
         )}
+
+        {/* Original Post Detail Modal */}
+        {isOriginalPostModalOpen && createPortal(
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 p-6 shrink-0 bg-slate-50/50 dark:bg-zinc-900/50">
+                <div className="flex items-center gap-2">
+                  <FileText className="text-primary" size={18} />
+                  <h3 className="text-sm font-black text-text uppercase tracking-wider">
+                    {language === 'vi' ? 'Xem demo bài viết gốc' : 'Demo Original Article'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsOriginalPostModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-750 text-slate-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer border-0"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Scrollable Content (Newspaper layout) */}
+              <div className="flex-1 overflow-y-auto bg-[#ffffff] dark:bg-zinc-950 flex flex-col custom-scrollbar">
+                
+                {/* 1. Header Web Newspaper Mock */}
+                <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 border-b border-slate-150 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm backdrop-blur-md">
+                  {/* Logo Group */}
+                  <div className="flex flex-col gap-0.5 select-none">
+                    <span className="text-red-650 font-black text-lg tracking-tighter uppercase font-sans">
+                      GócNhìnMới
+                    </span>
+                    <span className="text-[8px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+                      Mạng xã hội
+                    </span>
+                  </div>
+
+                  {/* Mock Search Input */}
+                  <div className="hidden sm:flex items-center gap-2 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3.5 py-1.5 rounded-full w-64 select-none">
+                    <Search size={12} className="text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm bài viết, tác giả..." 
+                      className="bg-transparent border-none text-[10px] font-bold outline-none text-slate-700 dark:text-zinc-200 placeholder-slate-400/80 w-full cursor-not-allowed"
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Article Wrapper */}
+                <div className="px-6 py-8 md:px-12 flex gap-10 max-w-4xl mx-auto w-full">
+                  {/* Left Column: Sticky Action Panel (like real web) */}
+                  <div className="hidden md:flex flex-col items-center gap-5 pt-2 select-none">
+                    <div className="sticky top-20 flex flex-col gap-4 items-center">
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-blue-600 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <Facebook size={15} />
+                      </button>
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <Link2 size={15} />
+                      </button>
+                      <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 my-1" />
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-[#FFF1F2] dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <ThumbsUp size={15} />
+                      </button>
+                      <button className="w-9 h-9 rounded-full bg-slate-50 dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-400 hover:text-indigo-550 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 active:scale-95 cursor-default">
+                        <MessageSquare size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Main Article Body */}
+                  <div className="flex-1 flex flex-col">
+                    
+                    {/* Category tag */}
+                    {postData.category && (
+                      <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-3 block select-none">
+                        {postData.category.startsWith('#') ? postData.category : `#${postData.category}`}
+                      </span>
+                    )}
+
+                    {/* Headline Title */}
+                    <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-zinc-100 leading-tight mb-5 tracking-tight font-sans">
+                      {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                    </h1>
+
+                    {/* Lead description (Sapo block) */}
+                    {postData.description && (
+                      <div className="bg-slate-50 dark:bg-zinc-900/40 p-4 border-l-4 border-red-550 rounded-r-2xl text-xs md:text-sm text-slate-650 dark:text-slate-300 font-bold mb-6 leading-relaxed">
+                        {postData.description}
+                      </div>
+                    )}
+
+                    {/* Author & Publication metadata */}
+                    <div className="flex items-center gap-3 mb-8 border-b border-slate-100 dark:border-zinc-800/80 pb-4 select-none">
+                      {/* Round Avatar mockup */}
+                      <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0">
+                        {postData.author ? postData.author.slice(0, 2) : 'CD'}
+                      </div>
+                      
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                          {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
+                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 font-bold">
+                          <span>{postData.published_at || new Date().toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Article Body Content */}
+                    <div className="article-body-sections text-slate-700 dark:text-slate-350">
+                      {postData.body && postData.body.length > 0 ? (
+                        postData.body.map((block: any, idx: number) => {
+                          if (block.type === 'heading2') {
+                            return (
+                              <h2 key={idx} className="text-base md:text-lg font-black text-slate-800 dark:text-zinc-100 mt-8 mb-4 border-l-4 border-red-550 pl-3 leading-snug">
+                                {block.text}
+                              </h2>
+                            );
+                          }
+                          if (block.type === 'heading3') {
+                            return (
+                              <h3 key={idx} className="text-sm md:text-base font-extrabold text-slate-800 dark:text-zinc-200 mt-6 mb-3">
+                                {block.text}
+                              </h3>
+                            );
+                          }
+                          if (block.type === 'image' && block.url) {
+                            return (
+                              <div key={idx} className="w-full my-6 flex flex-col items-center select-none animate-in fade-in duration-300">
+                                <img 
+                                  src={block.url} 
+                                  alt={block.caption || 'Article Image'} 
+                                  className="w-full max-h-[380px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                />
+                                {block.caption && (
+                                  <span className="text-[10px] md:text-xs text-slate-400 font-bold italic mt-2 text-center bg-slate-50 dark:bg-zinc-900/30 px-3.5 py-1 rounded">
+                                    {block.caption}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                          // Paragraph
+                          return (
+                            <p key={idx} className="text-xs md:text-sm text-slate-750 dark:text-slate-300 mb-4 leading-relaxed font-semibold">
+                              {block.text}
+                            </p>
+                          );
+                        })
+                      ) : (
+                        // Fallback parsing for full_text
+                        (postData.full_text || postData.description || '').split('\n\n').map((para, pIdx) => {
+                          const trimmed = para.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <p key={pIdx} className="text-xs md:text-sm text-slate-755 dark:text-slate-300 mb-4 leading-relaxed font-semibold">
+                              {trimmed}
+                            </p>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Hashtags list */}
+                    {postData.tags && (
+                      <div className="flex flex-wrap gap-2 pt-6 border-t border-slate-150 dark:border-zinc-800 mt-6 select-none">
+                        {postData.tags.split(',').map((tag, idx) => {
+                          const trimmed = tag.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                              #{trimmed}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-gray-100 dark:border-zinc-800 p-6 shrink-0 bg-slate-50 dark:bg-zinc-900/30 flex justify-end">
+                <button
+                  onClick={() => setIsOriginalPostModalOpen(false)}
+                  className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer border-0"
+                >
+                  {language === 'vi' ? 'Đóng' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Fullscreen Lightbox Gallery Modal */}
+        {isLightboxOpen && postData.imageUrl && (() => {
+          const imageUrls = postData.imageUrl.split('\n').map(url => url.trim()).filter(Boolean);
+          if (imageUrls.length === 0) return null;
+          
+          const currentUrl = imageUrls[lightboxIndex] || imageUrls[0];
+          
+          const handleNext = (e?: React.MouseEvent) => {
+            e?.stopPropagation();
+            setLightboxIndex((prev) => (prev + 1) % imageUrls.length);
+          };
+          
+          const handlePrev = (e?: React.MouseEvent) => {
+            e?.stopPropagation();
+            setLightboxIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+          };
+
+          return createPortal(
+            <div 
+              onClick={() => setIsLightboxOpen(false)}
+              className="fixed inset-0 bg-black/95 backdrop-blur-md z-[1000] flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="absolute top-6 right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1002]"
+              >
+                <X size={20} />
+              </button>
+
+              {/* Navigation Arrows */}
+              {imageUrls.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1001] active:scale-95"
+                  >
+                    <span className="text-xl">◀</span>
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-0 z-[1001] active:scale-95"
+                  >
+                    <span className="text-xl">▶</span>
+                  </button>
+                </>
+              )}
+
+              {/* Main Image */}
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[85vw] max-h-[75vh] rounded-2xl overflow-hidden shadow-2xl relative"
+              >
+                <img 
+                  src={currentUrl} 
+                  alt={`Zoom view ${lightboxIndex + 1}`} 
+                  className="max-w-full max-h-[75vh] object-contain animate-in zoom-in-95 duration-200"
+                />
+              </div>
+
+              {/* Pagination Info */}
+              <div className="text-white/60 text-xs font-bold mt-4 z-[1001] bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5">
+                {language === 'vi' ? 'Ảnh' : 'Image'} {lightboxIndex + 1} / {imageUrls.length}
+              </div>
+
+              {/* Thumbnails list at bottom (if multiple images) */}
+              {imageUrls.length > 1 && (
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 mt-6 max-w-[80vw] overflow-x-auto py-2 px-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-sm custom-scrollbar"
+                >
+                  {imageUrls.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setLightboxIndex(idx)}
+                      className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                        idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>,
+            document.body
+          );
+        })()}
 
       </div>
     </EditableTextContext.Provider>

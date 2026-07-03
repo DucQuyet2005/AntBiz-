@@ -11,7 +11,8 @@ import {
   ChevronDown,
   HelpCircle,
   Sun,
-  Moon
+  Moon,
+  UploadCloud
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -135,14 +136,17 @@ export const DEFAULT_CONFIG_EN = {
   }
 };
 
+import InlineEditText from '@/components/admin/landing-editor/InlineEditText';
+
 interface Props {
   initialConfig?: any;
   isPreview?: boolean;
   isEditor?: boolean;
   onEditClick?: (section: string, key: string, index?: number) => void;
+  onInlineChange?: (section: string, key: string, value: any, index?: number) => void;
 }
 
-export default function LandingView({ initialConfig, isPreview = false, isEditor = false, onEditClick }: Props) {
+export default function LandingView({ initialConfig, isPreview = false, isEditor = false, onEditClick, onInlineChange }: Props) {
   const { t, language, setLanguage } = useLanguage();
   
   let isDark = false;
@@ -403,31 +407,74 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className="absolute inset-0 bg-cover bg-center"
+            className={`absolute inset-0 bg-cover bg-center ${isEditor ? 'cursor-pointer group/hero-bg' : ''}`}
             style={{ backgroundImage: `url('${currentHero?.bgImageUrl}')` }}
-          />
+            onClick={isEditor ? (e) => { e.preventDefault(); onEditClick?.('heroSlides', 'slideImage', currentSlide); } : undefined}
+          >
+            {isEditor && (
+              <div className="absolute inset-0 border-4 border-dashed border-primary/45 bg-black/10 opacity-0 group-hover/hero-bg:opacity-100 transition-opacity z-20 duration-300 pointer-events-none">
+                <span className="absolute top-6 right-6 bg-[#ffffff] text-primary px-4 py-2.5 rounded-full font-black shadow-2xl flex items-center gap-2 text-xs uppercase tracking-wide pointer-events-auto">
+                  <UploadCloud size={16} /> Thay đổi ảnh nền
+                </span>
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
         
-        <div className="absolute inset-x-4 bottom-16 md:bottom-24 flex flex-col items-center justify-center text-center max-w-4xl mx-auto z-10 px-4">
-          <motion.h1 key={`title-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-white text-3xl md:text-5xl font-black tracking-tight leading-tight mb-4 select-none drop-shadow-md uppercase">
-            {currentHero?.tagline}
+        <div className="absolute inset-x-4 bottom-16 md:bottom-24 flex flex-col items-center justify-center text-center max-w-4xl mx-auto z-40 px-4 pointer-events-none">
+          <motion.h1 key={`title-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-white text-3xl md:text-5xl font-black tracking-tight leading-tight mb-4 select-none drop-shadow-md uppercase w-full pointer-events-auto">
+            <InlineEditText
+              value={currentHero?.tagline || ''}
+              isEditor={isEditor}
+              maxLength={80}
+              required={true}
+              fieldName="Tiêu đề Banner"
+              onChange={(v) => {
+                const newSlides = [...config.heroSlides];
+                newSlides[currentSlide] = { ...newSlides[currentSlide], tagline: v };
+                onInlineChange?.('heroSlides', 'data', newSlides);
+              }}
+            />
           </motion.h1>
-          <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow">
-            {currentHero?.description}
+          <motion.p key={`desc-${currentSlide}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-slate-200 text-xs md:text-base font-semibold max-w-2xl mb-6 leading-relaxed select-none drop-shadow w-full pointer-events-auto">
+            <InlineEditText
+              value={currentHero?.description || ''}
+              isEditor={isEditor}
+              multiline={true}
+              maxLength={300}
+              fieldName="Mô tả Banner"
+              onChange={(v) => {
+                const newSlides = [...config.heroSlides];
+                newSlides[currentSlide] = { ...newSlides[currentSlide], description: v };
+                onInlineChange?.('heroSlides', 'data', newSlides);
+              }}
+            />
           </motion.p>
           <motion.div
             key={`btn-${currentSlide}`}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
+            className="pointer-events-auto"
           >
             <Link
               href="/login"
               className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3 rounded-full font-bold text-xs tracking-wider uppercase shadow-lg transition-all active:scale-95 flex items-center gap-2 cursor-pointer border-0 decoration-none inline-flex focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
               onClick={isEditor ? (e) => e.preventDefault() : undefined}
             >
-              <span>{currentHero?.ctaText}</span>
+              <InlineEditText
+                value={currentHero?.ctaText || ''}
+                isEditor={isEditor}
+                maxLength={30}
+                required={true}
+                fieldName="Nút CTA Banner"
+                onChange={(v) => {
+                  const newSlides = [...config.heroSlides];
+                  newSlides[currentSlide] = { ...newSlides[currentSlide], ctaText: v };
+                  onInlineChange?.('heroSlides', 'data', newSlides);
+                }}
+              />
               <ArrowRight size={14} />
             </Link>
           </motion.div>
@@ -466,17 +513,7 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           </>
         )}
 
-        {/* Editor Centered Edit Button */}
-        {isEditor && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditClick?.('heroSlides', 'slideConfig'); }}
-              className="bg-[#ffffff] hover:bg-[#f8fafc] text-primary px-6 py-3 rounded-full font-black shadow-2xl flex items-center gap-2 text-sm uppercase transition-transform active:scale-95 border-2 border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
-            >
-              <Edit2 size={16} /> {t('landingEditor.editBanners')}
-            </button>
-          </div>
-        )}
+        {/* Centered edit button removed in favor of direct click-on-image upload modal */}
       </div>
 
       {/* 4. INTRODUCTION (ABOUT) */}
@@ -491,12 +528,28 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
           <EditableField section="brand" field="logoUrl">
             <img src={config.brand.logoUrl || '/images/logo.png'} alt="Brand Logo" className="w-16 h-16 object-contain mb-8 animate-pulse" />
           </EditableField>
-          <EditableField section="sections" field="aboutTitle">
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-6 leading-snug" style={{ color: 'var(--color-text)' }}>{config.sections.aboutTitle}</h2>
-          </EditableField>
-          <EditableField section="sections" field="aboutContent">
-            <p className="text-sm md:text-base leading-relaxed font-semibold max-w-3xl opacity-80" dangerouslySetInnerHTML={{ __html: config.sections.aboutContent }} />
-          </EditableField>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-6 leading-snug w-full" style={{ color: 'var(--color-text)' }}>
+            <InlineEditText
+              value={config.sections.aboutTitle || ''}
+              isEditor={isEditor}
+              multiline={true}
+              maxLength={200}
+              required={true}
+              fieldName="Tiêu đề Giới thiệu"
+              onChange={(v) => onInlineChange?.('sections', 'aboutTitle', v)}
+            />
+          </h2>
+          <div className="text-sm md:text-base leading-relaxed font-semibold max-w-3xl opacity-80 w-full">
+            <InlineEditText
+              value={config.sections.aboutContent || ''}
+              isEditor={isEditor}
+              multiline={true}
+              maxLength={500}
+              required={true}
+              fieldName="Nội dung Giới thiệu"
+              onChange={(v) => onInlineChange?.('sections', 'aboutContent', v)}
+            />
+          </div>
         </motion.div>
       </section>
 
@@ -509,9 +562,16 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
             viewport={{ once: true, margin: "-50px" }}
             className="text-center mb-16 w-full"
           >
-            <EditableField section="sections" field="featuresTitle" className="inline-block mx-auto">
-              <h2 className="text-3xl font-extrabold uppercase tracking-wider text-slate-800">{config.sections.featuresTitle}</h2>
-            </EditableField>
+            <h2 className="text-3xl font-extrabold uppercase tracking-wider text-slate-800 w-full">
+              <InlineEditText
+                value={config.sections.featuresTitle || ''}
+                isEditor={isEditor}
+                maxLength={60}
+                required={true}
+                fieldName="Tiêu đề Tính năng"
+                onChange={(v) => onInlineChange?.('sections', 'featuresTitle', v)}
+              />
+            </h2>
           </motion.div>
 
           <div className="flex flex-col gap-10">
@@ -523,22 +583,47 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
               >
-                <EditableField section="sections" field="features" index={idx}>
-                  <div className="flex flex-col md:flex-row bg-white border border-slate-200/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 min-h-[280px]">
-                    <div className="w-full md:w-1/2 h-[240px] md:h-auto overflow-hidden relative bg-slate-900">
+                <div className="flex flex-col md:flex-row bg-white border border-slate-200/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 min-h-[280px]">
+                  <div className="w-full md:w-1/2 h-[240px] md:h-auto overflow-hidden relative bg-slate-900">
+                    <EditableField section="sections" field="features" index={idx} className="w-full h-full">
                       <img src={feature.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800'} alt={feature.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                    </EditableField>
+                  </div>
+                  <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
+                    <div className="border-l-4 pl-4 border-[var(--color-primary)]">
+                      <h3 className="text-lg font-extrabold uppercase tracking-wide text-slate-800 flex items-center gap-2 w-full">
+                        <DynamicIcon name={feature.icon} />
+                        <InlineEditText
+                          value={feature.title || ''}
+                          isEditor={isEditor}
+                          maxLength={60}
+                          required={true}
+                          fieldName="Tên tính năng"
+                          onChange={(v) => {
+                            const newFeatures = [...config.sections.features];
+                            newFeatures[idx] = { ...newFeatures[idx], title: v };
+                            onInlineChange?.('sections', 'features', newFeatures, idx);
+                          }}
+                        />
+                      </h3>
                     </div>
-                    <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                      <div className="border-l-4 pl-4 border-[var(--color-primary)]">
-                        <h3 className="text-lg font-extrabold uppercase tracking-wide text-slate-800 flex items-center gap-2">
-                          <DynamicIcon name={feature.icon} />
-                          {feature.title}
-                        </h3>
-                      </div>
-                      <p className="text-slate-500 text-sm mt-4 leading-relaxed font-semibold">{feature.desc}</p>
+                    <div className="text-slate-500 text-sm mt-4 leading-relaxed font-semibold w-full">
+                      <InlineEditText
+                        value={feature.desc || ''}
+                        isEditor={isEditor}
+                        multiline={true}
+                        maxLength={250}
+                        required={true}
+                        fieldName="Mô tả tính năng"
+                        onChange={(v) => {
+                          const newFeatures = [...config.sections.features];
+                          newFeatures[idx] = { ...newFeatures[idx], desc: v };
+                          onInlineChange?.('sections', 'features', newFeatures, idx);
+                        }}
+                      />
                     </div>
                   </div>
-                </EditableField>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -627,21 +712,43 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
       {/* 10. CTA BANNER */}
       <section className="py-20 bg-gradient-to-br from-primary to-primary-hover text-center px-6">
         <div className="max-w-4xl mx-auto">
-          <EditableField section="sections" field="ctaBannerTitle">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-6 uppercase tracking-tight md:whitespace-nowrap">{config.sections.ctaBannerTitle}</h2>
-          </EditableField>
-          <EditableField section="sections" field="ctaBannerText">
-            <p className="text-white/80 font-semibold mb-10">{config.sections.ctaBannerText}</p>
-          </EditableField>
-          <EditableField section="sections" field="ctaBannerBtn">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-6 uppercase tracking-tight md:whitespace-nowrap w-full">
+            <InlineEditText
+              value={config.sections.ctaBannerTitle || ''}
+              isEditor={isEditor}
+              maxLength={100}
+              required={true}
+              fieldName="Tiêu đề Banner CTA"
+              onChange={(v) => onInlineChange?.('sections', 'ctaBannerTitle', v)}
+            />
+          </h2>
+          <p className="text-white/80 font-semibold mb-10 w-full">
+            <InlineEditText
+              value={config.sections.ctaBannerText || ''}
+              isEditor={isEditor}
+              multiline={true}
+              maxLength={200}
+              required={true}
+              fieldName="Mô tả Banner CTA"
+              onChange={(v) => onInlineChange?.('sections', 'ctaBannerText', v)}
+            />
+          </p>
+          <div className="inline-block">
             <Link 
               href="/login" 
               className="cta-button inline-block bg-white text-primary px-10 py-4 rounded-full font-extrabold text-sm uppercase shadow-2xl transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none"
               onClick={isEditor ? (e) => e.preventDefault() : undefined}
             >
-              {config.sections.ctaBannerBtn}
+              <InlineEditText
+                value={config.sections.ctaBannerBtn || ''}
+                isEditor={isEditor}
+                maxLength={30}
+                required={true}
+                fieldName="Nút Banner CTA"
+                onChange={(v) => onInlineChange?.('sections', 'ctaBannerBtn', v)}
+              />
             </Link>
-          </EditableField>
+          </div>
         </div>
       </section>
 

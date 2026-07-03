@@ -180,17 +180,12 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   // Fetch Notifications
   const fetchNotifications = async (silent = false) => {
+    if (!navigator.onLine) return; // skip silently when offline
     if (!silent) setLoading(true);
     try {
-      // Bọc getUser riêng để tránh unhandled TypeError khi server vừa restart
-      let user: any = null;
-      try {
-        const { data } = await supabase.auth.getUser();
-        user = data?.user;
-      } catch {
-        // Network chưa sẵn sàng (e.g. dev server đang khởi động) — bỏ qua silently
-        return;
-      }
+      // getSession() reads from localStorage — no network call, no Failed to fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const [listRes, countRes] = await Promise.all([
@@ -216,7 +211,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
       }
     } catch (err: any) {
       if (err?.message?.includes('Failed to fetch') || err instanceof TypeError) {
-        // Lỗi mạng tạm thời — không log error để tránh spam console
+        console.warn('Network issue fetching notifications in Header (Failed to fetch/offline).');
       } else {
         console.error('Error fetching notifications in Header:', err);
       }
@@ -232,14 +227,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
+      if (!navigator.onLine) return; // skip silently when offline
       try {
-        let user: any = null;
-        try {
-          const { data } = await supabase.auth.getUser();
-          user = data?.user;
-        } catch {
-          return; // Network chưa sẵn sàng
-        }
+        // getSession() reads from localStorage — no network call, no Failed to fetch
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user || !active) return;
 
         realtimeChannel = supabase

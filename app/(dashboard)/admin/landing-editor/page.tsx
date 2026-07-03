@@ -22,6 +22,12 @@ export default function LandingEditor() {
   const [isTranslating, setIsTranslating] = useState(false);
   const viConfigRef = useRef<typeof DEFAULT_CONFIG_VI | null>(null);
 
+  // Undo / Redo and Auto-save status states
+  const [undoStack, setUndoStack] = useState<typeof DEFAULT_CONFIG_VI[]>([]);
+  const [redoStack, setRedoStack] = useState<typeof DEFAULT_CONFIG_VI[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('saved');
+  const [lastSavedTime, setLastSavedTime] = useState<string>('');
+
   useEffect(() => {
     if (isInitialLoading) return;
 
@@ -184,7 +190,17 @@ export default function LandingEditor() {
     fetchDraft();
   }, []);
 
+  const pushToHistory = (oldConfig: typeof DEFAULT_CONFIG_VI) => {
+    setUndoStack(prev => {
+      const nextStack = [...prev, JSON.parse(JSON.stringify(oldConfig))];
+      if (nextStack.length > 10) nextStack.shift();
+      return nextStack;
+    });
+    setRedoStack([]);
+  };
+
   const updateConfig = (section: keyof typeof config, key: string, value: any) => {
+    pushToHistory(config);
     if (section === 'heroSlides') {
       setConfig(prev => ({ ...prev, heroSlides: value }));
       return;
@@ -197,6 +213,82 @@ export default function LandingEditor() {
       }
     }));
   };
+
+  // Global Keyboard listener for Undo/Redo (Ctrl+Z / Ctrl+Y)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isUndo = (isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
+      const isRedo = ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'y') || 
+                     ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey);
+
+      if (isUndo) {
+        e.preventDefault();
+        setUndoStack(prev => {
+          if (prev.length === 0) return prev;
+          const nextStack = [...prev];
+          const previousConfig = nextStack.pop();
+          if (previousConfig) {
+            setRedoStack(redo => [...redo, JSON.parse(JSON.stringify(config))]);
+            setConfig(previousConfig);
+          }
+          return nextStack;
+        });
+      } else if (isRedo) {
+        e.preventDefault();
+        setRedoStack(prev => {
+          if (prev.length === 0) return prev;
+          const nextStack = [...prev];
+          const nextConfig = nextStack.pop();
+          if (nextConfig) {
+            setUndoStack(undo => [...undo, JSON.parse(JSON.stringify(config))]);
+            setConfig(nextConfig);
+          }
+          return nextStack;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [config, undoStack, redoStack]);
+
+  // Debounced Auto-save sync
+  useEffect(() => {
+    if (isInitialLoading) return;
+
+    const isDirty = !isEqualConfig(config, lastSavedConfig.current);
+    
+    if (isEqualConfig(config, DEFAULT_CONFIG_VI)) {
+      setSaveStatus('saved');
+      return;
+    }
+
+    if (!isDirty) {
+      setSaveStatus('saved');
+      return;
+    }
+
+    setSaveStatus('unsaved');
+
+    const debounceTimer = setTimeout(async () => {
+      setSaveStatus('saving');
+      try {
+        const success = await saveDraft(true);
+        if (success) {
+          setSaveStatus('saved');
+          const now = new Date();
+          setLastSavedTime(now.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        } else {
+          setSaveStatus('unsaved');
+        }
+      } catch (err) {
+        setSaveStatus('error');
+      }
+    }, 5000);
+
+    return () => clearTimeout(debounceTimer);
+  }, [config, isInitialLoading, language]);
 
   const updateArrayItem = (section: keyof typeof config, field: string, index: number, itemKey: string, value: any) => {
     const arr = [...(config as any)[section][field]];
@@ -219,6 +311,7 @@ export default function LandingEditor() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const handleResetToDefault = () => {
+    pushToHistory(config);
     setConfig(DEFAULT_CONFIG);
     setConfirmReset(false);
     setPopupInfo({ isOpen: true, message: t.resetSuccess, type: 'success' });
@@ -364,6 +457,25 @@ export default function LandingEditor() {
 
     // 1. HERO SLIDES
     if (section === 'heroSlides') {
+      if (field === 'slideImage' && index !== undefined) {
+        const slide = config.heroSlides[index];
+        return (
+          <div className="flex flex-col gap-4">
+            <div className="bg-primary/5 p-3 rounded-lg border border-primary/20 mb-2">
+              <span className="font-extrabold text-xs text-primary uppercase">Thay thế ảnh nền Banner {index + 1}</span>
+            </div>
+            <ImageUploader 
+              value={slide?.bgImageUrl || ''} 
+              onChange={v => {
+                const newSlides = [...config.heroSlides];
+                newSlides[index].bgImageUrl = v;
+                updateConfig('heroSlides', 'data', newSlides);
+              }} 
+            />
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg">
@@ -761,6 +873,9 @@ export default function LandingEditor() {
                 setEditingField({ section: s, field: f, index: i });
               }
             }}
+            onInlineChange={(s, f, v) => {
+              updateConfig(s as any, f, v);
+            }}
           />
         </div>
       </div>
@@ -790,10 +905,38 @@ export default function LandingEditor() {
             {/* Left group: mode label + nav buttons */}
             <div className="flex items-center gap-1 md:gap-1.5 pl-2 md:pl-3 pr-2">
 
-              {/* EDITOR MODE label */}
+               {/* EDITOR MODE label */}
               <div className="hidden xl:flex items-center gap-1.5 pr-3 border-r border-slate-200 dark:border-zinc-700 shrink-0">
                 <LayoutTemplate className="text-primary" size={15} />
                 <span className="font-bold text-[10px] text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t.mode}</span>
+              </div>
+
+              {/* Auto-save status indicator */}
+              <div className="flex items-center gap-1.5 pr-3 border-r border-slate-200 dark:border-zinc-700 shrink-0 text-[10px] font-bold select-none">
+                {saveStatus === 'saving' && (
+                  <span className="text-amber-500 animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                    Đang lưu...
+                  </span>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                    {lastSavedTime ? `Đã lưu lúc ${lastSavedTime}` : 'Đã lưu'}
+                  </span>
+                )}
+                {saveStatus === 'unsaved' && (
+                  <span className="text-slate-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    Đã sửa
+                  </span>
+                )}
+                {saveStatus === 'error' && (
+                  <span className="text-red-500 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                    Lỗi lưu
+                  </span>
+                )}
               </div>
 
               {/* Brand */}
