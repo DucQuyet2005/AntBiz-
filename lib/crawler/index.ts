@@ -20,12 +20,18 @@ export interface CrawlResult {
  * tự động fallback sang Firecrawl API khi deploy lên Vercel Serverless.
  */
 export async function crawlUrl(url: string): Promise<CrawlResult> {
+  // Nếu là link facebook, tự động chuyển đổi sang mbasic.facebook.com để bypass login popup dễ dàng
+  let targetUrl = url;
+  if (url.includes('facebook.com') && !url.includes('mbasic.facebook.com') && !url.includes('m.facebook.com')) {
+    targetUrl = url.replace('www.facebook.com', 'mbasic.facebook.com');
+  }
+
   // Ưu tiên chạy Playwright trên cả local và deploy. Chỉ dùng Firecrawl khi FORCE_FIRECRAWL === 'true'
   const usePlaywright = process.env.FORCE_FIRECRAWL !== 'true';
 
   if (usePlaywright) {
     try {
-      console.log(`\n📥 [Playwright] Crawling: ${url}`);
+      console.log(`\n📥 [Playwright] Crawling: ${targetUrl}`);
       const { chromium } = await import('playwright');
       const browser = await chromium.launch({ headless: true });
       try {
@@ -57,7 +63,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         });
 
         // Dùng 'domcontentloaded' cực kỳ ổn định, tránh timeout do quảng cáo load vô tận
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
         
         // Chờ skeleton loading (nếu có) biến mất
         try {
@@ -77,8 +83,18 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         const title = await page.title();
         let contentHtml = '';
 
-        // Thử tìm theo độ ưu tiên của các selector
-        for (const selector of ['#html_content', 'article', 'main', "[class*='content']", 'body']) {
+        // Thử tìm theo độ ưu tiên của các selector (có hỗ trợ thêm các selector bài đăng Facebook)
+        const selectors = [
+          'div[data-ad-preview="message"]',
+          'div[dir="auto"]',
+          '#html_content',
+          'article',
+          'main',
+          "[class*='content']",
+          'body'
+        ];
+
+        for (const selector of selectors) {
           const el = await page.$(selector);
           if (el) {
             const html = await el.innerHTML();
@@ -92,13 +108,13 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         const fullPageHtml = await page.content();
 
         if (!contentHtml.trim()) {
-          throw new Error(`Không crawl được nội dung từ: ${url}`);
+          throw new Error(`Không crawl được nội dung từ: ${targetUrl}`);
         }
 
         console.log(`   ✅ [Local Playwright] Crawl thành công — HTML dài ${contentHtml.length} ký tự`);
 
         return {
-          url,
+          url: targetUrl,
           title,
           contentHtml,
           fullPageHtml,
@@ -113,7 +129,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
   }
 
   // Cách dự phòng hoặc chạy trên Vercel: Dùng Firecrawl API
-  console.log(`\n📥 [Firecrawl API] Crawling: ${url}`);
+  console.log(`\n📥 [Firecrawl API] Crawling: ${targetUrl}`);
 
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) {
@@ -128,7 +144,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        url: url,
+        url: targetUrl,
         formats: ['html'], // Request HTML format
         actions: [
           { type: 'scroll', direction: 'down' },
@@ -154,7 +170,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
     console.log(`   ✅ [Firecrawl API] Crawl thành công — HTML dài ${html.length} ký tự`);
 
     return {
-      url,
+      url: targetUrl,
       title,
       contentHtml: html,
       fullPageHtml: html,
@@ -162,7 +178,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
       metadata: result.data.metadata,
     };
   } catch (error: any) {
-    console.error(`[Firecrawl API] Lỗi cào dữ liệu từ ${url}:`, error.message || error);
+    console.error(`[Firecrawl API] Lỗi cào dữ liệu từ ${targetUrl}:`, error.message || error);
     throw error;
   }
 }

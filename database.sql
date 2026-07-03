@@ -1,11 +1,11 @@
 -- ============================================================
--- AUTO-POST PIPELINE — Supabase Migration
--- Chạy trong Supabase Dashboard > SQL Editor
+-- AUTO-POST PIPELINE â€” Supabase Migration
+-- Cháº¡y trong Supabase Dashboard > SQL Editor
 -- ============================================================
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- ENUMS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TYPE user_role               AS ENUM ('admin', 'marketer_full', 'marketer_content');
 CREATE TYPE user_status             AS ENUM ('pending', 'active', 'locked');
@@ -16,11 +16,11 @@ CREATE TYPE post_status             AS ENUM ('pending', 'posted', 'failed', 'can
 CREATE TYPE ab_test_status          AS ENUM ('running', 'completed', 'cancelled');
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 1. USERS
--- NOTE: Supabase có bảng auth.users riêng cho authentication.
---       Bảng này là "profile" mở rộng, liên kết qua id = auth.users.id
--- ────────────────────────────────────────────────────────────
+-- NOTE: Supabase cĂ³ báº£ng auth.users riĂªng cho authentication.
+--       Báº£ng nĂ y lĂ  "profile" má»Ÿ rá»™ng, liĂªn káº¿t qua id = auth.users.id
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.users (
   id              UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -35,7 +35,7 @@ CREATE TABLE public.users (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Tự động tạo profile khi user đăng ký qua Supabase Auth
+-- Tá»± Ä‘á»™ng táº¡o profile khi user Ä‘Äƒng kĂ½ qua Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -50,9 +50,9 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 2. AUDIT LOGS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.audit_logs (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -65,9 +65,9 @@ CREATE TABLE public.audit_logs (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. PROMPTS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.prompts (
   id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,10 +83,10 @@ CREATE TABLE public.prompts (
 );
 
 
--- ────────────────────────────────────────────────────────────
--- 4. ARTICLES (kết quả crawl)
--- images lưu [{url, caption}] — dùng link gốc, không download
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- 4. ARTICLES (káº¿t quáº£ crawl)
+-- images lÆ°u [{url, caption}] â€” dĂ¹ng link gá»‘c, khĂ´ng download
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.articles (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -107,9 +107,9 @@ CREATE TABLE public.articles (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 5. UTM CONFIGS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.utm_configs (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,9 +126,9 @@ CREATE TABLE public.utm_configs (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 6. CAPTIONS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.captions (
   id                    UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -137,20 +137,20 @@ CREATE TABLE public.captions (
   created_by            UUID            NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
   utm_config_id         UUID            REFERENCES public.utm_configs(id) ON DELETE SET NULL,
   platform              platform_type   NOT NULL,
-  ai_content            TEXT            NOT NULL,   -- bản AI gốc, không bao giờ ghi đè
-  edited_content        TEXT,                       -- bản đã sửa
+  ai_content            TEXT            NOT NULL,   -- báº£n AI gá»‘c, khĂ´ng bao giá» ghi Ä‘Ă¨
+  edited_content        TEXT,                       -- báº£n Ä‘Ă£ sá»­a
   status                caption_status  NOT NULL DEFAULT 'draft',
   is_favorite_template  BOOLEAN         NOT NULL DEFAULT FALSE,
-  content_hash          TEXT,                       -- để check duplicate nhanh
+  content_hash          TEXT,                       -- Ä‘á»ƒ check duplicate nhanh
   utm_url               TEXT,
   created_at            TIMESTAMPTZ     NOT NULL DEFAULT now(),
   updated_at            TIMESTAMPTZ     NOT NULL DEFAULT now()
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 7. CAPTION VERSIONS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.caption_versions (
   id              UUID                    PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -163,10 +163,10 @@ CREATE TABLE public.caption_versions (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 8. SCHEDULED POSTS
--- image_urls: link ảnh gốc từ bài báo, FB Graph API nhận url trực tiếp
--- ────────────────────────────────────────────────────────────
+-- image_urls: link áº£nh gá»‘c tá»« bĂ i bĂ¡o, FB Graph API nháº­n url trá»±c tiáº¿p
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.scheduled_posts (
   id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -180,15 +180,15 @@ CREATE TABLE public.scheduled_posts (
   failure_reason  TEXT,
   fb_post_id      TEXT,
   post_result     JSONB,
-  image_urls      TEXT[]          NOT NULL DEFAULT '{}',   -- link ảnh gốc, không upload trước
+  image_urls      TEXT[]          NOT NULL DEFAULT '{}',   -- link áº£nh gá»‘c, khĂ´ng upload trÆ°á»›c
   created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 9. A/B TESTS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.ab_tests (
   id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -221,9 +221,9 @@ CREATE TABLE public.ab_test_variants (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 10. PIPELINE RUNS
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.pipeline_runs (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -239,9 +239,9 @@ CREATE TABLE public.pipeline_runs (
 );
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- INDEXES
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE INDEX ON public.prompts(platform);
 CREATE INDEX ON public.prompts USING GIN(tags);
@@ -268,10 +268,10 @@ CREATE INDEX ON public.pipeline_runs(status);
 CREATE INDEX ON public.pipeline_runs(started_at DESC);
 
 
--- ────────────────────────────────────────────────────────────
--- HELPER: lấy role của user đang đăng nhập
--- Dùng trong RLS policies để check phân quyền
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- HELPER: láº¥y role cá»§a user Ä‘ang Ä‘Äƒng nháº­p
+-- DĂ¹ng trong RLS policies Ä‘á»ƒ check phĂ¢n quyá»n
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS user_role LANGUAGE sql STABLE SECURITY DEFINER AS $$
@@ -287,10 +287,10 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
 $$;
 
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- ROW LEVEL SECURITY (RLS)
--- Supabase bắt buộc cần RLS, không có policy = không ai đọc được
--- ────────────────────────────────────────────────────────────
+-- Supabase báº¯t buá»™c cáº§n RLS, khĂ´ng cĂ³ policy = khĂ´ng ai Ä‘á»c Ä‘Æ°á»£c
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ALTER TABLE public.users           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs      ENABLE ROW LEVEL SECURITY;
@@ -305,7 +305,7 @@ ALTER TABLE public.ab_test_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pipeline_runs   ENABLE ROW LEVEL SECURITY;
 
 
--- USERS: xem profile mình, admin xem tất cả
+-- USERS: xem profile mĂ¬nh, admin xem táº¥t cáº£
 CREATE POLICY "users: view own profile"
   ON public.users FOR SELECT
   USING (id = auth.uid() OR public.is_admin());
@@ -319,13 +319,13 @@ CREATE POLICY "users: insert via trigger only"
   WITH CHECK (id = auth.uid());
 
 
--- AUDIT LOGS: chỉ admin đọc
+-- AUDIT LOGS: chá»‰ admin Ä‘á»c
 CREATE POLICY "audit_logs: admin only"
   ON public.audit_logs FOR ALL
   USING (public.is_admin());
 
 
--- PROMPTS: mọi marketer đọc, tạo/sửa/xóa
+-- PROMPTS: má»i marketer Ä‘á»c, táº¡o/sá»­a/xĂ³a
 CREATE POLICY "prompts: authenticated read"
   ON public.prompts FOR SELECT
   USING ((created_by = auth.uid() OR public.is_admin()) AND is_deleted = FALSE);
@@ -343,7 +343,7 @@ CREATE POLICY "prompts: owner or admin delete"
   USING (created_by = auth.uid() OR public.is_admin());
 
 
--- ARTICLES: mọi người đọc, chỉ pipeline (service role) ghi
+-- ARTICLES: má»i ngÆ°á»i Ä‘á»c, chá»‰ pipeline (service role) ghi
 CREATE POLICY "articles: authenticated read"
   ON public.articles FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -353,7 +353,7 @@ CREATE POLICY "articles: service role write"
   WITH CHECK (auth.role() = 'service_role');
 
 
--- UTM CONFIGS: authenticated đọc/ghi
+-- UTM CONFIGS: authenticated Ä‘á»c/ghi
 CREATE POLICY "utm_configs: authenticated read"
   ON public.utm_configs FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -367,7 +367,7 @@ CREATE POLICY "utm_configs: owner or admin modify"
   USING (created_by = auth.uid() OR public.is_admin());
 
 
--- CAPTIONS: mọi người đọc, owner sửa
+-- CAPTIONS: má»i ngÆ°á»i Ä‘á»c, owner sá»­a
 CREATE POLICY "captions: authenticated read"
   ON public.captions FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -381,7 +381,7 @@ CREATE POLICY "captions: owner or admin update"
   USING (created_by = auth.uid() OR public.is_admin());
 
 
--- CAPTION_VERSIONS: authenticated đọc
+-- CAPTION_VERSIONS: authenticated Ä‘á»c
 CREATE POLICY "caption_versions: authenticated read"
   ON public.caption_versions FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -391,7 +391,7 @@ CREATE POLICY "caption_versions: authenticated insert"
   WITH CHECK (auth.role() = 'authenticated');
 
 
--- SCHEDULED_POSTS: authenticated đọc, owner/admin sửa
+-- SCHEDULED_POSTS: authenticated Ä‘á»c, owner/admin sá»­a
 CREATE POLICY "scheduled_posts: authenticated read"
   ON public.scheduled_posts FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -405,7 +405,7 @@ CREATE POLICY "scheduled_posts: owner or admin update"
   USING (created_by = auth.uid() OR public.is_admin());
 
 
--- AB_TESTS + VARIANTS: authenticated đọc/ghi
+-- AB_TESTS + VARIANTS: authenticated Ä‘á»c/ghi
 CREATE POLICY "ab_tests: authenticated read"
   ON public.ab_tests FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -427,7 +427,7 @@ CREATE POLICY "ab_test_variants: service role update"
   USING (auth.role() = 'service_role');
 
 
--- PIPELINE_RUNS: authenticated đọc, service role ghi (pipeline chạy server-side)
+-- PIPELINE_RUNS: authenticated Ä‘á»c, service role ghi (pipeline cháº¡y server-side)
 CREATE POLICY "pipeline_runs: authenticated read"
   ON public.pipeline_runs FOR SELECT
   USING (auth.role() = 'authenticated');
@@ -441,9 +441,9 @@ CREATE POLICY "users: update own avatars"
   USING (id = auth.uid())
   WITH CHECK (id = auth.uid());
 
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- LANDING PAGE CONFIGURATION & HISTORY (EPIC-07)
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE TABLE public.landing_page_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -487,8 +487,81 @@ CREATE POLICY "Admins have full access to history" ON public.landing_page_histor
         )
     );
 
--- ────────────────────────────────────────────────────────────
--- SEED: tạo admin đầu tiên
--- Cách dùng: Tạo user qua Supabase Auth trước, lấy UUID, rồi chạy lệnh này
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- SEED: táº¡o admin Ä‘áº§u tiĂªn
+-- CĂ¡ch dĂ¹ng: Táº¡o user qua Supabase Auth trÆ°á»›c, láº¥y UUID, rá»“i cháº¡y lá»‡nh nĂ y
 -- UPDATE public.users SET role = 'admin', status = 'active' WHERE email = 'your@email.com';
--- ────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€-- ============================================================
+-- Migration: T?o b?ng platform_presets (L?p 1: Quy chu?n kênh)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.platform_presets (
+  id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  platform    platform_type NOT NULL UNIQUE,
+  rules       TEXT          NOT NULL,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+-- B?t RLS
+ALTER TABLE public.platform_presets ENABLE ROW LEVEL SECURITY;
+
+-- M?i ngư?i dùng đ?u đ?c đư?c (Read-only)
+CREATE POLICY "platform_presets: authenticated read"
+  ON public.platform_presets FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Ch? Service Role (Backend) m?i đư?c ghi/s?a
+CREATE POLICY "platform_presets: service role write"
+  ON public.platform_presets FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Chèn d? li?u m?c đ?nh ban đ?u
+INSERT INTO public.platform_presets (platform, rules) VALUES
+('facebook', 'Bài vi?t cung c?p đ?y đ? thông tin, có l?i d?n d?t, chia đo?n r? ràng đ? d? đ?c. K?t thúc b?ng l?i kêu g?i hành đ?ng (Call to Action) và 3-5 hashtag.'),
+('instagram', 'Bài vi?t ng?n g?n, t?p trung ch? y?u vào h?nh ?nh. Dùng nhi?u emoji bi?u c?m. Cu?i bài ph?i có 5-10 hashtag liên quan đ?n ch? đ?.'),
+('thread', 'N?i dung c?c k? ng?n g?n (gi?i h?n dư?i 280 k? t?), đi th?ng vào v?n đ? chính. Hành văn mang tính tr? chuy?n, tranh lu?n m?. H?n ch? dùng quá nhi?u hashtag.')
+ON CONFLICT (platform) DO UPDATE SET rules = EXCLUDED.rules;
+
+-- ============================================================
+-- Migration: Nang cap platform_presets thanh thu vien da quy chuan
+-- ============================================================
+
+-- 1. Xoa rang buoc UNIQUE cu tren cot platform (chi xoa rang buoc, khong xoa cot/du lieu)
+ALTER TABLE public.platform_presets DROP CONSTRAINT IF EXISTS platform_presets_platform_key;
+
+-- 2. Them cac cot moi voi gia tri mac dinh an toan
+ALTER TABLE public.platform_presets 
+ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT 'Máº·c Ä‘á»‹nh',
+ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 3. Dat cac quy chuan co san lam mac dinh cua he thong
+UPDATE public.platform_presets 
+SET is_default = TRUE 
+WHERE user_id IS NULL AND is_default = FALSE;
+
+-- 4. Tao index UNIQUE cho quy chuan nguoi dung theo ten
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_platform_preset_name 
+ON public.platform_presets (user_id, platform, name);
+
+-- 5. Tao index UNIQUE cho quy chuan he thong theo ten
+CREATE UNIQUE INDEX IF NOT EXISTS unique_system_platform_preset_name 
+ON public.platform_presets (platform, name) 
+WHERE user_id IS NULL;
+
+-- 6. Tao index UNIQUE de gioi han moi user/he thong chi co 1 ban ghi mac dinh tren moi platform
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_platform_preset 
+ON public.platform_presets (user_id, platform) 
+WHERE (is_default = TRUE AND user_id IS NOT NULL);
+
+CREATE UNIQUE INDEX IF NOT EXISTS unique_system_default_platform_preset 
+ON public.platform_presets (platform) 
+WHERE (is_default = TRUE AND user_id IS NULL);
+
+-- 7. Cap nhat Policy bao mat: Cho phep nguoi dung dang nhap quan ly quy chuan rieng cua ho
+DROP POLICY IF EXISTS "platform_presets: authenticated modify own" ON public.platform_presets;
+CREATE POLICY "platform_presets: authenticated modify own"
+  ON public.platform_presets FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);

@@ -130,7 +130,106 @@ function parsePublishedAt(rawStr: string): string {
   return clean;
 }
 
+function seenBoilerplate(txt: string): boolean {
+  const boilerplate = [
+    'đăng nhập', 'tạo tài khoản', 'quên mật khẩu', 'xem thêm',
+    'bình luận', 'chia sẻ', 'thích', 'gửi tin nhắn', 'theo dõi',
+    'trang chủ', 'tìm kiếm', 'phù hợp nhất', 'tất cả bình luận',
+    'thêm bình luận', 'đăng ký', 'chính sách', 'điều khoản',
+    'create account', 'log in', 'forgotten password', 'sign up'
+  ];
+  return boilerplate.some(b => txt.toLowerCase().includes(b));
+}
+
+function preprocessFacebook(raw: CrawlResult): ArticleData {
+  console.log('\n🔧 [Preprocess Facebook] Đang tiền xử lý bài viết Facebook...');
+
+  const html = raw.fullPageHtml || raw.contentHtml;
+  const $ = cheerio.load(html);
+
+  // 1. Trích xuất nội dung chữ (Status Text) của bài đăng Facebook
+  let statusText = '';
+
+  // Thử các selector phổ biến của Facebook cho nội dung bài viết
+  const fbContentSelectors = [
+    'div[data-ad-preview="message"]',
+    'div[dir="auto"]',
+    '.story_body_container',
+    '._5rgt', // Facebook mobile
+    '._5pat', // Facebook mobile post wrapper
+    'div[role="article"]',
+    'article',
+    '.msg'
+  ];
+
+  for (const selector of fbContentSelectors) {
+    const el = $(selector);
+    if (el.length) {
+      const texts: string[] = [];
+      el.each((_, item) => {
+        const txt = cleanText($(item).text());
+        if (txt && txt.length > 10 && !seenBoilerplate(txt)) {
+          texts.push(txt);
+        }
+      });
+      if (texts.length) {
+        statusText = texts.join('\n');
+        break;
+      }
+    }
+  }
+
+  // Fallback: Lấy toàn bộ text trong p/span/div có độ dài hợp lý
+  if (!statusText) {
+    const lines: string[] = [];
+    $('body p, body div, body span').each((_, el) => {
+      const txt = cleanText($(el).text());
+      if (txt && txt.length > 30 && !seenBoilerplate(txt) && !lines.includes(txt)) {
+        lines.push(txt);
+      }
+    });
+    statusText = lines.slice(0, 5).join('\n');
+  }
+
+  // 2. Trích xuất ảnh đính kèm (CDN fbcdn.net hoặc scontent)
+  const images: ImageBlock[] = [];
+  $('img').each((_, el) => {
+    const src = $(el).attr('src') || '';
+    if (src && (src.includes('fbcdn') || src.includes('scontent')) && !src.includes('/rsrc.php') && !src.includes('emoji')) {
+      const alt = cleanCaption($(el).attr('alt') || $(el).attr('title'));
+      if (!images.some(img => img.url === src)) {
+        images.push({ url: src, caption: alt || 'Ảnh bài viết Facebook' });
+      }
+    }
+  });
+
+  // 3. Xử lý Title và Description
+  const title = raw.title?.replace(/ \| Facebook/i, '').replace(/ - Góc Nhìn Mới.*/i, '').trim() || 
+                (statusText ? statusText.slice(0, 60) + '...' : 'Bài viết Facebook');
+
+  const description = statusText || title;
+
+  return {
+    url: raw.url,
+    title,
+    category: '#Facebook',
+    description,
+    author: 'Facebook Creator',
+    published_at: formatDateVN(new Date()),
+    views: '',
+    tags: [],
+    images,
+    body: statusText ? [{ type: 'paragraph', text: statusText }] : [],
+    full_text: statusText || description,
+  };
+}
+
 export function preprocessArticle(raw: CrawlResult): ArticleData {
+  const url = raw.url || '';
+  if (url.includes('facebook.com') || url.includes('fbcdn') || url.includes('fb.com') || url.includes('fb.watch')) {
+    return preprocessFacebook(raw);
+  }
+
   console.log('\n🔧 [Preprocess] Đang tiền xử lý dữ liệu...');
 
   const fullHtml = raw.fullPageHtml || raw.contentHtml;
@@ -400,7 +499,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         return;
       }
 
-      if (tagName === 'img') {
+      // Avoid matching tags section or tag links
+      const className = cheerioEl.attr('class') || '';
+      const id = cheerioEl.attr('id') || '';
+      const tagRegex = /(^|[-_])tags?([-_]|$)/i;
+      if (
+        tagRegex.test(className) || 
+        tagRegex.test(id) || 
+        cheerioEl.parents('[class*="tag"], [id*="tag"]').length > 0 ||
+        cheerioEl.find('a[href*="/tag/"]').length > 0 ||
+        (tagName === 'a' && (cheerioEl.attr('href')?.includes('/tag/') || cheerioEl.attr('href')?.includes('/hashtag/')))
+      ) {
+        return;
+      }
+
+            if (tagName === 'img') {
         const src = cheerioEl.attr('src') || '';
         if (
           !src ||
