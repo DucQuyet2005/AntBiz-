@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { publishToFacebookPage } from '../facebook';
 import { postThread } from '../threads';
-import { publishToInstagram } from '../instagram';
+import { publishToInstagram, publishMedia } from '../instagram';
 import { logAndNotifyPublishResult } from '../email';
 import { createNotification } from '../services/notificationService';
 
@@ -85,12 +85,39 @@ export async function runSchedulerCycle() {
     }
 
     // 2. Gọi API đăng lên nền tảng tương ứng
-    let publishResult: { success: boolean; postId?: string; error?: string };
+    let publishResult: { success: boolean; postId?: string; error?: string } = { success: false, error: 'Không xác định' };
 
     if (dbPlatform === 'thread') {
-      publishResult = await postThread(message, activeToken);
+      let attempts = 0;
+      let success = false;
+      while (attempts < 3 && !success) {
+        attempts++;
+        publishResult = await postThread(message, activeToken);
+        if (publishResult.success) {
+          success = true;
+        } else {
+          console.warn(`[Scheduler] Đăng bài lên Threads thử lần ${attempts} thất bại: ${publishResult.error}`);
+          if (attempts < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      }
     } else if (dbPlatform === 'instagram') {
-      publishResult = await publishToInstagram(message, post.image_urls || [], activeAccountId, activeToken);
+      let attempts = 0;
+      let success = false;
+      const mediaUrl = post.image_urls?.[0] || '';
+      while (attempts < 3 && !success) {
+        attempts++;
+        publishResult = await publishMedia(activeToken || '', mediaUrl, message);
+        if (publishResult.success) {
+          success = true;
+        } else {
+          console.warn(`[Scheduler] Đăng bài lên Instagram thử lần ${attempts} thất bại: ${publishResult.error}`);
+          if (attempts < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      }
     } else {
       publishResult = await publishToFacebookPage(message, post.image_urls || [], activeAccountId, activeToken);
     }
@@ -98,11 +125,17 @@ export async function runSchedulerCycle() {
     if (publishResult.success && publishResult.postId) {
       console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài viết ${platform}: ${publishResult.postId}`);
 
-      // Cập nhật thêm thông tin fb_post_id và post_result cho post đã được đánh dấu là 'posted' trước đó
+      // Cập nhật thêm thông tin và post_result cho post đã được đánh dấu là 'posted' trước đó
+      const isThreads = dbPlatform === 'thread';
+      const isInstagram = dbPlatform === 'instagram';
       await supabase
         .from('scheduled_posts')
         .update({
-          fb_post_id: publishResult.postId,
+          ...(isThreads
+            ? { threads_post_id: publishResult.postId }
+            : isInstagram
+            ? { instagram_media_id: publishResult.postId }
+            : { fb_post_id: publishResult.postId }),
           post_result: publishResult,
           updated_at: new Date().toISOString(),
         })

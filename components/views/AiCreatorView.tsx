@@ -943,7 +943,116 @@ export default function AiCreatorView() {
     }
   };
 
-  // Update prompt when platform changes
+  };
+
+  const handleRegenerateVariantWithPrompt = async (variantId: string, promptObj: any) => {
+    const variantIndex = variantId === 'A' ? 0 : 1;
+    const oldCaptionId = variants.find(v => v.id === variantId)?.captionId;
+    setRegeneratingVariantId(variantId);
+
+    const buildVariantPrompt = (index: number, basePrompt: string): string => {
+      if (index === 0) return basePrompt;
+      if (index === 1) {
+        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
+      }
+      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, facts-driven, không emoji, phong cách báo chí chuyên nghiệp.`;
+    };
+
+    const groupId = variantGroupId || crypto.randomUUID();
+    if (!variantGroupId) setVariantGroupId(groupId);
+
+    const customPromptText = buildVariantPrompt(variantIndex, promptObj.content);
+
+    try {
+      const res = await fetch('/api/captions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url.trim() || undefined,
+          articleId: articleId || undefined,
+          customPrompt: customPromptText,
+          platform: selectedPlatform,
+          variantGroupId: groupId,
+          variantIndex,
+          oldCaptionId,
+          model: selectedModel,
+          promptId: promptObj.id,
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              accumulated += parsed.text;
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
+                )
+              );
+            }
+            if (parsed.done && parsed.captionId) {
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, captionId: parsed.captionId } : v
+                )
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      setVariants((prev) =>
+        prev.map((v) => {
+          if (v.id === variantId) {
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
+            return {
+              ...v,
+              [originalField]: accumulated,
+            };
+          }
+          return v;
+        })
+      );
+    } catch (err) {
+      console.error('Error regenerating variant:', err);
+    } finally {
+      setRegeneratingVariantId(null);
+    }
+  };
+
+  // Đồng bộ hóa prompt mặc định khi thay đổi platform
+  useEffect(() => {
+    const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+    const defaultPrompt = promptsList.find(p => p.platform === targetPlat && p.is_default);
+    if (defaultPrompt) {
+      setSelectedPromptId(defaultPrompt.id);
+      setSelectedPrompt(defaultPrompt);
+    } else {
+      setSelectedPromptId('');
+      setSelectedPrompt(null);
+    }
+  }, [selectedPlatform, promptsList]);
+
+  // Update prompt khi platform của prompt thay đổi
   useEffect(() => {
     if (postData.title && postData.description && !isGenerating && !isGeneratingSmartPrompt) {
       const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.description);
@@ -3305,6 +3414,42 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
               </div>
 
+              {/* Prompt Selector for Active Platform */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-primary" />
+                  <span className="text-xs font-bold text-text-muted uppercase">
+                    {language === 'vi' ? 'Chọn Prompt viết bài' : 'Select Prompt'}
+                  </span>
+                </div>
+                <select
+                  value={selectedPromptId}
+                  onChange={async (e) => {
+                    const nextPromptId = e.target.value;
+                    setSelectedPromptId(nextPromptId);
+                    const foundPrompt = promptsList.find(p => p.id === nextPromptId);
+                    if (foundPrompt) {
+                      setSelectedPrompt(foundPrompt);
+                      // Trigger regeneration of both variant A and B for this platform
+                      handleRegenerateVariantWithPrompt('A', foundPrompt);
+                      handleRegenerateVariantWithPrompt('B', foundPrompt);
+                    }
+                  }}
+                  className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold max-w-xs w-full"
+                >
+                  <option value="">{language === 'vi' ? '── Chọn prompt mẫu ──' : '── Select a prompt ──'}</option>
+                  {promptsList
+                    .filter(p => {
+                      const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+                      return p.platform === targetPlat;
+                    })
+                    .map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+
               {/* Displaying Variants in 2-Columns grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 <AnimatePresence mode="popLayout">
@@ -4398,14 +4543,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                        <span className="px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold">Threads</span>
                         <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
                       </div>
                     )}
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                        <span className="px-2 py-0.5 rounded bg-pink-600 text-white text-[10px] font-bold">Instagram</span>
                         <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
                       </div>
                     )}

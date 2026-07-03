@@ -322,6 +322,52 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     expect(res.status).toBe(404);
   });
 
+  it('POST returns 400 if Threads caption exceeds 280 characters', async () => {
+    const state = hoisted.getState();
+    state.mockCaptionsDb = [{ id: 'c_threads_long', platform: 'threads', ai_content: 'a'.repeat(281) }];
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+    const req = new NextRequest('http://localhost/api/scheduled-posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        captionId: 'c_threads_long',
+        scheduledAt: futureDate,
+      }),
+    });
+    const res = await createScheduledPost(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('vượt quá 280 ký tự');
+  });
+
+  it('POST returns 400 if Instagram caption lacks valid mediaUrl', async () => {
+    const state = hoisted.getState();
+    state.mockCaptionsDb = [{ id: 'c_ig', platform: 'instagram', ai_content: 'Instagram photo!' }];
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+    
+    const reqEmpty = new NextRequest('http://localhost/api/scheduled-posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        captionId: 'c_ig',
+        scheduledAt: futureDate,
+      }),
+    });
+    const resEmpty = await createScheduledPost(reqEmpty);
+    expect(resEmpty.status).toBe(400);
+    const jsonEmpty = await resEmpty.json();
+    expect(jsonEmpty.error).toContain('yêu cầu một đường dẫn hình ảnh');
+
+    const reqInvalid = new NextRequest('http://localhost/api/scheduled-posts', {
+      method: 'POST',
+      body: JSON.stringify({
+        captionId: 'c_ig',
+        scheduledAt: futureDate,
+        mediaUrl: 'ftp://example.com/pic.jpg',
+      }),
+    });
+    const resInvalid = await createScheduledPost(reqInvalid);
+    expect(resInvalid.status).toBe(400);
+  });
+
   it('POST /cancel cancels a pending scheduled post', async () => {
     const state = hoisted.getState();
     state.mockScheduledPostsDb = [{ id: 'sp1', caption_id: 'c1', platform: 'facebook', status: 'pending', created_by: 'u1' }];

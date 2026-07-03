@@ -761,7 +761,7 @@ export default function ContentCalendarView() {
                 role="switch"
                 aria-checked={selectedPlatforms.includes('threads')}
                 className={`platform-filter-btn flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${selectedPlatforms.includes('threads')
-                    ? 'border-blue-200 dark:border-blue-500 bg-blue-50/30 dark:bg-blue-950/40'
+                    ? 'border-black dark:border-white bg-black/[0.04] dark:bg-white/[0.04]'
                     : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-700/80'
                   }`}
               >
@@ -1499,11 +1499,11 @@ export default function ContentCalendarView() {
                     } else if (platform === 'threads' || platform === 'thread') {
                       platIcon = <ThreadsIcon size={11} className="text-black dark:text-white" />;
                       platLabel = 'Threads';
-                      platBg = 'bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 border border-slate-200/65 dark:border-slate-800';
+                      platBg = 'bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white';
                     } else if (platform === 'instagram') {
                       platIcon = <Instagram size={11} className="text-pink-650 dark:text-pink-400" />;
                       platLabel = 'Instagram';
-                      platBg = 'bg-pink-50 dark:bg-pink-950/40 text-pink-650 dark:text-pink-400 border border-pink-100/60 dark:border-pink-900/30';
+                      platBg = 'bg-pink-600 text-white dark:bg-pink-700 dark:text-white border border-pink-600 dark:border-pink-700';
                     } else if (platform === 'blog') {
                       platIcon = <Globe size={11} className="text-emerald-700 dark:text-emerald-400" />;
                       platLabel = 'Blog';

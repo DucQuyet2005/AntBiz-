@@ -82,3 +82,14 @@ export async function publishToInstagram(
     };
   }
 }
+
+/**
+ * Đóng gói cuộc gọi đăng bài lên Instagram qua Graph API.
+ */
+export async function publishMedia(
+  accessToken: string,
+  mediaUrl: string,
+  caption: string
+): Promise<InstagramPublishResult> {
+  return publishToInstagram(caption, mediaUrl ? [mediaUrl] : [], undefined, accessToken);
+}

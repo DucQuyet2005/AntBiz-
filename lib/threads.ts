@@ -129,3 +129,52 @@ export async function postThread(content: string, customToken?: string): Promise
     };
   }
 }
+
+/**
+ * Xóa bài đăng trên Threads bằng media ID.
+ */
+export async function deleteThread(postId: string, token: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`https://graph.threads.net/v1.0/${postId}?access_token=${token}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.error?.message || 'Lỗi khi xóa bài viết Threads',
+      };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Lỗi kết nối khi xóa bài viết Threads',
+    };
+  }
+}
+
+/**
+ * Lấy trạng thái của bài đăng Threads.
+ */
+export async function getStatus(postId: string, token: string): Promise<{ success: boolean; status?: string; error?: string }> {
+  try {
+    const res = await fetch(`https://graph.threads.net/v1.0/${postId}?fields=status,permalink&access_token=${token}`);
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.error?.message || 'Lỗi lấy trạng thái bài viết Threads',
+      };
+    }
+    return {
+      success: true,
+      status: data.status,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Lỗi kết nối khi lấy trạng thái Threads',
+    };
+  }
+}
