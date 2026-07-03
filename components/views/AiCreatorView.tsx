@@ -569,8 +569,6 @@ export const EditableText = ({
                   </div>
                 </div>
               </div>
-                </div>
-              </div>
             )}
           </div>
         ) : (
@@ -947,13 +945,6 @@ export default function AiCreatorView() {
   );
 
   const [customPromptTitle, setCustomPromptTitle] = useState('');
-  const [promptConfigStep, setPromptConfigStep] = useState<1 | 2>(1);
-
-  useEffect(() => {
-    if (isAiPromptDialogOpen) {
-      setPromptConfigStep(1);
-    }
-  }, [isAiPromptDialogOpen]);
 
   const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
 
