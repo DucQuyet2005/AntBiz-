@@ -468,6 +468,26 @@ export default function AiCreatorView() {
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
+  const [url, setUrl] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
+
+  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
+  interface Prompt { id: string; name: string; platform: string; content: string; }
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
+  const [captionId, setCaptionId] = useState<string>('');
+  const [streamedCaption, setStreamedCaption] = useState('');
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateDone, setGenerateDone] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Prompt Selector Library States
+  const [promptsList, setPromptsList] = useState<any[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
   // Onboarding Tour state for AI Creator
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -943,8 +963,6 @@ export default function AiCreatorView() {
     }
   };
 
-  };
-
   const handleRegenerateVariantWithPrompt = async (variantId: string, promptObj: any) => {
     const variantIndex = variantId === 'A' ? 0 : 1;
     const oldCaptionId = variants.find(v => v.id === variantId)?.captionId;
@@ -1060,9 +1078,7 @@ export default function AiCreatorView() {
     }
   }, [promptPlatform]);
 
-  // Prompt Selector Library States
-  const [promptsList, setPromptsList] = useState<any[]>([]);
-  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
 
   // AI Logic Functions
   const handleGenerateSmartPrompt = async () => {
@@ -1645,21 +1661,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  const [url, setUrl] = useState('');
-  const [isFetching, setIsFetching] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
 
-  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
-  interface Prompt { id: string; name: string; platform: string; content: string; }
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [promptsLoading, setPromptsLoading] = useState(false);
-  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
-  const [captionId, setCaptionId] = useState<string>('');
-  const [streamedCaption, setStreamedCaption] = useState('');
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateDone, setGenerateDone] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch prompts on mount
   useEffect(() => {
