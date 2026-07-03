@@ -4,7 +4,14 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
 ---
+## [Unreleased] - 2026-07-03
+
+### Fixed
+- **Sửa lỗi hiển thị Bản xem trước bài viết gốc (Original Article Preview)**:
+  - Chỉ hiển thị phần xem trước bài viết gốc cào về khi đang chọn tab "Cào dữ liệu tự động" (`inputMode === 'crawl'`), ẩn đi khi chọn tab "Tự viết tay & Giọng nói".
+
 ## [1.6.0] - 2026-06-26
 
 ### Added
