@@ -208,7 +208,7 @@ const EditableText = ({
   const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
   const captionLimits = {
     facebook: 63206,
-    threads: 280,
+    threads: 500,
     instagram: 2200
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
@@ -224,7 +224,7 @@ const EditableText = ({
   }, [isEditing, value, textarea]);
 
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const shouldFold = textarea && value && value.length > 280;
+  const shouldFold = textarea && value && value.length > 500;
 
   React.useEffect(() => {
     setIsExpanded(false);
@@ -360,7 +360,7 @@ const EditableText = ({
             return shouldFold ? (
               !isExpanded ? (
                 <>
-                  {renderTextContent(value.substring(0, 280))}...
+                  {renderTextContent(value.substring(0, 500))}...
                   <button
                     type="button"
                     onClick={(e) => {

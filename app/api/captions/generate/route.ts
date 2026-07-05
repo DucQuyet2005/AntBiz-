@@ -415,7 +415,7 @@ CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ
                 controller.enqueue(
                   new TextEncoder().encode(
                     `data: ${JSON.stringify({
-                      error: `Độ dài nội dung Threads (${validation.length} ký tự) vượt quá giới hạn 280 ký tự.`,
+                      error: `Độ dài nội dung Threads (${validation.length} ký tự) vượt quá giới hạn 500 ký tự.`,
                       done: true,
                     })}\n\n`
                   )

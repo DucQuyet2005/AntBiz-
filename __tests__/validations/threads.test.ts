@@ -2,18 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { validateThreadsLength } from '@/lib/validations/threads';
 
 describe('Threads Validation - validateThreadsLength', () => {
-  it('should pass for content under 280 characters', () => {
+  it('should pass for content under 500 characters', () => {
     const content = 'Chào mọi người, đây là một bài đăng Threads ngắn và thú vị. Bạn đã thử chưa?';
     const result = validateThreadsLength(content);
     expect(result.isValid).toBe(true);
     expect(result.length).toBe(content.length);
   });
 
-  it('should fail for content over 280 characters', () => {
-    const longContent = 'a'.repeat(281);
+  it('should fail for content over 500 characters', () => {
+    const longContent = 'a'.repeat(501);
     const result = validateThreadsLength(longContent);
     expect(result.isValid).toBe(false);
-    expect(result.length).toBe(281);
+    expect(result.length).toBe(501);
   });
 
   it('should detect question mark at the end', () => {

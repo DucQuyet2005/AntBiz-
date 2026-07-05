@@ -322,9 +322,9 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     expect(res.status).toBe(404);
   });
 
-  it('POST returns 400 if Threads caption exceeds 280 characters', async () => {
+  it('POST returns 400 if Threads caption exceeds 500 characters', async () => {
     const state = hoisted.getState();
-    state.mockCaptionsDb = [{ id: 'c_threads_long', platform: 'threads', ai_content: 'a'.repeat(281) }];
+    state.mockCaptionsDb = [{ id: 'c_threads_long', platform: 'threads', ai_content: 'a'.repeat(501) }];
     const futureDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
     const req = new NextRequest('http://localhost/api/scheduled-posts', {
       method: 'POST',
@@ -336,7 +336,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
     const res = await createScheduledPost(req);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain('vượt quá 280 ký tự');
+    expect(json.error).toContain('vượt quá 500 ký tự');
   });
 
   it('POST returns 400 if Instagram caption lacks valid mediaUrl', async () => {

@@ -13,9 +13,9 @@ interface CaptionEditorProps {
 
 export const PLATFORM_MAX_LENGTH = {
   facebook: 63206,
-  threads: 280,
+  threads: 500,
   linkedin: 1300,
-  thread: 280,
+  thread: 500,
   instagram: 2200,
 };
 

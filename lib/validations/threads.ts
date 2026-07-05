@@ -11,8 +11,8 @@ export function validateThreadsLength(content: string): ThreadsValidationResult 
   const trimmed = content.trim();
   const length = trimmed.length;
   
-  // Kiểm tra độ dài phải dưới 280 ký tự
-  const isValid = length < 280;
+  // Kiểm tra độ dài phải dưới 500 ký tự
+  const isValid = length <= 500;
 
   // Phát hiện câu hỏi thảo luận cuối bài:
   // Tìm dấu chấm hỏi ? hoặc ？ mà sau đó không chứa bất kỳ dấu kết thúc câu nào (. ! ? hoặc phiên bản fullwidth)

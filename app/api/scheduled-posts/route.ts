@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Không tìm thấy caption tương ứng' }, { status: 404 });
   }
 
-  // Validate Threads content length (<280)
+  // Validate Threads content length (<=500)
   const message = caption.edited_content || caption.ai_content || '';
-  if ((caption.platform === 'thread' || caption.platform === 'threads') && message.length > 280) {
-    return NextResponse.json({ error: 'Nội dung bài đăng Threads không được vượt quá 280 ký tự' }, { status: 400 });
+  if ((caption.platform === 'thread' || caption.platform === 'threads') && message.length > 500) {
+    return NextResponse.json({ error: 'Nội dung bài đăng Threads không được vượt quá 500 ký tự' }, { status: 400 });
   }
 
   // Validate Instagram mediaUrl (must be a valid http/https URL)

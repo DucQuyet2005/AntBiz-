@@ -121,7 +121,7 @@ describe('Threads Integration - Generate API', () => {
     expect(mockCaptionsDb[0].status).toBe('draft');
   });
 
-  it('should return error if generated Threads content exceeds 280 characters', async () => {
+  it('should return error if generated Threads content exceeds 500 characters', async () => {
     const mockStream = new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -133,7 +133,7 @@ describe('Threads Integration - Generate API', () => {
                     content: {
                       parts: [
                         {
-                          text: 'a'.repeat(300),
+                          text: 'a'.repeat(550),
                         },
                       ],
                     },
@@ -173,6 +173,6 @@ describe('Threads Integration - Generate API', () => {
       result += decoder.decode(value);
     }
 
-    expect(result).toContain('vượt quá giới hạn 280 ký tự');
+    expect(result).toContain('vượt quá giới hạn 500 ký tự');
   });
 });
