@@ -402,7 +402,9 @@ export default function ContentCalendarView() {
   }, []);
 
   const filteredPosts = posts.filter(post => {
-    const platformMatch = selectedPlatforms.includes(post.platform?.toLowerCase() || 'blog');
+    const rawPlat = post.platform?.toLowerCase();
+    const platKey = rawPlat === 'thread' ? 'threads' : (rawPlat || 'blog');
+    const platformMatch = selectedPlatforms.includes(platKey);
     if (!platformMatch) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
