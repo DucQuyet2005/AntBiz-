@@ -19,7 +19,7 @@ export async function runSchedulerCycle() {
   // 1. Lấy toàn bộ các bài đăng có trạng thái 'pending' mà thời gian scheduled_at <= hiện tại
   const { data: pendingPosts, error } = await supabase
     .from('scheduled_posts')
-    .select('*, captions(id, ai_content, edited_content, articles(id, title)), users(id, email)')
+    .select('*, captions(id, platform, ai_content, edited_content, articles(id, title)), users(id, email)')
     .eq('status', 'pending')
     .lte('scheduled_at', new Date().toISOString());
 
@@ -64,7 +64,7 @@ export async function runSchedulerCycle() {
 
     console.log(`[Scheduler] Bắt đầu đăng bài ID ${post.id}: "${postTitle}"`);
 
-    const platform = caption?.platform || 'facebook';
+    const platform = post.platform || caption?.platform || 'facebook';
     const dbPlatform = platform === 'threads' ? 'thread' : platform;
 
     let activeToken: string | undefined = undefined;
