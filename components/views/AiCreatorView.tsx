@@ -4780,6 +4780,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           type="button"
                           onClick={() => {
                             setSelectedPrompt(p);
+                            const plat = p.platform === 'thread' || p.platform === 'threads' ? 'threads' : p.platform;
+                            setSelectedPlatform(plat);
                             setIsPromptModalOpen(false);
                           }}
                           className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
@@ -4958,6 +4960,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                   setActivePrompt(p.content);
                                   setSelectedPrompt(p);
                                   setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
+                                  const plat = p.platform === 'thread' || p.platform === 'threads' ? 'threads' : p.platform;
+                                  setSelectedPlatform(plat);
                                 }}
                                 className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSel
                                   ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm'
@@ -4991,6 +4995,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
                           setIsAiPromptDialogOpen(false);
                         }}
                         disabled={!activePrompt}
@@ -5007,6 +5013,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
                           setIsAiPromptDialogOpen(false);
                         }}
                         disabled={!activePrompt || isSavingPrompt}
