@@ -92,7 +92,7 @@ export async function runSchedulerCycle() {
       let success = false;
       while (attempts < 3 && !success) {
         attempts++;
-        publishResult = await postThread(message, activeToken);
+        publishResult = await postThread(message, post.image_urls || [], activeToken);
         if (publishResult.success) {
           success = true;
         } else {
