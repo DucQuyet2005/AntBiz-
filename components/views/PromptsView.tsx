@@ -525,7 +525,7 @@ export default function PromptsView() {
             className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl flex items-center gap-1.5 font-bold text-xs transition-all shadow-md shadow-primary/15 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none active:scale-[0.98] cursor-pointer"
           >
             <Plus size={14} />
-            {language === 'vi' ? 'Tạo cấu hình mới' : 'Create new config'}
+            {language === 'vi' ? 'Tạo văn phong mới' : 'Create new style'}
           </button>
         )}
       </div>
@@ -546,7 +546,7 @@ export default function PromptsView() {
           className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeTab === 'configs' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
             }`}
         >
-          {language === 'vi' ? 'Cấu hình tham số AI' : 'AI Parameters'}
+          {language === 'vi' ? 'Văn phong thương hiệu' : 'Brand Styles'}
         </button>
       </div>
 
@@ -862,10 +862,10 @@ export default function PromptsView() {
           ) : configs.length === 0 ? (
             <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
               <p className="font-bold text-xs text-text">
-                {language === 'vi' ? 'Chưa có cấu hình tham số nào được lưu' : 'No configurations saved yet'}
+                {language === 'vi' ? 'Chưa có văn phong thương hiệu nào được lưu' : 'No brand styles saved yet'}
               </p>
               <p className="text-text-muted text-xs font-semibold">
-                {language === 'vi' ? 'Hãy lưu cấu hình khi tạo bài viết ở AI Creator.' : 'Save configs in the AI Creator view.'}
+                {language === 'vi' ? 'Hãy lưu văn phong thương hiệu khi tạo bài viết ở AI Creator.' : 'Save brand styles in the AI Creator view.'}
               </p>
             </div>
           ) : (
@@ -920,7 +920,7 @@ export default function PromptsView() {
                         type="button"
                         onClick={() => openEditConfigModal(config)}
                         className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-none bg-transparent"
-                        title={language === 'vi' ? 'Sửa cấu hình' : 'Edit config'}
+                        title={language === 'vi' ? 'Sửa văn phong' : 'Edit style'}
                       >
                         <Pencil size={12} />
                       </button>
@@ -928,7 +928,7 @@ export default function PromptsView() {
                         type="button"
                         onClick={() => handleDeleteConfig(config.id)}
                         className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer border-none bg-transparent"
-                        title={language === 'vi' ? 'Xóa cấu hình' : 'Delete config'}
+                        title={language === 'vi' ? 'Xóa văn phong' : 'Delete style'}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -951,8 +951,8 @@ export default function PromptsView() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-text">
                 {configModal.mode === 'create'
-                  ? (language === 'vi' ? 'Tạo cấu hình tham số AI mới' : 'Create New AI Parameters Config')
-                  : (language === 'vi' ? 'Chỉnh sửa cấu hình tham số AI' : 'Edit AI Parameters Config')
+                  ? (language === 'vi' ? 'Tạo văn phong thương hiệu mới' : 'Create New Brand Style')
+                  : (language === 'vi' ? 'Chỉnh sửa văn phong thương hiệu' : 'Edit Brand Style')
                 }
               </h2>
               <button
@@ -966,7 +966,7 @@ export default function PromptsView() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
-                {language === 'vi' ? 'Tên cấu hình' : 'Configuration name'}
+                {language === 'vi' ? 'Tên văn phong thương hiệu' : 'Brand Style Name'}
               </label>
               <input
                 type="text"
