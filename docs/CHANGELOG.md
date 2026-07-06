@@ -5,6 +5,17 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.5] - 2026-07-06
+
+### Changed
+- **Nâng cấp Văn phong thương hiệu & Loại bỏ Hồ sơ tác giả**:
+  - Gỡ bỏ hoàn toàn tính năng "Hồ sơ tác giả" (Author Profiles) khỏi toàn bộ dự án theo yêu cầu của người dùng để tối giản hóa quy trình sáng tạo.
+  - Loại bỏ các state, handler, API calls (`fetchAuthorProfiles`, `handleCreateAuthorProfile`) và các modal/dropdown tương ứng trên cả giao diện AI Creator (`AiCreatorView.tsx`) và API Engine sinh bài đăng (`api/captions/generate/route.ts`).
+  - Đổi tên bước "4. Yêu cầu tùy chỉnh" thành "3. Yêu cầu tùy chỉnh" trên giao diện AI Creator.
+- **Tích hợp Quy chuẩn Văn phong thương hiệu dạng Tab (Tabbed Editor)**:
+  - Cập nhật giao diện modal tạo/sửa cấu hình văn phong thương hiệu tại `AiCreatorView.tsx` sang dạng Tab (Quy tắc chung, Facebook, Threads, Instagram) đồng bộ hoàn toàn với giao diện chính tại `PromptsView.tsx`.
+  - Hỗ trợ lưu trữ quy chuẩn dạng chuỗi JSON của cấu trúc quy tắc từng nền tảng, bám sát hành văn thương hiệu của từng kênh xuất bản riêng biệt.
+
 ## [1.6.4] - 2026-07-06
 
 ### Added

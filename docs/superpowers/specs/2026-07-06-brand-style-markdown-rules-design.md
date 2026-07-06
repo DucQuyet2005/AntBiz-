@@ -1,30 +1,45 @@
-# Brand Style (Văn phong thương hiệu) Markdown Rules Design
+# Brand Style (Văn phong thương hiệu) Tabbed Markdown Rules Design
 
 ## Overview
-This specification outlines the redesign of the "Văn phong thương hiệu" (Brand Style) feature, shifting from a complex hybrid parameter form to a unified, rich Markdown text area. This aligns the brand style configuration with the highly successful "Platform Presets" approach, providing more flexibility for users and cleaner context for the Gemini AI.
+This specification outlines the redesign of the "Văn phong thương hiệu" (Brand Style) feature, shifting from a platform-strict, fragmented parameter form to a unified **Tabbed Markdown/JSON** structure. This allows users to create a single Brand Style that applies to all platforms (`platform = 'all'`), while maintaining the ability to define platform-specific overrides (Facebook, Threads, Instagram) safely without token bloat.
 
 ## Architecture & Database Migration
-We will upgrade the existing `prompt_configs` table without creating a new one to preserve foreign keys in the `captions` table.
-- **SQL Migration**: Add a `rules` TEXT column to `prompt_configs`.
-- **Data Migration**: Migrate existing parameters (`tone`, `length`, `custom_rules`/`emphasis`) into the new `rules` Markdown structure for backwards compatibility.
-- **Param Retention**: Keep `params.variant_count` to control the number of variants generated.
+- **SQL Migration**: 
+  - Add `'all'` to the `platform_type` ENUM to allow platform-agnostic brand styles.
+  - (Previously completed) Added a `rules` TEXT column to `prompt_configs`.
+- **Data Structure**: The `rules` column will store a stringified JSON object:
+  ```json
+  {
+    "general": "Core identity, personas, words to avoid",
+    "facebook": "Facebook specific overrides",
+    "threads": "Threads specific overrides",
+    "instagram": "Instagram specific overrides"
+  }
+  ```
+- **Backward Compatibility**: If `rules` contains plain Markdown (not starting with `{`), the system treats it as the `general` property.
 
 ## UI/UX Redesign
 1. **Prompts View (`PromptsView.tsx`)**:
-   - Remove Tone, Length, and Emphasis dropdowns/inputs in the Config Modal.
-   - Introduce a large, glassmorphic `Textarea` for Markdown Brand Guidelines.
-   - **Template Prefill**: When creating a new configuration, automatically inject a professional Markdown template (Persona, Xưng hô, Từ khuyên dùng, Từ cấm dùng).
-   - In the Config Card grid, display a truncated preview of the `rules` column instead of the fragmented parameter chips.
+   - Platform Dropdown now includes a "Tất cả nền tảng (All Platforms)" option (`all`).
+   - The single `Textarea` for `rules` is replaced with a **Tabbed Editor**:
+     - Tabs: `Quy tắc chung`, `Facebook`, `Threads`, `Instagram`.
+     - State is managed as a JSON object and stringified on save.
+   - Config Card preview elegantly parses the JSON and displays the `general` section as a preview.
 
 2. **AI Creator View (`AiCreatorView.tsx`)**:
-   - Update the "Manage" brand style modal to use the same unified Markdown Textarea.
-   - When a Brand Style is selected, display a rich line-clamped preview of the rules.
+   - The Config selector filters and displays styles where `platform === currentPlatform` OR `platform === 'all'`.
+   - The client-side preview `compilePromptPreview` parses the JSON and slices only the `general` + `currentPlatform` rules to show the user exactly what the AI will see.
+   - **Contextual Inline Actions**: The old generic "Manage" button is replaced with contextual actions next to the Brand Style select dropdown:
+     - If NO style is selected: Shows a `+ Tạo mới` (Create New) button.
+     - If a style IS selected: Shows `Sửa` (Edit), `Xóa` (Delete), and `+` (Create New) buttons.
+     - Clicking Edit or Create opens the Tabbed Editor Modal directly within the AI Creator view, allowing seamless CRUD without leaving the page.
 
 ## API & Prompt Engineering
 1. **API Endpoints (`app/api/prompt-configs`)**:
-   - Update `POST` and `PUT` handlers to accept and save the `rules` string.
+   - Update Zod schemas to accept `'all'` in the `platform` enum.
 2. **Generator Engine (`app/api/captions/generate/route.ts`)**:
-   - Retrieve `rules` from the `prompt_configs` record.
-   - Inject the rules directly into the `**Văn phong:**` section of the system prompt for Gemini.
-3. **Frontend Preview (`compilePromptPreview` in `AiCreatorView.tsx`)**:
-   - Update the client-side compilation logic to match the backend exactly, fetching `selectedStyle.rules` and displaying it in the prompt preview modal.
+   - When generating a caption for a specific `platformKey` (e.g. `facebook`), the backend fetches the Brand Style config by ID.
+   - It parses the `rules` column (JSON).
+   - It concatenates `rules.general` + `rules[platformKey]`.
+   - It discards rules for other platforms, ensuring maximum **Token Efficiency** and **Instruction Focus**.
+   - Injects the concatenated markdown into the `**Văn phong:**` section of the system prompt.

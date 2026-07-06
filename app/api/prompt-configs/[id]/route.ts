@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const updateConfigSchema = z.object({
   name: z.string().min(1, 'Tên cấu hình không được để trống').optional(),
-  platform: z.enum(['facebook', 'thread', 'instagram']).optional(),
+  platform: z.enum(['facebook', 'thread', 'instagram', 'all']).optional(),
   rules: z.string().optional(),
   params: z.object({
     variant_count: z.number().optional(),

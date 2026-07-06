@@ -43,7 +43,9 @@ import {
   Play,
   Pause,
   Bold,
-  Italic
+  Italic,
+  Pencil,
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -750,28 +752,9 @@ export default function AiCreatorView() {
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [styleFormName, setStyleFormName] = useState('');
   const [styleFormPlatform, setStyleFormPlatform] = useState<'facebook' | 'threads' | 'instagram' | 'all'>('all');
-  const [styleFormRules, setStyleFormRules] = useState('');
+  const [styleFormRulesObj, setStyleFormRulesObj] = useState<Record<string, string>>({ general: '', facebook: '', threads: '', instagram: '' });
+  const [styleRulesTab, setStyleRulesTab] = useState<'general' | 'facebook' | 'threads' | 'instagram'>('general');
   const [styleFormIsDefault, setStyleFormIsDefault] = useState(false);
-
-  // --- US-2.09: Author Profiles (Văn phong tác giả) States ---
-  const [authorProfiles, setAuthorProfiles] = useState<any[]>([]);
-  const [selectedAuthorIds, setSelectedAuthorIds] = useState<Record<'facebook' | 'threads' | 'instagram', string>>({
-    facebook: '',
-    threads: '',
-    instagram: ''
-  });
-  const selectedAuthorId = selectedAuthorIds[selectedPlatform] || '';
-  const setSelectedAuthorId = (id: string) => {
-    setSelectedAuthorIds(prev => ({
-      ...prev,
-      [selectedPlatform]: id
-    }));
-  };
-  const [isAuthorModalOpen, setIsAuthorModalOpen] = useState(false);
-  const [newAuthorName, setNewAuthorName] = useState('');
-  const [newAuthorUrl, setNewAuthorUrl] = useState('');
-  const [isTrainingAuthor, setIsTrainingAuthor] = useState(false);
-  const [trainingStatusText, setTrainingStatusText] = useState('');
 
   // Form states
   const [tone, setTone] = useState<string>('Chuyên nghiệp');
@@ -1178,7 +1161,6 @@ let resolvedActivePrompt = activePrompt;
             variantGroupId: groupId,
             variantIndex,
             model: selectedModel,
-            authorProfileId: selectedAuthorId || undefined,
             stylePresetId: selectedConfigId || 'none',
             platformPresetId: selectedPlatformPresetId || undefined,
             ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
@@ -1330,7 +1312,6 @@ let resolvedActivePrompt = activePrompt;
           variantIndex,
           oldCaptionId,
           model: selectedModel,
-          authorProfileId: selectedAuthorId || undefined,
           stylePresetId: selectedConfigId || 'none',
           platformPresetId: selectedPlatformPresetId || undefined,
           ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
@@ -2207,98 +2188,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       console.error('Lỗi fetchDefaultConfig:', err);
     }
   };
-
-  // Fetch list author profiles of user
-  const fetchAuthorProfiles = async () => {
-    try {
-      const res = await fetch('/api/author-profiles');
-      if (res.ok) {
-        const json = await res.json();
-        setAuthorProfiles(json.data || []);
-      }
-    } catch (err) {
-      console.error('Lỗi fetchAuthorProfiles:', err);
-    }
-  };
-
-  // Create new author profile and trigger training
-  const handleCreateAuthorProfile = async () => {
-    if (!newAuthorName.trim()) {
-      setPopup({ isOpen: true, message: 'Vui lòng nhập tên văn phong', type: 'error' });
-      return;
-    }
-    setIsTrainingAuthor(true);
-    setTrainingStatusText(language === 'vi' ? 'Đang khởi tạo hồ sơ...' : 'Initializing profile...');
-
-    try {
-      const createRes = await fetch('/api/author-profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newAuthorName.trim(),
-          source_url: newAuthorUrl.trim() || undefined,
-        }),
-      });
-
-      if (!createRes.ok) {
-        const errJson = await createRes.json();
-        throw new Error(errJson.error || 'Lỗi tạo hồ sơ');
-      }
-
-      const createJson = await createRes.json();
-      const newProfile = createJson.data;
-
-      if (newAuthorUrl.trim()) {
-        setTrainingStatusText(language === 'vi' ? 'Đang cào dữ liệu & huấn luyện văn phong...' : 'Scraping data & training style...');
-        const trainRes = await fetch(`/api/author-profiles/${newProfile.id}/train`, {
-          method: 'POST',
-        });
-
-        if (!trainRes.ok) {
-          const errJson = await trainRes.json();
-          throw new Error(errJson.error || 'Lỗi huấn luyện');
-        }
-
-        setPopup({
-          isOpen: true,
-          message: language === 'vi' ? 'Huấn luyện văn phong tác giả thành công!' : 'Author style trained successfully!',
-          type: 'success'
-        });
-      } else {
-        setPopup({
-          isOpen: true,
-          message: language === 'vi' ? 'Đã tạo văn phong tác giả mới!' : 'Created new author style!',
-          type: 'success'
-        });
-      }
-
-      // Refresh list
-      await fetchAuthorProfiles();
-      // Auto-select the newly created author profile!
-      setSelectedAuthorId(newProfile.id);
-
-      // Close modal and reset fields
-      setIsAuthorModalOpen(false);
-      setNewAuthorName('');
-      setNewAuthorUrl('');
-    } catch (err: any) {
-      setPopup({
-        isOpen: true,
-        message: err.message || 'Lỗi xử lý',
-        type: 'error'
-      });
-    } finally {
-      setIsTrainingAuthor(false);
-      setTrainingStatusText('');
-    }
-  };
-
   // Load configs when platform changes
   useEffect(() => {
     if (mounted) {
       fetchConfigs();
       fetchDefaultConfig();
-      fetchAuthorProfiles();
     }
   }, [selectedPlatform, mounted]);
 
@@ -2348,7 +2242,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     setEditingConfigId(null);
     setStyleFormName('');
     setStyleFormPlatform('all');
-    setStyleFormRules('# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]');    setStyleFormIsDefault(false);
+    setStyleFormRulesObj({
+      general: '# QUY TẮC CHUNG\n- Tone giọng: [Ví dụ: Thân thiện, chuyên nghiệp]\n- Persona: [Ví dụ: Chuyên gia chia sẻ kiến thức]',
+      facebook: '',
+      threads: '',
+      instagram: ''
+    });
+    setStyleRulesTab('general');
+    setStyleFormIsDefault(false);
     setIsStyleModalOpen(true);
   };
 
@@ -2358,7 +2259,20 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     setEditingConfigId(configId);
     setStyleFormName(config.name);
     setStyleFormPlatform(config.platform || 'all');
-    setStyleFormRules(config.rules || '');
+    
+    let parsedRules: Record<string, string> = { general: '', facebook: '', threads: '', instagram: '' };
+    try {
+      if (config.rules && config.rules.trim().startsWith('{')) {
+        parsedRules = { ...parsedRules, ...JSON.parse(config.rules) };
+      } else {
+        parsedRules.general = config.rules || '';
+      }
+    } catch {
+      parsedRules.general = config.rules || '';
+    }
+
+    setStyleFormRulesObj(parsedRules);
+    setStyleRulesTab('general');
     setStyleFormIsDefault(config.is_default || false);
     setIsStyleModalOpen(true);
   };
@@ -2381,7 +2295,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         body: JSON.stringify({
           name: styleFormName.trim(),
           is_default: styleFormIsDefault,
-          rules: styleFormRules,
+          rules: JSON.stringify(styleFormRulesObj),
           params: {}
         }),
       });
@@ -2581,7 +2495,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       const res = await fetch('/api/captions/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel, authorProfileId: selectedAuthorId || undefined, stylePresetId: selectedConfigId || 'none', platformPresetId: selectedPlatformPresetId || undefined }),
+        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel, stylePresetId: selectedConfigId || 'none', platformPresetId: selectedPlatformPresetId || undefined }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -4891,11 +4805,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     <div>
                       <span className="text-text-muted">Văn phong:</span> <span className="font-bold">{selectedConfigId && selectedConfigId !== 'none' ? savedConfigs.find(c => c.id === selectedConfigId)?.name : 'Tự do'}</span>
                     </div>
-                    {selectedAuthorId && (
-                      <div>
-                        <span className="text-text-muted">Tác giả:</span> <span className="font-bold">{authorProfiles.find(p => p.id === selectedAuthorId)?.name || 'Hồ sơ'}</span>
-                      </div>
-                    )}
+
                     {activePrompt && (
                       <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg border border-gray-100 dark:border-white/5 italic text-text-muted text-[10px] mt-1 line-clamp-2">
                         "Yêu cầu: {activePrompt}"
@@ -5018,7 +4928,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         {language === 'vi' ? `1. Quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'}` : `1. ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'} Rules`}
                       </span>
                       <select value={selectedPlatformPresetId} onChange={(e) => setSelectedPlatformPresetId(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
                       >
                         {platformPresets.map((preset: any) => (
                           <option key={preset.id} value={preset.id}>
@@ -5029,15 +4939,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       {(() => {
                         const preset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
                         return preset?.rules ? (
-                          <div className="bg-slate-50/80 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-[10px] text-text-muted leading-relaxed line-clamp-3 italic">
-                            {preset.rules}
+                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
+                            <div className="line-clamp-3">
+                              {preset.rules}
+                            </div>
                           </div>
                         ) : null;
                       })()}
                     </div>
 
                     {/* Layer 2: Brand Style */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
                           {language === 'vi' ? '2. Văn phong thương hiệu' : '2. Brand Style'}
@@ -5047,7 +4959,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         >{language === 'vi' ? 'Quản lý' : 'Manage'}</button>
                       </div>
                       <select value={selectedConfigId} onChange={(e) => setSelectedConfigId(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
                       >
                         <option value="">{language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}</option>
                         {savedConfigs.map((cfg: any) => (
@@ -5056,61 +4968,57 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       </select>
                       {(() => {
                         const cfg = savedConfigs.find((c: any) => c.id === selectedConfigId);
-                        return cfg?.rules ? (
-                          <div className="bg-slate-50/80 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-[10px] text-text-muted leading-relaxed line-clamp-3 italic">
-                            {cfg.rules}
+                        if (!cfg?.rules) return null;
+                        
+                        let displayRules = cfg.rules;
+                        try {
+                          const parsed = JSON.parse(cfg.rules);
+                          displayRules = parsed[selectedPlatform] || parsed.general || '';
+                        } catch (e) {
+                          // Fallback to raw string if not JSON
+                        }
+
+                        if (!displayRules) return null;
+
+                        return (
+                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
+                            <div className="line-clamp-3">
+                              {displayRules}
+                            </div>
                           </div>
-                        ) : null;
+                        );
                       })()}
                     </div>
 
-                    {/* Author Profile */}
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                          {language === 'vi' ? '3. Hồ sơ tác giả' : '3. Author Profile'}
-                        </span>
-                        <button type="button" onClick={() => setIsAuthorModalOpen(true)}
-                          className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2 py-0.5 rounded transition-all cursor-pointer"
-                        >{language === 'vi' ? 'Huấn luyện' : 'Train'}</button>
-                      </div>
-                      <select value={selectedAuthorId} onChange={(e) => setSelectedAuthorId(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                      >
-                        <option value="">{language === 'vi' ? 'Không sử dụng' : 'None'}</option>
-                        {authorProfiles.map((ap: any) => (
-                          <option key={ap.id} value={ap.id}>{ap.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
                     {/* Layer 3: Custom Instructions */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? '4. Yêu cầu tùy chỉnh' : '4. Custom Instructions'}
+                        {language === 'vi' ? '3. Yêu cầu tùy chỉnh' : '3. Custom Instructions'}
                       </span>
                       <textarea value={customPromptText} onChange={(e) => setCustomPromptText(e.target.value)} rows={3}
                         placeholder={language === 'vi' ? 'Ví dụ: Bắt đầu bằng câu trích dẫn, tập trung vào số liệu...' : 'E.g.: Start with a quote, focus on statistics...'}
-                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed"
+                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed shadow-sm"
                       />
                     </div>
 
                     {/* Prompt Preview Accordion */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 mt-2">
                       <button type="button" onClick={() => setIsPromptPreviewOpen(!isPromptPreviewOpen)}
-                        className="flex items-center justify-between w-full text-left bg-slate-50/80 dark:bg-slate-800/30 border border-slate-200/70 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-text-muted uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all cursor-pointer"
+                        className="flex items-center justify-between w-full text-left bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-3 text-[10px] font-black text-text uppercase tracking-widest hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer shadow-sm group"
                       >
-                        <span className="flex items-center gap-1.5">🔍 {language === 'vi' ? 'Xem trước Prompt gửi đi' : 'Preview Final Prompt'}</span>
+                        <span className="flex items-center gap-2"><Eye size={14} className="text-slate-400 group-hover:text-primary transition-colors" /> {language === 'vi' ? 'Xem trước Prompt gửi đi' : 'Preview Final Prompt'}</span>
                         <motion.span animate={{ rotate: isPromptPreviewOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                          <ArrowRight size={10} className="rotate-90" />
+                          <ChevronDown size={14} className="text-slate-400" />
                         </motion.span>
                       </button>
                       <AnimatePresence>
                         {isPromptPreviewOpen && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                            <pre className="bg-[#1E293B] dark:bg-black text-slate-200 text-[10px] leading-relaxed p-3.5 rounded-xl overflow-x-auto whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar font-mono border border-slate-700/50">
-                              {compilePromptPreview()}
-                            </pre>
+                            <div className="pt-1.5">
+                              <pre className="bg-slate-50 dark:bg-zinc-900/50 text-slate-700 dark:text-slate-300 text-[10.5px] leading-relaxed p-4 rounded-xl overflow-x-auto whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar font-mono border border-slate-200 dark:border-zinc-800 shadow-inner">
+                                {compilePromptPreview()}
+                              </pre>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -6173,12 +6081,36 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
                       {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
                     </label>
+                    <div className="flex bg-slate-100 dark:bg-zinc-800/50 rounded-lg p-1 gap-1">
+                      {['general', 'facebook', 'threads', 'instagram'].map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setStyleRulesTab(tab as any)}
+                          className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${
+                            styleRulesTab === tab 
+                              ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' 
+                              : 'bg-transparent text-slate-500 hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-slate-700'
+                          }`}
+                        >
+                          {tab === 'general' ? (language === 'vi' ? 'Quy tắc chung' : 'General') : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
-                      value={styleFormRules}
-                      onChange={(e) => setStyleFormRules(e.target.value)}
-                      placeholder={language === 'vi' ? 'Nhập hướng dẫn văn phong thương hiệu...' : 'Enter brand style rules...'}
+                      value={styleFormRulesObj[styleRulesTab] || ''}
+                      onChange={(e) => setStyleFormRulesObj(prev => ({ ...prev, [styleRulesTab]: e.target.value }))}
+                      placeholder={
+                        styleRulesTab === 'general' 
+                          ? '- Hình mẫu thương hiệu (Persona): ...\n- Từ ngữ khuyên dùng: ...\n- Từ ngữ cấm dùng: ...'
+                          : styleRulesTab === 'facebook'
+                          ? '# GHI CHÚ RIÊNG CHO FACEBOOK\n- Cách xưng hô: [Ví dụ: Xưng AntBiz, gọi người đọc là Bạn]\n- Tone giọng: [Ví dụ: Chuyên nghiệp, lịch sự]\n- Kêu gọi hành động (CTA): [Ví dụ: Luôn có link đăng ký ở cuối]'
+                          : styleRulesTab === 'threads'
+                          ? '# GHI CHÚ RIÊNG CHO THREADS\n- Cách xưng hô: [Ví dụ: Xưng mình, gọi người đọc là Các bác]\n- Tone giọng: [Ví dụ: Hài hước, thân mật, bắt trend]\n- Định dạng: [Ví dụ: Xuống dòng liên tục, dùng nhiều emoji]'
+                          : '# GHI CHÚ RIÊNG CHO INSTAGRAM\n- Tone giọng: [Ví dụ: Truyền cảm hứng, tập trung vào hình ảnh]\n- Hashtag: [Ví dụ: Luôn chèn #AntBiz ở cuối]'
+                      }
                       rows={8}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-mono"
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-mono placeholder:text-slate-400/70 dark:placeholder:text-zinc-600/70"
                     />
                   </div>
 
@@ -6220,102 +6152,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           )}
         </AnimatePresence>
 
-{isAuthorModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-              onClick={(e) => { if (e.target === e.currentTarget && !isTrainingAuthor) setIsAuthorModalOpen(false); }}
-            >
-              <motion.div
-                initial={{ scale: 0.95, y: 15 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 15 }}
-                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
-              >
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
-                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
-                    {language === 'vi' ? 'Tạo văn phong tác giả mới' : 'Create new author style'}
-                  </h3>
-                  <button
-                    onClick={() => { if (!isTrainingAuthor) setIsAuthorModalOpen(false); }}
-                    disabled={isTrainingAuthor}
-                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent disabled:opacity-50"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  {isTrainingAuthor ? (
-                    <div className="flex flex-col items-center justify-center py-8 gap-3">
-                      <Loader2 size={36} className="text-primary animate-spin" />
-                      <p className="text-xs font-bold text-slate-700 dark:text-zinc-300 animate-pulse text-center font-sans">
-                        {trainingStatusText}
-                      </p>
-                      <p className="text-[10px] text-slate-400 text-center font-sans">
-                        {language === 'vi'
-                          ? 'Vui lòng không đóng trình duyệt. AntBiz đang cào dữ liệu và thiết lập Few-shot cho bạn.'
-                          : 'Please do not close. AntBiz is scraping data and setting up few-shot examples for you.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                          {language === 'vi' ? 'Tên tác giả / Văn phong' : 'Author Name / Style'}
-                        </label>
-                        <input
-                          type="text"
-                          value={newAuthorName}
-                          onChange={(e) => setNewAuthorName(e.target.value)}
-                          placeholder={language === 'vi' ? 'Ví dụ: Kênh 14 Phong Cách, Báo Dân Trí...' : 'E.g., Style Blog A...'}
-                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                          {language === 'vi' ? 'Link Fanpage / Bài viết đối thủ' : 'Fanpage / Article URL of Competitor'}
-                        </label>
-                        <input
-                          type="url"
-                          value={newAuthorUrl}
-                          onChange={(e) => setNewAuthorUrl(e.target.value)}
-                          placeholder={language === 'vi' ? 'Dán link bài viết từ gocnhinmoi.com.vn...' : 'https://gocnhinmoi.com.vn/...'}
-                          className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
-                        />
-                        <span className="text-[9px] text-slate-400 leading-relaxed font-sans">
-                          {language === 'vi'
-                            ? '* Hệ thống sẽ dùng bộ cào dữ liệu chuẩn để lấy các bài đăng mẫu làm dữ liệu ví dụ huấn luyện.'
-                            : '* The system will scrape posts from this URL for few-shot style training.'}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-3 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsAuthorModalOpen(false)}
-                          className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
-                        >
-                          {language === 'vi' ? 'Hủy' : 'Cancel'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCreateAuthorProfile}
-                          className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
-                        >
-                          <Sparkles size={12} />
-                          {language === 'vi' ? 'Huấn luyện' : 'Train Style'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
         </AnimatePresence>
 
         {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}

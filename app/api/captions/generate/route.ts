@@ -230,7 +230,20 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (styleData && styleData.rules) {
-        styleContent = styleData.rules;
+        try {
+          if (styleData.rules.trim().startsWith('{')) {
+            const rulesObj = JSON.parse(styleData.rules);
+            styleContent = rulesObj.general || '';
+            const specificPlatformKey = platform === 'threads' ? 'threads' : platform;
+            if (rulesObj[specificPlatformKey]) {
+              styleContent += '\n\n' + rulesObj[specificPlatformKey];
+            }
+          } else {
+            styleContent = styleData.rules;
+          }
+        } catch {
+          styleContent = styleData.rules;
+        }
       }
     }
 
@@ -315,45 +328,7 @@ export async function POST(request: NextRequest) {
     const geminiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_MODEL || '';
 
-    // 3.5. Fetch Author Profile for 2-Layer Custom Style (Few-shot or Tuned Model)
-    let authorFewShotPrompt = '';
     let resolvedModel = model;
-
-    if (authorProfileId) {
-      try {
-        const { data: profile, error: profileError } = await userSupabase
-          .from('author_profiles')
-          .select('*')
-          .eq('id', authorProfileId)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('[Generate API] Error fetching author profile:', profileError);
-        } else if (profile) {
-          // If we have a ready Tuned Model, use it
-          if (profile.tuning_status === 'ready' && profile.tuned_model_id) {
-            resolvedModel = profile.tuned_model_id;
-            console.log(`[Generate API] Using Google AI Studio Tuned Model: ${resolvedModel}`);
-          }
-
-          // Add few-shot context as a strong guide or fallback
-          if (profile.sample_posts && profile.sample_posts.length > 0) {
-            const examples = profile.sample_posts.slice(0, 3).map((post: string, index: number) => {
-              return `--- \nVí dụ bài viết ${index + 1} cần bắt chước văn phong:\n${post}\n`;
-            }).join('\n');
-
-            authorFewShotPrompt = `
-Dưới đây là một số bài đăng mẫu thể hiện chính xác văn phong bạn CẦN BẮT CHƯỚC (về giọng điệu, cách viết hook, cách ngắt dòng, sử dụng emoji):
-${examples}
----
-Yêu cầu bắt buộc: Hãy viết bài viết mới bắt chước hoàn hảo phong cách hành văn của các bài viết mẫu trên.
-`;
-          }
-        }
-      } catch (err) {
-        console.error('[Generate API] Unexpected error resolving author profile:', err);
-      }
-    }
 
     // 4. Connect to Gemini API for Streaming
 
@@ -394,7 +369,6 @@ ${styleSectionStr}
 2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
 3.  Call to Action (CTA): Gợi mở tương tác, đặt câu hỏi cho độc giả.
 4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
-${authorFewShotPrompt ? `\n${authorFewShotPrompt}\n` : ''}
 TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
 
     const isTunedModel = resolvedModel.startsWith('tunedModels/');

@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2
 } from "lucide-react";
 import type { Prompt, PromptPlatform } from "@/lib/types/prompt";
 
@@ -126,10 +127,10 @@ export default function PromptsView() {
   const [configModal, setConfigModal] = useState<{ mode: 'create' | 'edit', config: any } | null>(null);
   const [configForm, setConfigForm] = useState({
     name: '',
-    platform: 'facebook' as PromptPlatform | 'threads',
-    rules: '',
-    variantCount: 2 as number
+    platform: 'all' as any,
+    rulesObj: { general: '', facebook: '', threads: '', instagram: '' } as Record<string, string>
   });
+  const [rulesTab, setRulesTab] = useState<'general' | 'facebook' | 'threads' | 'instagram'>('general');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   const fetchConfigs = useCallback(async () => {
@@ -198,20 +199,36 @@ export default function PromptsView() {
   const openCreateConfigModal = () => {
     setConfigForm({
       name: '',
-      platform: 'facebook',
-      rules: '# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]',
-      variantCount: 2
+      platform: 'all',
+      rulesObj: {
+        general: '# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]',
+        facebook: '',
+        threads: '',
+        instagram: ''
+      }
     });
+    setRulesTab('general');
     setConfigModal({ mode: 'create', config: null });
   };
 
   const openEditConfigModal = (config: any) => {
+    let rulesObj = { general: '', facebook: '', threads: '', instagram: '' };
+    try {
+      if (config.rules && config.rules.trim().startsWith('{')) {
+        rulesObj = { ...rulesObj, ...JSON.parse(config.rules) };
+      } else {
+        rulesObj.general = config.rules || '';
+      }
+    } catch {
+      rulesObj.general = config.rules || '';
+    }
+
     setConfigForm({
       name: config.name,
       platform: config.platform === 'thread' ? 'threads' : config.platform,
-      rules: config.rules || '',
-      variantCount: config.params?.variant_count || 2
+      rulesObj
     });
+    setRulesTab('general');
     setConfigModal({ mode: 'edit', config });
   };
 
@@ -230,9 +247,9 @@ export default function PromptsView() {
         body: JSON.stringify({
           name: configForm.name,
           platform: configForm.platform === 'threads' ? 'thread' : configForm.platform,
-          rules: configForm.rules,
+          rules: JSON.stringify(configForm.rulesObj),
           params: {
-            variant_count: configForm.variantCount
+            variant_count: 1
           },
           is_default: isEdit ? configModal.config.is_default : false
         })
@@ -873,66 +890,79 @@ export default function PromptsView() {
               {configs.map((config) => (
                 <div
                   key={config.id}
-                  className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all group relative min-h-[160px]"
+                  className="bg-white dark:bg-zinc-900 border border-slate-200/70 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:shadow-lg transition-all duration-300 group relative min-h-[160px]"
                 >
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-black inline-flex items-center gap-1 uppercase ${PLATFORM_BADGE_CLASS[config.platform as PromptPlatform] || 'bg-gray-100 text-gray-800'}`}>
-                        <PlatformIcon platform={config.platform} size={10} />
-                        {config.platform === 'thread' ? 'Threads' : PLATFORM_LABEL[config.platform as PromptPlatform] || config.platform}
-                      </span>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight line-clamp-2" title={config.name}>
+                        {config.name}
+                      </h3>
+                      <div className="flex gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => openEditConfigModal(config)}
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-none"
+                          title={language === 'vi' ? 'Sửa văn phong' : 'Edit style'}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteConfig(config.id)}
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer border-none"
+                          title={language === 'vi' ? 'Xóa văn phong' : 'Delete style'}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
 
+                    {/* Badge and Metadata */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20">
+                        {language === 'vi' ? 'Đa kênh' : 'All Platforms'}
+                      </span>
                       {config.is_default && (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-black bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
                           {language === 'vi' ? 'Mặc định' : 'Default'}
                         </span>
                       )}
                     </div>
 
-                    <h3 className="text-xs font-black text-slate-800 dark:text-white truncate" title={config.name}>
-                      {config.name}
-                    </h3>
-
                     {/* Rules preview */}
-                    <div className="text-[10px] text-text-muted mt-1 bg-gray-50/50 dark:bg-zinc-950/20 p-2.5 rounded-lg border border-gray-150/40 dark:border-zinc-800/40 line-clamp-3 italic leading-relaxed">
-                      {config.rules || '(Chưa cấu hình văn phong)'}
-                    </div>
-                    <div className="text-[10px] text-text-muted font-bold mt-1.5 flex gap-2">
-                      <span>Số biến thể: <span className="text-text">{config.params?.variant_count || 2}</span></span>
+                    <div className="text-[11px] text-slate-600 dark:text-zinc-400 mt-1 line-clamp-3 leading-relaxed relative">
+                      {(() => {
+                        try {
+                          let text = config.rules;
+                          if (config.rules && config.rules.trim().startsWith('{')) {
+                            const obj = JSON.parse(config.rules);
+                            text = obj.general || '';
+                          }
+                          text = text.replace(/(\*\*|\*|__|_|#)/g, '').trim();
+                          return text || '(Chưa cấu hình văn phong chung)';
+                        } catch {
+                          return config.rules?.replace(/(\*\*|\*|__|_|#)/g, '').trim() || '(Chưa cấu hình văn phong)';
+                        }
+                      })()}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-gray-100 dark:border-zinc-800/80 pt-3 mt-3">
+                  <div className="flex items-center justify-start pt-4 mt-4 border-t border-slate-100 dark:border-zinc-800/80">
                     {!config.is_default ? (
                       <button
                         type="button"
                         onClick={() => handleSetDefaultConfig(config)}
-                        className="text-[9px] font-black text-primary hover:underline cursor-pointer bg-transparent border-none p-0"
+                        className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center gap-1.5"
                       >
-                        {language === 'vi' ? 'Đặt mặc định' : 'Set as default'}
+                        <CheckCircle2 size={12} />
+                        {language === 'vi' ? 'Đặt làm mặc định' : 'Set as default'}
                       </button>
                     ) : (
-                      <div />
+                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} className="fill-emerald-100 dark:fill-emerald-900/40" />
+                        {language === 'vi' ? 'Đang sử dụng' : 'Currently in use'}
+                      </div>
                     )}
-
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => openEditConfigModal(config)}
-                        className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-none bg-transparent"
-                        title={language === 'vi' ? 'Sửa văn phong' : 'Edit style'}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteConfig(config.id)}
-                        className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer border-none bg-transparent"
-                        title={language === 'vi' ? 'Xóa văn phong' : 'Delete style'}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -979,45 +1009,46 @@ export default function PromptsView() {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-muted">
-                {language === 'vi' ? 'Áp dụng cho nền tảng' : 'Platform'}
-              </label>
-              <select
-                value={configForm.platform}
-                onChange={(e) => setConfigForm((f) => ({ ...f, platform: e.target.value as any }))}
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-xs font-medium cursor-pointer"
-              >
-                <option value="facebook">Facebook</option>
-                <option value="threads">Threads</option>
-                <option value="instagram">Instagram</option>
-              </select>
-            </div>
+
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-text-muted">
                 {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
               </label>
+              <div className="flex bg-slate-100 dark:bg-zinc-800/50 rounded-lg p-1 gap-1">
+                {['general', 'facebook', 'threads', 'instagram'].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setRulesTab(tab as any)}
+                    className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${
+                      rulesTab === tab 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' 
+                        : 'bg-transparent text-text-muted hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-text'
+                    }`}
+                  >
+                    {tab === 'general' ? 'Quy tắc chung' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
+              </div>
               <textarea
-                value={configForm.rules}
-                onChange={(e) => setConfigForm((f) => ({ ...f, rules: e.target.value }))}
-                placeholder="Nhập hướng dẫn văn phong thương hiệu..."
+                value={configForm.rulesObj[rulesTab] || ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, rulesObj: { ...f.rulesObj, [rulesTab]: e.target.value } }))}
+                placeholder={
+                  rulesTab === 'general' 
+                    ? '- Hình mẫu thương hiệu (Persona): ...\n- Từ ngữ khuyên dùng: ...\n- Từ ngữ cấm dùng: ...'
+                    : rulesTab === 'facebook'
+                    ? '# GHI CHÚ RIÊNG CHO FACEBOOK\n- Cách xưng hô: [Ví dụ: Xưng AntBiz, gọi người đọc là Bạn]\n- Tone giọng: [Ví dụ: Chuyên nghiệp, lịch sự]\n- Kêu gọi hành động (CTA): [Ví dụ: Luôn có link đăng ký ở cuối]'
+                    : rulesTab === 'threads'
+                    ? '# GHI CHÚ RIÊNG CHO THREADS\n- Cách xưng hô: [Ví dụ: Xưng mình, gọi người đọc là Các bác]\n- Tone giọng: [Ví dụ: Hài hước, thân mật, bắt trend]\n- Định dạng: [Ví dụ: Xuống dòng liên tục, dùng nhiều emoji]'
+                    : '# GHI CHÚ RIÊNG CHO INSTAGRAM\n- Tone giọng: [Ví dụ: Truyền cảm hứng, tập trung vào hình ảnh]\n- Hashtag: [Ví dụ: Luôn chèn #AntBiz ở cuối]'
+                }
                 rows={8}
-                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-xs font-medium text-text focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono resize-y leading-relaxed"
+                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-xs font-medium text-text focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono resize-y leading-relaxed placeholder:text-slate-400/70 dark:placeholder:text-zinc-600/70"
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-muted">Số lượng biến thể sinh ra (Variant Count)</label>
-              <select
-                value={configForm.variantCount}
-                onChange={(e) => setConfigForm((f) => ({ ...f, variantCount: parseInt(e.target.value) }))}
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-outline-none text-xs font-medium cursor-pointer"
-              >
-                <option value={2}>2 biến thể (Variant A & B)</option>
-                <option value={3}>3 biến thể (Variant A, B & C)</option>
-              </select>
-            </div>
+
 
             <div className="flex justify-end gap-3 mt-1">
               <button
