@@ -65,6 +65,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nội dung bài đăng Threads không được vượt quá 500 ký tự' }, { status: 400 });
   }
 
+  // Validate Instagram content length (<=2200)
+  if (caption.platform === 'instagram' && message.length > 2200) {
+    return NextResponse.json({ error: 'Nội dung bài đăng Instagram không được vượt quá 2200 ký tự' }, { status: 400 });
+  }
+
   // Validate Instagram mediaUrl (must be a valid http/https URL)
   const finalImageUrls = imageUrls || (mediaUrl ? [mediaUrl] : []);
   if (caption.platform === 'instagram') {

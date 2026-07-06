@@ -425,6 +425,20 @@ CHỈ TRẢ VỀ NỘI DUNG BÀI ĐĂNG HOÀN CHỈNH. TUYỆT ĐỐI KHÔNG CÓ
               }
             }
 
+            // Validator kiểm tra độ dài Instagram
+            if (targetPlatform === 'instagram' && generatedText.length > 2200) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify({
+                    error: `Độ dài nội dung Instagram (${generatedText.length} ký tự) vượt quá giới hạn 2200 ký tự.`,
+                    done: true,
+                  })}\n\n`
+                )
+              );
+              controller.close();
+              return;
+            }
+
             const dbPlatform = (targetPlatform === 'threads' || targetPlatform === 'thread') ? 'thread' : targetPlatform;
 
             const insertPayload: Record<string, unknown> = {

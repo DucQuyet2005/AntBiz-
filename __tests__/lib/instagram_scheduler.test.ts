@@ -80,7 +80,7 @@ vi.mock('@/lib/email', () => ({
 }));
 
 import { runSchedulerCycle } from '@/lib/scheduler/scheduler';
-import { publishMedia } from '@/lib/instagram';
+import { publishToInstagram } from '@/lib/instagram';
 
 describe('Instagram Scheduler Retry and Publishing', () => {
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe('Instagram Scheduler Retry and Publishing', () => {
 
   it('should retry up to 3 times and save instagram_media_id on success', async () => {
     let calls = 0;
-    vi.mocked(publishMedia).mockImplementation(async () => {
+    vi.mocked(publishToInstagram).mockImplementation(async () => {
       calls++;
       if (calls < 3) {
         return { success: false, error: 'Network Error' };
@@ -123,7 +123,7 @@ describe('Instagram Scheduler Retry and Publishing', () => {
   });
 
   it('should mark scheduled post as failed if all 3 attempts fail', async () => {
-    vi.mocked(publishMedia).mockResolvedValue({ success: false, error: 'Fatal Graph API Error' });
+    vi.mocked(publishToInstagram).mockResolvedValue({ success: false, error: 'Fatal Graph API Error' });
 
     await runSchedulerCycle();
 
