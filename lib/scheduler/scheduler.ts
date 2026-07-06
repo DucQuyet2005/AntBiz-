@@ -105,10 +105,9 @@ export async function runSchedulerCycle() {
     } else if (dbPlatform === 'instagram') {
       let attempts = 0;
       let success = false;
-      const mediaUrl = post.image_urls?.[0] || '';
       while (attempts < 3 && !success) {
         attempts++;
-        publishResult = await publishMedia(activeToken || '', mediaUrl, message);
+        publishResult = await publishToInstagram(message, post.image_urls || [], activeAccountId, activeToken);
         if (publishResult.success) {
           success = true;
         } else {
