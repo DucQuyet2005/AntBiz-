@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2
 } from "lucide-react";
 import type { Prompt, PromptPlatform } from "@/lib/types/prompt";
 
@@ -115,6 +116,157 @@ export default function PromptsView() {
 
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // --- US-2.07: Prompt Config Management ---
+  const [activeTab, setActiveTab] = useState<'prompts' | 'configs'>('prompts');
+  const [configs, setConfigs] = useState<any[]>([]);
+  const [configsLoading, setConfigsLoading] = useState(false);
+  const [configsError, setConfigsError] = useState<string | null>(null);
+
+  // Modal edit config
+  const [configModal, setConfigModal] = useState<{ mode: 'create' | 'edit', config: any } | null>(null);
+  const [configForm, setConfigForm] = useState({
+    name: '',
+    platform: 'all' as any,
+    rulesObj: { general: '', facebook: '', threads: '', instagram: '' } as Record<string, string>
+  });
+  const [rulesTab, setRulesTab] = useState<'general' | 'facebook' | 'threads' | 'instagram'>('general');
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  const fetchConfigs = useCallback(async () => {
+    setConfigsLoading(true);
+    setConfigsError(null);
+    try {
+      const res = await fetch('/api/prompt-configs');
+      const json = await res.json();
+      if (res.ok) {
+        setConfigs(json.data || []);
+      } else {
+        throw new Error(json.error || 'Không thể tải danh sách cấu hình');
+      }
+    } catch (err: any) {
+      setConfigsError(err.message || 'Lỗi khi tải cấu hình');
+    } finally {
+      setConfigsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'configs') {
+      fetchConfigs();
+    }
+  }, [activeTab, fetchConfigs]);
+
+  const handleDeleteConfig = async (id: string) => {
+    const confirmMsg = language === 'vi' ? 'Bạn có chắc chắn muốn xóa cấu hình này?' : 'Are you sure you want to delete this configuration?';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      const res = await fetch(`/api/prompt-configs/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchConfigs();
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Lỗi khi xóa cấu hình');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    }
+  };
+
+  const handleSetDefaultConfig = async (config: any) => {
+    try {
+      const res = await fetch(`/api/prompt-configs/${config.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: config.name,
+          platform: config.platform,
+          params: config.params,
+          is_default: true
+        })
+      });
+      if (res.ok) {
+        fetchConfigs();
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Lỗi khi đặt cấu hình mặc định');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    }
+  };
+
+  const openCreateConfigModal = () => {
+    setConfigForm({
+      name: '',
+      platform: 'all',
+      rulesObj: {
+        general: '# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]',
+        facebook: '',
+        threads: '',
+        instagram: ''
+      }
+    });
+    setRulesTab('general');
+    setConfigModal({ mode: 'create', config: null });
+  };
+
+  const openEditConfigModal = (config: any) => {
+    let rulesObj = { general: '', facebook: '', threads: '', instagram: '' };
+    try {
+      if (config.rules && config.rules.trim().startsWith('{')) {
+        rulesObj = { ...rulesObj, ...JSON.parse(config.rules) };
+      } else {
+        rulesObj.general = config.rules || '';
+      }
+    } catch {
+      rulesObj.general = config.rules || '';
+    }
+
+    setConfigForm({
+      name: config.name,
+      platform: config.platform === 'thread' ? 'threads' : config.platform,
+      rulesObj
+    });
+    setRulesTab('general');
+    setConfigModal({ mode: 'edit', config });
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!configModal) return;
+    setIsSavingConfig(true);
+    try {
+      const isEdit = configModal.mode === 'edit';
+      const url = isEdit ? `/api/prompt-configs/${configModal.config.id}` : '/api/prompt-configs';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: configForm.name,
+          platform: configForm.platform === 'threads' ? 'thread' : configForm.platform,
+          rules: JSON.stringify(configForm.rulesObj),
+          params: {
+            variant_count: 1
+          },
+          is_default: isEdit ? configModal.config.is_default : false
+        })
+      });
+      if (res.ok) {
+        setConfigModal(null);
+        fetchConfigs();
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Lỗi khi lưu cấu hình');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hệ thống');
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
 
   const fetchPrompts = useCallback(async () => {
     setLoading(true);
@@ -265,8 +417,8 @@ export default function PromptsView() {
       if (!res.ok) {
         const detailMsg = Array.isArray(json?.details)
           ? json.details
-              .map((d: { field: string; message: string }) => d.message)
-              .join("; ")
+            .map((d: { field: string; message: string }) => d.message)
+            .join("; ")
           : null;
         throw new Error(detailMsg || json?.error || t("prompts.cannotSave"));
       }
@@ -386,310 +538,550 @@ export default function PromptsView() {
             {t("prompts.subtitle")}
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl flex items-center gap-1.5 font-bold text-xs transition-all shadow-md shadow-primary/15 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none active:scale-[0.98] cursor-pointer"
-        >
-          <Plus size={14} />
-          {t("prompts.createNew")}
-        </button>
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex flex-col gap-2">
-        {/* Row 1: Search + Platform filter + Multi-select tags dropdown */}
-        <div className="flex items-center gap-2 flex-wrap text-xs">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("prompts.searchPlaceholder")}
-              className="w-full bg-card border border-gray-200/60 dark:border-zinc-800/80 rounded-xl py-1.5 pl-9 pr-3 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted text-text dark:bg-zinc-900"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setPlatformFilter("")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${
-                platformFilter === ""
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
-              }`}
-            >
-              {t("prompts.all")}
-            </button>
-            {PLATFORM_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setPlatformFilter(opt.value)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${
-                  platformFilter === opt.value
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
-                }`}
-              >
-                <PlatformIcon platform={opt.value} size={12} />
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Tags multi-select dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-              className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-            >
-              {t("prompts.filterByTag", { count: tagsFilter.length })}
-            </button>
-            {isTagDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsTagDropdownOpen(false)} />
-                <div className="absolute left-0 mt-1.5 w-48 bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-1.5 shadow-lg z-20 max-h-56 overflow-y-auto">
-                  {allDbTags.length === 0 ? (
-                    <div className="text-[11px] text-text-muted p-2 text-center">{t("prompts.noTags")}</div>
-                  ) : (
-                    allDbTags.map((tag) => {
-                      const isSelected = tagsFilter.includes(tag);
-                      return (
-                        <label
-                          key={tag}
-                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer select-none text-text"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
-                              setTagsFilter((prev) =>
-                                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                              );
-                            }}
-                            className="rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary/20 dark:bg-zinc-850"
-                          />
-                          {tag}
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          <span className="text-xs text-text-muted ml-auto font-medium">
-            {total} prompts
-          </span>
-        </div>
-
-        {/* Row 2: Selected tags chips */}
-        {tagsFilter.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap text-xs">
-            <span className="text-xs font-bold text-text-muted shrink-0">
-              {t("prompts.filteringBy")}
-            </span>
-            {tagsFilter.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setTagsFilter((prev) => prev.filter((t) => t !== tag))}
-                className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary text-white shadow-sm inline-flex items-center gap-1 transition-all cursor-pointer hover:bg-primary-hover"
-              >
-                {tag}
-                <X size={10} />
-              </button>
-            ))}
-            <button
-              onClick={() => setTagsFilter([])}
-              className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors ml-1 cursor-pointer"
-            >
-              {t("prompts.clearAllFilters")}
-            </button>
-          </div>
+        {activeTab === 'prompts' ? (
+          <button
+            onClick={openCreateModal}
+            className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl flex items-center gap-1.5 font-bold text-xs transition-all shadow-md shadow-primary/15 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none active:scale-[0.98] cursor-pointer"
+          >
+            <Plus size={14} />
+            {t("prompts.createNew")}
+          </button>
+        ) : (
+          <button
+            onClick={openCreateConfigModal}
+            className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl flex items-center gap-1.5 font-bold text-xs transition-all shadow-md shadow-primary/15 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none active:scale-[0.98] cursor-pointer"
+          >
+            <Plus size={14} />
+            {language === 'vi' ? 'Tạo văn phong mới' : 'Create new style'}
+          </button>
         )}
       </div>
 
-      {actionError && (
-        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
-          <AlertCircle size={14} />
-          {actionError}
-        </div>
-      )}
+      {/* Tab Switcher */}
+      <div className="flex border-b border-gray-200 dark:border-zinc-800 gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveTab('prompts')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeTab === 'prompts' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
+            }`}
+        >
+          {language === 'vi' ? 'Thư viện Prompt' : 'Prompt Library'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('configs')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeTab === 'configs' ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400'
+            }`}
+        >
+          {language === 'vi' ? 'Văn phong thương hiệu' : 'Brand Styles'}
+        </button>
+      </div>
 
-      {/* List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
-          <Loader2 className="animate-spin text-primary" size={16} />
-          {t("common.loading")}
-        </div>
-      ) : loadError ? (
-        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
-          <AlertCircle size={14} />
-          {loadError}
-        </div>
-      ) : paginatedPrompts.length === 0 ? (
-        <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
-          <p className="font-bold text-xs text-text">
-            {search || platformFilter || tagsFilter.length > 0
-              ? t("prompts.noMatching")
-              : t("prompts.noPromptsYet")}
-          </p>
-          <p className="text-text-muted text-xs font-semibold">
-            {search || platformFilter || tagsFilter.length > 0
-              ? t("prompts.tryChangingFilters")
-              : t("prompts.createFirstPrompt")}
-          </p>
-          {(search || platformFilter || tagsFilter.length > 0) && (
-            <button
-              onClick={() => {
-                setSearch("");
-                setPlatformFilter("");
-                setTagsFilter([]);
-              }}
-              className="mt-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
-            >
-              {t("prompts.clearAllFilters")}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={{ minHeight: totalPages > 1 ? '764px' : undefined }} className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max content-start">
-          {paginatedPrompts.map((prompt) => (
-            <div
-              key={prompt.id}
-              id={`prompt-${prompt.id}`}
-              className={`bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start ${
-                prompt.id === promptIdParam ? 'animate-highlight-glow' : ''
-              }`}
-            >
-              <div className="h-6 flex items-center justify-between gap-3 shrink-0 overflow-hidden mb-2">
-                <div className="flex items-center gap-1.5 overflow-hidden flex-wrap max-h-6">
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-flex items-center gap-1 shrink-0 ${PLATFORM_BADGE_CLASS[prompt.platform]}`}
-                  >
-                    <PlatformIcon platform={prompt.platform} size={10} />
-                    {PLATFORM_LABEL[prompt.platform]}
-                  </span>
-                  {prompt.cloned_from && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-gray-150 dark:bg-zinc-800 text-text-muted dark:text-zinc-400 shrink-0">
-                      {t("prompts.clonedBadge")}
-                    </span>
-                  )}
-                  {prompt.tags.map((tag) => {
-                    const isSelected = tagsFilter.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        onClick={() =>
-                          setTagsFilter((prev) =>
-                            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                          )
-                        }
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer shrink-0 ${
-                          isSelected
-                            ? "bg-[#C4F0E1] dark:bg-emerald-900/40 text-[#1F4C3F] dark:text-emerald-400 ring-1 ring-[#1F4C3F]/30 dark:ring-emerald-800/30"
-                            : "bg-[#C4F0E1]/40 dark:bg-emerald-950/20 text-[#1F4C3F] dark:text-emerald-400 hover:bg-[#C4F0E1] dark:hover:bg-emerald-900/30"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleClone(prompt)}
-                    disabled={cloningId === prompt.id}
-                    title={t("prompts.cloneTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all active:scale-95 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    {cloningId === prompt.id ? (
-                      <Loader2 size={13} className="animate-spin text-primary" />
-                    ) : (
-                      <Copy size={13} className="transition-transform duration-300 scale-100 rotate-0" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openEditModal(prompt)}
-                    title={t("prompts.editTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(prompt)}
-                    disabled={
-                      isCheckingDelete && deletingPrompt?.id === prompt.id
-                    }
-                    title={t("prompts.deleteTooltip")}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
-                  >
-                    {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <Trash2 size={13} />
-                    )}
-                  </button>
-                </div>
+      {activeTab === 'prompts' && (
+        <React.Fragment>
+          <div className="flex flex-col gap-2">
+            {/* Row 1: Search + Platform filter + Multi-select tags dropdown */}
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="relative w-full max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("prompts.searchPlaceholder")}
+                  className="w-full bg-card border border-gray-200/60 dark:border-zinc-800/80 rounded-xl py-1.5 pl-9 pr-3 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none placeholder:text-text-muted text-text dark:bg-zinc-900"
+                />
               </div>
 
-              <div className="flex flex-col flex-1 min-h-0 justify-start mt-1">
-                <h2 className="text-xs font-black text-slate-800 dark:text-white truncate h-5 leading-5 w-full" title={prompt.name}>
-                  {prompt.name}
-                </h2>
-                <p className="text-[11px] text-text-muted dark:text-zinc-400 line-clamp-3 whitespace-pre-line leading-relaxed font-semibold mt-1">
-                  {prompt.content}
-                </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPlatformFilter("")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${platformFilter === ""
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
+                    }`}
+                >
+                  {t("prompts.all")}
+                </button>
+                {PLATFORM_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPlatformFilter(opt.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none cursor-pointer ${platformFilter === opt.value
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-card dark:bg-zinc-900 text-text-muted border border-gray-200/60 dark:border-zinc-800/80 hover:text-text hover:bg-gray-50 dark:hover:bg-zinc-800"
+                      }`}
+                  >
+                    <PlatformIcon platform={opt.value} size={12} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tags multi-select dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                  className="bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                >
+                  {t("prompts.filterByTag", { count: tagsFilter.length })}
+                </button>
+                {isTagDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsTagDropdownOpen(false)} />
+                    <div className="absolute left-0 mt-1.5 w-48 bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-1.5 shadow-lg z-20 max-h-56 overflow-y-auto">
+                      {allDbTags.length === 0 ? (
+                        <div className="text-[11px] text-text-muted p-2 text-center">{t("prompts.noTags")}</div>
+                      ) : (
+                        allDbTags.map((tag) => {
+                          const isSelected = tagsFilter.includes(tag);
+                          return (
+                            <label
+                              key={tag}
+                              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer select-none text-text"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setTagsFilter((prev) =>
+                                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                                  );
+                                }}
+                                className="rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary/20 dark:bg-zinc-850"
+                              />
+                              {tag}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <span className="text-xs text-text-muted ml-auto font-medium">
+                {total} prompts
+              </span>
+            </div>
+
+            {/* Row 2: Selected tags chips */}
+            {tagsFilter.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                <span className="text-xs font-bold text-text-muted shrink-0">
+                  {t("prompts.filteringBy")}
+                </span>
+                {tagsFilter.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setTagsFilter((prev) => prev.filter((t) => t !== tag))}
+                    className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary text-white shadow-sm inline-flex items-center gap-1 transition-all cursor-pointer hover:bg-primary-hover"
+                  >
+                    {tag}
+                    <X size={10} />
+                  </button>
+                ))}
+                <button
+                  onClick={() => setTagsFilter([])}
+                  className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors ml-1 cursor-pointer"
+                >
+                  {t("prompts.clearAllFilters")}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {actionError && (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
+              <AlertCircle size={14} />
+              {actionError}
+            </div>
+          )}
+
+          {/* List */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
+              <Loader2 className="animate-spin text-primary" size={16} />
+              {t("common.loading")}
+            </div>
+          ) : loadError ? (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
+              <AlertCircle size={14} />
+              {loadError}
+            </div>
+          ) : paginatedPrompts.length === 0 ? (
+            <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
+              <p className="font-bold text-xs text-text">
+                {search || platformFilter || tagsFilter.length > 0
+                  ? t("prompts.noMatching")
+                  : t("prompts.noPromptsYet")}
+              </p>
+              <p className="text-text-muted text-xs font-semibold">
+                {search || platformFilter || tagsFilter.length > 0
+                  ? t("prompts.tryChangingFilters")
+                  : t("prompts.createFirstPrompt")}
+              </p>
+              {(search || platformFilter || tagsFilter.length > 0) && (
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setPlatformFilter("");
+                    setTagsFilter([]);
+                  }}
+                  className="mt-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
+                >
+                  {t("prompts.clearAllFilters")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ minHeight: totalPages > 1 ? '764px' : undefined }} className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max content-start">
+              {paginatedPrompts.map((prompt) => (
+                <div
+                  key={prompt.id}
+                  id={`prompt-${prompt.id}`}
+                  className={`bg-card dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 rounded-xl p-4 flex flex-col h-[140px] shadow-sm hover:shadow-md transition-all group justify-start ${prompt.id === promptIdParam ? 'animate-highlight-glow' : ''
+                    }`}
+                >
+                  <div className="h-6 flex items-center justify-between gap-3 shrink-0 overflow-hidden mb-2">
+                    <div className="flex items-center gap-1.5 overflow-hidden flex-wrap max-h-6">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-flex items-center gap-1 shrink-0 ${PLATFORM_BADGE_CLASS[prompt.platform]}`}
+                      >
+                        <PlatformIcon platform={prompt.platform} size={10} />
+                        {PLATFORM_LABEL[prompt.platform]}
+                      </span>
+                      {prompt.cloned_from && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-gray-150 dark:bg-zinc-800 text-text-muted dark:text-zinc-400 shrink-0">
+                          {t("prompts.clonedBadge")}
+                        </span>
+                      )}
+                      {prompt.tags.map((tag) => {
+                        const isSelected = tagsFilter.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() =>
+                              setTagsFilter((prev) =>
+                                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                              )
+                            }
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer shrink-0 ${isSelected
+                                ? "bg-[#C4F0E1] dark:bg-emerald-900/40 text-[#1F4C3F] dark:text-emerald-400 ring-1 ring-[#1F4C3F]/30 dark:ring-emerald-800/30"
+                                : "bg-[#C4F0E1]/40 dark:bg-emerald-950/20 text-[#1F4C3F] dark:text-emerald-400 hover:bg-[#C4F0E1] dark:hover:bg-emerald-900/30"
+                              }`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleClone(prompt)}
+                        disabled={cloningId === prompt.id}
+                        title={t("prompts.cloneTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all active:scale-95 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        {cloningId === prompt.id ? (
+                          <Loader2 size={13} className="animate-spin text-primary" />
+                        ) : (
+                          <Copy size={13} className="transition-transform duration-300 scale-100 rotate-0" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => openEditModal(prompt)}
+                        title={t("prompts.editTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(prompt)}
+                        disabled={
+                          isCheckingDelete && deletingPrompt?.id === prompt.id
+                        }
+                        title={t("prompts.deleteTooltip")}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        {isCheckingDelete && deletingPrompt?.id === prompt.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={13} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col flex-1 min-h-0 justify-start mt-1">
+                    <h2 className="text-xs font-black text-slate-800 dark:text-white truncate h-5 leading-5 w-full" title={prompt.name}>
+                      {prompt.name}
+                    </h2>
+                    <p className="text-[11px] text-text-muted dark:text-zinc-400 line-clamp-3 whitespace-pre-line leading-relaxed font-semibold mt-1">
+                      {prompt.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination Footer */}
+          {!loading && filteredPrompts.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-150 dark:border-zinc-800 pt-4 mt-2 select-none text-xs font-bold">
+              <div className="text-[11px] text-text-muted">
+                {t('prompts.showingPrompts', {
+                  start: total === 0 ? 0 : (page - 1) * pageSize + 1,
+                  end: Math.min(page * pageSize, total),
+                  total: total
+                })}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${page === p
+                        ? 'bg-primary text-white shadow-md shadow-primary/20'
+                        : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-card'
+                      }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
-          ))}
+          )}
+        </React.Fragment>
+      )}
+
+      {/* --- Tab configs content --- */}
+      {activeTab === 'configs' && (
+        <div className="flex flex-col gap-4">
+          {configsLoading ? (
+            <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
+              <Loader2 className="animate-spin text-primary" size={16} />
+              {t("common.loading")}
+            </div>
+          ) : configsError ? (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-4 py-2.5 rounded-xl">
+              <AlertCircle size={14} />
+              {configsError}
+            </div>
+          ) : configs.length === 0 ? (
+            <div className="bg-slate-50 dark:bg-zinc-900/40 border border-slate-200/50 dark:border-zinc-800/60 rounded-xl p-10 flex flex-col items-center text-center gap-1.5">
+              <p className="font-bold text-xs text-text">
+                {language === 'vi' ? 'Chưa có văn phong thương hiệu nào được lưu' : 'No brand styles saved yet'}
+              </p>
+              <p className="text-text-muted text-xs font-semibold">
+                {language === 'vi' ? 'Hãy lưu văn phong thương hiệu khi tạo bài viết ở AI Creator.' : 'Save brand styles in the AI Creator view.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {configs.map((config) => (
+                <div
+                  key={config.id}
+                  className="bg-white dark:bg-zinc-900 border border-slate-200/70 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:shadow-lg transition-all duration-300 group relative min-h-[160px]"
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight line-clamp-2" title={config.name}>
+                        {config.name}
+                      </h3>
+                      <div className="flex gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => openEditConfigModal(config)}
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-none"
+                          title={language === 'vi' ? 'Sửa văn phong' : 'Edit style'}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteConfig(config.id)}
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer border-none"
+                          title={language === 'vi' ? 'Xóa văn phong' : 'Delete style'}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Badge and Metadata */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20">
+                        {language === 'vi' ? 'Đa kênh' : 'All Platforms'}
+                      </span>
+                      {config.is_default && (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                          {language === 'vi' ? 'Mặc định' : 'Default'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Rules preview */}
+                    <div className="text-[11px] text-slate-600 dark:text-zinc-400 mt-1 line-clamp-3 leading-relaxed relative">
+                      {(() => {
+                        try {
+                          let text = config.rules;
+                          if (config.rules && config.rules.trim().startsWith('{')) {
+                            const obj = JSON.parse(config.rules);
+                            text = obj.general || '';
+                          }
+                          text = text.replace(/(\*\*|\*|__|_|#)/g, '').trim();
+                          return text || '(Chưa cấu hình văn phong chung)';
+                        } catch {
+                          return config.rules?.replace(/(\*\*|\*|__|_|#)/g, '').trim() || '(Chưa cấu hình văn phong)';
+                        }
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-start pt-4 mt-4 border-t border-slate-100 dark:border-zinc-800/80">
+                    {!config.is_default ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefaultConfig(config)}
+                        className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 size={12} />
+                        {language === 'vi' ? 'Đặt làm mặc định' : 'Set as default'}
+                      </button>
+                    ) : (
+                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} className="fill-emerald-100 dark:fill-emerald-900/40" />
+                        {language === 'vi' ? 'Đang sử dụng' : 'Currently in use'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Pagination Footer */}
-      {!loading && filteredPrompts.length > 0 && totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-gray-150 dark:border-zinc-800 pt-4 mt-2 select-none text-xs font-bold">
-          <div className="text-[11px] text-text-muted">
-            {t('prompts.showingPrompts', {
-              start: total === 0 ? 0 : (page - 1) * pageSize + 1,
-              end: Math.min(page * pageSize, total),
-              total: total
-            })}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+      {/* Edit Config Modal */}
+      {configModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <form
+            onSubmit={handleSaveConfig}
+            className="bg-card rounded-2xl p-8 w-full max-w-lg flex flex-col gap-5 shadow-xl max-h-[90vh] overflow-y-auto text-xs"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-text">
+                {configModal.mode === 'create'
+                  ? (language === 'vi' ? 'Tạo văn phong thương hiệu mới' : 'Create New Brand Style')
+                  : (language === 'vi' ? 'Chỉnh sửa văn phong thương hiệu' : 'Edit Brand Style')
+                }
+              </h2>
               <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
-                  page === p
-                    ? 'bg-primary text-white shadow-md shadow-primary/20'
-                    : 'border border-gray-200/80 dark:border-zinc-800/80 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-card'
-                }`}
+                type="button"
+                onClick={() => setConfigModal(null)}
+                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none border-none bg-transparent cursor-pointer"
               >
-                {p}
+                <X size={18} />
               </button>
-            ))}
+            </div>
 
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className="p-2 border border-gray-200/80 dark:border-zinc-800/80 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-text-muted">
+                {language === 'vi' ? 'Tên văn phong thương hiệu' : 'Brand Style Name'}
+              </label>
+              <input
+                type="text"
+                required
+                value={configForm.name}
+                onChange={(e) =>
+                  setConfigForm((f) => ({ ...f, name: e.target.value }))
+                }
+                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none text-xs font-medium"
+              />
+            </div>
+
+
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-text-muted">
+                {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
+              </label>
+              <div className="flex bg-slate-100 dark:bg-zinc-800/50 rounded-lg p-1 gap-1">
+                {['general', 'facebook', 'threads', 'instagram'].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setRulesTab(tab as any)}
+                    className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${
+                      rulesTab === tab 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' 
+                        : 'bg-transparent text-text-muted hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-text'
+                    }`}
+                  >
+                    {tab === 'general' ? 'Quy tắc chung' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={configForm.rulesObj[rulesTab] || ''}
+                onChange={(e) => setConfigForm((f) => ({ ...f, rulesObj: { ...f.rulesObj, [rulesTab]: e.target.value } }))}
+                placeholder={
+                  rulesTab === 'general' 
+                    ? '- Hình mẫu thương hiệu (Persona): ...\n- Từ ngữ khuyên dùng: ...\n- Từ ngữ cấm dùng: ...'
+                    : rulesTab === 'facebook'
+                    ? '# GHI CHÚ RIÊNG CHO FACEBOOK\n- Cách xưng hô: [Ví dụ: Xưng AntBiz, gọi người đọc là Bạn]\n- Tone giọng: [Ví dụ: Chuyên nghiệp, lịch sự]\n- Kêu gọi hành động (CTA): [Ví dụ: Luôn có link đăng ký ở cuối]'
+                    : rulesTab === 'threads'
+                    ? '# GHI CHÚ RIÊNG CHO THREADS\n- Cách xưng hô: [Ví dụ: Xưng mình, gọi người đọc là Các bác]\n- Tone giọng: [Ví dụ: Hài hước, thân mật, bắt trend]\n- Định dạng: [Ví dụ: Xuống dòng liên tục, dùng nhiều emoji]'
+                    : '# GHI CHÚ RIÊNG CHO INSTAGRAM\n- Tone giọng: [Ví dụ: Truyền cảm hứng, tập trung vào hình ảnh]\n- Hashtag: [Ví dụ: Luôn chèn #AntBiz ở cuối]'
+                }
+                rows={8}
+                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-xs font-medium text-text focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono resize-y leading-relaxed placeholder:text-slate-400/70 dark:placeholder:text-zinc-600/70"
+              />
+            </div>
+
+
+
+            <div className="flex justify-end gap-3 mt-1">
+              <button
+                type="button"
+                onClick={() => setConfigModal(null)}
+                disabled={isSavingConfig}
+                className="px-6 py-3 rounded-full font-bold text-sm text-text-muted hover:text-text transition-colors disabled:opacity-50 border-none bg-transparent cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingConfig}
+                className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-full font-bold text-sm transition-colors shadow-md shadow-primary/20 inline-flex items-center gap-2 disabled:opacity-60 border-none cursor-pointer"
+              >
+                {isSavingConfig && <Loader2 size={16} className="animate-spin" />}
+                {configModal.mode === 'create'
+                  ? (language === 'vi' ? 'Tạo mới' : 'Create')
+                  : t("common.save")
+                }
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -748,11 +1140,10 @@ export default function PromptsView() {
                     onClick={() =>
                       setForm((f) => ({ ...f, platform: opt.value }))
                     }
-                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
-                      form.platform === opt.value
+                    className={`flex-1 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 border focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${form.platform === opt.value
                         ? "bg-primary text-white border-primary shadow-sm"
                         : "bg-bg text-text-muted border-gray-200/70 hover:text-text"
-                    }`}
+                      }`}
                   >
                     <PlatformIcon platform={opt.value} size={13} />
                     {opt.label}
@@ -876,11 +1267,10 @@ export default function PromptsView() {
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleteState.phase === "deleting"}
-                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${
-                  deleteState.captionCount > 0
+                className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus:outline-none ${deleteState.captionCount > 0
                     ? "bg-amber-500 hover:bg-amber-600 text-white"
                     : "bg-red-600 hover:bg-red-700 text-white"
-                }`}
+                  }`}
               >
                 {deleteState.phase === "deleting" && (
                   <Loader2 size={16} className="animate-spin" />

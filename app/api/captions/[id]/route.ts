@@ -3,9 +3,11 @@ import { requireUserWithRole } from '@/lib/api/auth';
 import { z } from 'zod';
 
 const updateCaptionSchema = z.object({
-  edited_content: z.string().min(1, 'edited_content khong duoc rong').optional(),
+  edited_content: z.string().min(1, 'edited_content khong duoc rong').optional().nullable(),
   status: z.enum(['draft', 'edited', 'approved', 'scheduled', 'posted']).optional(),
   is_favorite_template: z.boolean().optional(),
+  save_as_original: z.boolean().optional(),
+  ai_content: z.string().optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'Can it nhat mot truong de cap nhat',
 });
@@ -68,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const { data: existing, error: fetchError } = await supabase
     .from('captions')
-    .select('id, created_by, ai_content, edited_content')
+    .select('id, created_by, ai_content, edited_content, status')
     .eq('id', id)
     .maybeSingle();
 
@@ -76,15 +78,42 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Không tìm thấy caption' }, { status: 404 });
   }
 
+  // Khóa chỉnh sửa sau khi đăng
+  if (existing.status === 'scheduled' || existing.status === 'posted') {
+    return NextResponse.json(
+      { error: 'Không thể chỉnh sửa bài viết đã được lên lịch hoặc đã đăng' },
+      { status: 400 }
+    );
+  }
+
   if (existing.created_by !== user.id && role !== 'admin') {
     return NextResponse.json({ error: 'Bạn không có quyền sửa caption này' }, { status: 403 });
   }
 
-  const updatePayload = {
-    ...parsed.data,
-    ...(parsed.data.edited_content !== undefined && { status: parsed.data.status ?? 'edited' }),
+  const { edited_content, status, is_favorite_template, save_as_original, ai_content } = parsed.data;
+
+  const updatePayload: any = {
     updated_at: new Date().toISOString(),
   };
+
+  if (is_favorite_template !== undefined) {
+    updatePayload.is_favorite_template = is_favorite_template;
+  }
+
+  if (save_as_original) {
+    updatePayload.ai_content = ai_content || edited_content || existing.edited_content || existing.ai_content;
+    updatePayload.edited_content = null;
+    updatePayload.status = 'draft';
+  } else {
+    if (edited_content !== undefined) {
+      updatePayload.edited_content = edited_content;
+    }
+    if (status !== undefined) {
+      updatePayload.status = status;
+    } else if (edited_content !== undefined) {
+      updatePayload.status = 'edited';
+    }
+  }
 
   const { data, error } = await supabase
     .from('captions')
@@ -98,7 +127,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Không thể cập nhật caption' }, { status: 500 });
   }
 
-  if (parsed.data.edited_content !== undefined && parsed.data.edited_content !== existing.edited_content) {
+  if (!save_as_original && edited_content !== undefined && edited_content !== existing.edited_content) {
     const { data: latestVersions, error: versionReadError } = await supabase
       .from('caption_versions')
       .select('version_number')

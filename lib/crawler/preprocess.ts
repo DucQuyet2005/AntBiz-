@@ -8,10 +8,13 @@ import * as cheerio from 'cheerio';
 import type { CrawlResult } from './index';
 
 export interface BodyBlock {
-  type: 'paragraph' | 'heading2' | 'heading3' | 'image';
+  type: 'paragraph' | 'heading2' | 'heading3' | 'image' | 'section';
   text?: string;
   url?: string;
   caption?: string;
+  className?: string;
+  style?: string;
+  html?: string;
 }
 
 export interface ImageBlock {
@@ -127,7 +130,106 @@ function parsePublishedAt(rawStr: string): string {
   return clean;
 }
 
+function seenBoilerplate(txt: string): boolean {
+  const boilerplate = [
+    'đăng nhập', 'tạo tài khoản', 'quên mật khẩu', 'xem thêm',
+    'bình luận', 'chia sẻ', 'thích', 'gửi tin nhắn', 'theo dõi',
+    'trang chủ', 'tìm kiếm', 'phù hợp nhất', 'tất cả bình luận',
+    'thêm bình luận', 'đăng ký', 'chính sách', 'điều khoản',
+    'create account', 'log in', 'forgotten password', 'sign up'
+  ];
+  return boilerplate.some(b => txt.toLowerCase().includes(b));
+}
+
+function preprocessFacebook(raw: CrawlResult): ArticleData {
+  console.log('\n🔧 [Preprocess Facebook] Đang tiền xử lý bài viết Facebook...');
+
+  const html = raw.fullPageHtml || raw.contentHtml;
+  const $ = cheerio.load(html);
+
+  // 1. Trích xuất nội dung chữ (Status Text) của bài đăng Facebook
+  let statusText = '';
+
+  // Thử các selector phổ biến của Facebook cho nội dung bài viết
+  const fbContentSelectors = [
+    'div[data-ad-preview="message"]',
+    'div[dir="auto"]',
+    '.story_body_container',
+    '._5rgt', // Facebook mobile
+    '._5pat', // Facebook mobile post wrapper
+    'div[role="article"]',
+    'article',
+    '.msg'
+  ];
+
+  for (const selector of fbContentSelectors) {
+    const el = $(selector);
+    if (el.length) {
+      const texts: string[] = [];
+      el.each((_, item) => {
+        const txt = cleanText($(item).text());
+        if (txt && txt.length > 10 && !seenBoilerplate(txt)) {
+          texts.push(txt);
+        }
+      });
+      if (texts.length) {
+        statusText = texts.join('\n');
+        break;
+      }
+    }
+  }
+
+  // Fallback: Lấy toàn bộ text trong p/span/div có độ dài hợp lý
+  if (!statusText) {
+    const lines: string[] = [];
+    $('body p, body div, body span').each((_, el) => {
+      const txt = cleanText($(el).text());
+      if (txt && txt.length > 30 && !seenBoilerplate(txt) && !lines.includes(txt)) {
+        lines.push(txt);
+      }
+    });
+    statusText = lines.slice(0, 5).join('\n');
+  }
+
+  // 2. Trích xuất ảnh đính kèm (CDN fbcdn.net hoặc scontent)
+  const images: ImageBlock[] = [];
+  $('img').each((_, el) => {
+    const src = $(el).attr('src') || '';
+    if (src && (src.includes('fbcdn') || src.includes('scontent')) && !src.includes('/rsrc.php') && !src.includes('emoji')) {
+      const alt = cleanCaption($(el).attr('alt') || $(el).attr('title'));
+      if (!images.some(img => img.url === src)) {
+        images.push({ url: src, caption: alt || 'Ảnh bài viết Facebook' });
+      }
+    }
+  });
+
+  // 3. Xử lý Title và Description
+  const title = raw.title?.replace(/ \| Facebook/i, '').replace(/ - Góc Nhìn Mới.*/i, '').trim() || 
+                (statusText ? statusText.slice(0, 60) + '...' : 'Bài viết Facebook');
+
+  const description = statusText || title;
+
+  return {
+    url: raw.url,
+    title,
+    category: '#Facebook',
+    description,
+    author: 'Facebook Creator',
+    published_at: formatDateVN(new Date()),
+    views: '',
+    tags: [],
+    images,
+    body: statusText ? [{ type: 'paragraph', text: statusText }] : [],
+    full_text: statusText || description,
+  };
+}
+
 export function preprocessArticle(raw: CrawlResult): ArticleData {
+  const url = raw.url || '';
+  if (url.includes('facebook.com') || url.includes('fbcdn') || url.includes('fb.com') || url.includes('fb.watch')) {
+    return preprocessFacebook(raw);
+  }
+
   console.log('\n🔧 [Preprocess] Đang tiền xử lý dữ liệu...');
 
   const fullHtml = raw.fullPageHtml || raw.contentHtml;
@@ -295,6 +397,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   const bodyBlocks: BodyBlock[] = [];
   const images: ImageBlock[] = [];
   const contentRoot = $('#html_content');
+  const isSpotlight = $('section').length > 2 && $('#html_content').length === 0;
+  let spotlightFullText = '';
 
   if (contentRoot.length) {
     contentRoot.find('[data-content-type]').each((_, el) => {
@@ -317,6 +421,70 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         }
       }
     });
+  } else if (isSpotlight) {
+    console.log('   📰 Phát hiện bài viết dạng Spotlight/E-Magazine. Đang cào các section...');
+    const seenImageUrls = new Set<string>();
+    const textSegments: string[] = [];
+
+    $('section').each((_, el) => {
+      const sec = $(el);
+      if (sec.closest('header, footer, nav, aside').length > 0) return;
+
+      const className = sec.attr('class') || '';
+      const id = sec.attr('id') || '';
+      if (/header|footer|comment|related|sidebar|nav/i.test(className) || /header|footer|comment|related|sidebar|nav/i.test(id)) {
+        return;
+      }
+
+      // Extract text segments for full_text
+      sec.find('p, h2, h3').each((_, textEl) => {
+        const text = cleanText($(textEl).text());
+        if (text && text.length > 20 && !textSegments.includes(text)) {
+          textSegments.push(text);
+        }
+      });
+
+      let html = sec.html() || '';
+      const cleanSec = cheerio.load(html);
+      cleanSec('script, iframe, noscript, style').remove();
+
+      // Normalize images inside section
+      cleanSec('img').each((_, imgEl) => {
+        const img = cleanSec(imgEl);
+        let src = img.attr('src') || '';
+
+        if (!src || src.startsWith('data:')) {
+          src = img.attr('data-src') || img.attr('data-lazy-src') || '';
+        }
+
+        if (src && src.startsWith('/')) {
+          const parsedUrl = new URL(raw.url);
+          src = `${parsedUrl.origin}${src}`;
+          img.attr('src', src);
+        }
+
+        img.removeClass('opacity-0');
+        img.css('opacity', '1');
+        img.removeAttr('loading');
+
+        if (src) {
+          seenImageUrls.add(src);
+          images.push({ url: src, caption: img.attr('alt') || '' });
+        }
+      });
+
+      html = cleanSec.html() || '';
+      const style = sec.attr('style') || '';
+
+      bodyBlocks.push({
+        type: 'section',
+        className,
+        style,
+        html
+      });
+    });
+
+    spotlightFullText = textSegments.join('\n\n');
   } else {
     // Fallback: parse generic p/h2/h3/div tags and images in DOM order within the determined scope
     const seenTexts = new Set<string>();
@@ -331,7 +499,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         return;
       }
 
-      if (tagName === 'img') {
+      // Avoid matching tags section or tag links
+      const className = cheerioEl.attr('class') || '';
+      const id = cheerioEl.attr('id') || '';
+      const tagRegex = /(^|[-_])tags?([-_]|$)/i;
+      if (
+        tagRegex.test(className) || 
+        tagRegex.test(id) || 
+        cheerioEl.parents('[class*="tag"], [id*="tag"]').length > 0 ||
+        cheerioEl.find('a[href*="/tag/"]').length > 0 ||
+        (tagName === 'a' && (cheerioEl.attr('href')?.includes('/tag/') || cheerioEl.attr('href')?.includes('/hashtag/')))
+      ) {
+        return;
+      }
+
+            if (tagName === 'img') {
         const src = cheerioEl.attr('src') || '';
         if (
           !src ||
@@ -401,7 +583,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     }
   });
 
-  const full_text = bodyBlocks
+  const full_text = isSpotlight ? spotlightFullText : bodyBlocks
     .filter((b) => b.type !== 'image' && b.text)
     .map((b) => b.text!)
     .join('\n');

@@ -182,10 +182,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   const fetchNotifications = async (silent = false) => {
     if (typeof window !== 'undefined' && !navigator.onLine) return;
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && silent) return;
-
     if (!silent) setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession() reads from localStorage — no network call, no Failed to fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const [listRes, countRes] = await Promise.all([
@@ -229,7 +230,9 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     const setupRealtime = async () => {
       if (typeof window !== 'undefined' && !navigator.onLine) return;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // getSession() reads from localStorage — no network call, no Failed to fetch
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user || !active) return;
 
         realtimeChannel = supabase

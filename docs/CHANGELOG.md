@@ -5,6 +5,74 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.5] - 2026-07-06
+
+### Changed
+- **Nâng cấp Văn phong thương hiệu & Loại bỏ Hồ sơ tác giả**:
+  - Gỡ bỏ hoàn toàn tính năng "Hồ sơ tác giả" (Author Profiles) khỏi toàn bộ dự án theo yêu cầu của người dùng để tối giản hóa quy trình sáng tạo.
+  - Loại bỏ các state, handler, API calls (`fetchAuthorProfiles`, `handleCreateAuthorProfile`) và các modal/dropdown tương ứng trên cả giao diện AI Creator (`AiCreatorView.tsx`) và API Engine sinh bài đăng (`api/captions/generate/route.ts`).
+  - Đổi tên bước "4. Yêu cầu tùy chỉnh" thành "3. Yêu cầu tùy chỉnh" trên giao diện AI Creator.
+- **Tích hợp Quy chuẩn Văn phong thương hiệu dạng Tab (Tabbed Editor)**:
+  - Cập nhật giao diện modal tạo/sửa cấu hình văn phong thương hiệu tại `AiCreatorView.tsx` sang dạng Tab (Quy tắc chung, Facebook, Threads, Instagram) đồng bộ hoàn toàn với giao diện chính tại `PromptsView.tsx`.
+  - Hỗ trợ lưu trữ quy chuẩn dạng chuỗi JSON của cấu trúc quy tắc từng nền tảng, bám sát hành văn thương hiệu của từng kênh xuất bản riêng biệt.
+
+## [1.6.4] - 2026-07-06
+
+### Added
+- **Quy chuẩn Markdown cho Văn phong thương hiệu (Brand Style Rules)**:
+  - Bổ sung trường `rules` dạng văn bản lớn (Markdown) vào cơ sở dữ liệu `prompt_configs` và chuyển đổi liền mạch từ các tham số tĩnh (Tone, Độ dài).
+  - Tự động điền mẫu (template) hành văn thương hiệu chuyên nghiệp (chứa định nghĩa Hình mẫu, Cách xưng hô, Từ khuyên dùng, Từ cấm, Quy tắc Emoji) khi tạo mới cấu hình.
+  - Tích hợp giao diện Textarea Glassmorphism lớn để nhập văn bản tự do trong các modal tạo/sửa cấu hình ở trang thư viện (`PromptsView.tsx`) và không gian sáng tạo (`AiCreatorView.tsx`).
+  - Nâng cấp API Engine sinh bài đăng (`api/captions/generate/route.ts`) để inject trực tiếp toàn bộ khối Markdown hướng dẫn vào system prompt của Gemini AI, đảm bảo văn phong bám sát thương hiệu tuyệt đối.
+
+### Changed
+- **Nâng cấp Giao diện Xem trước Văn phong (Brand Style Preview)**: 
+  - Loại bỏ hoàn toàn các nhãn/chip rời rạc (Tone: Chuyên nghiệp, Độ dài: Vừa).
+  - Thay thế bằng khung xem trước nội dung Markdown cắt gọn đẹp mắt (line-clamp-3) với hiệu ứng thủy tinh mờ ở màn hình danh sách thẻ (PromptsView) và bảng tóm tắt Layer 2 (AiCreatorView).
+
+---
+## [1.6.3] - 2026-07-03
+
+### Fixed
+- **Sửa lỗi hiển thị Hashtag tại AI Creator**: Di chuyển khối thẻ hashtag nằm lên trên phần thông tin tác giả (Author Info) để tránh lỗi đè chữ, đồng thời căn chỉnh khoảng cách hợp lý trong cả giao diện Xem trước bài viết gốc lẫn Modal Xem chi tiết.
+
+## [1.6.2] - 2026-07-01
+
+### Added
+- **Unit & Integration Test Suite cho Prompt Config Wizard**:
+  - Viết file test Vitest `__tests__/api/promptWizard.test.ts` kiểm thử toàn diện các luồng của bộ câu hỏi định hướng.
+  - Test các tổ hợp input nền tảng/tone văn phong/độ dài để kiểm tra độ tin cậy của prompt sinh ra từ Gemini.
+  - Integration test toàn luồng: Gọi Wizard sinh prompt $\rightarrow$ Lưu cấu hình vào DB $\rightarrow$ Đồng bộ lên UI.
+  - Đạt tỷ lệ bao phủ dòng lệnh (Line Coverage) của API route là **85.71%** và `auth.ts` là **91.66%**, 100% test cases pass.
+
+### Changed
+- **Gộp Wizard vào nút Tạo Prompt thông minh**: Di chuyển và tích hợp nút kích hoạt Wizard 5 bước trực tiếp vào nút **"Tạo Prompt thông minh"** trong Dialog soạn thảo chính, gỡ bỏ tất cả các nút Wizard lẻ loi khác để tối giản hóa UI.
+- **Tránh lời dẫn giải thừa thãi của AI viết bài**: Bổ sung chỉ thị nghiêm ngặt `"TUYỆT ĐỐI KHÔNG có lời dẫn giải, không 'Ok', không 'Đây là bài viết'. Trả về TRỰC TIẾP bài đăng hoàn chỉnh."` vào template prompt do Gemini sinh ra trong Wizard.
+- **Cơ chế chống click nhầm ra ngoài**: Loại bỏ tính năng tự động đóng modal/dialog khi click vào vùng mờ (overlay) đối với Dialog Prompt chính và Modal Wizard. Chỉ cho phép đóng khi bấm nút **[X]**.
+- **Chuyển đổi platform thông minh trong prompt**: Khi chuyển đổi các nền tảng (Facebook, Threads, Instagram), hệ thống tự động tìm kiếm và thay đổi các chữ tên platform tương ứng trong Prompt tùy chỉnh đang soạn thảo.
+- **Bộ lọc heuristics chặn spam phím rác**: Tích hợp kiểm duyệt nâng cao khi nhập custom tone/length: chặn từ lặp 1 ký tự (ví dụ `"ộ i i"`) và chặn các tổ hợp phím QWERTY spam liên tiếp (như `"dsadadadd"`).
+
+---
+## [1.6.1] - 2026-07-01
+
+### Added
+- **API phân tích bài viết bằng Gemini (`POST /api/prompt-configs/analyze`)**: Tự động phân tích tiêu đề và nội dung bài viết khi cào để đề xuất Tone, Length, Emphasis phù hợp nhất.
+- **Tự động hóa cấu hình prompt khi cào báo**: Khi cào dữ liệu thành công từ URL hoặc Live Explorer, hệ thống tự động điền sẵn các tham số cấu hình gợi ý của AI và sinh prompt mẫu tương ứng.
+- **Hiển thị đếm số từ tiếng Việt (~words)**: Tích hợp bộ ước lượng đếm số từ tiếng Việt hiển thị song song cùng số ký tự tại các vùng đếm trong AI Creator và Caption Editor (định dạng `... ký tự (~... từ) / ... ký tự`).
+- **Giao diện quản lý cấu hình chuyên biệt tại trang Prompts**: Tích hợp Tab Switcher "Thư viện Prompt" & "Cấu hình tham số AI" trên trang Prompts. Hỗ trợ xem danh sách, Sửa (qua Modal Edit chuyên biệt), Xóa cấu hình, và Đặt cấu hình làm mặc định cho từng platform.
+- **Bộ Câu Hỏi Định Hướng (Prompt Config Wizard - Phase 2)**:
+  - Tích hợp nút **"🪄 Wizard"** ngay bên cạnh ô Cấu hình đã lưu ở Dialog prompt của AI Creator.
+  - Thiết kế Modal Wizard 5 bước bằng Framer Motion: chọn nền tảng, tone, độ dài, nhấn mạnh, variant count & đặt tên.
+  - Xây dựng API route `POST /api/prompt-configs/from-wizard` sử dụng Gemini AI sinh prompt động tương ứng với 5 lựa chọn.
+  - Hiển thị màn hình kết quả cho phép chỉnh sửa prompt, chọn mặc định, tự động lưu cấu hình và tự điền form sáng tạo caption.
+
+### Changed
+- **Tích hợp Lưu cấu hình prompt tự động**: Xóa nút đĩa mềm lưu cấu hình riêng lẻ, tự động thực hiện lưu kép cả prompt lẫn tham số cấu hình (Tone, Length, Emphasis) khi người dùng bấm nút "Lưu và Sử dụng" ở chân Dialog prompt.
+
+### Fixed
+- **Sửa lỗi giới hạn ký tự prompt (Zod 400 Bad Request)**: Tự động rút gọn (truncate) nội dung bài viết cào được trong hàm sinh prompt mẫu xuống tối đa 3000 ký tự để luôn vượt qua giới hạn độ dài 8000 ký tự của schema validation.
+
+---
 ## [1.6.0] - 2026-06-26
 
 ### Added

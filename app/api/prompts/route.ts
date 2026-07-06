@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = createPromptSchema.safeParse(body);
   if (!parsed.success) {
+    console.error('[POST /api/prompts] Zod Validation Failed:', parsed.error.format(), 'Body received:', body);
     return NextResponse.json(
       { error: 'Dữ liệu không hợp lệ', details: formatZodError(parsed.error) },
       { status: 400 }

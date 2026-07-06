@@ -159,10 +159,71 @@ export async function GET(request: NextRequest) {
       tags: tagsString,
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
-      url: targetUrl
+      url: targetUrl,
+      body: cleanData.body || []
     });
   } catch (error: any) {
     console.error(`[Scrape API] Error scraping ${targetUrl}:`, error);
     return NextResponse.json({ error: error.message || 'Lỗi cào dữ liệu' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { title, full_text, category, author, imageUrl } = await request.json();
+
+    if (!title || !full_text) {
+      return NextResponse.json({ error: 'Thiếu tiêu đề hoặc nội dung bài viết' }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    const mockUrl = `manual://article-${Date.now()}`;
+    const cleanCategory = category ? (category.startsWith('#') ? category : `#${category}`) : '#Manual';
+
+    const parsedImages = imageUrl
+      ? imageUrl.split('\n').map((u: string) => u.trim()).filter(Boolean).map((url: string) => ({ url }))
+      : [];
+
+    const { data: insertedArticle, error: dbError } = await supabase
+      .from('articles')
+      .insert({
+        url: mockUrl,
+        title,
+        description: full_text.length > 200 ? full_text.slice(0, 197) + '...' : full_text,
+        author: author || 'AntBiz User',
+        published_at: new Date().toISOString(),
+        views: '0',
+        images: parsedImages,
+        body: [{ type: 'text', text: full_text }],
+        full_text,
+        category: cleanCategory,
+        tags: ['manual'],
+        crawled_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (dbError) {
+      console.error('[Scrape API POST] DB Insert Error:', dbError);
+      return NextResponse.json({ error: 'Không thể lưu bài viết tự viết tay vào database' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      id: insertedArticle?.id,
+      title,
+      description: full_text.length > 200 ? full_text.slice(0, 197) + '...' : full_text,
+      full_text,
+      author: author || 'AntBiz User',
+      category: cleanCategory,
+      tags: 'manual',
+      published_at: new Date().toISOString(),
+      views: '0',
+      url: mockUrl,
+      imageUrl: imageUrl || '',
+      body: [{ type: 'paragraph', text: full_text }]
+    });
+  } catch (error: any) {
+    console.error('[Scrape API POST] Error:', error);
+    return NextResponse.json({ error: error.message || 'Lỗi hệ thống' }, { status: 500 });
   }
 }

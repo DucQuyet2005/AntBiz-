@@ -147,3 +147,61 @@
 ---
 
 **Tổng cộng: 45 User Stories** (21 ở Sprint 1, 12 ở Sprint 2, 12 ở Sprint 3).
+
+### Cập nhật lại Sprint 2
+
+### 🔸 Sprint 2 (US‑2.01 → US‑2.18)
+
+22. **US-2.01**  
+    [US] Là Marketer, tôi muốn AI sinh caption Instagram ngắn gọn (1–2 câu, tập trung vào hình ảnh, kèm hashtag) từ bài gốc — để có nội dung phù hợp đặc thù nền tảng, không bị lan man như bài Facebook
+
+23. **US-2.02**  
+    [US] Là Marketer, tôi muốn quản lý prompt riêng cho Instagram (tông trẻ, hashtag đậm, caption ngắn) — để đảm bảo phong cách đúng kênh, khác biệt với Facebook
+
+24. **US-2.03**  
+    [US] Là Marketer, tôi muốn lên lịch đăng tự động cho Instagram (chọn ngày, giờ, hệ thống tự đăng qua Graph API) — để duy trì tần suất đăng mà không tốn công thủ công
+
+25. **US-2.04**  
+    [US] Là Marketer, tôi muốn AI sinh bài đăng Threads ngắn <280 ký tự, văn phong/màu sắc phù hợp đối tượng trẻ (Gen Z), kèm câu hỏi thảo luận cuối bài — để tạo tương tác trên nền tảng hội thoại
+
+26. **US-2.05**  
+    [US] Là Marketer, tôi muốn quản lý prompt riêng cho Threads (tạo, sửa, xóa, nhân bản) vì phong cách Threads ngắn, hài hước, khác Facebook — để kiểm soát giọng điệu từng kênh
+
+27. **US-2.06**  
+    [US] Là Marketer, tôi muốn lên lịch đăng tự động cho Threads (chọn giờ, ngày, hệ thống tự post qua Threads API) — để duy trì tần suất mà không tốn công
+
+28. **US-2.07**  
+    [US] Là Marketer, tôi muốn đặt tên và lưu lại một cấu hình prompt đã thiết lập (giọng văn, độ dài, biến thể...) — để tái sử dụng ngay cho các bài viết sau mà không phải cấu hình lại từ đầu
+
+29. **US-2.08**  
+    [US] Là Marketer, tôi muốn hệ thống hỏi tôi một loạt câu hỏi định hướng ngắn (4–5 câu: nhấn mạnh điều gì, cần bao nhiêu biến thể, văn phong nào...) khi tạo prompt mới — để giới hạn lựa chọn hợp lý thay vì phải tự quyết định toàn bộ cấu hình từ con số 0
+
+30. **US-2.09**  
+    [US] Là Marketer, tôi muốn hệ thống áp dụng song song 2 lớp prompt: (1) prompt preset chuẩn theo đặc thù từng nền tảng và (2) prompt tùy chỉnh theo văn phong cá nhân/chuyên mục đã lưu — để chọn được phong cách phù hợp nhất, hoặc dùng văn phong gần nhất với cách viết quen thuộc của mình
+
+31. **US-2.10**  
+    [US] Là Marketer, tôi muốn nội dung khi đăng đồng thời lên nhiều kênh (FB/IG/Threads) được AI tự động biến đổi câu chữ, độ dài, văn phong khác nhau theo từng kênh thay vì đăng y hệt — để tránh bị nền tảng đánh dấu là nội dung trùng lặp/spam
+
+32. **US-2.11**  
+    [US] Là PO, tôi muốn bài đăng đã lên lịch (FB + Threads + IG) hiển thị trên 1 Content Calendar tổng hợp, màu theo kênh (FB=xanh, IG=hồng, Threads=đen), drag & drop đổi giờ — để quản lý chiến dịch đa kênh dễ dàng
+
+33. **US-2.12**  
+    [US] Là Marketer, tôi muốn lọc Content Calendar theo kênh (FB / IG / Threads) bằng filter bar phía trên lịch — để tập trung xem lịch của 1 kênh mà không bị rối khi có nhiều bài đăng
+
+34. **US-2.13**  
+    [US] Là Marketer, tôi muốn xuất lịch đăng bài ra file iCal hoặc CSV theo khoảng thời gian tùy chọn — để đồng bộ với công cụ quản lý dự án hoặc Google Calendar của team
+
+35. **US-2.14**  
+    [US] Là Marketer, tôi muốn có Dashboard tổng quan đa kênh (tổng bài đăng 7 ngày, tỉ lệ thành công per platform, mini chart trending) — để nắm tình hình nội dung nhanh mỗi sáng
+
+36. **US-2.15**  
+    [US] Là Marketer, tôi muốn màn hình tạo caption hỗ trợ tab đa nền tảng (FB / IG / Threads) trên cùng 1 giao diện, sync bài viết gốc xuyên suốt — để tạo nội dung đa kênh không cần chuyển trang
+
+37. **US-2.16**  
+    [US] Là Marketer, tôi muốn chỉnh sửa nội dung trực tiếp ngay trên màn hình xem trước (click vào câu cần sửa và gõ đè) giống trải nghiệm WordPress — để chỉnh bài nhanh, không phải qua màn hình editor riêng biệt
+
+38. **US-2.17**  
+    [US] Là Marketer, tôi muốn màn hình nhập liệu được thiết kế lại để phân định rõ 2 luồng: "Cào dữ liệu tự động từ link" và "Tự viết tay" — để không bị rối mắt khi chọn nguồn nội dung đầu vào
+
+39. **US-2.18**  
+    [US] Là KOL, tôi muốn tải lên file ghi âm/video hoặc chỉ cần gõ vài ý chính ngắn gọn — để AI tự động chuyển giọng nói thành văn bản (speech-to-text) và viết lại thành bài đăng hoàn chỉnh, hay hơn bản nói gốc
