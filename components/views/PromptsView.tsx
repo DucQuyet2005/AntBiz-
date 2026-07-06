@@ -127,9 +127,7 @@ export default function PromptsView() {
   const [configForm, setConfigForm] = useState({
     name: '',
     platform: 'facebook' as PromptPlatform | 'threads',
-    tone: 'Chuyên nghiệp',
-    length: 'Vừa (200-500 từ)',
-    emphasis: '',
+    rules: '',
     variantCount: 2 as number
   });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
@@ -201,9 +199,7 @@ export default function PromptsView() {
     setConfigForm({
       name: '',
       platform: 'facebook',
-      tone: 'Chuyên nghiệp',
-      length: 'Vừa (200-500 từ)',
-      emphasis: '',
+      rules: '# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]',
       variantCount: 2
     });
     setConfigModal({ mode: 'create', config: null });
@@ -213,9 +209,7 @@ export default function PromptsView() {
     setConfigForm({
       name: config.name,
       platform: config.platform === 'thread' ? 'threads' : config.platform,
-      tone: config.params?.tone || 'Chuyên nghiệp',
-      length: config.params?.length || 'Vừa (200-500 từ)',
-      emphasis: config.params?.emphasis || '',
+      rules: config.rules || '',
       variantCount: config.params?.variant_count || 2
     });
     setConfigModal({ mode: 'edit', config });
@@ -236,10 +230,8 @@ export default function PromptsView() {
         body: JSON.stringify({
           name: configForm.name,
           platform: configForm.platform === 'threads' ? 'thread' : configForm.platform,
+          rules: configForm.rules,
           params: {
-            tone: configForm.tone,
-            length: configForm.length,
-            emphasis: configForm.emphasis,
             variant_count: configForm.variantCount
           },
           is_default: isEdit ? configModal.config.is_default : false
@@ -901,14 +893,12 @@ export default function PromptsView() {
                       {config.name}
                     </h3>
 
-                    {/* Params details */}
-                    <div className="grid grid-cols-2 gap-2 text-[10px] text-text-muted font-bold mt-1 bg-gray-50/50 dark:bg-zinc-950/20 p-2.5 rounded-lg border border-gray-150/40 dark:border-zinc-800/40">
-                      <div>Văn phong: <span className="text-text">{config.params?.tone || 'Chuyên nghiệp'}</span></div>
-                      <div>Độ dài: <span className="text-text">{config.params?.length || 'Vừa'}</span></div>
-                      {config.params?.emphasis && (
-                        <div className="col-span-2 truncate">Nhấn mạnh: <span className="text-text">{config.params.emphasis}</span></div>
-                      )}
-                      <div className="col-span-2">Số biến thể: <span className="text-text">{config.params?.variant_count || 2}</span></div>
+                    {/* Rules preview */}
+                    <div className="text-[10px] text-text-muted mt-1 bg-gray-50/50 dark:bg-zinc-950/20 p-2.5 rounded-lg border border-gray-150/40 dark:border-zinc-800/40 line-clamp-3 italic leading-relaxed">
+                      {config.rules || '(Chưa cấu hình văn phong)'}
+                    </div>
+                    <div className="text-[10px] text-text-muted font-bold mt-1.5 flex gap-2">
+                      <span>Số biến thể: <span className="text-text">{config.params?.variant_count || 2}</span></span>
                     </div>
                   </div>
 
@@ -1004,42 +994,16 @@ export default function PromptsView() {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-text-muted">Văn phong (Tone)</label>
-                <select
-                  value={configForm.tone}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, tone: e.target.value }))}
-                  className="w-full bg-bg text-text px-4 py-2.5 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none text-xs font-medium cursor-pointer"
-                >
-                  {['Chuyên nghiệp', 'Thân thiện', 'Hài hước', 'Sắc sảo', 'Storytelling', 'Trang trọng', 'Đơn giản'].map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-text-muted">Độ dài</label>
-                <select
-                  value={configForm.length}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, length: e.target.value }))}
-                  className="w-full bg-bg text-text px-4 py-2.5 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none text-xs font-medium cursor-pointer"
-                >
-                  {['Ngắn (dưới 200 từ)', 'Vừa (200-500 từ)', 'Dài (trên 500 từ)'].map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-muted">Khía cạnh nhấn mạnh (Emphasis)</label>
-              <input
-                type="text"
-                value={configForm.emphasis}
-                onChange={(e) => setConfigForm((f) => ({ ...f, emphasis: e.target.value }))}
-                placeholder="Ví dụ: Lợi ích sức khỏe, Tiết kiệm chi phí..."
-                className="w-full bg-bg text-text px-5 py-3 rounded-2xl border border-gray-200/70 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none text-xs font-medium"
+              <label className="text-xs font-bold text-text-muted">
+                {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
+              </label>
+              <textarea
+                value={configForm.rules}
+                onChange={(e) => setConfigForm((f) => ({ ...f, rules: e.target.value }))}
+                placeholder="Nhập hướng dẫn văn phong thương hiệu..."
+                rows={8}
+                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-xs font-medium text-text focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono resize-y leading-relaxed"
               />
             </div>
 

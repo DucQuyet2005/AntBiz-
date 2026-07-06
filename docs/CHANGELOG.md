@@ -5,6 +5,21 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.6.4] - 2026-07-06
+
+### Added
+- **Quy chuẩn Markdown cho Văn phong thương hiệu (Brand Style Rules)**:
+  - Bổ sung trường `rules` dạng văn bản lớn (Markdown) vào cơ sở dữ liệu `prompt_configs` và chuyển đổi liền mạch từ các tham số tĩnh (Tone, Độ dài).
+  - Tự động điền mẫu (template) hành văn thương hiệu chuyên nghiệp (chứa định nghĩa Hình mẫu, Cách xưng hô, Từ khuyên dùng, Từ cấm, Quy tắc Emoji) khi tạo mới cấu hình.
+  - Tích hợp giao diện Textarea Glassmorphism lớn để nhập văn bản tự do trong các modal tạo/sửa cấu hình ở trang thư viện (`PromptsView.tsx`) và không gian sáng tạo (`AiCreatorView.tsx`).
+  - Nâng cấp API Engine sinh bài đăng (`api/captions/generate/route.ts`) để inject trực tiếp toàn bộ khối Markdown hướng dẫn vào system prompt của Gemini AI, đảm bảo văn phong bám sát thương hiệu tuyệt đối.
+
+### Changed
+- **Nâng cấp Giao diện Xem trước Văn phong (Brand Style Preview)**: 
+  - Loại bỏ hoàn toàn các nhãn/chip rời rạc (Tone: Chuyên nghiệp, Độ dài: Vừa).
+  - Thay thế bằng khung xem trước nội dung Markdown cắt gọn đẹp mắt (line-clamp-3) với hiệu ứng thủy tinh mờ ở màn hình danh sách thẻ (PromptsView) và bảng tóm tắt Layer 2 (AiCreatorView).
+
+---
 ## [1.6.3] - 2026-07-03
 
 ### Fixed

@@ -4,10 +4,10 @@ import { z } from 'zod';
 
 const updateConfigSchema = z.object({
   name: z.string().min(1, 'Tên cấu hình không được để trống').optional(),
+  platform: z.enum(['facebook', 'thread', 'instagram']).optional(),
+  rules: z.string().optional(),
   params: z.object({
-    tone: z.string().optional(),
-    length: z.string().optional(),
-    custom_rules: z.string().optional(),
+    variant_count: z.number().optional(),
   }).optional(),
   is_default: z.boolean().optional(),
 });
@@ -86,6 +86,14 @@ export async function PUT(
         }
       }
       updateData.name = newName;
+    }
+
+    if (parsed.data.platform !== undefined) {
+      updateData.platform = parsed.data.platform;
+    }
+
+    if (parsed.data.rules !== undefined) {
+      updateData.rules = parsed.data.rules;
     }
 
     if (parsed.data.params !== undefined) {

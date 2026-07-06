@@ -750,9 +750,7 @@ export default function AiCreatorView() {
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [styleFormName, setStyleFormName] = useState('');
   const [styleFormPlatform, setStyleFormPlatform] = useState<'facebook' | 'threads' | 'instagram' | 'all'>('all');
-  const [styleFormTone, setStyleFormTone] = useState('Chuyên nghiệp');
-  const [styleFormLength, setStyleFormLength] = useState('Vừa');
-  const [styleFormCustomRules, setStyleFormCustomRules] = useState('');
+  const [styleFormRules, setStyleFormRules] = useState('');
   const [styleFormIsDefault, setStyleFormIsDefault] = useState(false);
 
   // --- US-2.09: Author Profiles (Văn phong tác giả) States ---
@@ -2350,10 +2348,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     setEditingConfigId(null);
     setStyleFormName('');
     setStyleFormPlatform('all');
-    setStyleFormTone('Chuyên nghiệp');
-    setStyleFormLength('Vừa');
-    setStyleFormCustomRules('');
-    setStyleFormIsDefault(false);
+    setStyleFormRules('# HƯỚNG DẪN HÀNH VĂN THƯƠNG HIỆU\n- **Hình mẫu thương hiệu (Persona):** [Ví dụ: Người chia sẻ kiến thức tài chính gần gũi, đáng tin cậy]\n- **Cách xưng hô:** [Ví dụ: Xưng "AntBiz" hoặc "mình", gọi người đọc là "bạn"]\n- **Từ ngữ khuyên dùng:** [Ví dụ: tích lũy, tự do tài chính, tối ưu]\n- **Từ ngữ cần tránh:** [Ví dụ: làm giàu nhanh, cam kết 100%, lừa đảo]\n- **Quy tắc Emoji:** [Ví dụ: Sử dụng tối đa 3 emoji mỗi bài viết, đặt ở cuối câu]');    setStyleFormIsDefault(false);
     setIsStyleModalOpen(true);
   };
 
@@ -2363,15 +2358,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     setEditingConfigId(configId);
     setStyleFormName(config.name);
     setStyleFormPlatform(config.platform || 'all');
-    setStyleFormTone(config.params?.tone || 'Chuyên nghiệp');
-
-    let rawLength = config.params?.length || 'Vừa';
-    if (rawLength.includes('Ngắn')) rawLength = 'Ngắn';
-    else if (rawLength.includes('Dài')) rawLength = 'Dài';
-    else if (rawLength.includes('Vừa')) rawLength = 'Vừa';
-    setStyleFormLength(rawLength);
-
-    setStyleFormCustomRules(config.params?.custom_rules || '');
+    setStyleFormRules(config.rules || '');
     setStyleFormIsDefault(config.is_default || false);
     setIsStyleModalOpen(true);
   };
@@ -2394,11 +2381,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         body: JSON.stringify({
           name: styleFormName.trim(),
           is_default: styleFormIsDefault,
-          params: {
-            tone: styleFormTone,
-            length: styleFormLength === 'Ngắn' ? 'Ngắn (dưới 200 từ)' : styleFormLength === 'Dài' ? 'Dài (trên 500 từ)' : 'Vừa (200-500 từ)',
-            custom_rules: styleFormCustomRules,
-          }
+          rules: styleFormRules,
+          params: {}
         }),
       });
 
@@ -5072,10 +5056,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       </select>
                       {(() => {
                         const cfg = savedConfigs.find((c: any) => c.id === selectedConfigId);
-                        return cfg?.params ? (
-                          <div className="flex flex-wrap gap-1.5 mt-0.5">
-                            <span className="text-[9px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/30">🎤 {cfg.params.tone || 'Tự do'}</span>
-                            <span className="text-[9px] bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-100 dark:border-amber-900/30">📏 {cfg.params.length_pref || 'Vừa'}</span>
+                        return cfg?.rules ? (
+                          <div className="bg-slate-50/80 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-[10px] text-text-muted leading-relaxed line-clamp-3 italic">
+                            {cfg.rules}
                           </div>
                         ) : null;
                       })()}
@@ -6186,52 +6169,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                        {language === 'vi' ? 'Giọng điệu (Tone)' : 'Tone'}
-                      </label>
-                      <select
-                        value={styleFormTone}
-                        onChange={(e) => setStyleFormTone(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-sans"
-                      >
-                        <option value="Chuyên nghiệp">Chuyên nghiệp</option>
-                        <option value="Hài hước">Hài hước</option>
-                        <option value="Đồng cảm">Đồng cảm</option>
-                        <option value="GenZ">GenZ</option>
-                        <option value="Học thuật">Học thuật</option>
-                        <option value="Trẻ trung">Trẻ trung</option>
-                        <option value="Thuyết phục">Thuyết phục</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                        {language === 'vi' ? 'Độ dài (Length)' : 'Length'}
-                      </label>
-                      <select
-                        value={styleFormLength}
-                        onChange={(e) => setStyleFormLength(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-sans"
-                      >
-                        <option value="Ngắn">Ngắn ( &lt;150 từ )</option>
-                        <option value="Vừa">Vừa ( 200-450 từ )</option>
-                        <option value="Dài">Dài ( 500-1000 từ )</option>
-                      </select>
-                    </div>
-                  </div>
-
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                      {language === 'vi' ? 'Quy tắc bổ sung (tùy chọn)' : 'Custom Rules (optional)'}
+                      {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
                     </label>
                     <textarea
-                      value={styleFormCustomRules}
-                      onChange={(e) => setStyleFormCustomRules(e.target.value)}
-                      placeholder={language === 'vi' ? 'Ví dụ: Không dùng từ lóng quá đà, viết tắt...' : 'E.g., No excessive slang...'}
-                      rows={3}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-sans"
+                      value={styleFormRules}
+                      onChange={(e) => setStyleFormRules(e.target.value)}
+                      placeholder={language === 'vi' ? 'Nhập hướng dẫn văn phong thương hiệu...' : 'Enter brand style rules...'}
+                      rows={8}
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-mono"
                     />
                   </div>
 

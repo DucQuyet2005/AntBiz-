@@ -229,12 +229,8 @@ export async function POST(request: NextRequest) {
         .eq('id', stylePresetId)
         .maybeSingle();
 
-      if (styleData && styleData.params) {
-        const { tone, custom_rules } = styleData.params;
-        styleContent = `Tone giọng yêu cầu: ${tone || 'Tự do'}`;
-        if (custom_rules) {
-          styleContent += `\n*   ${custom_rules}`;
-        }
+      if (styleData && styleData.rules) {
+        styleContent = styleData.rules;
       }
     }
 
@@ -378,7 +374,7 @@ Yêu cầu bắt buộc: Hãy viết bài viết mới bắt chước hoàn hả
 
     const presetRulesStr = platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`;
     const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
-    const styleSectionStr = styleContent ? `*   ${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
+    const styleSectionStr = styleContent ? `\n${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 

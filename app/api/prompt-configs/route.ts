@@ -4,10 +4,10 @@ import { z } from 'zod';
 
 const createConfigSchema = z.object({
   name: z.string().min(1, 'Tên cấu hình không được để trống'),
+  platform: z.enum(['facebook', 'thread', 'instagram']).default('facebook'),
+  rules: z.string().optional(),
   params: z.object({
-    tone: z.string().optional(),
-    length: z.string().optional(),
-    custom_rules: z.string().optional(),
+    variant_count: z.number().optional(),
   }).default({}),
   is_default: z.boolean().default(false),
 });
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, params, is_default } = parsed.data;
+    const { name, platform, rules, params, is_default } = parsed.data;
 
     // 1. Kiểm tra trùng tên cấu hình của user này
     const { data: existingConfig, error: checkError } = await supabase
@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         name: name.trim(),
+        platform,
+        rules: rules || '',
         params,
         is_default,
       })
