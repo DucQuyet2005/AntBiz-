@@ -1612,13 +1612,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     // Layer 2: Brand style
     const selectedStyle = savedConfigs.find((c: any) => c.id === selectedConfigId);
     let styleSection = '';
-    if (selectedStyle && selectedStyle.params) {
-      styleSection = `*   Tone giọng yêu cầu: ${selectedStyle.params.tone || 'Tự do'}\n`;
-      if (selectedStyle.params.custom_rules) {
-        styleSection += `*   ${selectedStyle.params.custom_rules}\n`;
+    if (selectedStyle && selectedStyle.rules) {
+      let brandRules = selectedStyle.rules;
+      try {
+        const parsed = JSON.parse(brandRules);
+        const generalRules = parsed.general || '';
+        const platformRules = parsed[selectedPlatform] || '';
+        if (generalRules && platformRules) {
+          brandRules = generalRules + '\n\n' + platformRules;
+        } else {
+          brandRules = generalRules || platformRules || '';
+        }
+      } catch (e) {
+        // Fallback to raw string if it's not JSON
       }
+      styleSection = brandRules ? brandRules : '*   Không có hướng dẫn văn phong riêng.';
     } else {
-      styleSection = `*   Tone giọng yêu cầu: ${tone}\n`;
+      styleSection = '*   Không áp dụng quy chuẩn thương hiệu cụ thể.';
     }
 
     // Layer 3: Custom instructions
@@ -4973,7 +4983,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         let displayRules = cfg.rules;
                         try {
                           const parsed = JSON.parse(cfg.rules);
-                          displayRules = parsed[selectedPlatform] || parsed.general || '';
+                          const generalRules = parsed.general || '';
+                          const platformRules = parsed[selectedPlatform] || '';
+                          if (generalRules && platformRules) {
+                            displayRules = generalRules + '\n\n' + platformRules;
+                          } else {
+                            displayRules = generalRules || platformRules || '';
+                          }
                         } catch (e) {
                           // Fallback to raw string if not JSON
                         }
