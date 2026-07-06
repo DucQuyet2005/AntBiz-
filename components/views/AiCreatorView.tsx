@@ -3696,7 +3696,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                             {toggles.showImage && postData.imageUrl && (
                               <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                                <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
                               </div>
                             )}
 
