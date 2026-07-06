@@ -556,7 +556,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             {suggestions.captions.slice(0, 3).map((cap) => (
                               <Link
                                  key={cap.id}
-                                 href={`/archive/${cap.article_id}?captionId=${cap.id}`}
+                                 href={`/archive/${cap.article_id}?captionId=${cap.id}&platform=${cap.platform === 'thread' ? 'threads' : cap.platform}`}
                                  onClick={() => setIsSearchOpen(false)}
                                  className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                               >

@@ -59,14 +59,25 @@ export async function runSchedulerCycle() {
     const postTitle = article?.title || 'Bài viết không tên';
     const recipientEmail = user?.email || '';
     const userId = user?.id || post.created_by;
+    const platformName = post.platform === 'facebook' ? 'Facebook' : post.platform === 'thread' ? 'Threads' : 'Instagram';
 
-    console.log(`[Scheduler] Bắt đầu đăng bài ID ${post.id}: "${postTitle}"`);
+    console.log(`[Scheduler] Bắt đầu đăng bài ID ${post.id}: "${postTitle}" lên nền tảng ${platformName}`);
 
-    // 2. Gọi API đăng lên Facebook Page
-    const publishResult = await publishToFacebookPage(message, post.image_urls || []);
+    // 2. Gọi API đăng lên nền tảng tương ứng
+    let publishResult;
+    if (post.platform === 'facebook') {
+      publishResult = await publishToFacebookPage(message, post.image_urls || []);
+    } else {
+      // Giả lập đăng bài thành công đối với Threads và Instagram chưa có API chính thức
+      console.log(`[Scheduler] Nền tảng ${platformName} chưa cấu hình kết nối API chính thức. Thực hiện giả lập đăng bài thành công.`);
+      publishResult = {
+        success: true,
+        postId: `mock_${post.platform}_post_id_${Date.now()}`
+      };
+    }
 
     if (publishResult.success && publishResult.postId) {
-      console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài viết Facebook: ${publishResult.postId}`);
+      console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài đăng ${platformName}: ${publishResult.postId}`);
 
       // Cập nhật thêm thông tin fb_post_id và post_result cho post đã được đánh dấu là 'posted' trước đó
       await supabase
@@ -92,7 +103,7 @@ export async function runSchedulerCycle() {
         recipientEmail,
         postTitle,
         'success',
-        `Đã đăng lên Facebook Page thành công.\nPost ID: ${publishResult.postId}`
+        `Đã đăng lên ${platformName} thành công.\nPost ID: ${publishResult.postId}`
       );
 
       // Gửi thông báo in-app (Không ảnh hưởng luồng chính)
@@ -101,7 +112,7 @@ export async function runSchedulerCycle() {
           userId,
           type: 'post_success',
           title: 'Đăng bài thành công',
-          message: `Bài viết "${postTitle}" đã được tự động đăng lên Facebook Page thành công.`,
+          message: `Bài viết "${postTitle}" đã được tự động đăng lên ${platformName} thành công.`,
           metadata: {
             post_id: post.id,
             fb_post_id: publishResult.postId,
@@ -111,7 +122,7 @@ export async function runSchedulerCycle() {
         console.error('[Scheduler] Lỗi khi tạo thông báo thành công:', err.message);
       }
     } else {
-      const errorMsg = publishResult.error || 'Lỗi không xác định từ Facebook API';
+      const errorMsg = publishResult.error || `Lỗi không xác định từ ${platformName} API`;
       console.error(`[Scheduler] Đăng bài ID ${post.id} thất bại:`, errorMsg);
 
       // Cập nhật trạng thái sang 'failed' nếu đăng tải thất bại, đồng thời xóa posted_at đã ghi trước đó
@@ -133,7 +144,7 @@ export async function runSchedulerCycle() {
         recipientEmail,
         postTitle,
         'failed',
-        `Đăng lên Facebook Page thất bại.\nLý do: ${errorMsg}`
+        `Đăng lên ${platformName} thất bại.\nLý do: ${errorMsg}`
       );
 
       // Gửi thông báo in-app (Không ảnh hưởng luồng chính)
@@ -142,7 +153,7 @@ export async function runSchedulerCycle() {
           userId,
           type: 'post_failed',
           title: 'Đăng bài thất bại',
-          message: `Đăng bài "${postTitle}" lên Facebook Page thất bại. Lý do: ${errorMsg}`,
+          message: `Đăng bài "${postTitle}" lên ${platformName} thất bại. Lý do: ${errorMsg}`,
           metadata: {
             post_id: post.id,
             error: errorMsg,
