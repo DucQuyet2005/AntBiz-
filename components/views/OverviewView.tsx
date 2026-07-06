@@ -118,8 +118,8 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       let targetId = '';
       if (tourStep === 1) targetId = 'tour-welcome';
       if (tourStep === 2) targetId = 'tour-stats';
-      if (tourStep === 3) targetId = 'tour-chart';
-      if (tourStep === 4) targetId = 'tour-recent';
+      if (tourStep === 3) targetId = 'tour-recent';
+      if (tourStep === 4) targetId = 'tour-chart';
 
       if (targetId) {
         const el = document.getElementById(targetId);
@@ -147,8 +147,8 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     let targetId = '';
     if (step === 1) targetId = 'tour-welcome';
     if (step === 2) targetId = 'tour-stats';
-    if (step === 3) targetId = 'tour-chart';
-    if (step === 4) targetId = 'tour-recent';
+    if (step === 3) targetId = 'tour-recent';
+    if (step === 4) targetId = 'tour-chart';
 
     if (targetId) {
       const element = document.getElementById(targetId);
