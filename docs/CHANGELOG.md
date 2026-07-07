@@ -7,9 +7,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [1.7.3] - 2026-07-07
 
 ### Changed
+- Đồng bộ hóa các biểu tượng và màu sắc của Facebook, Threads và Instagram trong phần "Tích hợp API" của trang Cài đặt ([SettingsView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/SettingsView.tsx)) khớp chính xác với thiết kế chuẩn của [ContentCalendarView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/ContentCalendarView.tsx). Thay thế logo Threads cũ có độ phân giải thấp bằng logo SVG 192x192 sắc nét và tô màu thương hiệu chính thức cho Facebook (`#1877F2`) và Instagram (`#E4405F`).
 - Cập nhật nhãn của nút quay lại trong Bước 3 thành "Quay lại Bước 2" (tiếng Việt) và "Back to Step 2" (tiếng Anh) để nhất quán với trải nghiệm quy trình 3 bước thay vì kiểm thử A/B chung chung.
 
 ### Fixed
+- Khắc phục lỗi thiếu gói thư viện `mammoth` tại route xử lý tài liệu `app/api/parse-doc/route.ts` bằng việc cài đặt và đồng bộ lại các package trong dự án, giúp tính năng phân tích file DOCX/tài liệu thông qua Gemini hoạt động bình thường.
 - Khắc phục lỗi nút "Xác nhận và Lên lịch" (Confirm & Schedule) không lên lịch cho toàn bộ các kênh đã chọn khi đăng bài đồng thời. Giờ đây, hệ thống hỗ trợ lên lịch song song cho tất cả các nền tảng hoạt động đã chọn ở Bước 1 thông qua `Promise.all`.
 - Sửa lỗi hệ thống "im lặng" (silent fail) khi có lỗi xảy ra trong quá trình lên lịch (như chọn sai giờ trong quá khứ). Các thông báo lỗi (`schedulingError`) giờ đây sẽ được hiển thị rõ ràng ngay phía trên nút Xác nhận thay vì bị ẩn dưới console hoặc không phản hồi.
 - Sửa lỗi không thể lên lịch bài viết hiển thị dòng chữ cảnh báo "Please select a variant before scheduling" ở màn hình xác nhận do giá trị biến thể bị null. Hệ thống đã được bổ sung cơ chế fallback để tự động lấy biến thể mặc định đầu tiên khi người dùng loại bỏ thao tác chọn tab.
