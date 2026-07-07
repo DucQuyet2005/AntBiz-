@@ -64,7 +64,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   // Check tồn tại trước, để phân biệt 404 (không có) và 403 (có nhưng không phải owner/admin)
   const { data: existing, error: fetchError } = await supabase
     .from('prompts')
-    .select('id, created_by')
+    .select('id, created_by, platform')
     .eq('id', id)
     .eq('is_deleted', false)
     .maybeSingle();
@@ -82,6 +82,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       { error: 'Bạn không có quyền sửa prompt này' },
       { status: 403 }
     );
+  }
+
+  // Nếu đánh dấu là mặc định, reset các prompt khác cùng platform về false
+  if (parsed.data.is_default === true) {
+    const targetPlatform = parsed.data.platform || existing.platform;
+    await supabase
+      .from('prompts')
+      .update({ is_default: false })
+      .eq('created_by', user.id)
+      .eq('platform', targetPlatform)
+      .eq('is_deleted', false);
   }
 
   const { data, error } = await supabase

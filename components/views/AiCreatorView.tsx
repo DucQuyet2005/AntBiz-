@@ -208,7 +208,7 @@ const EditableText = ({
   const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
   const captionLimits = {
     facebook: 63206,
-    threads: 5000,
+    threads: 500,
     instagram: 2200
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
@@ -224,7 +224,7 @@ const EditableText = ({
   }, [isEditing, value, textarea]);
 
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const shouldFold = textarea && value && value.length > 280;
+  const shouldFold = textarea && value && value.length > 500;
 
   React.useEffect(() => {
     setIsExpanded(false);
@@ -271,9 +271,26 @@ const EditableText = ({
                       </button>
                     )}
                   </div>
-                  <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-                  </div>
+                  {(() => {
+                    let counterColor = 'text-gray-400';
+                    if (value.length > charLimit) {
+                      counterColor = 'text-rose-600';
+                    } else if (field === 'threads') {
+                      const len = value.length;
+                      if (len <= 200) {
+                        counterColor = 'text-emerald-600';
+                      } else if (len <= 260) {
+                        counterColor = 'text-amber-500';
+                      } else {
+                        counterColor = 'text-rose-600';
+                      }
+                    }
+                    return (
+                      <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                        {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {value.length > charLimit && (
                   <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -313,11 +330,37 @@ const EditableText = ({
     >
       <div className="flex flex-col w-full">
         <span className="whitespace-pre-wrap">
-          {value ? (
-            shouldFold ? (
+          {value ? (() => {
+            const isThreads = field === 'threads';
+            const renderThreadsText = (text: string) => {
+              const lastQIndex = Math.max(text.lastIndexOf('?'), text.lastIndexOf('？'));
+              if (lastQIndex === -1) return text;
+              let start = 0;
+              for (let i = lastQIndex - 1; i >= 0; i--) {
+                if (['.', '!', '?', '？', '\n'].includes(text[i])) {
+                  start = i + 1;
+                  break;
+                }
+              }
+              const before = text.substring(0, start);
+              const question = text.substring(start, lastQIndex + 1);
+              const after = text.substring(lastQIndex + 1);
+              return (
+                <>
+                  {before}
+                  <u className="underline decoration-indigo-500 decoration-2 underline-offset-2">{question}</u>
+                  {after}
+                </>
+              );
+            };
+            const renderTextContent = (text: string) => {
+              return isThreads ? renderThreadsText(text) : text;
+            };
+
+            return shouldFold ? (
               !isExpanded ? (
                 <>
-                  {value.substring(0, 280)}...
+                  {renderTextContent(value.substring(0, 500))}...
                   <button
                     type="button"
                     onClick={(e) => {
@@ -331,7 +374,7 @@ const EditableText = ({
                 </>
               ) : (
                 <>
-                  {value}
+                  {renderTextContent(value)}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -345,9 +388,9 @@ const EditableText = ({
                 </>
               )
             ) : (
-              value
-            )
-          ) : isGeneratingAB ? (
+              renderTextContent(value)
+            );
+          })() : isGeneratingAB ? (
             <span className="text-gray-400 italic flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin text-primary shrink-0" />
               {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
@@ -380,9 +423,26 @@ const EditableText = ({
                   </button>
                 )}
               </div>
-              <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-              </div>
+              {(() => {
+                let counterColor = 'text-gray-400';
+                if (value.length > charLimit) {
+                  counterColor = 'text-rose-600';
+                } else if (field === 'threads') {
+                  const len = value.length;
+                  if (len <= 200) {
+                    counterColor = 'text-emerald-600';
+                  } else if (len <= 260) {
+                    counterColor = 'text-amber-500';
+                  } else {
+                    counterColor = 'text-rose-600';
+                  }
+                }
+                return (
+                  <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                    {value.length.toLocaleString()} / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                  </div>
+                );
+              })()}
             </div>
             {value.length > charLimit && (
               <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -407,6 +467,26 @@ export default function AiCreatorView() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+
+  const [url, setUrl] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
+
+  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
+  interface Prompt { id: string; name: string; platform: string; content: string; }
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
+  const [captionId, setCaptionId] = useState<string>('');
+  const [streamedCaption, setStreamedCaption] = useState('');
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateDone, setGenerateDone] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Prompt Selector Library States
+  const [promptsList, setPromptsList] = useState<any[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
 
   // Onboarding Tour state for AI Creator
   const [showTour, setShowTour] = useState(false);
@@ -883,7 +963,114 @@ export default function AiCreatorView() {
     }
   };
 
-  // Update prompt when platform changes
+  const handleRegenerateVariantWithPrompt = async (variantId: string, promptObj: any) => {
+    const variantIndex = variantId === 'A' ? 0 : 1;
+    const oldCaptionId = variants.find(v => v.id === variantId)?.captionId;
+    setRegeneratingVariantId(variantId);
+
+    const buildVariantPrompt = (index: number, basePrompt: string): string => {
+      if (index === 0) return basePrompt;
+      if (index === 1) {
+        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
+      }
+      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, facts-driven, không emoji, phong cách báo chí chuyên nghiệp.`;
+    };
+
+    const groupId = variantGroupId || crypto.randomUUID();
+    if (!variantGroupId) setVariantGroupId(groupId);
+
+    const customPromptText = buildVariantPrompt(variantIndex, promptObj.content);
+
+    try {
+      const res = await fetch('/api/captions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url.trim() || undefined,
+          articleId: articleId || undefined,
+          customPrompt: customPromptText,
+          platform: selectedPlatform,
+          variantGroupId: groupId,
+          variantIndex,
+          oldCaptionId,
+          model: selectedModel,
+          promptId: promptObj.id,
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              accumulated += parsed.text;
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
+                )
+              );
+            }
+            if (parsed.done && parsed.captionId) {
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, captionId: parsed.captionId } : v
+                )
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      setVariants((prev) =>
+        prev.map((v) => {
+          if (v.id === variantId) {
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
+            return {
+              ...v,
+              [originalField]: accumulated,
+            };
+          }
+          return v;
+        })
+      );
+    } catch (err) {
+      console.error('Error regenerating variant:', err);
+    } finally {
+      setRegeneratingVariantId(null);
+    }
+  };
+
+  // Đồng bộ hóa prompt mặc định khi thay đổi platform
+  useEffect(() => {
+    const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+    const defaultPrompt = promptsList.find(p => p.platform === targetPlat && p.is_default);
+    if (defaultPrompt) {
+      setSelectedPromptId(defaultPrompt.id);
+      setSelectedPrompt(defaultPrompt);
+    } else {
+      setSelectedPromptId('');
+      setSelectedPrompt(null);
+    }
+  }, [selectedPlatform, promptsList]);
+
+  // Update prompt khi platform của prompt thay đổi
   useEffect(() => {
     if (postData.title && postData.description && !isGenerating && !isGeneratingSmartPrompt) {
       const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.description);
@@ -891,9 +1078,7 @@ export default function AiCreatorView() {
     }
   }, [promptPlatform]);
 
-  // Prompt Selector Library States
-  const [promptsList, setPromptsList] = useState<any[]>([]);
-  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
 
   // AI Logic Functions
   const handleGenerateSmartPrompt = async () => {
@@ -1476,21 +1661,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
   };
 
-  const [url, setUrl] = useState('');
-  const [isFetching, setIsFetching] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
 
-  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
-  interface Prompt { id: string; name: string; platform: string; content: string; }
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [promptsLoading, setPromptsLoading] = useState(false);
-  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
-  const [captionId, setCaptionId] = useState<string>('');
-  const [streamedCaption, setStreamedCaption] = useState('');
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateDone, setGenerateDone] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch prompts on mount
   useEffect(() => {
@@ -2111,7 +2282,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return scrapeData.id as string;
   };
 
-  const compileFinalMessage = (variant: SocialVariant) => {
+  const compileFinalMessage = (variant: SocialVariant, targetPlatform: SocialPlatform = selectedPlatform) => {
     const parts: string[] = [];
 
     if (toggles.showTitle && variant.title) {
@@ -2123,7 +2294,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     if (toggles.showDescription) {
-      const descVal = variant[selectedPlatform] || '';
+      const descVal = variant[targetPlatform] || '';
       if (descVal.trim()) {
         parts.push(descVal.trim());
       }
@@ -2145,7 +2316,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     return parts.join('\n\n');
   };
 
-  const ensureCaptionDraft = async () => {
+  const ensureCaptionDraft = async (targetPlatform: SocialPlatform = selectedPlatform) => {
     const selectedVariant = variants.find((v) => v.id === selectedVariantId);
     if (!selectedVariant) {
       throw new Error(
@@ -2155,14 +2326,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       );
     }
 
-    const finalCompiledContent = compileFinalMessage(selectedVariant);
+    const finalCompiledContent = compileFinalMessage(selectedVariant, targetPlatform);
 
-    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+    const platKey = targetPlatform === 'facebook' ? 'facebookCaptionId' :
+      targetPlatform === 'threads' ? 'threadsCaptionId' :
         'instagramCaptionId';
 
     // Platform-specific caption ID fallback
-    const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+    const activeCaptionId = selectedVariant[platKey] || (selectedVariant.id === 'A' ? captionId : undefined);
 
     if (activeCaptionId) {
       // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
@@ -2181,18 +2352,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       }
 
       // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
+      if (!selectedVariant[platKey]) {
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, [platKey]: activeCaptionId } : v))
         );
       }
       return activeCaptionId;
     }
 
     const getSelectedVariantCaption = () => {
-      if (selectedPlatform === 'facebook') return selectedVariant.facebook;
-      if (selectedPlatform === 'threads') return selectedVariant.threads;
-      if (selectedPlatform === 'instagram') return selectedVariant.instagram;
+      if (targetPlatform === 'facebook') return selectedVariant.facebook;
+      if (targetPlatform === 'threads') return selectedVariant.threads;
+      if (targetPlatform === 'instagram') return selectedVariant.instagram;
       return '';
     };
 
@@ -2206,13 +2377,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
-    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-      selectedPlatform === 'threads' ? 'originalThreads' :
+    const originalField = targetPlatform === 'facebook' ? 'originalFacebook' :
+      targetPlatform === 'threads' ? 'originalThreads' :
         'originalInstagram';
     const originalAiText = selectedVariant[originalField] || selectedContent;
 
     // Check if the user has edited the caption compared to the original AI content
-    const isEdited = selectedVariant[selectedPlatform] !== originalAiText;
+    const isEdited = selectedVariant[targetPlatform] !== originalAiText;
     const editedContentPayload = isEdited ? finalCompiledContent : null;
 
     const res = await fetch('/api/captions', {
@@ -2220,7 +2391,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
-        platform: toDatabasePlatform(selectedPlatform),
+        platform: toDatabasePlatform(targetPlatform),
         ai_content: originalAiText,
         edited_content: editedContentPayload,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
@@ -2240,9 +2411,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     const newCaptionId = data.data.id;
-    setCaptionId(newCaptionId);
     setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: newCaptionId, [platKey]: newCaptionId } : v))
+      prev.map((v) => (v.id === selectedVariant.id ? { ...v, [platKey]: newCaptionId } : v))
     );
     return newCaptionId as string;
   };
@@ -2257,14 +2427,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       threads: { date: threadsDate, time: threadsTime },
       instagram: { date: instagramDate, time: instagramTime },
     };
-    const selectedSchedule = scheduleByPlatform[selectedPlatform];
-    const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
-
-    // Đảm bảo thời gian lên lịch phải ở tương lai so với thời điểm hiện tại
-    if (scheduledAt.getTime() <= Date.now()) {
-      setFacebookError('Thời gian lên lịch đăng bài bắt buộc phải ở tương lai.');
-      return;
-    }
 
     setIsSchedulingLoading(true);
     setSchedulingError(null);
@@ -2275,22 +2437,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
       : [];
 
     try {
-      const draftCaptionId = await ensureCaptionDraft();
+      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+      if (targetPlatforms.length === 0) {
+        throw new Error(language === 'vi' ? 'Không xác định được nền tảng đăng từ Prompt' : 'No platforms found for the selected prompt');
+      }
 
-      // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
-      const res = await fetch('/api/scheduled-posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          captionId: draftCaptionId,
-          scheduledAt: scheduledAt.toISOString(),
-          imageUrls,
-        }),
-      });
+      for (const plat of targetPlatforms) {
+        const selectedSchedule = scheduleByPlatform[plat];
+        const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errData.error || `Lỗi từ hệ thống HTTP ${res.status}`);
+        if (scheduledAt.getTime() <= Date.now()) {
+          throw new Error(
+            language === 'vi'
+              ? `Thời gian lên lịch đăng bài cho ${plat} bắt buộc phải ở tương lai.`
+              : `Scheduled time for ${plat} must be in the future.`
+          );
+        }
+
+        const draftCaptionId = await ensureCaptionDraft(plat);
+
+        // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
+        const res = await fetch('/api/scheduled-posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            captionId: draftCaptionId,
+            scheduledAt: scheduledAt.toISOString(),
+            imageUrls,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(errData.error || `Lỗi khi lên lịch đăng bài cho ${plat}`);
+        }
       }
 
       setIsScheduled(true);
@@ -3245,6 +3425,42 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
               </div>
 
+              {/* Prompt Selector for Active Platform */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-primary" />
+                  <span className="text-xs font-bold text-text-muted uppercase">
+                    {language === 'vi' ? 'Chọn Prompt viết bài' : 'Select Prompt'}
+                  </span>
+                </div>
+                <select
+                  value={selectedPromptId}
+                  onChange={async (e) => {
+                    const nextPromptId = e.target.value;
+                    setSelectedPromptId(nextPromptId);
+                    const foundPrompt = promptsList.find(p => p.id === nextPromptId);
+                    if (foundPrompt) {
+                      setSelectedPrompt(foundPrompt);
+                      // Trigger regeneration of both variant A and B for this platform
+                      handleRegenerateVariantWithPrompt('A', foundPrompt);
+                      handleRegenerateVariantWithPrompt('B', foundPrompt);
+                    }
+                  }}
+                  className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold max-w-xs w-full"
+                >
+                  <option value="">{language === 'vi' ? '── Chọn prompt mẫu ──' : '── Select a prompt ──'}</option>
+                  {promptsList
+                    .filter(p => {
+                      const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+                      return p.platform === targetPlat;
+                    })
+                    .map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+
               {/* Displaying Variants in 2-Columns grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 <AnimatePresence mode="popLayout">
@@ -3480,7 +3696,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                             {toggles.showImage && postData.imageUrl && (
                               <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                                <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
                               </div>
                             )}
 
@@ -4166,6 +4382,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                 </div>
 
                 {/* Step 3 Actions */}
+                {schedulingError && (
+                  <div className="bg-red-50 border border-red-200 text-red-650 rounded-2xl p-4 text-xs font-bold mb-4 font-sans flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{schedulingError}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
                   <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
                     <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
@@ -4338,14 +4560,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                        <span className="px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold">Threads</span>
                         <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
                       </div>
                     )}
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                        <span className="px-2 py-0.5 rounded bg-pink-600 text-white text-[10px] font-bold">Instagram</span>
                         <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
                       </div>
                     )}
@@ -4558,6 +4780,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           type="button"
                           onClick={() => {
                             setSelectedPrompt(p);
+                            const plat = p.platform === 'thread' || p.platform === 'threads' ? 'threads' : p.platform;
+                            setSelectedPlatform(plat);
                             setIsPromptModalOpen(false);
                           }}
                           className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
@@ -4736,6 +4960,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                                   setActivePrompt(p.content);
                                   setSelectedPrompt(p);
                                   setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
+                                  const plat = p.platform === 'thread' || p.platform === 'threads' ? 'threads' : p.platform;
+                                  setSelectedPlatform(plat);
                                 }}
                                 className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSel
                                   ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm'
@@ -4769,6 +4995,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
                           setIsAiPromptDialogOpen(false);
                         }}
                         disabled={!activePrompt}
@@ -4785,6 +5013,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
                           const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
                           const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
                           setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
                           setIsAiPromptDialogOpen(false);
                         }}
                         disabled={!activePrompt || isSavingPrompt}

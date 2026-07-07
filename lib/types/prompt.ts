@@ -10,6 +10,7 @@ export interface Prompt {
   content: string;
   tags: string[];
   is_deleted: boolean;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 }
