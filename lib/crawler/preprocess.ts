@@ -22,7 +22,36 @@ export interface ImageBlock {
   caption: string;
 }
 
+export type PageType = 'ARTICLE' | 'LISTING';
+
+export type ArticleLayout =
+  | 'standard'
+  | 'video'
+  | 'photo'
+  | 'dmagazine' // Dan Tri longform
+  | 'megastory' // Tuoi Tre longform
+  | 'podcast'
+  | 'infographic'
+  | 'tamdiem'    // Dan Tri editorial
+  | 'bandoc'     // Dan Tri reader submissions
+  | 'sub_publication' // cuoi.tuoitre.vn, etc.
+  | 'gocnhinmoi_standard'
+  | 'gocnhinmoi_spotlight';
+
+export interface ListingItem {
+  url: string;
+  title: string;
+}
+
+export interface ListingData {
+  type: 'LISTING';
+  url: string;
+  extractedUrls: ListingItem[];
+  warning: string;
+}
+
 export interface ArticleData {
+  type: 'ARTICLE';
   url: string;
   title: string;
   category: string;
@@ -130,6 +159,132 @@ function parsePublishedAt(rawStr: string): string {
   return clean;
 }
 
+export function detectPageType(url: string, html: string): { type: PageType; layout: ArticleLayout } {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+
+    if (hostname.includes('dantri.com.vn')) {
+      const isListing =
+        urlObj.pathname.includes('/event/') ||
+        urlObj.pathname.includes('/chu-de/') ||
+        urlObj.pathname.includes('/tag/') ||
+        (urlObj.pathname.endsWith('.htm') &&
+          !/-\d{6,}\.htm$/i.test(urlObj.pathname) &&
+          !/(dmagazine|photo-news|photo-story|tam-diem|ban-doc|infographic|interactive|video)/i.test(urlObj.pathname)) ||
+        (!urlObj.pathname.endsWith('.htm') && urlObj.pathname !== '/');
+
+      if (isListing) {
+        return { type: 'LISTING', layout: 'standard' };
+      }
+
+      let layout: ArticleLayout = 'standard';
+      if (urlObj.pathname.includes('/dt360/') || urlObj.pathname.includes('/video/')) {
+        layout = 'video';
+      } else if (urlObj.pathname.includes('/photo-news') || urlObj.pathname.includes('/photo-story')) {
+        layout = 'photo';
+      } else if (urlObj.pathname.includes('/dmagazine')) {
+        layout = 'dmagazine';
+      } else if (urlObj.pathname.includes('/tam-diem')) {
+        layout = 'tamdiem';
+      } else if (urlObj.pathname.includes('/ban-doc')) {
+        layout = 'bandoc';
+      } else if (urlObj.pathname.includes('/infographic') || urlObj.pathname.includes('/interactive')) {
+        layout = 'infographic';
+      } else {
+        const $ = cheerio.load(html);
+        if ($('.dmagazine-container, .dmagazine-body, .dmagazine').length > 0) {
+          layout = 'dmagazine';
+        } else if ($('.video-player, .dt-video').length > 0) {
+          layout = 'video';
+        }
+      }
+      return { type: 'ARTICLE', layout };
+    }
+
+    if (hostname.includes('tuoitre.vn')) {
+      const isListing =
+        urlObj.pathname.includes('/tac-gia/') ||
+        /-\s*e\d+\.htm$/i.test(urlObj.pathname) ||
+        (urlObj.pathname.endsWith('.htm') &&
+          !/-\d{6,}\.htm$/i.test(urlObj.pathname) &&
+          !/(video|photo|infographic|megastory|podcast)/i.test(urlObj.pathname)) ||
+        (!urlObj.pathname.endsWith('.htm') && urlObj.pathname !== '/');
+
+      if (isListing) {
+        return { type: 'LISTING', layout: 'standard' };
+      }
+
+      let layout: ArticleLayout = 'standard';
+      if (hostname.startsWith('cuoi.') || hostname.startsWith('cuoituan.') || hostname.startsWith('news.')) {
+        layout = 'sub_publication';
+      } else if (urlObj.pathname.includes('/video/') || hostname.startsWith('video.')) {
+        layout = 'video';
+      } else if (hostname.startsWith('podcast.') || urlObj.pathname.includes('/podcast/')) {
+        layout = 'podcast';
+      } else if (urlObj.pathname.includes('/photo/') || urlObj.pathname.includes('/photo.htm')) {
+        layout = 'photo';
+      } else if (urlObj.pathname.includes('/infographic/')) {
+        layout = 'infographic';
+      } else if (urlObj.pathname.includes('/megastory/')) {
+        layout = 'megastory';
+      }
+      return { type: 'ARTICLE', layout };
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return { type: 'ARTICLE', layout: 'standard' };
+}
+
+
+function extractListingLinks(url: string, $: cheerio.CheerioAPI): ListingItem[] {
+  const urlObj = new URL(url);
+  const domain = urlObj.hostname.replace('www.', '');
+  const items: ListingItem[] = [];
+  const seenUrls = new Set<string>();
+
+  $('a').each((_, el) => {
+    const href = $(el).attr('href');
+    if (!href) return;
+
+    try {
+      const resolvedUrl = new URL(href, url).href;
+      const resolvedObj = new URL(resolvedUrl);
+
+      if (resolvedObj.hostname.includes(domain)) {
+        const path = resolvedObj.pathname.toLowerCase();
+        if (
+          path === '/' ||
+          path.includes('/search') ||
+          path.includes('/login') ||
+          path.includes('/register') ||
+          path.includes('/terms') ||
+          path.includes('/privacy')
+        ) {
+          return;
+        }
+
+        if (domain.includes('dantri.com.vn') || domain.includes('tuoitre.vn')) {
+          if (!resolvedObj.pathname.endsWith('.htm')) return;
+        }
+
+        if (!seenUrls.has(resolvedUrl)) {
+          seenUrls.add(resolvedUrl);
+          const title = cleanText($(el).text() || $(el).attr('title') || '');
+          items.push({ url: resolvedUrl, title });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  });
+
+  return items;
+}
+
+
 function seenBoilerplate(txt: string): boolean {
   const boilerplate = [
     'đăng nhập', 'tạo tài khoản', 'quên mật khẩu', 'xem thêm',
@@ -210,6 +365,7 @@ function preprocessFacebook(raw: CrawlResult): ArticleData {
   const description = statusText || title;
 
   return {
+    type: 'ARTICLE',
     url: raw.url,
     title,
     category: '#Facebook',
@@ -224,7 +380,7 @@ function preprocessFacebook(raw: CrawlResult): ArticleData {
   };
 }
 
-export function preprocessArticle(raw: CrawlResult): ArticleData {
+export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   const url = raw.url || '';
   if (url.includes('facebook.com') || url.includes('fbcdn') || url.includes('fb.com') || url.includes('fb.watch')) {
     return preprocessFacebook(raw);
@@ -234,6 +390,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
   const fullHtml = raw.fullPageHtml || raw.contentHtml;
   const $ = cheerio.load(fullHtml);
+
+  // Detect Type & Layout
+  const { type, layout } = detectPageType(raw.url, fullHtml);
+
+  if (type === 'LISTING') {
+    const extractedUrls = extractListingLinks(raw.url, $);
+    console.log(`   📂 Nhận diện trang LISTING — Trích xuất được ${extractedUrls.length} liên kết`);
+    return {
+      type: 'LISTING',
+      url: raw.url,
+      extractedUrls,
+      warning: `Trang này là danh sách, đã trích xuất ${extractedUrls.length} liên kết con.`,
+    };
+  }
+
 
   const scope = findArticleScope($);
 
@@ -486,6 +657,32 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
 
     spotlightFullText = textSegments.join('\n\n');
   } else {
+
+    // ── Goc Nhin Moi (data-content-type) ──
+    const contentRoot2 = $('#html_content');
+    if (contentRoot2.length && contentRoot2.find('[data-content-type]').length > 0) {
+      contentRoot2.find('[data-content-type]').each((_, el) => {
+        const block = $(el);
+        const btype = block.attr('data-content-type');
+
+        if (btype === 'paragraph') {
+          const text = cleanText(block.text());
+          if (text) bodyBlocks.push({ type: 'paragraph', text });
+        } else if (btype === 'heading') {
+          const text = cleanText(block.text());
+          const level = block.attr('data-level') || '2';
+          if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
+        } else if (btype === 'image') {
+          const imgUrl = block.attr('data-url') || '';
+          const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+          if (imgUrl) {
+            images.push({ url: imgUrl, caption });
+            bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+          }
+        }
+      });
+    } else {
+
     // Fallback: parse generic p/h2/h3/div tags and images in DOM order within the determined scope
     const seenTexts = new Set<string>();
     const seenImageUrls = new Set<string>();
@@ -561,6 +758,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     });
   }
 
+    }
+
   // ── Fallback image from og:image if no body images found ─────────────
   if (images.length === 0) {
     let ogImg = $('meta[property="og:image"]').attr('content');
@@ -591,6 +790,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   console.log(`   ✅ Preprocess xong — ${bodyBlocks.length} blocks, ${images.length} ảnh, ${tags.length} hashtag`);
 
   return {
+    type: 'ARTICLE',
     url: raw.url,
     title,
     category,

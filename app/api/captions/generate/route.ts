@@ -108,10 +108,15 @@ export async function POST(request: NextRequest) {
       try {
         const rawData = await crawlUrl(url);
         cleanData = preprocessArticle(rawData);
+        if (cleanData.type === 'LISTING') {
+          return NextResponse.json({ error: 'Đây là trang danh sách liên kết (LISTING), vui lòng chọn một bài viết cụ thể để tạo caption.' }, { status: 400 });
+        }
       } catch (e: any) {
         console.error('[Generate API] Crawler failed:', e);
         return NextResponse.json({ error: 'Không thể cào và tiền xử lý dữ liệu bài viết' }, { status: 500 });
       }
+
+      const articleData = cleanData as any;
 
       // Check if URL already exists in DB to decide insert vs update
       const { data: existingArticle } = await userSupabase
@@ -125,16 +130,16 @@ export async function POST(request: NextRequest) {
         const { data: updatedArticle, error: dbError } = await supabaseService
           .from('articles')
           .update({
-            title: cleanData.title || '',
-            category: cleanData.category || '',
-            description: cleanData.description || '',
-            author: cleanData.author || '',
-            published_at: cleanData.published_at || '',
-            views: cleanData.views || '',
-            images: cleanData.images || [],
-            body: cleanData.body || [],
-            full_text: cleanData.full_text || '',
-            tags: cleanData.tags || [],
+            title: articleData.title || '',
+            category: articleData.category || '',
+            description: articleData.description || '',
+            author: articleData.author || '',
+            published_at: articleData.published_at || '',
+            views: articleData.views || '',
+            images: articleData.images || [],
+            body: articleData.body || [],
+            full_text: articleData.full_text || '',
+            tags: articleData.tags || [],
             crawled_at: new Date().toISOString(),
           })
           .eq('id', existingArticle.id)
@@ -152,17 +157,17 @@ export async function POST(request: NextRequest) {
         const { data: newArticle, error: dbError } = await supabaseService
           .from('articles')
           .insert({
-            url: cleanData.url || url,
-            title: cleanData.title || '',
-            category: cleanData.category || '',
-            description: cleanData.description || '',
-            author: cleanData.author || '',
-            published_at: cleanData.published_at || '',
-            views: cleanData.views || '',
-            images: cleanData.images || [],
-            body: cleanData.body || [],
-            full_text: cleanData.full_text || '',
-            tags: cleanData.tags || [],
+            url: articleData.url || url,
+            title: articleData.title || '',
+            category: articleData.category || '',
+            description: articleData.description || '',
+            author: articleData.author || '',
+            published_at: articleData.published_at || '',
+            views: articleData.views || '',
+            images: articleData.images || [],
+            body: articleData.body || [],
+            full_text: articleData.full_text || '',
+            tags: articleData.tags || [],
             crawled_at: new Date().toISOString(),
           })
           .select()

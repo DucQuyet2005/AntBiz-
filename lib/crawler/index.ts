@@ -124,7 +124,11 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         });
 
         // Dùng 'domcontentloaded' cực kỳ ổn định, tránh timeout do quảng cáo load vô tận
-        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        try {
+          await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        } catch (e: any) {
+          console.warn(`⚠️ [Playwright] page.goto timeout or error, proceeding to parse anyway: ${e.message || e}`);
+        }
         
         // Chờ skeleton loading (nếu có) biến mất
         try {

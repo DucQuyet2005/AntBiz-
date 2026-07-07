@@ -59,6 +59,15 @@ export async function GET(request: NextRequest) {
     const rawData = await crawlUrl(targetUrl);
     const cleanData = preprocessArticle(rawData);
 
+    if (cleanData.type === 'LISTING') {
+      return NextResponse.json({
+        type: 'LISTING',
+        url: cleanData.url,
+        extractedUrls: cleanData.extractedUrls,
+        warning: cleanData.warning
+      });
+    }
+
     const title = cleanData.title || '';
     const description = cleanData.description || '';
     const author = cleanData.author || '';

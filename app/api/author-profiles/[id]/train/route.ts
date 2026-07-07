@@ -98,9 +98,11 @@ export async function POST(
 
       if (isDirectArticle) {
         const clean = preprocessArticle(mainPage);
-        const text = clean.full_text || clean.description || '';
-        if (text) {
-          samplePosts.push(text);
+        if (clean.type !== 'LISTING') {
+          const text = (clean as any).full_text || (clean as any).description || '';
+          if (text) {
+            samplePosts.push(text);
+          }
         }
         
         // Thử tìm các link bài viết liên quan trong HTML của bài viết này
@@ -111,7 +113,7 @@ export async function POST(
           try {
             const raw = await crawlUrl(link);
             const clean = preprocessArticle(raw);
-            const txt = clean.full_text || clean.description || '';
+            const txt = (clean as any).full_text || (clean as any).description || '';
             if (txt && !samplePosts.includes(txt)) {
               samplePosts.push(txt);
             }
@@ -130,7 +132,7 @@ export async function POST(
           try {
             const raw = await crawlUrl(link);
             const clean = preprocessArticle(raw);
-            const txt = clean.full_text || clean.description || '';
+            const txt = (clean as any).full_text || (clean as any).description || '';
             if (txt && !samplePosts.includes(txt)) {
               samplePosts.push(txt);
             }
