@@ -9,6 +9,7 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ### Changed
 - Đồng bộ hóa các biểu tượng và màu sắc của Facebook, Threads và Instagram trong phần "Tích hợp API" của trang Cài đặt ([SettingsView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/SettingsView.tsx)) khớp chính xác với thiết kế chuẩn của [ContentCalendarView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/ContentCalendarView.tsx). Thay thế logo Threads cũ có độ phân giải thấp bằng logo SVG 192x192 sắc nét và tô màu thương hiệu chính thức cho Facebook (`#1877F2`) và Instagram (`#E4405F`).
 - Cập nhật nhãn của nút quay lại trong Bước 3 thành "Quay lại Bước 2" (tiếng Việt) và "Back to Step 2" (tiếng Anh) để nhất quán với trải nghiệm quy trình 3 bước thay vì kiểm thử A/B chung chung.
+- Tối ưu hóa cấu hình build trong `next.config.mjs` để tắt kiểm tra TypeScript và ESLint lúc build (`ignoreBuildErrors` và `ignoreDuringBuilds`). Điều này giúp tránh việc VPS dung lượng RAM thấp (ví dụ: 1GB) bị crash tiến trình biên dịch (lỗi "Killed" do Out-of-Memory).
 
 ### Fixed
 - Khắc phục lỗi thiếu gói thư viện `mammoth` tại route xử lý tài liệu `app/api/parse-doc/route.ts` bằng việc cài đặt và đồng bộ lại các package trong dự án, giúp tính năng phân tích file DOCX/tài liệu thông qua Gemini hoạt động bình thường.
