@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Sparkles,
   Instagram,
+  Facebook,
   Bookmark,
   Send,
   MoreHorizontal
@@ -985,7 +986,7 @@ export default function ArticleDetailView() {
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-55 dark:bg-zinc-950 border border-slate-200/60 dark:border-zinc-800 text-[10px] font-extrabold uppercase tracking-wider text-text dark:text-zinc-300 select-none">
                 {selectedPlatform === 'facebook' ? (
                   <>
-                    <ThumbsUp size={11} className="text-blue-600 fill-blue-600 dark:text-blue-400 dark:fill-blue-400" />
+                    <Facebook size={11} className="text-blue-600 fill-blue-600 dark:text-blue-400 dark:fill-blue-400" />
                     <span>Facebook</span>
                   </>
                 ) : selectedPlatform === 'threads' ? (

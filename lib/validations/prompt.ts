@@ -28,10 +28,12 @@ const promptFields = {
   tags: z
     .array(z.string().trim().min(1, 'Thẻ (tag) không được để trống'))
     .max(20, 'Tối đa 20 thẻ cho mỗi prompt'),
+  is_default: z.boolean().optional(),
 };
 
 export const createPromptSchema = z.object(promptFields).extend({
   tags: promptFields.tags.default([]),
+  is_default: z.boolean().default(false),
 });
 
 // PATCH cho phép sửa từng phần, nhưng phải có ít nhất 1 field

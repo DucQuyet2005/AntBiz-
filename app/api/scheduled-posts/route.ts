@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
   }
 
-  const { captionId, scheduledAt, imageUrls } = body;
+  const { captionId, scheduledAt, imageUrls, mediaUrl } = body;
 
   if (!captionId || !scheduledAt) {
     return NextResponse.json({ error: 'Thiếu thông tin captionId hoặc scheduledAt' }, { status: 400 });
@@ -57,6 +57,33 @@ export async function POST(request: NextRequest) {
 
   if (captionError || !caption) {
     return NextResponse.json({ error: 'Không tìm thấy caption tương ứng' }, { status: 404 });
+  }
+
+  // Validate Threads content length (<=500)
+  const message = caption.edited_content || caption.ai_content || '';
+  if ((caption.platform === 'thread' || caption.platform === 'threads') && message.length > 500) {
+    return NextResponse.json({ error: 'Nội dung bài đăng Threads không được vượt quá 500 ký tự' }, { status: 400 });
+  }
+
+  // Validate Instagram content length (<=2200)
+  if (caption.platform === 'instagram' && message.length > 2200) {
+    return NextResponse.json({ error: 'Nội dung bài đăng Instagram không được vượt quá 2200 ký tự' }, { status: 400 });
+  }
+
+  // Validate Instagram mediaUrl (must be a valid http/https URL)
+  const finalImageUrls = imageUrls || (mediaUrl ? [mediaUrl] : []);
+  if (caption.platform === 'instagram') {
+    if (finalImageUrls.length === 0) {
+      return NextResponse.json({ error: 'Instagram yêu cầu một đường dẫn hình ảnh (mediaUrl) hợp lệ' }, { status: 400 });
+    }
+    try {
+      const parsedUrl = new URL(finalImageUrls[0]);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        throw new Error();
+      }
+    } catch {
+      return NextResponse.json({ error: 'Instagram yêu cầu một đường dẫn hình ảnh (mediaUrl) hợp lệ' }, { status: 400 });
+    }
   }
 
   // Kiểm tra xem caption này đã có lịch đăng chờ xử lý (pending) chưa
@@ -83,7 +110,7 @@ export async function POST(request: NextRequest) {
       .from('scheduled_posts')
       .update({
         scheduled_at: scheduledTime.toISOString(),
-        image_urls: imageUrls || [],
+        image_urls: finalImageUrls,
         updated_at: new Date().toISOString(),
       })
       .eq('id', existingPending.id)
@@ -103,7 +130,9 @@ export async function POST(request: NextRequest) {
         platform: caption.platform,
         status: 'pending',
         scheduled_at: scheduledTime.toISOString(),
-        image_urls: imageUrls || [],
+        image_urls: finalImageUrls,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
