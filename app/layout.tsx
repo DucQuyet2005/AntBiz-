@@ -1,3 +1,4 @@
+import Script from "next/script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -36,7 +37,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
+        <meta charSet="utf-8" />
+        <Script
+          id="theme-detect"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
