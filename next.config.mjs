@@ -8,12 +8,9 @@ const nextConfig = {
   // Compress responses (gzip) — quan trọng trên VPS không có CDN
   compress: true,
 
-  // Tránh OOM (Killed) khi build trên VPS RAM thấp bằng cách bỏ qua kiểm tra TypeScript và ESLint lúc build
+  // Tránh OOM (Killed) khi build trên VPS RAM thấp bằng cách bỏ qua kiểm tra TypeScript lúc build
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 
   // Turbopack config (Next.js 16+ dùng Turbopack mặc định)
