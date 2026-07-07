@@ -409,7 +409,7 @@ export const translations = {
       activePost: "Bài đăng mới",
       confirmSchedule: "Xác nhận và Lên lịch",
       scheduleSuccess: "Chiến dịch đã được lên lịch thành công!",
-      backToAb: "Quay lại kiểm thử A/B",
+      backToAb: "Quay lại Bước 2",
       scheduleVariant: "Lên lịch biến thể {variant}",
       promptConfigTitle: "Cấu hình AI Prompt & Nội dung",
       promptConfigSubtitle: "Tùy chỉnh câu lệnh AI và sinh nội dung theo ý muốn",
@@ -1499,7 +1499,7 @@ export const translations = {
       mostPopular: "Most Popular",
       suggestLoadFailed: "Failed to load suggested prompts",
       suggestNoMatching: "No matching prompts found for this article.",
-      backToAb: "Back to A/B Testing",
+      backToAb: "Back to Step 2",
       // Prompt Config Bar
       promptConfigBarTitle: "Configure AI Prompt",
       promptConfigBarUsing: "Using Prompt {name} for {platform}",

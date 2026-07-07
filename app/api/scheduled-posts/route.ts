@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     .select('*')
     .eq('caption_id', captionId)
     .eq('status', 'pending')
+    .limit(1)
     .maybeSingle();
 
   if (checkError) {

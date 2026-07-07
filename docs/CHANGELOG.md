@@ -4,7 +4,30 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
----
+## [1.7.3] - 2026-07-07
+
+### Changed
+- Cập nhật nhãn của nút quay lại trong Bước 3 thành "Quay lại Bước 2" (tiếng Việt) và "Back to Step 2" (tiếng Anh) để nhất quán với trải nghiệm quy trình 3 bước thay vì kiểm thử A/B chung chung.
+
+### Fixed
+- Khắc phục lỗi nút "Xác nhận và Lên lịch" (Confirm & Schedule) không lên lịch cho toàn bộ các kênh đã chọn khi đăng bài đồng thời. Giờ đây, hệ thống hỗ trợ lên lịch song song cho tất cả các nền tảng hoạt động đã chọn ở Bước 1 thông qua `Promise.all`.
+- Sửa lỗi hệ thống "im lặng" (silent fail) khi có lỗi xảy ra trong quá trình lên lịch (như chọn sai giờ trong quá khứ). Các thông báo lỗi (`schedulingError`) giờ đây sẽ được hiển thị rõ ràng ngay phía trên nút Xác nhận thay vì bị ẩn dưới console hoặc không phản hồi.
+- Sửa lỗi không thể lên lịch bài viết hiển thị dòng chữ cảnh báo "Please select a variant before scheduling" ở màn hình xác nhận do giá trị biến thể bị null. Hệ thống đã được bổ sung cơ chế fallback để tự động lấy biến thể mặc định đầu tiên khi người dùng loại bỏ thao tác chọn tab.
+- Loại bỏ hoàn toàn giới hạn cứng tối đa 3 bài viết/giờ (`isCellOccupied` luôn trả về `false`). Giờ đây, người dùng có thể kéo thả và lên lịch đăng bài hoàn toàn tự do cho nhiều bài viết/nhiều nền tảng trong cùng một khung giờ mà không bị hệ thống chặn cảnh báo.
+- Khắc phục lỗi API `PGRST116` ("JSON object requested, multiple rows returned") trong route `POST /api/scheduled-posts` bằng việc thêm `.limit(1)` vào câu truy vấn kiểm tra lịch đăng bài trùng lặp. Điều này giúp ngăn chặn ứng dụng bị crash khi cập nhật lịch đăng cho các caption đã có sẵn nhiều bản ghi trùng lặp ở trạng thái `pending`.
+- Sửa lỗi nghiêm trọng khiến bài viết lên lịch cho Instagram hoặc Threads bị ghi nhận và đăng lên Facebook. Nguyên nhân do cơ chế fallback dùng chung thuộc tính `captionId` không phân biệt nền tảng của Variant dẫn đến việc gửi nhầm ID caption của Facebook sang các nền tảng khác. Hệ thống đã được nâng cấp để lưu trữ và truy vấn độc lập thông qua các thuộc tính riêng biệt (`facebookCaptionId`, `instagramCaptionId`, `threadsCaptionId`).
+- Tối ưu hóa điều kiện kích hoạt nút "Xác nhận lên lịch": Hệ thống giờ đây chỉ kiểm tra lỗi thời gian/trùng lịch của các nền tảng **đang hoạt động** (được chọn và không bị loại trừ). Các lỗi thuộc về nền tảng đã bị tắt sẽ không còn vô hiệu hóa (disable) nút xác nhận chung của người dùng nữa.
+- Tích hợp API đăng bài chính thức cho **Instagram Business**. Hệ thống hiện tại có khả năng tự động liên kết và đăng bài trực tiếp lên tài khoản Instagram thông qua Facebook Page Access Token (Yêu cầu bài viết bắt buộc phải có ít nhất 1 hình ảnh đi kèm theo tiêu chuẩn của Instagram API).
+
+## [1.7.2] - 2026-07-07
+
+### Added
+- **Chia bài viết trùng giờ dạng Side-by-Side trên Grid Calendar**:
+  - Khi có nhiều bài viết (bản nháp hoặc bài viết cũ) được lên lịch trùng giờ, thay vì gộp chung thành một ô hiển thị "X bài", lịch sẽ tự động chia đôi hoặc chia ba theo chiều rộng để hiển thị các bài viết song song.
+  - Cho phép người dùng kéo thả độc lập từng kênh (Facebook, Instagram, Threads) sang ô giờ mới trực tiếp trên lịch mà không bị ràng buộc hay gộp nhóm.
+  - Điều chỉnh ẩn tên tiêu đề bài viết trong các thẻ thu nhỏ (khi có nhiều hơn 1 bài trùng giờ) để giữ giao diện gọn gàng và sạch đẹp.
+  - Hỗ trợ nhấn vào các thẻ nháp để hiển thị hộp thoại thông tin chi tiết lịch đăng bài (Schedule Details modal) tương tự các bài viết đã lên lịch, hiển thị đầy đủ tiêu đề thực tế của bài viết AI đã sinh thay vì tiêu đề bản nháp tĩnh.
+
 ## [1.7.1] - 2026-07-07
 
 ### Added

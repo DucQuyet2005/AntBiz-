@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { publishToFacebookPage } from '../facebook';
+import { publishToFacebookPage, publishToInstagramAccount } from '../facebook';
 import { logAndNotifyPublishResult } from '../email';
 import { createNotification } from '../services/notificationService';
 
@@ -67,8 +67,10 @@ export async function runSchedulerCycle() {
     let publishResult;
     if (post.platform === 'facebook') {
       publishResult = await publishToFacebookPage(message, post.image_urls || []);
+    } else if (post.platform === 'instagram') {
+      publishResult = await publishToInstagramAccount(message, post.image_urls || []);
     } else {
-      // Giả lập đăng bài thành công đối với Threads và Instagram chưa có API chính thức
+      // Giả lập đăng bài thành công đối với Threads (chưa có API chính thức trong hệ thống)
       console.log(`[Scheduler] Nền tảng ${platformName} chưa cấu hình kết nối API chính thức. Thực hiện giả lập đăng bài thành công.`);
       publishResult = {
         success: true,
