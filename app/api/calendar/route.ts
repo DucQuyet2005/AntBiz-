@@ -48,10 +48,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Không thể tải lịch bài đăng' }, { status: 500 });
   }
 
-  // Group posts by scheduled time
+  // Group posts by local hour in UTC+7 (Asia/Ho_Chi_Minh)
   const groups: Record<string, any[]> = {};
   (data || []).forEach((post: any) => {
-    const timeKey = post.scheduled_at;
+    const date = new Date(post.scheduled_at);
+    // Convert to local hour in UTC+7
+    const localTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+    const yyyy = localTime.getUTCFullYear();
+    const mm = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(localTime.getUTCDate()).padStart(2, '0');
+    const hh = String(localTime.getUTCHours()).padStart(2, '0');
+    const timeKey = `${yyyy}-${mm}-${dd}T${hh}:00:00+07:00`;
+
     if (!groups[timeKey]) {
       groups[timeKey] = [];
     }
@@ -71,7 +79,7 @@ export async function GET(request: NextRequest) {
         id: post.id,
         title,
         start: post.scheduled_at,
-        end: new Date(new Date(post.scheduled_at).getTime() + 10 * 60000).toISOString(),
+        end: new Date(new Date(post.scheduled_at).getTime() + 30 * 60000).toISOString(), // display with default 30 min height
         editable: post.status === 'pending',
         startEditable: post.status === 'pending',
         durationEditable: false,
@@ -86,18 +94,18 @@ export async function GET(request: NextRequest) {
         }
       };
     } else {
-      // Multiple overlapping posts at the same minute
+      // Multiple overlapping posts in the same local hour
       const uniquePlatforms = Array.from(new Set(groupPosts.map(p => p.platform === 'thread' ? 'threads' : p.platform)));
-      const allPending = groupPosts.every(p => p.status === 'pending');
+      const hasPending = groupPosts.some(p => p.status === 'pending');
       const allDimmed = groupPosts.every(p => p.status === 'cancelled' || p.status === 'failed');
 
       return {
         id: `multiple-${timeKey}`,
         title: `${groupPosts.length} bài đăng`,
         start: timeKey,
-        end: new Date(new Date(timeKey).getTime() + 10 * 60000).toISOString(),
-        editable: allPending,
-        startEditable: allPending,
+        end: new Date(new Date(timeKey).getTime() + 60 * 60000).toISOString(), // Spans 1 hour visually
+        editable: hasPending,
+        startEditable: hasPending,
         durationEditable: false,
         classNames: allDimmed ? ['opacity-40'] : [],
         extendedProps: {

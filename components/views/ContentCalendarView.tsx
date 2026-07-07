@@ -168,12 +168,15 @@ export default function ContentCalendarView() {
   const [calendarTitle, setCalendarTitle] = useState('');
   const [confirmDrop, setConfirmDrop] = useState<{
     isOpen: boolean;
+    isMultiple?: boolean;
+    posts?: any[];
+    selectedPostIds?: string[];
     eventId: string;
     newStart: string;
     oldStart: string;
     title: string;
     revert: () => void;
-    commit: () => Promise<void>;
+    commit: (selectedIds?: string[]) => Promise<void>;
   } | null>(null);
 
   // Query Cache
@@ -527,7 +530,18 @@ export default function ContentCalendarView() {
 
   const handleEventDrop = useCallback((info: any) => {
     const { event, oldEvent } = info;
-    if (event.extendedProps.status !== 'pending') {
+    const isMultiple = event.extendedProps.isMultiple;
+    const posts = event.extendedProps.posts || [];
+
+    // For single event, check its status
+    if (!isMultiple && event.extendedProps.status !== 'pending') {
+      info.revert();
+      return;
+    }
+
+    // For multiple events, we only allow rescheduling the pending ones
+    const pendingPosts = isMultiple ? posts.filter((p: any) => p.status === 'pending') : [];
+    if (isMultiple && pendingPosts.length === 0) {
       info.revert();
       return;
     }
@@ -549,69 +563,146 @@ export default function ContentCalendarView() {
 
     setConfirmDrop({
       isOpen: true,
+      isMultiple: !!isMultiple,
+      posts: isMultiple ? posts : [event.extendedProps.post],
+      selectedPostIds: isMultiple ? pendingPosts.map((p: any) => p.id) : [event.id],
       eventId: event.id,
       newStart: newStart.toISOString(),
       oldStart: oldStart.toISOString(),
       title: event.title,
       revert: () => info.revert(),
-      commit: async () => {
-        await handleReschedule(event.id, newStart.toISOString(), () => info.revert());
+      commit: async (selectedIds?: string[]) => {
+        const idsToUpdate = selectedIds || (isMultiple ? pendingPosts.map((p: any) => p.id) : [event.id]);
+        if (idsToUpdate.length === 0) {
+          info.revert();
+          return;
+        }
+
+        if (idsToUpdate.length === 1) {
+          await handleReschedule(idsToUpdate[0], newStart.toISOString(), () => info.revert());
+        } else {
+          // Bulk reschedule API
+          setActionLoadingId('bulk');
+          try {
+            const res = await fetch('/api/scheduled-posts/bulk-reschedule', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids: idsToUpdate, scheduledAt: newStart.toISOString() }),
+            });
+            if (res.ok) {
+              showPopup(language === 'vi' ? 'Đã dời lịch các bài đăng thành công!' : 'Successfully rescheduled posts!', 'success');
+              clearCache();
+              calendarRef.current?.getApi()?.refetchEvents();
+              await fetchPosts();
+            } else {
+              const errJson = await res.json().catch(() => ({}));
+              showPopup(errJson.error || 'Lỗi khi thay đổi lịch đăng bài', 'error');
+              info.revert();
+            }
+          } catch (err) {
+            console.error('Bulk reschedule error:', err);
+            showPopup('Lỗi kết nối khi dời lịch đăng bài', 'error');
+            info.revert();
+          } finally {
+            setActionLoadingId(null);
+          }
+        }
       }
     });
-  }, [handleReschedule, showPopup, language]);
+  }, [handleReschedule, showPopup, language, clearCache, fetchPosts]);
 
   const renderEventContent = useCallback((eventInfo: any) => {
-    const { platform, platforms, isMultiple, status } = eventInfo.event.extendedProps;
-    let icon = null;
-    let bgClass = '';
+    const { platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
 
     if (isMultiple) {
-      bgClass = 'bg-indigo-650';
-      icon = (
-        <div className="flex gap-0.5 items-center shrink-0">
-          {(platforms || []).map((plat: string, idx: number) => {
-            if (plat === 'facebook') return <Facebook key={idx} size={9} className="text-white fill-white shrink-0" />;
-            if (plat === 'instagram') return <Instagram key={idx} size={9} className="text-white shrink-0" />;
-            if (plat === 'threads') return <ThreadsIcon key={idx} size={9} className="text-white shrink-0" />;
-            return <Globe key={idx} size={9} className="text-white shrink-0" />;
-          })}
+      const postsCount = posts ? posts.length : 0;
+      const uniquePlatforms = platforms || [];
+
+      return (
+        <div className="relative w-full h-full select-none cursor-pointer">
+          {/* Deepest card background */}
+          <div className="absolute inset-0 translate-x-1.5 -translate-y-1.5 rounded-xl border border-blue-200/50 bg-[#EDF3FF]/40 dark:bg-blue-950/10 -z-20 h-full w-full" />
+          {/* Mid card background */}
+          <div className="absolute inset-0 translate-x-0.5 -translate-y-0.5 rounded-xl border border-blue-200/80 bg-[#EDF3FF]/70 dark:bg-blue-950/20 -z-10 h-full w-full" />
+          {/* Front card */}
+          <div className="w-full h-full rounded-xl border border-blue-300 dark:border-blue-900 bg-[#EDF3FF] dark:bg-blue-950/45 p-2 flex flex-col justify-between shadow-sm overflow-hidden min-h-[55px]">
+            <div className="flex justify-between items-center w-full">
+              <span className="bg-[#DCE6FF] dark:bg-blue-900/60 text-[#1E40AF] dark:text-blue-300 text-[9px] font-black px-2 py-0.5 rounded-full select-none">
+                {postsCount} bài
+              </span>
+              <div className="flex gap-0.5 items-center">
+                {uniquePlatforms.map((plat: string, idx: number) => {
+                  if (plat === 'facebook') return <Facebook key={idx} size={11} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+                  if (plat === 'instagram') return <Instagram key={idx} size={11} className="text-[#E4405F] shrink-0" />;
+                  if (plat === 'threads') return <ThreadsIcon key={idx} size={11} className="text-black dark:text-white shrink-0" />;
+                  return <Globe key={idx} size={11} className="text-emerald-700 shrink-0" />;
+                })}
+              </div>
+            </div>
+            <div className="text-center font-extrabold text-[#3B82F6] dark:text-blue-400 text-[10px] tracking-wide mt-1 select-none">
+              BẤM ĐỂ XEM
+            </div>
+          </div>
         </div>
       );
     } else {
+      const time = new Date(eventInfo.event.start).toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const title = eventInfo.event.title;
+
+      let bgClass = '';
+      let borderClass = '';
+      let textClass = '';
+      let icon = null;
+
       if (platform === 'facebook') {
-        icon = <Facebook size={11} className="text-white fill-white shrink-0" />;
-        bgClass = 'bg-[#1877F2]';
+        bgClass = 'bg-[#EDF3FF] dark:bg-blue-950/20';
+        borderClass = 'border-[#D1E2FF] dark:border-blue-900/30';
+        textClass = 'text-[#1E40AF] dark:text-blue-400';
+        icon = <Facebook size={12} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
       } else if (platform === 'instagram') {
-        icon = <Instagram size={11} className="text-white shrink-0" />;
-        bgClass = 'bg-[#E4405F]';
+        bgClass = 'bg-[#FFF0F2] dark:bg-pink-950/20';
+        borderClass = 'border-[#FFB8C6] dark:border-pink-900/30';
+        textClass = 'text-[#900A22] dark:text-pink-400';
+        icon = <Instagram size={12} className="text-[#E4405F] shrink-0" />;
       } else if (platform === 'threads') {
-        icon = <ThreadsIcon size={11} className="text-white shrink-0" />;
-        bgClass = 'bg-black text-white';
+        bgClass = 'bg-[#F8F9FA] dark:bg-zinc-900/40';
+        borderClass = 'border-[#E9ECEF] dark:border-zinc-800';
+        textClass = 'text-[#212529] dark:text-zinc-300';
+        icon = <ThreadsIcon size={12} className="text-black dark:text-white shrink-0" />;
       } else {
-        icon = <Globe size={11} className="text-white shrink-0" />;
-        bgClass = 'bg-emerald-600';
+        bgClass = 'bg-[#E8F5E9] dark:bg-emerald-950/20';
+        borderClass = 'border-[#C8E6C9] dark:border-emerald-900/30';
+        textClass = 'text-[#2E7D32] dark:text-emerald-400';
+        icon = <Globe size={12} className="text-[#2E7D32] shrink-0" />;
       }
-    }
 
-    let statusText = '';
-    if (!isMultiple) {
-      if (status === 'posted') {
-        statusText = ' ✓';
-      } else if (status === 'failed') {
-        statusText = ' ⚠️';
+      let statusIcon = null;
+      if (status === 'failed') {
+        statusIcon = <AlertTriangle size={12} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
       } else if (status === 'cancelled') {
-        statusText = ' ✕';
+        statusIcon = <X size={12} className="text-slate-500 shrink-0 font-bold" />;
+      } else if (status === 'posted') {
+        statusIcon = <CheckCircle2 size={12} className="text-emerald-500 fill-emerald-100 shrink-0" />;
       }
-    }
 
-    return (
-      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-white text-[10px] w-full h-full overflow-hidden ${bgClass}`}>
-        {icon}
-        <span className="font-extrabold truncate flex-1">{eventInfo.event.title}</span>
-        {statusText && <span className="text-[8px] font-black shrink-0">{statusText}</span>}
-      </div>
-    );
-  }, []);
+      return (
+        <div className={`w-full h-full rounded-xl border ${borderClass} ${bgClass} p-2 flex flex-col justify-between overflow-hidden cursor-pointer min-h-[55px]`}>
+          <div className="flex items-center justify-between gap-1 w-full">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {icon}
+              <span className={`text-[10px] font-black font-mono truncate ${textClass}`}>
+                {time}
+              </span>
+            </div>
+            {statusIcon}
+          </div>
+          <div className={`text-[10px] font-black truncate leading-tight mt-1 ${textClass}`}>
+            {title}
+          </div>
+        </div>
+      );
+    }
+  }, [language]);
 
   const getDayAndPosition = (scheduledAtStr: string, weekStart: Date) => {
     const scheduledDate = new Date(scheduledAtStr);
@@ -859,10 +950,20 @@ export default function ContentCalendarView() {
           color: #94a3b8;
         }
         .fc .fc-event {
-          border-radius: 8px !important;
-          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          background: transparent !important;
           border: none !important;
-          overflow: hidden;
+          box-shadow: none !important;
+          overflow: visible !important;
+        }
+        .fc-v-event, .fc-h-event {
+          background: transparent !important;
+          border: none !important;
+        }
+        .fc-event, .fc-event * {
+          cursor: pointer !important;
+        }
+        .fc-timegrid-event {
+          min-height: 58px !important;
         }
         .fc .fc-daygrid-event {
           margin-top: 2px !important;
@@ -1158,7 +1259,7 @@ export default function ContentCalendarView() {
             datesSet={handleDatesSet}
             allDaySlot={false}
             slotDuration="00:30:00"
-            snapDuration="00:15:00"
+            snapDuration="00:01:00"
             slotMinTime="00:00:00"
             slotMaxTime="24:00:00"
             height={700}
@@ -1333,38 +1434,64 @@ export default function ContentCalendarView() {
                     const timeStr = post.pos?.timeStr || new Date(post.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     const postTitle = post.captions?.articles?.title || post.captions?.ai_content || '';
 
+                    let imgUrl = '';
+                    if (post.image_urls && post.image_urls.length > 0) {
+                      imgUrl = post.image_urls[0];
+                    } else if (post.captions?.articles?.images && post.captions.articles.images.length > 0) {
+                      const firstImg = post.captions.articles.images[0];
+                      imgUrl = typeof firstImg === 'string' ? firstImg : (firstImg.url || firstImg.image_url || '');
+                    }
+
+                    if (!imgUrl) {
+                      const platform = post.platform?.toLowerCase();
+                      if (platform === 'facebook') imgUrl = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=400';
+                      else if (platform === 'instagram') imgUrl = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400';
+                      else imgUrl = 'https://images.unsplash.com/photo-1432888622747-4eb9a8efeb07?q=80&w=400';
+                    }
+
                     return (
                       <div
                         key={idx}
                         className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-950/20 flex flex-col gap-2.5 shadow-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
-                              {platIcon}
-                              <span>{platLabel}</span>
-                            </span>
-                            <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10 font-mono">
-                              {timeStr}
-                            </span>
+                        <div className="flex gap-3.5 items-start">
+                          {imgUrl && (
+                            <img
+                              src={imgUrl}
+                              alt={postTitle}
+                              className="w-16 h-16 rounded-xl object-cover border border-slate-200/50 dark:border-zinc-800 shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${platBg}`}>
+                                  {platIcon}
+                                  <span>{platLabel}</span>
+                                </span>
+                                <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10 font-mono">
+                                  {timeStr}
+                                </span>
+                              </div>
+
+                              <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
+                                  post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
+                                    post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
+                                      'bg-primary/5 text-primary border-primary/20'
+                                }`}>
+                                {language === 'vi'
+                                  ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
+                                  : post.status}
+                              </span>
+                            </div>
+
+                            {postTitle && (
+                              <p className="text-xs text-slate-700 dark:text-slate-250 font-bold leading-normal truncate">
+                                {postTitle}
+                              </p>
+                            )}
                           </div>
-
-                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${post.status === 'posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
-                              post.status === 'failed' ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
-                                post.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200/60' :
-                                  'bg-primary/5 text-primary border-primary/20'
-                            }`}>
-                            {language === 'vi'
-                              ? (post.status === 'posted' ? 'Đã đăng' : post.status === 'failed' ? 'Lỗi' : post.status === 'cancelled' ? 'Đã hủy' : 'Chờ đăng')
-                              : post.status}
-                          </span>
                         </div>
-
-                        {postTitle && (
-                          <p className="text-xs text-slate-700 dark:text-slate-250 font-bold leading-normal">
-                            {postTitle}
-                          </p>
-                        )}
 
                         {(post.captions?.edited_content || post.captions?.ai_content) ? (
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100 dark:border-white/5 max-h-[100px] overflow-y-auto whitespace-pre-wrap">
@@ -1414,11 +1541,79 @@ export default function ContentCalendarView() {
                 {language === 'vi' ? 'Xác nhận chuyển lịch đăng' : 'Confirm Reschedule'}
               </h3>
             </div>
-            <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold">
-              {language === 'vi'
-                ? `Bạn có chắc chắn muốn thay đổi lịch đăng bài viết "${confirmDrop.title}"?`
-                : `Are you sure you want to reschedule "${confirmDrop.title}"?`}
-            </p>
+            
+            {confirmDrop.isMultiple ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold">
+                  {language === 'vi'
+                    ? `Bạn đang di chuyển nhóm bài đăng sang thời gian mới. Chọn các bài đăng bạn muốn di chuyển:`
+                    : `You are rescheduling a group of posts. Select the posts you want to reschedule:`}
+                </p>
+                
+                <div className="max-h-[200px] overflow-y-auto border border-slate-100 dark:border-slate-850 rounded-xl p-2 flex flex-col gap-2 bg-slate-50/50 dark:bg-slate-900/20 scrollbar-thin">
+                  {confirmDrop.posts?.map((post: any) => {
+                    const isPending = post.status === 'pending';
+                    const isSelected = confirmDrop.selectedPostIds?.includes(post.id);
+                    const title = post.captions?.articles?.title || post.captions?.ai_content || 'Bài viết không tên';
+                    
+                    return (
+                      <label 
+                        key={post.id} 
+                        className={`flex items-start gap-2.5 p-2 rounded-lg text-xs font-bold transition-all border ${
+                          !isPending ? 'opacity-50 cursor-not-allowed border-transparent' : 
+                          isSelected ? 'border-primary/20 bg-primary/5 cursor-pointer text-primary' : 'border-slate-100 bg-white dark:bg-black cursor-pointer text-slate-650 dark:text-slate-350'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={!isPending}
+                          checked={!!isSelected}
+                          onChange={(e) => {
+                            if (!isPending) return;
+                            const checked = e.target.checked;
+                            setConfirmDrop((prev: any) => {
+                              if (!prev) return null;
+                              const currentSelected = prev.selectedPostIds || [];
+                              const newSelected = checked
+                                ? [...currentSelected, post.id]
+                                : currentSelected.filter((id: string) => id !== post.id);
+                              return { ...prev, selectedPostIds: newSelected };
+                            });
+                          }}
+                          className="mt-0.5 rounded text-primary focus:ring-primary border-slate-300 w-3.5 h-3.5 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-black uppercase text-slate-400">
+                              {post.platform}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400 font-mono">
+                              {new Date(post.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span className={`text-[8px] font-black uppercase px-1 rounded ${
+                              post.status === 'posted' ? 'bg-emerald-100 text-emerald-700' :
+                              post.status === 'failed' ? 'bg-rose-100 text-rose-700' :
+                              post.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 'bg-primary/10 text-primary'
+                            }`}>
+                              {post.status}
+                            </span>
+                          </div>
+                          <span className="truncate">
+                            {title}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold">
+                {language === 'vi'
+                  ? `Bạn có chắc chắn muốn thay đổi lịch đăng bài viết "${confirmDrop.title}"?`
+                  : `Are you sure you want to reschedule "${confirmDrop.title}"?`}
+              </p>
+            )}
             
             <div className="bg-slate-50 dark:bg-zinc-900/50 rounded-xl p-3.5 border border-slate-100 dark:border-zinc-800 flex flex-col gap-2.5">
               <div className="flex justify-between text-xs">
@@ -1447,10 +1642,11 @@ export default function ContentCalendarView() {
               </button>
               <button
                 onClick={() => {
-                  confirmDrop.commit();
+                  confirmDrop.commit(confirmDrop.selectedPostIds);
                   setConfirmDrop(null);
                 }}
-                className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border-0 shadow-lg shadow-primary/20"
+                disabled={confirmDrop.isMultiple && (!confirmDrop.selectedPostIds || confirmDrop.selectedPostIds.length === 0)}
+                className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border-0 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {language === 'vi' ? 'Xác nhận' : 'Confirm'}
               </button>
