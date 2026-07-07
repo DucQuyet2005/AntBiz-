@@ -731,7 +731,9 @@ export default function AiCreatorView() {
 
   // --- States moved from lower levels to avoid Temporal Dead Zone (Cannot access before initialization) ---
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<('facebook' | 'threads' | 'instagram')[]>(['facebook']);
   const [variantCount, setVariantCount] = useState<2 | 3>(2);
+  const [subStep, setSubStep] = useState<number>(1);
 
   // --- US-2.10: Platform Presets States ---
   const [platformPresets, setPlatformPresets] = useState<any[]>([]);
@@ -741,6 +743,10 @@ export default function AiCreatorView() {
   // --- Playground Layout: Custom Instructions & Prompt Preview ---
   const [customPromptText, setCustomPromptText] = useState<string>('');
   const [isPromptPreviewOpen, setIsPromptPreviewOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [toneOpen, setToneOpen] = useState(false);
+  const [instructionOpen, setInstructionOpen] = useState(false);
+  const [selectedQuickPicks, setSelectedQuickPicks] = useState<string[]>([]);
 
   // --- US-2.07: Prompt Config States ---
   const [savedConfigs, setSavedConfigs] = useState<any[]>([]);
@@ -950,9 +956,6 @@ export default function AiCreatorView() {
   const [regeneratingVariantId, setRegeneratingVariantId] = useState<string | null>(null);
 
   // ─── Multi-platform prompt config ────────────────────────────────────────
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<'facebook' | 'threads' | 'instagram'>>(
-    new Set(['facebook'] as ('facebook' | 'threads' | 'instagram')[])
-  );
   const [promptPerPlatform, setPromptPerPlatform] = useState<Record<string, string>>({
     facebook: '', threads: '', instagram: ''
   });
@@ -1144,7 +1147,7 @@ let resolvedActivePrompt = activePrompt;
       return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, tập trung vào dữ liệu và sự kiện quan trọng. Không sử dụng emoji. Phong cách báo chí chuyên nghiệp, đúng trọng tâm. Hashtag ngắn gọn, hiệu quả.`;
     };
 
-    const streamVariant = async (variantId: string, variantIndex: number, groupId: string) => {
+    const streamVariant = async (variantId: string, variantIndex: number, groupId: string, platform: 'facebook' | 'threads' | 'instagram') => {
       const abortSignal = abortControllerRef.current?.signal;
       // API will handle merging everything using platformPresetId and stylePresetId.
       // We only send the user's custom instructions (textarea) plus variant modifiers.
@@ -1157,7 +1160,7 @@ let resolvedActivePrompt = activePrompt;
             url: url.trim() || undefined,
             articleId: resolvedArticleId || undefined,
             customPrompt: customPromptPayload,
-            platform: selectedPlatform,
+            platform: platform,
             variantGroupId: groupId,
             variantIndex,
             model: selectedModel,
@@ -1201,7 +1204,7 @@ let resolvedActivePrompt = activePrompt;
                       v.id === variantId
                         ? {
                           ...v,
-                          [selectedPlatform]: accumulated,
+                          [platform]: accumulated,
                         }
                         : v
                     )
@@ -1228,8 +1231,8 @@ let resolvedActivePrompt = activePrompt;
         setVariants((prev) =>
           prev.map((v) => {
             if (v.id === variantId) {
-              const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-                selectedPlatform === 'threads' ? 'originalThreads' :
+              const originalField = platform === 'facebook' ? 'originalFacebook' :
+                platform === 'threads' ? 'originalThreads' :
                   'originalInstagram';
               return {
                 ...v,
@@ -1241,13 +1244,13 @@ let resolvedActivePrompt = activePrompt;
         );
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
-        console.error(`Error streaming variant ${variantId}:`, err);
+        console.error(`Error streaming variant ${variantId} on platform ${platform}:`, err);
         setVariants((prev) =>
           prev.map((v) =>
             v.id === variantId
               ? {
                 ...v,
-                [selectedPlatform]:
+                [platform]:
                   language === 'vi'
                     ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
                     : 'Error generating AI content for this variant.',
@@ -1259,9 +1262,11 @@ let resolvedActivePrompt = activePrompt;
     };
 
     try {
-      // T-1.18: Stream all N variants in parallel
+      // T-1.18: Stream all N variants in parallel for all selected platforms
       await Promise.all(
-        variantIds.map((id, index) => streamVariant(id, index, newGroupId))
+        selectedPlatforms.flatMap((platform) =>
+          variantIds.map((id, index) => streamVariant(id, index, newGroupId, platform))
+        )
       );
     } catch (error) {
       console.error('Error generating variants:', error);
@@ -1632,7 +1637,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
     }
 
     // Layer 3: Custom instructions
-    const customSection = customPromptText.trim() ? `*   ${customPromptText.trim()}\n` : '';
+    const requirementsList = [
+      { id: 'cta', name: 'Thêm kêu gọi hành động' },
+      { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
+      { id: 'emoji', name: 'Sử dụng nhiều emoji' },
+      { id: 'stats', name: 'Tập trung vào số liệu' },
+      { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
+    ];
+    let finalCustomText = customPromptText.trim();
+    if (selectedQuickPicks.length > 0) {
+      const picksText = selectedQuickPicks.map(id => requirementsList.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+      finalCustomText = finalCustomText 
+        ? `${finalCustomText} (Yêu cầu nhanh: ${picksText})` 
+        : `Yêu cầu nhanh: ${picksText}`;
+    }
+    const customSection = finalCustomText ? `*   ${finalCustomText}\n` : '';
 
     return `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 
@@ -4916,611 +4935,812 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
                 {step === 1 && (
                   <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
-
-
-                    {/* Platform Selection Tabs */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Sparkles size={11} className="text-primary" /> {language === 'vi' ? 'Kênh đăng' : 'Platform'}
-                      </span>
-                      <div className="flex bg-slate-100 dark:bg-black/40 rounded-xl p-1 border border-slate-200/70 dark:border-white/5">
-                        {(['facebook', 'threads', 'instagram'] as const).map((p) => (
-                          <button key={p} type="button" onClick={() => setSelectedPlatform(p)}
-                            className={`flex-1 text-[10px] font-extrabold py-1.5 rounded-lg uppercase tracking-wider transition-all ${selectedPlatform === p ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'}`}
-                          >{p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram'}</button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Layer 1: Platform Preset */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? `1. Quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'}` : `1. ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'} Rules`}
-                      </span>
-                      <select value={selectedPlatformPresetId} onChange={(e) => setSelectedPlatformPresetId(e.target.value)}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
+                    {/* == Step Navigator == */}
+                    <div className="flex border-b border-gray-200 dark:border-white/5 pb-0 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setSubStep(1)}
+                        className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
+                          subStep === 1 ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-400 hover:text-slate-655'
+                        }`}
                       >
-                        {platformPresets.map((preset: any) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.name}{!preset.user_id ? ' (Hệ thống)' : ''}{preset.is_default ? ' ★' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {(() => {
-                        const preset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
-                        return preset?.rules ? (
-                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
-                            <div className="line-clamp-3">
-                              {preset.rules}
-                            </div>
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-
-                    {/* Layer 2: Brand Style */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                          {language === 'vi' ? '2. Văn phong thương hiệu' : '2. Brand Style'}
+                        <span className="flex items-center justify-center gap-1.5">
+                          {language === 'vi' ? 'Bước 1: Nền tảng' : 'Step 1: Platform'}
+                          {selectedPlatforms.length > 0 && (
+                            <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                              {selectedPlatforms.length}
+                            </span>
+                          )}
                         </span>
-                        <button type="button" onClick={() => setIsStyleModalOpen(true)}
-                          className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2 py-0.5 rounded transition-all cursor-pointer"
-                        >{language === 'vi' ? 'Quản lý' : 'Manage'}</button>
-                      </div>
-                      <select value={selectedConfigId} onChange={(e) => setSelectedConfigId(e.target.value)}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
-                      >
-                        <option value="">{language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}</option>
-                        {savedConfigs.map((cfg: any) => (
-                          <option key={cfg.id} value={cfg.id}>{cfg.name}{cfg.is_default ? ' ★' : ''}</option>
-                        ))}
-                      </select>
-                      {(() => {
-                        const cfg = savedConfigs.find((c: any) => c.id === selectedConfigId);
-                        if (!cfg?.rules) return null;
-                        
-                        let displayRules = cfg.rules;
-                        try {
-                          const parsed = JSON.parse(cfg.rules);
-                          const generalRules = parsed.general || '';
-                          const platformRules = parsed[selectedPlatform] || '';
-                          if (generalRules && platformRules) {
-                            displayRules = generalRules + '\n\n' + platformRules;
-                          } else {
-                            displayRules = generalRules || platformRules || '';
-                          }
-                        } catch (e) {
-                          // Fallback to raw string if not JSON
-                        }
-
-                        if (!displayRules) return null;
-
-                        return (
-                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
-                            <div className="line-clamp-3">
-                              {displayRules}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Layer 3: Custom Instructions */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? '3. Yêu cầu tùy chỉnh' : '3. Custom Instructions'}
-                      </span>
-                      <textarea value={customPromptText} onChange={(e) => setCustomPromptText(e.target.value)} rows={3}
-                        placeholder={language === 'vi' ? 'Ví dụ: Bắt đầu bằng câu trích dẫn, tập trung vào số liệu...' : 'E.g.: Start with a quote, focus on statistics...'}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed shadow-sm"
-                      />
-                    </div>
-
-                    {/* Prompt Preview Accordion */}
-                    <div className="flex flex-col gap-1 mt-2">
-                      <button type="button" onClick={() => setIsPromptPreviewOpen(!isPromptPreviewOpen)}
-                        className="flex items-center justify-between w-full text-left bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-3 text-[10px] font-black text-text uppercase tracking-widest hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer shadow-sm group"
-                      >
-                        <span className="flex items-center gap-2"><Eye size={14} className="text-slate-400 group-hover:text-primary transition-colors" /> {language === 'vi' ? 'Xem trước Prompt gửi đi' : 'Preview Final Prompt'}</span>
-                        <motion.span animate={{ rotate: isPromptPreviewOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                          <ChevronDown size={14} className="text-slate-400" />
-                        </motion.span>
                       </button>
-                      <AnimatePresence>
-                        {isPromptPreviewOpen && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                            <div className="pt-1.5">
-                              <pre className="bg-slate-50 dark:bg-zinc-900/50 text-slate-700 dark:text-slate-300 text-[10.5px] leading-relaxed p-4 rounded-xl overflow-x-auto whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar font-mono border border-slate-200 dark:border-zinc-800 shadow-inner">
-                                {compilePromptPreview()}
-                              </pre>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      <button
+                        type="button"
+                        onClick={() => { if (selectedPlatforms.length > 0) setSubStep(2); }}
+                        disabled={selectedPlatforms.length === 0}
+                        className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer border-0 bg-transparent disabled:opacity-35 ${
+                          subStep === 2 ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-400 hover:text-slate-655'
+                        }`}
+                      >
+                        {language === 'vi' ? 'Bước 2: Cấu hình' : 'Step 2: Config'}
+                      </button>
                     </div>
 
-                    {/* Proceed Button */}
-                    <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
-                      className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
-                    >
-                      {isGeneratingAB ? (
-                        <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? `Đang sinh ${variantCount} biến thể...` : `AI generating ${variantCount} variants...`}</>
-                      ) : (
-                        <>{t('aiCreator.proceedToAb')}<ArrowRight size={16} /></>
-                      )}
-                    </motion.button>
+                    {/* == SUB-STEP 1: Platform Card Selection == */}
+                    {subStep === 1 && (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            {language === 'vi' ? 'CHỌN NỀN TẢNG ĐĂNG' : 'SELECT CHANNELS'}
+                          </span>
+                          {selectedPlatforms.length > 0 && (
+                            <span className="text-[10px] text-amber-500 font-black">
+                              {selectedPlatforms.length} {language === 'vi' ? 'đã chọn' : 'selected'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {[
+                            {
+                              id: 'facebook',
+                              label: 'Facebook',
+                              bgColor: 'bg-blue-600',
+                              borderActive: 'border-blue-500',
+                              ringActive: 'ring-blue-500/15',
+                              hint: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+                              hintEn: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.',
+                              emoji: '🔵'
+                            },
+                            {
+                              id: 'threads',
+                              label: 'Threads',
+                              bgColor: 'bg-zinc-900 dark:bg-zinc-700',
+                              borderActive: 'border-zinc-800 dark:border-white',
+                              ringActive: 'ring-zinc-400/15',
+                              hint: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                              hintEn: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.',
+                              emoji: '💬'
+                            },
+                            {
+                              id: 'instagram',
+                              label: 'Instagram',
+                              bgColor: 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600',
+                              borderActive: 'border-pink-500',
+                              ringActive: 'ring-pink-500/15',
+                              hint: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
+                              hintEn: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.',
+                              emoji: '📷'
+                            }
+                          ].map(pm => {
+                            const isSel = selectedPlatforms.includes(pm.id as any);
+                            return (
+                              <button
+                                key={pm.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPlatforms(prev => {
+                                    const newPlatforms = prev.includes(pm.id as any)
+                                      ? prev.filter(p => p !== pm.id)
+                                      : [...prev, pm.id as any];
+                                    if (newPlatforms.length > 0 && !newPlatforms.includes(selectedPlatform)) {
+                                      setSelectedPlatform(newPlatforms[0]);
+                                    }
+                                    return newPlatforms;
+                                  });
+                                }}
+                                className={`w-full py-4 px-4 rounded-2xl border-2 text-left transition-all cursor-pointer bg-white dark:bg-slate-900 flex items-center justify-between gap-3 ${
+                                  isSel
+                                    ? `${pm.borderActive} ring-2 ${pm.ringActive}`
+                                    : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-650'
+                                }`}
+                              >
+                                <span className="flex items-center gap-3">
+                                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-base text-white shrink-0 ${pm.bgColor}`}>
+                                    {pm.id === 'facebook' && <Facebook size={16} className="fill-white text-white" />}
+                                    {pm.id === 'threads' && <ThreadsIcon size={16} className="text-white" />}
+                                    {pm.id === 'instagram' && <Instagram size={16} className="text-white" />}
+                                  </span>
+                                  <span className="flex flex-col gap-0.5">
+                                    <span className={`text-xs font-extrabold uppercase tracking-wider ${isSel ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                                      {pm.label}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                                      {language === 'vi' ? pm.hint : pm.hintEn}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
+                                  isSel ? 'bg-amber-500 border-amber-500' : 'border-slate-300 dark:border-zinc-600 bg-transparent'
+                                }`}>
+                                  {isSel && <Check size={11} className="text-white" strokeWidth={3} />}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSubStep(2)}
+                          disabled={selectedPlatforms.length === 0}
+                          className="w-full mt-1 bg-amber-500 disabled:opacity-40 hover:bg-amber-600 text-white py-3.5 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer border-0 transition-all active:scale-95 shadow-md shadow-amber-500/20"
+                        >
+                          {language === 'vi' ? 'Tiếp theo: Cấu hình' : 'Next: Configure'} <ArrowRight size={13} />
+                        </button>
+                      </div>
+                    )}
+
+                    {subStep === 2 && (
+                      <div className="flex flex-col gap-4">
+                        {/* Platform tabs */}
+                        <div className="flex gap-1 bg-slate-155/70 dark:bg-zinc-900 rounded-2xl p-1 mb-2">
+                          {selectedPlatforms.map(pid => {
+                            const pm = [
+                              { id: 'facebook', label: 'Facebook', emoji: '🔵', bgColor: 'bg-blue-600' },
+                              { id: 'threads', label: 'Threads', emoji: '💬', bgColor: 'bg-zinc-900' },
+                              { id: 'instagram', label: 'Instagram', emoji: '📷', bgColor: 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600' }
+                            ].find(p => p.id === pid)!;
+                            const isActive = selectedPlatform === pid;
+                            return (
+                              <button
+                                key={pid}
+                                type="button"
+                                onClick={() => setSelectedPlatform(pid as any)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer border-0 ${
+                                  isActive
+                                    ? 'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-white'
+                                    : 'text-slate-400 hover:text-slate-655 bg-transparent'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  {pm.id === 'facebook' && <Facebook size={12} className={`transition-colors ${isActive ? 'fill-[#1877F2] text-[#1877F2]' : 'fill-slate-400 text-slate-400'}`} />}
+                                  {pm.id === 'threads' && <ThreadsIcon size={12} className={`transition-colors ${isActive ? 'text-black dark:text-white' : 'text-slate-400'}`} />}
+                                  {pm.id === 'instagram' && <Instagram size={12} className={`transition-colors ${isActive ? 'text-pink-650 dark:text-pink-400' : 'text-slate-400'}`} />}
+                                  {pm.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Platform-specific hint */}
+                        {(() => {
+                          const hints = {
+                            facebook: {
+                              vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+                              en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
+                            },
+                            threads: {
+                              vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                              en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
+                            },
+                            instagram: {
+                              vi: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
+                              en: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.'
+                            }
+                          };
+                          const hint = hints[selectedPlatform] || hints.facebook;
+                          return (
+                            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-zinc-900/60 px-4 py-3 rounded-xl border border-slate-100 dark:border-zinc-800 leading-relaxed">
+                              💡 {language === 'vi' ? hint.vi : hint.en}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 1. Preset Dropdown */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { setPresetOpen(!presetOpen); setToneOpen(false); setInstructionOpen(false); }}
+                            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-350 hover:border-amber-500/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              ⚙️ {language === 'vi' ? 'Quy chuẩn: ' : 'Preset: '}
+                              <span className="font-black text-amber-500">
+                                {platformPresets.find(p => p.id === selectedPlatformPresetId)?.name || 'Default'}
+                              </span>
+                            </span>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${presetOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {presetOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 flex flex-col p-1.5 gap-1"
+                              >
+                                {platformPresets.map(preset => (
+                                  <button
+                                    key={preset.id}
+                                    type="button"
+                                    onClick={() => { setSelectedPlatformPresetId(preset.id); setPresetOpen(false); }}
+                                    className={`w-full text-left p-2.5 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer flex flex-col gap-0.5 ${
+                                      selectedPlatformPresetId === preset.id
+                                        ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                                        : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                    }`}
+                                  >
+                                    <span className="font-bold">{preset.name}{!preset.user_id ? ` (${language === 'vi' ? 'Hệ thống' : 'System'})` : ''}</span>
+                                    <span className="text-[10px] opacity-75 line-clamp-1">{preset.rules}</span>
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* 2. Tone Dropdown */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { setToneOpen(!toneOpen); setPresetOpen(false); setInstructionOpen(false); }}
+                            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-355 hover:border-amber-500/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              🎭 {language === 'vi' ? 'Văn phong: ' : 'Brand Tone: '}
+                              <span className="font-black text-amber-500">
+                                {savedConfigs.find(cfg => cfg.id === selectedConfigId)?.name || (language === 'vi' ? 'Tự do (Không áp dụng)' : 'None')}
+                              </span>
+                            </span>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${toneOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {toneOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 flex flex-col p-1.5 gap-1"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedConfigId(''); setToneOpen(false); }}
+                                  className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${
+                                    selectedConfigId === ''
+                                      ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                                      : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                  }`}
+                                >
+                                  {language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}
+                                </button>
+                                {savedConfigs.map(cfg => (
+                                  <button
+                                    key={cfg.id}
+                                    type="button"
+                                    onClick={() => { setSelectedConfigId(cfg.id); setToneOpen(false); }}
+                                    className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${
+                                      selectedConfigId === cfg.id
+                                        ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                                        : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                    }`}
+                                  >
+                                    {cfg.name}
+                                  </button>
+                                ))}
+                                <div className="border-t border-slate-100 dark:border-zinc-800 mt-1 pt-1.5 px-1.5 flex justify-end">
+                                  <button type="button" onClick={() => { setIsStyleModalOpen(true); setToneOpen(false); }}
+                                    className="text-[10px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1 rounded-lg transition-all cursor-pointer border-0"
+                                  >{language === 'vi' ? 'Quản lý văn phong' : 'Manage Styles'}</button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* 3. Instructions Dropdown */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { setInstructionOpen(!instructionOpen); setPresetOpen(false); setToneOpen(false); }}
+                            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-350 hover:border-amber-500/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              ✍️ {language === 'vi' ? 'Yêu cầu tùy chỉnh' : 'Custom Instructions'}
+                              {(selectedQuickPicks.length > 0 || customPromptText) && (
+                                <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-black">
+                                  {selectedQuickPicks.length + (customPromptText ? 1 : 0)}
+                                </span>
+                              )}
+                            </span>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${instructionOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {instructionOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 p-4 flex flex-col gap-3"
+                              >
+                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest">{language === 'vi' ? 'CHỌN NHANH' : 'QUICK PICKS'}</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {[
+                                    { id: 'cta', name: 'Thêm kêu gọi hành động' },
+                                    { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
+                                    { id: 'emoji', name: 'Sử dụng nhiều emoji' },
+                                    { id: 'stats', name: 'Tập trung vào số liệu' },
+                                    { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
+                                  ].map(req => {
+                                    const isSel = selectedQuickPicks.includes(req.id);
+                                    return (
+                                      <button
+                                        key={req.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedQuickPicks(prev =>
+                                            prev.includes(req.id) ? prev.filter(x => x !== req.id) : [...prev, req.id]
+                                          );
+                                        }}
+                                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                          isSel
+                                            ? 'bg-amber-500 text-white border-amber-500'
+                                            : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-zinc-700 hover:border-amber-400/40'
+                                        }`}
+                                      >
+                                        {req.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <textarea
+                                  value={customPromptText}
+                                  onChange={e => setCustomPromptText(e.target.value)}
+                                  rows={2}
+                                  placeholder={language === 'vi' ? 'Chỉ dẫn thêm bằng chữ...' : 'Extra text instructions...'}
+                                  className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 text-xs leading-relaxed outline-none resize-none focus:ring-1 focus:ring-amber-500/50"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setInstructionOpen(false)}
+                                  className="w-full bg-amber-500 text-white py-2 text-xs font-bold rounded-xl border-0 cursor-pointer active:scale-95 transition-all"
+                                >
+                                  {language === 'vi' ? 'Xác nhận' : 'Confirm'}
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* 4. Prompt Preview Accordion */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { setIsPromptPreviewOpen(!isPromptPreviewOpen); setPresetOpen(false); setToneOpen(false); setInstructionOpen(false); }}
+                            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-355 hover:border-amber-500/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              👁️ {language === 'vi' ? 'XEM PROMPT CHO NỀN TẢNG NÀY' : 'VIEW PROMPT FOR THIS PLATFORM'}
+                            </span>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${isPromptPreviewOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          <AnimatePresence>
+                            {isPromptPreviewOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="w-full mt-2 bg-slate-50/50 dark:bg-zinc-955/30 border border-slate-200/60 dark:border-zinc-800/60 rounded-2xl p-4 overflow-hidden"
+                              >
+                                <pre className="text-slate-700 dark:text-slate-350 text-[10.5px] leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-[250px] overflow-y-auto custom-scrollbar font-mono">
+                                  {compilePromptPreview()}
+                                </pre>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Proceed Button */}
+                        <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
+                          className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-4 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs sm:text-sm cursor-pointer border-0 whitespace-nowrap"
+                        >
+                          {isGeneratingAB ? (
+                            <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? `Đang sinh ${variantCount} biến thể...` : `AI generating ${variantCount} variants...`}</>
+                          ) : (
+                            <>{language === 'vi' ? 'Tạo nội dung AI cho tất cả nền tảng' : 'Generate AI content for all platforms'}<ArrowRight size={16} /></>
+                          )}
+                        </motion.button>
+                      </div>
+                    )}
                   </div>
                 )}
             </div>
           )}
 
-          {/* STEP 2: Right column A/B testing variants workspace */}
-          {step === 2 && (
-            <motion.div
-              id="tour-creator-variants"
-              layout
-              key="step2-variants"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 50 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="lg:col-span-8 flex flex-col gap-6 order-2 transition-all duration-300"
-            >
-              {/* Platform Selector */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
-                  <h3 className="text-base font-extrabold text-text">{t('aiCreator.multiChannelAb')}</h3>
-                </div>
+          {/* STEP 2: Right column Mockup Feed Workspace */}
+          {step === 2 && (() => {
+            const activeVariant = variants.find(v => v.id === (selectedVariantId || 'A')) || variants[0];
+            const previewTimestamp = postData.published_at || toDateInputValue(new Date());
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
 
-                <div className="flex bg-sidebar rounded-full p-1 border border-primary/5 shadow-inner">
-                  {(['facebook', 'threads', 'instagram'] as const)
-                    .filter(platform => getPromptTargetPlatforms(selectedPrompt).includes(platform))
-                    .map((platform) => {
+            return (
+              <motion.div
+                id="tour-creator-variants"
+                key="step2-variants"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="lg:col-span-8 flex flex-col gap-5 order-2"
+              >
+                {/* Platform Selector Header */}
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-text dark:text-white">
+                      {language === 'vi' ? 'Kiểm thử đa kênh' : 'Multi-Channel Preview'}
+                    </span>
+                    {selectedPlatforms.length > 1 && (
+                      <span className="text-[10px] font-semibold text-text-muted bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        {selectedPlatforms.length} {language === 'vi' ? 'kênh' : 'channels'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Platform tabs */}
+                  <div className="flex border border-gray-200 dark:border-white/10 rounded-xl p-0.5 gap-0.5 bg-white dark:bg-slate-900">
+                    {selectedPlatforms.map((platform) => {
                       const isActive = selectedPlatform === platform;
+                      const icons: Record<string, React.ReactNode> = {
+                        facebook: <Facebook size={11} className="fill-current" />,
+                        threads: <ThreadsIcon size={11} />,
+                        instagram: <Instagram size={11} />,
+                      };
                       return (
                         <button
                           key={platform}
                           onClick={() => setSelectedPlatform(platform)}
-                          className={`text-xs font-extrabold px-5 py-2 rounded-full uppercase tracking-wider transition-all duration-300 ${isActive
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'text-text-muted hover:text-text'
-                            }`}
+                          className={`flex items-center gap-1.5 text-[11px] font-semibold px-3.5 py-1.5 rounded-lg capitalize border-0 cursor-pointer ${
+                            isActive
+                              ? 'bg-primary text-white'
+                              : 'text-text-muted dark:text-slate-400 hover:text-text dark:hover:text-white bg-transparent'
+                          }`}
                         >
-                          {platform === 'facebook' && t('aiCreator.fbLabel')}
-                          {platform === 'threads' && t('aiCreator.threadsLabel')}
-                          {platform === 'instagram' && 'Instagram'}
+                          {icons[platform]}
+                          {platform}
                         </button>
                       );
                     })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Displaying Variants in 2-Columns grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                <AnimatePresence mode="popLayout">
-                  {variants.map((v, index) => {
-                    let iconBg = 'bg-black';
-                    let platformLabel = '';
-                    if (selectedPlatform === 'facebook') {
-                      iconBg = 'bg-blue-600';
-                      platformLabel = t('aiCreator.fbPreview');
-                    } else if (selectedPlatform === 'threads') {
-                      iconBg = 'bg-black';
-                      platformLabel = t('aiCreator.threadsFeed');
-                    } else if (selectedPlatform === 'instagram') {
-                      iconBg = 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600';
-                      platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
-                    }
+                {/* Unified Preview Card */}
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col">
 
-                    const previewTimestamp = postData.published_at || toDateInputValue(new Date());
-                    const isCardSelected = selectedVariantId === v.id;
-                    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-                      selectedPlatform === 'threads' ? 'originalThreads' :
-                        'originalInstagram';
-                    const currentVal = v[selectedPlatform] || '';
-                    const originalVal = v[originalField] || '';
-                    const hasChanged = !!(originalVal && currentVal !== originalVal);
+                  {/* Card toolbar */}
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0 ${
+                        selectedPlatform === 'facebook' ? 'bg-blue-600' :
+                        selectedPlatform === 'threads' ? 'bg-black' :
+                        'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600'
+                      }`}>
+                        {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
+                        {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
+                        {selectedPlatform === 'instagram' && <Instagram size={12} />}
+                      </div>
+                      <span className="text-sm font-semibold text-text dark:text-white capitalize">
+                        {selectedPlatform}
+                      </span>
+                    </div>
 
-                    return (
-                      <motion.div
-                        key={v.id}
-                        layout
-                        layoutId={`variant-card-${v.id}`}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                        onClick={() => setSelectedVariantId(prev => prev === v.id ? '' : v.id)}
-                        style={isCardSelected ? { borderColor: 'var(--color-primary)' } : undefined}
-                        className={`rounded-3xl p-5 flex flex-col gap-3 relative overflow-visible cursor-pointer select-none transition-all duration-300 ${isCardSelected
-                          ? 'bg-card dark:bg-slate-800 border-2 border-primary ring-4 ring-primary/15 shadow-2xl shadow-primary/15 scale-[1.01]'
-                          : 'bg-card dark:bg-slate-900 border border-gray-200/80 dark:border-white/10 hover:border-primary/30 dark:hover:border-primary/50 hover:shadow-lg shadow-sm'
-                          }`}
-                      >
-                        {/* Variant Badge & Platform Header */}
-                        <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-white shadow-sm`}>
-                              {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
-                              {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
-                              {selectedPlatform === 'instagram' && <Instagram size={12} />}
-                            </div>
-                            <span className="text-xs font-extrabold text-text">{platformLabel}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {regeneratingVariantId === v.id ? (
-                              <Loader2 size={12} className="animate-spin text-primary" />
-                            ) : (
-                              <div className="relative group">
-                                <button
-                                  id={index === 0 ? "tour-creator-refresh" : undefined}
-                                  type="button"
-                                  disabled={isGeneratingAB || !!regeneratingVariantId}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRegenerateVariant(v.id);
-                                  }}
-                                  className="p-1.5 rounded-xl hover:bg-primary/10 text-primary transition-all cursor-pointer disabled:opacity-50 border-0 bg-transparent flex items-center justify-center"
-                                  title={language === 'vi' ? 'Tạo lại biến thể này' : 'Regenerate this variant'}
-                                >
-                                  <RefreshCw size={12} />
-                                </button>
+                    <div className="flex items-center gap-2">
+                      {/* Regenerate button */}
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          disabled={regeneratingVariantId === activeVariant?.id}
+                          onClick={() => handleRegenerateVariant(activeVariant?.id)}
+                          className="flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg cursor-pointer border-0 bg-transparent disabled:opacity-40"
+                          title={language === 'vi' ? 'Tái tạo phiên bản AI' : 'Regenerate AI version'}
+                        >
+                          <RefreshCw size={12} className={regeneratingVariantId === activeVariant?.id ? "animate-spin" : ""} />
+                          {language === 'vi' ? 'Tái tạo' : 'Regenerate'}
+                        </button>
 
-                                {/* Custom Hover Popup */}
-                                <div className="absolute right-0 bottom-full mb-2 w-[260px] p-3.5 bg-white dark:bg-slate-950/95 text-slate-800 dark:text-white rounded-xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-sm transition-all duration-200 opacity-0 scale-95 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 group-hover:pointer-events-auto flex flex-col gap-1.5 z-[100] text-left select-none">
-                                  <div className="flex items-center gap-1.5 text-[10px] font-black tracking-widest text-[#F97316] uppercase font-mono">
-                                    <Sparkles size={11} className="text-[#F97316]" />
-                                    <span>{language === 'vi' ? 'Tái tạo phiên bản AI' : 'Regenerate AI Variant'}</span>
-                                  </div>
-                                  <p className="text-[10.5px] leading-relaxed text-slate-600 dark:text-slate-200 font-semibold font-sans">
-                                    {language === 'vi'
-                                      ? 'Sử dụng Gemini AI để phân tích lại nội dung gốc và sinh ra phiên bản mới cho riêng kênh này, giữ nguyên các biến thể khác.'
-                                      : 'Use Gemini AI to re-analyze the source content and generate a new version specifically for this channel, leaving other variants unchanged.'}
-                                  </p>
-                                  {/* Tiny arrow */}
-                                  <div className="absolute bottom-[-5px] right-3.5 w-2.5 h-2.5 bg-white dark:bg-slate-950 rotate-45 border-r border-b border-slate-200/80 dark:border-slate-800/80 pointer-events-none" />
-                                </div>
-                              </div>
-                            )}
-
-                            <span className={`text-xs font-black px-3 py-1 rounded-full border select-none transition-all ${isCardSelected ? 'bg-primary text-white border-primary' : 'bg-primary/10 text-primary border-primary/10'
-                              }`}>
-                              {language === 'vi' ? 'Biến thể' : 'Variant'} {v.id}
-                            </span>
-                          </div>
+                        {/* Tooltip */}
+                        <div className="absolute right-0 bottom-full mb-2 w-52 p-3 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 transition-all duration-150 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 flex flex-col gap-1 z-50 text-left">
+                          <div className="text-[11px] font-bold text-primary">{language === 'vi' ? 'Tái tạo bằng AI' : 'AI Regenerate'}</div>
+                          <p className="text-[10px] text-text-muted leading-relaxed">{language === 'vi' ? 'Viết lại nội dung riêng cho nền tảng này.' : 'Rewrite content specifically for this platform.'}</p>
                         </div>
+                      </div>
+                    </div>
+                  </div>
 
-                        {/* Mockup */}
-                        {selectedPlatform === 'threads' ? (
-                          /* Connected multi-post threads markup */
-                          <div className="flex flex-col gap-0 text-text">
+                  {/* Post preview area */}
+                  <div className={`relative flex flex-col ${selectedPlatform === 'threads' ? 'p-5 gap-3' : ''}`}>
+                    {/* Regenerating overlay */}
+                    {regeneratingVariantId === activeVariant?.id && (
+                      <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                        <div className="flex flex-col items-center gap-2">
+                          <RefreshCw size={20} className="animate-spin text-primary" />
+                          <span className="text-xs font-semibold text-primary">{language === 'vi' ? 'AI đang viết lại...' : 'AI rewriting...'}</span>
+                        </div>
+                      </div>
+                    )}
 
-                            {/* Thread Post 1/2 */}
-                            <div className="flex gap-3 items-stretch">
-                              <div className="flex flex-col items-center shrink-0">
-                                <div className="relative w-9 h-9">
-                                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
-                                    {v.id}
-                                  </div>
-                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
-                                    +
-                                  </div>
+                      {/* Mockup Display */}
+                      {selectedPlatform === 'threads' ? (
+                        /* Connected multi-post threads markup */
+                        <div className="flex flex-col gap-0 text-text">
+                          
+                          {/* Thread Post 1/2 */}
+                          <div className="flex gap-3 items-stretch">
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className="relative w-9 h-9">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                  {activeVariant.id}
                                 </div>
-                                <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                  +
+                                </div>
+                              </div>
+                              <div className="w-0.5 bg-gray-200 grow my-2"></div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                  <span>{previewTimestamp}</span>
+                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                </div>
                               </div>
 
-                              <div className="flex-1 flex flex-col gap-2 pb-5 overflow-hidden">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-extrabold text-text">antbiz_official</span>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                    <span>{previewTimestamp}</span>
-                                    <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
-                                  {toggles.showTitle && (
-                                    <div className="font-extrabold text-xs text-text">
-                                      [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                                    </div>
-                                  )}
-
-                                  {toggles.showDescription && (
-                                    <div className="whitespace-pre-wrap">
-                                      <EditableText
-                                        variantId={v.id}
-                                        field="threads"
-                                        value={v.threads}
-                                        originalValue={v.originalThreads}
-                                        textarea
-                                      />
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
-                                    </div>
-                                  )}
-
-                                  {(toggles.showAuthor || toggles.showTags) && (
-                                    <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
-                                      {toggles.showAuthor && (
-                                        <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                          <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                          <EditableText variantId={v.id} field="author" value={v.author} />
-                                        </div>
-                                      )}
-                                      {toggles.showTags && (
-                                        <div className="text-primary font-bold">
-                                          <EditableText variantId={v.id} field="tags" value={v.tags} />
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {toggles.showImage && postData.imageUrl && (
-                                  <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-100 mt-1.5 shadow-sm">
-                                    <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full h-full object-cover" />
+                              <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
+                                {toggles.showTitle && (
+                                  <div className="font-extrabold text-xs text-text">
+                                    [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
                                   </div>
                                 )}
 
-                                <div className="flex items-center gap-4 text-gray-400 mt-2.5">
-                                  <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                  <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                                  <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                  <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                {toggles.showDescription && (
+                                  <div className="whitespace-pre-wrap">
+                                    <EditableText
+                                      variantId={activeVariant.id}
+                                      field="threads"
+                                      value={activeVariant.threads}
+                                      originalValue={activeVariant.originalThreads}
+                                      textarea
+                                    />
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">1/2</span>
+                                  </div>
+                                )}
+
+                                {(toggles.showAuthor || toggles.showTags) && (
+                                  <div className="text-[10px] text-text-muted flex flex-col gap-1 border-t border-gray-100 pt-1.5 mt-0.5">
+                                    {toggles.showAuthor && (
+                                      <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                        <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                        <EditableText variantId={activeVariant.id} field="author" value={activeVariant.author} />
+                                      </div>
+                                    )}
+                                    {toggles.showTags && (
+                                      <div className="text-primary font-bold">
+                                        <EditableText variantId={activeVariant.id} field="tags" value={activeVariant.tags} />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {toggles.showImage && postData.imageUrl && (
+                                <div className="aspect-[1.91/1] w-full rounded-2xl overflow-hidden border border-gray-150 mt-1.5 shadow-sm">
+                                  <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full h-full object-cover" />
                                 </div>
+                              )}
+
+                              <div className="flex items-center gap-4 text-gray-400 mt-2.5">
+                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
                               </div>
                             </div>
-
-                            {/* Thread Post 2/2 */}
-                            <div className="flex gap-3 items-stretch">
-                              <div className="flex flex-col items-center shrink-0">
-                                <div className="relative w-9 h-9">
-                                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
-                                    {v.id}
-                                  </div>
-                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
-                                    +
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-extrabold text-text">antbiz_official</span>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                                    <span>{previewTimestamp}</span>
-                                    <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
-                                  </div>
-                                </div>
-
-                                <div className="text-[11px] text-text leading-relaxed mt-0.5">
-                                  <span className="text-blue-500 hover:underline cursor-pointer font-medium">
-                                    &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {url.length > 30 ? `${url.substring(0, 30)}...` : url}
-                                  </span>
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
-                                </div>
-
-                                <div className="flex items-center gap-4 text-gray-400 mt-2">
-                                  <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
-                                  <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                                  <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
-                                  <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
-                                </div>
-                              </div>
-                            </div>
-
                           </div>
-                        ) : selectedPlatform === 'instagram' ? (
-                          /* Instagram Mockup */
-                          <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
-                            <div className="p-3.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
-                                  {v.id}
+
+                          {/* Thread Post 2/2 */}
+                          <div className="flex gap-3 items-stretch">
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className="relative w-9 h-9">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm select-none">
+                                  {activeVariant.id}
                                 </div>
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-text flex items-center gap-1">
-                                    antbiz_official
-                                    <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
-                                  </span>
-                                  <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black border border-white flex items-center justify-center text-white font-bold text-[8px] leading-none select-none">
+                                  +
                                 </div>
                               </div>
-                              <MoreHorizontal size={14} className="text-gray-400" />
                             </div>
 
-                            {toggles.showImage && postData.imageUrl && (
-                              <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                                <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-text">antbiz_official</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                                  <span>{previewTimestamp}</span>
+                                  <MoreHorizontal size={13} className="text-gray-400 cursor-pointer" />
+                                </div>
                               </div>
-                            )}
 
-                            <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
-                              <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
-                              <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
-                              <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                              <div className="text-[11px] text-text leading-relaxed mt-0.5">
+                                <span className="text-blue-500 hover:underline cursor-pointer font-medium">
+                                  &gt;&gt;&gt; {language === 'vi' ? 'Xem chi tiết:' : 'View details:'} {url.length > 30 ? `${url.substring(0, 30)}...` : url}
+                                </span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium text-[8px] ml-1.5 align-middle select-none">2/2</span>
+                              </div>
+
+                              <div className="flex items-center gap-4 text-gray-400 mt-2">
+                                <Heart size={14} className="hover:text-red-500 cursor-pointer transition-colors" />
+                                <MessageCircle size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                                <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
+                                <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      ) : selectedPlatform === 'instagram' ? (
+                        /* Instagram Mockup */
+                        <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                          <div className="p-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {activeVariant.id}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-text flex items-center gap-1">
+                                  antbiz_official
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                </span>
+                                <span className="text-[9px] text-text-muted">{language === 'vi' ? 'Hồ Chí Minh' : 'Ho Chi Minh City'}</span>
+                              </div>
+                            </div>
+                            <MoreHorizontal size={14} className="text-gray-400" />
+                          </div>
+
+                          {toggles.showImage && postData.imageUrl && (
+                            <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
+                              <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div className="px-3.5 pt-3 pb-2 flex items-center gap-4 text-text">
+                            <Heart size={20} className="hover:text-red-500 cursor-pointer transition-colors" />
+                            <MessageCircle size={20} className="hover:text-primary cursor-pointer transition-colors" />
+                            <Send size={18} className="hover:text-primary cursor-pointer transition-colors" />
+                          </div>
+
+                          <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                            <div className="font-extrabold text-xs text-text">
+                              Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
                             </div>
 
-                            <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
+                            {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text">
-                                Liked by <span className="underline cursor-pointer">john_doe</span> and <span className="underline cursor-pointer">42 others</span>
-                              </div>
-
-                              {toggles.showTitle && (
-                                <div className="font-extrabold text-xs text-text">
-                                  [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                                </div>
-                              )}
-
-                              {toggles.showDescription && (
-                                <div className="whitespace-pre-wrap">
-                                  <span className="font-extrabold mr-1.5">antbiz_official</span>
-                                  <EditableText
-                                    variantId={v.id}
-                                    field="instagram"
-                                    value={v.instagram}
-                                    originalValue={v.originalInstagram}
-                                    textarea
-                                  />
-                                </div>
-                              )}
-
-                              {toggles.showAuthor && (
-                                <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
-                                  <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                  <EditableText variantId={v.id} field="author" value={v.author} />
-                                </div>
-                              )}
-
-                              {toggles.showTags && (
-                                <div className="text-primary font-bold mt-1">
-                                  <EditableText variantId={v.id} field="tags" value={v.tags} />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Facebook Mockup */
-                          <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
-                            <div className="p-3.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
-                                  {v.id}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-text flex items-center gap-1">
-                                    AntBiz Official
-                                    <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
-                                  </span>
-                                  <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
-                                </div>
-                              </div>
-                              <MoreHorizontal size={14} className="text-gray-400" />
-                            </div>
-
-                            <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
-                              {toggles.showTitle && (
-                                <div className="font-extrabold text-xs text-text mb-0.5">
-                                  [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
-                                </div>
-                              )}
-
-                              {toggles.showDescription && (
-                                <div className="whitespace-pre-wrap">
-                                  <EditableText
-                                    variantId={v.id}
-                                    field="facebook"
-                                    value={v.facebook}
-                                    originalValue={v.originalFacebook}
-                                    textarea
-                                  />
-                                </div>
-                              )}
-
-                              {(toggles.showAuthor || toggles.showTags) && (
-                                <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
-                                  {toggles.showAuthor && (
-                                    <div className="flex items-center gap-1 font-semibold text-gray-500">
-                                      <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
-                                      <EditableText variantId={v.id} field="author" value={v.author} />
-                                    </div>
-                                  )}
-                                  {toggles.showTags && (
-                                    <div className="text-primary font-bold">
-                                      <EditableText variantId={v.id} field="tags" value={v.tags} />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {toggles.showImage && postData.imageUrl && (
-                              <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
-                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
+                                [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
                               </div>
                             )}
 
-                            <div className="px-1.5 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between">
-                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                                <ThumbsUp size={11} /> {language === 'vi' ? 'Thích' : 'Like'}
-                              </button>
-                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                                <MessageSquare size={11} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
-                              </button>
-                              <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors">
-                                <Share2 size={11} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
-                              </button>
-                            </div>
+                            {toggles.showDescription && (
+                              <div className="whitespace-pre-wrap">
+                                <span className="font-extrabold mr-1.5">antbiz_official</span>
+                                <EditableText
+                                  variantId={activeVariant.id}
+                                  field="instagram"
+                                  value={activeVariant.instagram}
+                                  originalValue={activeVariant.originalInstagram}
+                                  textarea
+                                />
+                              </div>
+                            )}
+
+                            {toggles.showAuthor && (
+                              <div className="flex items-center gap-1 font-semibold text-gray-500 mt-1">
+                                <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                <EditableText variantId={activeVariant.id} field="author" value={activeVariant.author} />
+                              </div>
+                            )}
+
+                            {toggles.showTags && (
+                              <div className="text-primary font-bold mt-1">
+                                <EditableText variantId={activeVariant.id} field="tags" value={activeVariant.tags} />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      ) : (
+                        /* Facebook Mockup */
+                        <div className="border border-gray-200/60 rounded-2xl overflow-hidden flex flex-col bg-white shadow-inner/5">
+                          <div className="p-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-sm">
+                                {activeVariant.id}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-text flex items-center gap-1">
+                                  AntBiz Official
+                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[7px] font-bold select-none">✓</span>
+                                </span>
+                                <span className="text-[9px] text-text-muted">{language === 'vi' ? '7 giờ' : '7 hrs'} · 🌍</span>
+                              </div>
+                            </div>
+                            <MoreHorizontal size={14} className="text-gray-400" />
+                          </div>
 
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
+                          <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
+                            {toggles.showTitle && (
+                              <div className="font-extrabold text-xs text-text mb-0.5">
+                                [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
+                              </div>
+                            )}
 
-                {/* Add Variant Card */}
-                {variants.length < variantCount && (
-                  <motion.button
-                    onClick={handleAddVariant}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="border-2 border-dashed border-gray-200 hover:border-primary/40 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/20 hover:bg-primary/5 transition-all text-text-muted hover:text-primary group min-h-[300px]"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-white border border-gray-200 group-hover:border-primary/20 flex items-center justify-center shadow-sm text-text-muted group-hover:text-primary transition-all">
-                      <Plus size={24} />
-                    </div>
-                    <div className="text-center">
-                      <h4 className="text-xs font-extrabold uppercase tracking-wider">{t('aiCreator.generateNewVariant')}</h4>
-                      <p className="text-[10px] text-text-muted mt-1 max-w-[200px]">{t('aiCreator.generateNewVariantDesc')}</p>
-                    </div>
-                  </motion.button>
-                )}
-              </div>
+                            {toggles.showDescription && (
+                              <div className="whitespace-pre-wrap">
+                                <EditableText
+                                  variantId={activeVariant.id}
+                                  field="facebook"
+                                  value={activeVariant.facebook}
+                                  originalValue={activeVariant.originalFacebook}
+                                  textarea
+                                />
+                              </div>
+                            )}
 
-              {/* Bottom Actions Row */}
-              <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4">
-                <button
-                  onClick={() => changeStep(1)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <ArrowLeft size={16} />
-                  {t('aiCreator.backToIngestion')}
-                </button>
+                            {(toggles.showAuthor || toggles.showTags) && (
+                              <div className="text-[10px] text-text-muted mt-1.5 pt-1.5 border-t border-gray-100 flex flex-col gap-1.5">
+                                {toggles.showAuthor && (
+                                  <div className="flex items-center gap-1 font-semibold text-gray-500">
+                                    <span>{language === 'vi' ? 'Tác giả:' : 'Author:'}</span>
+                                    <EditableText variantId={activeVariant.id} field="author" value={activeVariant.author} />
+                                  </div>
+                                )}
+                                {toggles.showTags && (
+                                  <div className="text-primary font-bold">
+                                    <EditableText variantId={activeVariant.id} field="tags" value={activeVariant.tags} />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                <div className="flex flex-col items-end gap-1.5">
-                  {!selectedVariantId && (
-                    <p className="text-[10px] text-slate-400 font-semibold animate-pulse">
-                      ← Nhấn vào một biến thể để chọn
-                    </p>
-                  )}
+                          {toggles.showImage && postData.imageUrl && (
+                            <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-gray-100">
+                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div className="px-1.5 py-1.5 flex border-t border-gray-100 text-[10px] text-text-muted font-bold justify-between">
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors border-0 bg-transparent text-text-muted cursor-pointer">
+                              <ThumbsUp size={11} /> {language === 'vi' ? 'Thích' : 'Like'}
+                            </button>
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors border-0 bg-transparent text-text-muted cursor-pointer">
+                              <MessageSquare size={11} /> {language === 'vi' ? 'Bình luận' : 'Comment'}
+                            </button>
+                            <button className="flex-1 py-1.5 hover:bg-gray-50 rounded flex items-center justify-center gap-1 transition-colors border-0 bg-transparent text-text-muted cursor-pointer">
+                              <Share2 size={11} /> {language === 'vi' ? 'Chia sẻ' : 'Share'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                </div>
+
+                {/* Bottom Actions Row */}
+                <div className="flex items-center justify-between pt-5 mt-1 border-t border-gray-100 dark:border-white/5">
                   <button
-                    onClick={() => { if (selectedVariantId) changeStep(3); }}
-                    disabled={!selectedVariantId}
-                    className={`py-3.5 px-8 rounded-2xl font-extrabold flex items-center gap-2 transition-all text-xs ${selectedVariantId
-                      ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 cursor-pointer'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                      }`}
+                    onClick={() => changeStep(1)}
+                    className="flex items-center gap-2 text-text-muted dark:text-slate-400 hover:text-text dark:hover:text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border-0 bg-transparent"
                   >
-                    {selectedVariantId ? (
-                      <>
-                        <CheckCircle2 size={15} />
-                        {t('aiCreator.scheduleVariant', { variant: selectedVariantId })}
-                        <ArrowRight size={14} />
-                      </>
-                    ) : (
-                      <>
-                        {t('aiCreator.step3')}
-                        <ArrowRight size={15} />
-                      </>
-                    )}
+                    <ArrowLeft size={14} />
+                    {t('aiCreator.backToIngestion')}
+                  </button>
+
+                  <button
+                    onClick={() => changeStep(3)}
+                    className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer border-0 whitespace-nowrap active:scale-95"
+                  >
+                    <CheckCircle2 size={14} />
+                    {t('aiCreator.scheduleVariant', { variant: selectedVariantId || 'A' })}
+                    <ArrowRight size={13} />
                   </button>
                 </div>
-              </div>
-
-            </motion.div>
-          )}
+              </motion.div>
+            );
+          })()}
 
           {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
           {step === 3 && (
@@ -5780,7 +6000,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                   {/* Schedulers Inputs for platforms */}
                   <div className="flex flex-col gap-4">
-                    {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                    {selectedPlatforms.includes('facebook') && (
                       <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
                         <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
                           <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
@@ -5796,7 +6016,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       </div>
                     )}
 
-                    {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                    {selectedPlatforms.includes('threads') && (
                       <div className="border border-gray-200 dark:border-white/5 bg-gray-50/10 dark:bg-white/3 rounded-2xl p-4 flex flex-col gap-4">
                         <div className="flex items-center gap-2 font-bold text-xs text-black dark:text-white">
                           <div className="w-5 h-5 rounded-full bg-black dark:bg-zinc-900 flex items-center justify-center text-white">
@@ -5812,7 +6032,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       </div>
                     )}
 
-                    {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                    {selectedPlatforms.includes('instagram') && (
                       <div className="border border-pink-100 dark:border-pink-900/30 bg-pink-50/10 dark:bg-pink-950/10 rounded-2xl p-4 flex flex-col gap-4">
                         <div className="flex items-center gap-2 font-bold text-xs text-pink-600 dark:text-pink-400">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
@@ -6318,21 +6538,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   </div>
 
                   <div className="flex flex-col gap-2.5 font-sans">
-                    {getPromptTargetPlatforms(selectedPrompt).includes('facebook') && (
+                    {selectedPlatforms.includes('facebook') && (
                       <div className="flex items-center justify-between text-xs font-sans">
                         <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">Facebook</span>
                         <span className="font-semibold text-text-muted">{facebookDate} @ {facebookTime}</span>
                       </div>
                     )}
 
-                    {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
+                    {selectedPlatforms.includes('threads') && (
                       <div className="flex items-center justify-between text-xs font-sans">
                         <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
                         <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
                       </div>
                     )}
 
-                    {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
+                    {selectedPlatforms.includes('instagram') && (
                       <div className="flex items-center justify-between text-xs font-sans">
                         <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
                         <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>

@@ -5,6 +5,63 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 
 ---
+## [1.7.1] - 2026-07-07
+
+### Added
+- **Giao diện Bước 2 mới — Mockup Feed Đơn Kênh (Unified Single-Platform Preview)**:
+  - Thay thế hoàn toàn bố cục lưới 2 cột biến thể A/B tại Bước 2 bằng một màn hình xem trước đơn kênh sạch gọn, theo phong cách "Bàn làm việc của nhà xuất bản".
+  - Thêm thanh chọn nền tảng (Platform Selector) tích hợp icon Facebook, Threads, Instagram dạng tabs gọn nhẹ phù hợp với hệ màu Indigo thương hiệu.
+  - Thêm toolbar card hiển thị rõ kênh đang xem và nút **Tái tạo** (`Tái tạo`) với nhãn văn bản thay vì icon đơn độc — tăng khả năng khám phá chức năng.
+- **Hỗ trợ chọn nhiều nền tảng cùng lúc (Multi-platform Selection)**:
+  - Bổ sung `selectedPlatforms[]` state tại Bước 1 cho phép chọn đồng thời Facebook, Threads và Instagram bằng checkbox.
+  - Parallel streaming: sinh nội dung AI song song cho tất cả kênh đã chọn khi nhấn "Tạo nội dung".
+- **Tùy chọn nhanh (Quick Picks) trong "Yêu cầu tùy chỉnh"**:
+  - Thêm bộ tag chọn nhanh (`selectedQuickPicks`) bên trong dropdown Yêu cầu tùy chỉnh, tự động bổ sung vào prompt cuối.
+
+### Changed
+- **Refactor Bước 2 (Step 2 Workspace)**:
+  - Loại bỏ hoàn toàn các tab "Biến thể A / Biến thể B" trên thanh toolbar card theo yêu cầu người dùng.
+  - Nút điều hướng quay lại được chuyển thành ghost button (không viền, không shadow) đúng chuẩn hệ thống.
+  - Nút tiến tiếp chuyển thành solid primary button `bg-primary` thay thế gradient kèm `shadow-primary` vi phạm nguyên tắc Flat-By-Rest.
+
+### Fixed
+- Sửa lỗi `Unterminated regexp literal` tại dòng 5727 — Facebook mockup bị thiếu thẻ đóng ảnh và action bar.
+- Sửa lỗi `Cannot access 'variants' before initialization` (Temporal Dead Zone) do `useEffect` khai báo sai vị trí trước khi `variants` được định nghĩa.
+- Sửa lỗi biên dịch `Expected '</', got 'ident'` do comment `#` trong khối `catch` JSX.
+- Sửa lỗi `selectedPlatforms is defined multiple times` do trùng tên biến state.
+
+### Removed
+- Xoá 9 file test JavaScript tạm thời tại thư mục gốc (`check_syntax.js`, `apply_model6.js`, v.v.).
+- Xoá các file giao diện Preview thử nghiệm: `AiCreatorPreviewView.tsx`, `AiCreatorStep1PreviewView.tsx`, `SplitStepDropdownWizard.tsx` và các route `/ai-creator/preview`, `/ai-creator/preview-step1`.
+
+
+
+### Added
+- **5 Kịch bản Tương tác Cấu hình AI (Step 1 Interaction Scenarios)**:
+  - Tích hợp trang đánh giá kịch bản tương tác cấu hình tại `/ai-creator/preview-step1`.
+  - **Kịch bản 1: Modal Nổi (Dialog Stepper)**: Hộp thoại Wizard 3 bước nổi giữa màn hình kèm chọn nhanh bằng các Tag/Chip.
+  - **Kịch bản 2: Ngăn Kéo Trượt (Side Drawer)**: Menu cấu hình dọc dạng Accordion trượt ra từ bên phải màn hình.
+  - **Kịch bản 3: Mở Rộng Tại Chỗ (Inline Expand)**: Trình cấu hình lồng accordion mở rộng trực tiếp ngay trên thanh sidebar.
+  - **Kịch bản 4: Phong cách Sci-Fi/Cyberpunk HUD**: Giao diện điều khiển mang cảm hứng game khoa học viễn tưởng với viền neon mỏng và hiệu ứng terminal biên dịch.
+  - **Kịch bản 5: Thẻ Trượt Tương Tác (Card-based Swiper)**: Bộ thẻ flashcard trượt sang trái khi hoàn thành lựa chọn.
+  - **Biên dịch Prompt (Prompt Compiler)**: Đồng bộ hóa toàn bộ các lựa chọn cấu hình và tự động sinh mã prompt thô xem trước.
+
+## [1.6.6] - 2026-07-06
+
+### Added
+- **Mẫu 6: Soạn thảo & Xem trước Dọc (Tabbed Stacked Editor/Preview)**:
+  - Tích hợp thêm Mẫu 6 cho bước 2 AI Creator với cấu trúc soạn thảo dọc phía trên và hiển thị preview bài viết phía dưới.
+  - Sử dụng các Tab màu ấm nổi bật (vàng/cam) làm điểm nhấn giao diện giúp dễ dàng chuyển đổi nền tảng đang kiểm thử.
+- **Tùy chỉnh nội dung trực tiếp trên Preview (Inline Editing)**:
+  - Cho phép click trực tiếp vào Tiêu đề, Tác giả, Hashtags, và Nội dung bài đăng trên các card xem trước (Facebook, Threads, Instagram) để sửa đổi nội dung một cách trực quan, đồng bộ hóa tức thì với dữ liệu state.
+- **Tính năng Tái bản AI (AI Content Regeneration)**:
+  - Bổ sung nút Tái bản AI (`RefreshCw`) trên góc phải các card xem trước. Khi kích hoạt sẽ hiển thị hiệu ứng xoay loading và tự động điền nội dung được AI tối ưu hóa lại.
+
+### Changed
+- **Đồng bộ thuật ngữ và Kích thước Bố cục**:
+  - Đổi tên nhãn lựa chọn nền tảng từ "A/B" thành "Nền tảng".
+  - Căn chỉnh chiều rộng cột tùy chỉnh mục hiển thị (Sidebar bên trái) lên bằng đúng 33.3% (`lg:col-span-4`) để cân đối diện tích với các phần ưu điểm/nhược điểm phía trên.
+
 ## [1.6.5] - 2026-07-06
 
 ### Changed
