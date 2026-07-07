@@ -324,7 +324,7 @@ export const EditableText = ({
   const isCaptionField = field === 'facebook' || field === 'threads' || field === 'instagram';
   const captionLimits = {
     facebook: 63206,
-    threads: 5000,
+    threads: 500,
     instagram: 2200
   };
   const charLimit = isCaptionField ? captionLimits[field as keyof typeof captionLimits] : null;
@@ -333,8 +333,8 @@ export const EditableText = ({
   // Lock status calculation
   const currentVariant = variants.find(v => v.id === variantId);
   const statusKey = field === 'facebook' ? 'facebookStatus' :
-                    field === 'threads' ? 'threadsStatus' :
-                    field === 'instagram' ? 'instagramStatus' : null;
+    field === 'threads' ? 'threadsStatus' :
+      field === 'instagram' ? 'instagramStatus' : null;
   const currentStatus = statusKey && currentVariant ? currentVariant[statusKey] : 'draft';
   const isLocked = currentStatus === 'scheduled' || currentStatus === 'posted';
 
@@ -348,7 +348,7 @@ export const EditableText = ({
   }, [isEditing, value, textarea]);
 
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const shouldFold = textarea && value && value.length > 280;
+  const shouldFold = textarea && value && value.length > 500;
 
   React.useEffect(() => {
     setIsExpanded(false);
@@ -359,8 +359,8 @@ export const EditableText = ({
 
     try {
       const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-                      selectedPlatform === 'threads' ? 'threadsCaptionId' :
-                      'instagramCaptionId';
+        selectedPlatform === 'threads' ? 'threadsCaptionId' :
+          'instagramCaptionId';
       const activeCaptionId = currentVariant[platKey] || currentVariant.captionId;
 
       if (activeCaptionId) {
@@ -386,21 +386,21 @@ export const EditableText = ({
 
           // Sync changes to the global state
           const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-                                selectedPlatform === 'threads' ? 'originalThreads' :
-                                'originalInstagram';
+            selectedPlatform === 'threads' ? 'originalThreads' :
+              'originalInstagram';
           const statusKeyName = selectedPlatform === 'facebook' ? 'facebookStatus' :
-                                selectedPlatform === 'threads' ? 'threadsStatus' :
-                                'instagramStatus';
+            selectedPlatform === 'threads' ? 'threadsStatus' :
+              'instagramStatus';
 
           setVariants?.((prev: any[]) =>
             prev.map((v) =>
               v.id === variantId
                 ? {
-                    ...v,
-                    [selectedPlatform]: currentContent,
-                    [statusKeyName]: updatedStatus,
-                    ...(saveAsOriginal ? { [originalField]: currentContent } : {})
-                  }
+                  ...v,
+                  [selectedPlatform]: currentContent,
+                  [statusKeyName]: updatedStatus,
+                  ...(saveAsOriginal ? { [originalField]: currentContent } : {})
+                }
                 : v
             )
           );
@@ -408,8 +408,8 @@ export const EditableText = ({
       } else {
         // Perform POST to create new caption draft
         const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-                              selectedPlatform === 'threads' ? 'originalThreads' :
-                              'originalInstagram';
+          selectedPlatform === 'threads' ? 'originalThreads' :
+            'originalInstagram';
         const aiContent = currentVariant[originalField] || currentVariant[selectedPlatform] || currentContent;
 
         const res = await fetch('/api/captions', {
@@ -430,17 +430,17 @@ export const EditableText = ({
 
           // Sync variants
           const statusKeyName = selectedPlatform === 'facebook' ? 'facebookStatus' :
-                                selectedPlatform === 'threads' ? 'threadsStatus' :
-                                'instagramStatus';
+            selectedPlatform === 'threads' ? 'threadsStatus' :
+              'instagramStatus';
           setVariants?.((prev: any[]) =>
             prev.map((v) =>
               v.id === variantId
                 ? {
-                    ...v,
-                    captionId: newId,
-                    [platKey]: newId,
-                    [statusKeyName]: newStatus
-                  }
+                  ...v,
+                  captionId: newId,
+                  [platKey]: newId,
+                  [statusKeyName]: newStatus
+                }
                 : v
             )
           );
@@ -517,7 +517,7 @@ export const EditableText = ({
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const newContent = value.substring(0, start) + emoji + value.substring(end);
-    
+
     handleUpdateVariantField(variantId, field, newContent);
 
     setTimeout(() => {
@@ -567,9 +567,27 @@ export const EditableText = ({
                       </button>
                     )}
                   </div>
-                  <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                    {value.length.toLocaleString()} ký tự (~{value.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-                  </div>
+                  {(() => {
+                    let counterColor = 'text-gray-400';
+                    if (value.length > charLimit) {
+                      counterColor = 'text-rose-600';
+                    } else if (field === 'threads') {
+                      const len = value.length;
+                      if (len <= 200) {
+                        counterColor = 'text-emerald-600';
+                      } else if (len <= 260) {
+                        counterColor = 'text-amber-550';
+                      } else {
+                        counterColor = 'text-rose-600';
+                      }
+                    }
+                    const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
+                    return (
+                      <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                        {value.length.toLocaleString()} ký tự (~{wordCount} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -599,19 +617,44 @@ export const EditableText = ({
         if (isLocked) return;
         setEditState({ variantId, field });
       }}
-      className={`group relative rounded-xl px-2 py-1.5 transition-all duration-200 border border-dashed ${
-        isLocked
+      className={`group relative rounded-xl px-2 py-1.5 transition-all duration-200 border border-dashed ${isLocked
           ? 'border-transparent cursor-default'
           : 'border-transparent hover:border-primary bg-transparent hover:bg-primary/5 cursor-pointer'
-      } ${className}`}
+        } ${className}`}
     >
       <div className="flex flex-col w-full">
         <span className="whitespace-pre-wrap">
-          {value ? (
-            shouldFold ? (
+          {value ? (() => {
+            const isThreads = field === 'threads';
+            const renderThreadsText = (text: string) => {
+              const lastQIndex = Math.max(text.lastIndexOf('?'), text.lastIndexOf('？'));
+              if (lastQIndex === -1) return text;
+              let start = 0;
+              for (let i = lastQIndex - 1; i >= 0; i--) {
+                if (['.', '!', '?', '？', '\n'].includes(text[i])) {
+                  start = i + 1;
+                  break;
+                }
+              }
+              const before = text.substring(0, start);
+              const question = text.substring(start, lastQIndex + 1);
+              const after = text.substring(lastQIndex + 1);
+              return (
+                <>
+                  {before}
+                  <u className="underline decoration-indigo-500 decoration-2 underline-offset-2">{question}</u>
+                  {after}
+                </>
+              );
+            };
+            const renderTextContent = (text: string) => {
+              return isThreads ? renderThreadsText(text) : text;
+            };
+
+            return shouldFold ? (
               !isExpanded ? (
                 <>
-                  {value.substring(0, 280)}...
+                  {renderTextContent(value.substring(0, 500))}...
                   <button
                     type="button"
                     onClick={(e) => {
@@ -625,7 +668,7 @@ export const EditableText = ({
                 </>
               ) : (
                 <>
-                  {value}
+                  {renderTextContent(value)}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -639,9 +682,9 @@ export const EditableText = ({
                 </>
               )
             ) : (
-              value
-            )
-          ) : isGeneratingAB ? (
+              renderTextContent(value)
+            );
+          })() : isGeneratingAB ? (
             <span className="text-gray-400 italic flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin text-primary shrink-0" />
               {language === 'vi' ? 'AI đang viết...' : 'AI is writing...'}
@@ -683,9 +726,27 @@ export const EditableText = ({
                   </button>
                 )}
               </div>
-              <div className={`text-[9px] font-bold transition-colors ${value.length > charLimit ? 'text-rose-600' : 'text-gray-400'}`}>
-                {value.length.toLocaleString()} ký tự (~{value.trim().split(/\s+/).filter(Boolean).length} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
-              </div>
+              {(() => {
+                let counterColor = 'text-gray-400';
+                if (value.length > charLimit) {
+                  counterColor = 'text-rose-600';
+                } else if (field === 'threads') {
+                  const len = value.length;
+                  if (len <= 200) {
+                    counterColor = 'text-emerald-600';
+                  } else if (len <= 260) {
+                    counterColor = 'text-amber-550';
+                  } else {
+                    counterColor = 'text-rose-600';
+                  }
+                }
+                const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
+                return (
+                  <div className={`text-[9px] font-bold transition-colors ${counterColor}`}>
+                    {value.length.toLocaleString()} ký tự (~{wordCount} từ) / {charLimit.toLocaleString()} {language === 'vi' ? 'ký tự' : 'characters'}
+                  </div>
+                );
+              })()}
             </div>
             {value.length > charLimit && (
               <div className="text-[8px] text-rose-600 font-extrabold text-right">
@@ -760,6 +821,30 @@ export default function AiCreatorView() {
   const [tone, setTone] = useState<string>('Chuyên nghiệp');
   const [length, setLength] = useState<string>('Vừa (200-500 từ)');
   const [emphasis, setEmphasis] = useState<string>('');
+
+  // From incoming develop branch
+  const [url, setUrl] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+
+  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
+  interface Prompt { id: string; name: string; platform: string; content: string; }
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
+  const [captionId, setCaptionId] = useState<string>('');
+  const [streamedCaption, setStreamedCaption] = useState('');
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateDone, setGenerateDone] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Prompt Selector Library States
+  const [promptsList, setPromptsList] = useState<any[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
+  // Tab & dialog states for prompt selection
+  const [isAiPromptDialogOpen, setIsAiPromptDialogOpen] = useState(false);
+  const [activeAiTab, setActiveAiTab] = useState<'editor' | 'generator'>('editor');
 
   // Onboarding Tour state for AI Creator
   const [showTour, setShowTour] = useState(false);
@@ -965,7 +1050,7 @@ export default function AiCreatorView() {
   // ... (existing code)
 
   const handleProceedToABTest = async () => {
-let resolvedActivePrompt = activePrompt;
+    let resolvedActivePrompt = activePrompt;
     if (!resolvedActivePrompt) {
       const defaultPrompt = getDefaultPromptTemplate(
         selectedPlatform,
@@ -996,7 +1081,7 @@ let resolvedActivePrompt = activePrompt;
             const sttData = await sttRes.json();
             currentFullText = sttData.rewritten_post || '';
             currentTitle = currentTitle || sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, '');
-            
+
             setPostData(prev => ({
               ...prev,
               full_text: currentFullText,
@@ -1042,7 +1127,7 @@ let resolvedActivePrompt = activePrompt;
               const result = genData.data;
               currentTitle = result.title || currentTitle;
               currentFullText = result.full_text || currentFullText;
-              
+
               setPostData(prev => ({
                 ...prev,
                 title: result.title || prev.title,
@@ -1380,7 +1465,115 @@ let resolvedActivePrompt = activePrompt;
     }
   };
 
-  // Update prompt when platform or configurations change
+  // Update prompt khi platform hoặc cấu hình thay đổi
+  const handleRegenerateVariantWithPrompt = async (variantId: string, promptObj: any) => {
+    const variantIndex = variantId === 'A' ? 0 : 1;
+    const oldCaptionId = variants.find(v => v.id === variantId)?.captionId;
+    setRegeneratingVariantId(variantId);
+
+    const buildVariantPrompt = (index: number, basePrompt: string): string => {
+      if (index === 0) return basePrompt;
+      if (index === 1) {
+        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
+      }
+      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, facts-driven, không emoji, phong cách báo chí chuyên nghiệp.`;
+    };
+
+    const groupId = variantGroupId || crypto.randomUUID();
+    if (!variantGroupId) setVariantGroupId(groupId);
+
+    const customPromptTextText = buildVariantPrompt(variantIndex, promptObj.content);
+
+    try {
+      const res = await fetch('/api/captions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url.trim() || undefined,
+          articleId: articleId || undefined,
+          customPrompt: customPromptTextText,
+          platform: selectedPlatform,
+          variantGroupId: groupId,
+          variantIndex,
+          oldCaptionId,
+          model: selectedModel,
+          promptId: promptObj.id,
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              accumulated += parsed.text;
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
+                )
+              );
+            }
+            if (parsed.done && parsed.captionId) {
+              setVariants((prev) =>
+                prev.map((v) =>
+                  v.id === variantId ? { ...v, captionId: parsed.captionId } : v
+                )
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      setVariants((prev) =>
+        prev.map((v) => {
+          if (v.id === variantId) {
+            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
+              selectedPlatform === 'threads' ? 'originalThreads' :
+                'originalInstagram';
+            return {
+              ...v,
+              [originalField]: accumulated,
+            };
+          }
+          return v;
+        })
+      );
+    } catch (err) {
+      console.error('Error regenerating variant:', err);
+    } finally {
+      setRegeneratingVariantId(null);
+    }
+  };
+
+  // Đồng bộ hóa prompt mặc định khi thay đổi platform
+  useEffect(() => {
+    const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+    const defaultPrompt = promptsList.find(p => p.platform === targetPlat && p.is_default);
+    if (defaultPrompt) {
+      setSelectedPromptId(defaultPrompt.id);
+      setSelectedPrompt(defaultPrompt);
+    } else {
+      setSelectedPromptId('');
+      setSelectedPrompt(null);
+    }
+  }, [selectedPlatform, promptsList]);
+
+
   useEffect(() => {
     if (postData.title && (postData.full_text || postData.description) && !isGenerating && !isGeneratingSmartPrompt) {
       const newPrompt = getDefaultPromptTemplate(promptPlatform, postData.title, postData.full_text || postData.description, tone, length, emphasis);
@@ -1388,9 +1581,7 @@ let resolvedActivePrompt = activePrompt;
     }
   }, [promptPlatform, tone, length, emphasis]);
 
-  // Prompt Selector Library States
-  const [promptsList, setPromptsList] = useState<any[]>([]);
-  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
 
   // AI Logic Functions
   const handleGenerateSmartPrompt = async () => {
@@ -2114,20 +2305,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     }
   };
 
-  const [url, setUrl] = useState('');
-  const [isFetching, setIsFetching] = useState(false);
 
-  // ── AI Generation State (T-1.12.3 / T-1.12.4 / T-1.12.5) ──────────────────
-  interface Prompt { id: string; name: string; platform: string; content: string; }
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [promptsLoading, setPromptsLoading] = useState(false);
-  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
-  const [captionId, setCaptionId] = useState<string>('');
-  const [streamedCaption, setStreamedCaption] = useState('');
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateDone, setGenerateDone] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
-  const abortControllerRef = useRef<AbortController | null>(null);
+
 
   // Fetch list configs of user
   const fetchConfigs = async () => {
@@ -2269,7 +2448,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     setEditingConfigId(configId);
     setStyleFormName(config.name);
     setStyleFormPlatform(config.platform || 'all');
-    
+
     let parsedRules: Record<string, string> = { general: '', facebook: '', threads: '', instagram: '' };
     try {
       if (config.rules && config.rules.trim().startsWith('{')) {
@@ -2836,10 +3015,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
-      
+
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           audioChunksRef.current.push(e.data);
@@ -2858,7 +3037,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       const analyser = audioContext.createAnalyser();
       analyserRef.current = analyser;
       analyser.fftSize = 256;
-      
+
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
 
@@ -2870,47 +3049,47 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        
+
         const width = canvas.width;
         const height = canvas.height;
-        
+
         analyserRef.current.getByteTimeDomainData(dataArray);
-        
+
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
-        
+
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#4F46E5'; // primary color
         ctx.beginPath();
-        
+
         const sliceWidth = width / bufferLength;
         let x = 0;
-        
+
         for (let i = 0; i < bufferLength; i++) {
           const v = dataArray[i] / 128.0;
           const y = (v * height) / 2;
-          
+
           if (i === 0) {
             ctx.moveTo(x, y);
           } else {
             ctx.lineTo(x, y);
           }
-          
+
           x += sliceWidth;
         }
-        
+
         ctx.lineTo(width, height / 2);
         ctx.stroke();
-        
+
         animationFrameRef.current = requestAnimationFrame(drawWaveform);
       };
 
       drawWaveform();
-      
+
       mediaRecorder.start();
       setIsRecording(true);
       setRecordDuration(0);
-      
+
       timerRef.current = setInterval(() => {
         setRecordDuration(prev => prev + 1);
       }, 1000);
@@ -2924,7 +3103,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      
+
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       if (audioStreamRef.current) {
@@ -2956,14 +3135,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     try {
       const fd = new FormData();
       fd.append('file', voiceFile);
-      
+
       const res = await fetch('/api/stt', {
         method: 'POST',
         body: fd
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lỗi xử lý giọng nói');
-      
+
       const finalText = data.rewritten_post || data.transcript || '';
       if (finalText) {
         setPostData(prev => ({
@@ -3381,7 +3560,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     return scrapeData.id as string;
   };
 
-  const compileFinalMessage = (variant: SocialVariant) => {
+  const compileFinalMessage = (variant: SocialVariant, targetPlatform: SocialPlatform = selectedPlatform) => {
     const parts: string[] = [];
 
     if (toggles.showTitle && variant.title) {
@@ -3393,7 +3572,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     }
 
     if (toggles.showDescription) {
-      const descVal = variant[selectedPlatform] || '';
+      const descVal = variant[targetPlatform] || '';
       if (descVal.trim()) {
         parts.push(descVal.trim());
       }
@@ -3415,7 +3594,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     return parts.join('\n\n');
   };
 
-  const ensureCaptionDraft = async () => {
+  const ensureCaptionDraft = async (targetPlatform: SocialPlatform = selectedPlatform) => {
     const selectedVariant = variants.find((v) => v.id === selectedVariantId);
     if (!selectedVariant) {
       throw new Error(
@@ -3425,14 +3604,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       );
     }
 
-    const finalCompiledContent = compileFinalMessage(selectedVariant);
+    const finalCompiledContent = compileFinalMessage(selectedVariant, targetPlatform);
 
-    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-      selectedPlatform === 'threads' ? 'threadsCaptionId' :
+    const platKey = targetPlatform === 'facebook' ? 'facebookCaptionId' :
+      targetPlatform === 'threads' ? 'threadsCaptionId' :
         'instagramCaptionId';
 
     // Platform-specific caption ID fallback
-    const activeCaptionId = selectedVariant[platKey] || selectedVariant.captionId || (selectedVariant.id === 'A' ? captionId : undefined);
+    const activeCaptionId = selectedVariant[platKey] || (selectedVariant.id === 'A' ? captionId : undefined);
 
     if (activeCaptionId) {
       // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
@@ -3451,18 +3630,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       }
 
       // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
+      if (!selectedVariant[platKey]) {
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
+          prev.map((v) => (v.id === selectedVariant.id ? { ...v, [platKey]: activeCaptionId } : v))
         );
       }
       return activeCaptionId;
     }
 
     const getSelectedVariantCaption = () => {
-      if (selectedPlatform === 'facebook') return selectedVariant.facebook;
-      if (selectedPlatform === 'threads') return selectedVariant.threads;
-      if (selectedPlatform === 'instagram') return selectedVariant.instagram;
+      if (targetPlatform === 'facebook') return selectedVariant.facebook;
+      if (targetPlatform === 'threads') return selectedVariant.threads;
+      if (targetPlatform === 'instagram') return selectedVariant.instagram;
       return '';
     };
 
@@ -3476,13 +3655,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     }
 
     const resolvedArticleId = await ensureArticleForCaption();
-    const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-      selectedPlatform === 'threads' ? 'originalThreads' :
+    const originalField = targetPlatform === 'facebook' ? 'originalFacebook' :
+      targetPlatform === 'threads' ? 'originalThreads' :
         'originalInstagram';
     const originalAiText = selectedVariant[originalField] || selectedContent;
 
     // Check if the user has edited the caption compared to the original AI content
-    const isEdited = selectedVariant[selectedPlatform] !== originalAiText;
+    const isEdited = selectedVariant[targetPlatform] !== originalAiText;
     const editedContentPayload = isEdited ? finalCompiledContent : null;
 
     const res = await fetch('/api/captions', {
@@ -3490,7 +3669,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         article_id: resolvedArticleId,
-        platform: toDatabasePlatform(selectedPlatform),
+        platform: toDatabasePlatform(targetPlatform),
         ai_content: originalAiText,
         edited_content: editedContentPayload,
         ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
@@ -3512,8 +3691,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     const newCaptionId = data.data.id;
     const newStatus = data.data.status || 'draft';
     const statusKey = selectedPlatform === 'facebook' ? 'facebookStatus' :
-                      selectedPlatform === 'threads' ? 'threadsStatus' :
-                      'instagramStatus';
+      selectedPlatform === 'threads' ? 'threadsStatus' :
+        'instagramStatus';
 
     setCaptionId(newCaptionId);
     setVariants((prev) =>
@@ -3537,14 +3716,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       threads: { date: threadsDate, time: threadsTime },
       instagram: { date: instagramDate, time: instagramTime },
     };
-    const selectedSchedule = scheduleByPlatform[selectedPlatform];
-    const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
-
-    // Đảm bảo thời gian lên lịch phải ở tương lai so với thời điểm hiện tại
-    if (scheduledAt.getTime() <= Date.now()) {
-      setFacebookError('Thời gian lên lịch đăng bài bắt buộc phải ở tương lai.');
-      return;
-    }
 
     setIsSchedulingLoading(true);
     setSchedulingError(null);
@@ -3555,29 +3726,47 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       : [];
 
     try {
-      const draftCaptionId = await ensureCaptionDraft();
+      const targetPlatforms = getPromptTargetPlatforms(selectedPrompt);
+      if (targetPlatforms.length === 0) {
+        throw new Error(language === 'vi' ? 'Không xác định được nền tảng đăng từ Prompt' : 'No platforms found for the selected prompt');
+      }
 
-      // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
-      const res = await fetch('/api/scheduled-posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          captionId: draftCaptionId,
-          scheduledAt: scheduledAt.toISOString(),
-          imageUrls,
-        }),
-      });
+      for (const plat of targetPlatforms) {
+        const selectedSchedule = scheduleByPlatform[plat];
+        const scheduledAt = new Date(`${selectedSchedule.date}T${selectedSchedule.time}`);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errData.error || `Lỗi từ hệ thống HTTP ${res.status}`);
+        if (scheduledAt.getTime() <= Date.now()) {
+          throw new Error(
+            language === 'vi'
+              ? `Thời gian lên lịch đăng bài cho ${plat} bắt buộc phải ở tương lai.`
+              : `Scheduled time for ${plat} must be in the future.`
+          );
+        }
+
+        const draftCaptionId = await ensureCaptionDraft(plat);
+
+        // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
+        const res = await fetch('/api/scheduled-posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            captionId: draftCaptionId,
+            scheduledAt: scheduledAt.toISOString(),
+            imageUrls,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(errData.error || `Lỗi khi lên lịch đăng bài cho ${plat}`);
+        }
       }
 
       setIsScheduled(true);
       setHasUnsavedChanges(false);
       const statusKey = selectedPlatform === 'facebook' ? 'facebookStatus' :
-                        selectedPlatform === 'threads' ? 'threadsStatus' :
-                        'instagramStatus';
+        selectedPlatform === 'threads' ? 'threadsStatus' :
+          'instagramStatus';
       setVariants((prev) =>
         prev.map((v) => (v.id === selectedVariantId ? { ...v, [statusKey]: 'scheduled' } : v))
       );
@@ -3722,11 +3911,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     onClick={() => {
                       setInputMode('crawl');
                     }}
-                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
-                      inputMode === 'crawl'
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'crawl'
                         ? 'bg-primary text-white shadow-sm'
                         : 'text-text-muted hover:text-text bg-transparent'
-                    }`}
+                      }`}
                   >
                     <Globe size={13} />
                     {language === 'vi' ? 'Cào dữ liệu tự động' : 'Auto-crawl from Link'}
@@ -3736,11 +3924,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     onClick={() => {
                       setInputMode('manual');
                     }}
-                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${
-                      inputMode === 'manual'
+                    className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'manual'
                         ? 'bg-primary text-white shadow-sm'
                         : 'text-text-muted hover:text-text bg-transparent'
-                    }`}
+                      }`}
                   >
                     <Mic size={13} />
                     {language === 'vi' ? 'Tự viết tay & Giọng nói' : 'Write / Voice Draft'}
@@ -3750,66 +3937,66 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
               {/* URL Context Importer */}
               {inputMode === 'crawl' && (
-              <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
-                      <Globe size={18} />
+                <div id="tour-creator-url" className="bg-mint/15 border border-mint/50 rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-[#34D399]/20 flex items-center justify-center text-[#059669] shadow-sm">
+                        <Globe size={18} />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-text">{t('aiCreator.sourceUrl')}</h2>
+                        <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base font-bold text-text">{t('aiCreator.sourceUrl')}</h2>
-                      <p className="text-[11px] text-text-muted">{t('aiCreator.searchPlace')}</p>
-                    </div>
+
+                    {/* Search on Site Button */}
+                    <button
+                      onClick={() => {
+                        setExplorerUrl('https://gocnhinmoi.com.vn/');
+                        setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
+                        setIsExplorerOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none"
+                    >
+                      <Search size={14} />
+                      {t('aiCreator.searchGocNhinMoi')}
+                    </button>
                   </div>
 
-                  {/* Search on Site Button */}
-                  <button
-                    onClick={() => {
-                      setExplorerUrl('https://gocnhinmoi.com.vn/');
-                      setIframeSrc('/api/proxy?url=' + encodeURIComponent('https://gocnhinmoi.com.vn/'));
-                      setIsExplorerOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none"
-                  >
-                    <Search size={14} />
-                    {t('aiCreator.searchGocNhinMoi')}
-                  </button>
+                  <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                    <span className="text-gray-400 pl-2">
+                      <Link2 size={16} />
+                    </span>
+                    <input
+                      type="text"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isFetching) {
+                          e.preventDefault();
+                          handleFetch();
+                        }
+                      }}
+                      className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
+                      placeholder={t('aiCreator.searchPlace')}
+                    />
+                    <button
+                      onClick={handleFetch}
+                      disabled={isFetching}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+                    >
+                      {isFetching ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          {t('aiCreator.fetching')}
+                        </>
+                      ) : (
+                        t('aiCreator.importButton')
+                      )}
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                  <span className="text-gray-400 pl-2">
-                    <Link2 size={16} />
-                  </span>
-                  <input
-                    type="text"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isFetching) {
-                        e.preventDefault();
-                        handleFetch();
-                      }
-                    }}
-                    className="flex-1 bg-transparent px-2 py-1.5 text-xs text-text focus:outline-none"
-                    placeholder={t('aiCreator.searchPlace')}
-                  />
-                  <button
-                    onClick={handleFetch}
-                    disabled={isFetching}
-                    className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
-                  >
-                    {isFetching ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        {t('aiCreator.fetching')}
-                      </>
-                    ) : (
-                      t('aiCreator.importButton')
-                    )}
-                  </button>
-                </div>
-              </div>
-)}
+              )}
               {/* Crawl Empty State Placeholder */}
               {inputMode === 'crawl' && !postData.title && (
                 <div className="bg-slate-50/30 dark:bg-zinc-900/10 backdrop-blur-md border border-dashed border-slate-200 dark:border-zinc-850 rounded-3xl p-12 flex flex-col items-center text-center justify-center min-h-[400px] font-sans shadow-inner">
@@ -3820,13 +4007,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       <Sparkles size={11} />
                     </span>
                   </div>
-                  
+
                   <h3 className="text-sm font-extrabold text-text uppercase tracking-wider">
                     {language === 'vi' ? 'Sẵn sàng trích xuất nội dung' : 'Ready to Scrape Content'}
                   </h3>
                   <p className="text-xs text-text-muted mt-2 max-w-sm leading-relaxed">
-                    {language === 'vi' 
-                      ? 'Nhập link bài viết ở trên để AI bắt đầu phân tích, trích xuất dữ liệu bài viết.' 
+                    {language === 'vi'
+                      ? 'Nhập link bài viết ở trên để AI bắt đầu phân tích, trích xuất dữ liệu bài viết.'
                       : 'Enter a post URL above to let AI automatically extract and parse the content.'}
                   </p>
 
@@ -3865,7 +4052,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               {/* Original Article Detailed Preview */}
               {inputMode === 'crawl' && postData.title && (
                 <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-6 font-sans">
-                  
+
                   {/* Title & Category info */}
                   <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
                     <h3 className="text-xs font-black text-text uppercase tracking-wider flex items-center gap-1.5">
@@ -3879,7 +4066,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                   {/* High Fidelity Clone Area */}
                   <div className="border border-slate-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-[#ffffff] dark:bg-zinc-950 flex flex-col shadow-sm">
-                    
+
                     {/* Mock Newspaper Header */}
                     <div className="bg-white/95 dark:bg-zinc-950/95 border-b border-slate-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between shrink-0">
                       <div className="flex flex-col gap-0.5 select-none">
@@ -3898,7 +4085,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                     {/* Article Content Area */}
                     <div className="px-5 py-6 md:px-8 flex gap-6 max-w-3xl mx-auto w-full max-h-[480px] overflow-y-auto scrollbar-thin">
-                      
+
                       {/* Left Column Sticky Mock Actions */}
                       <div className="hidden sm:flex flex-col items-center gap-4 pt-1 select-none">
                         <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200">
@@ -3976,7 +4163,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               // If it's a Spotlight section block, render it using dangerouslySetInnerHTML
                               if (block.type === 'section') {
                                 return (
-                                  <section 
+                                  <section
                                     key={idx}
                                     className={`${block.className || ''} py-6 my-4 rounded-xl border border-slate-150 dark:border-zinc-800 overflow-hidden shadow-sm`}
                                     style={block.style ? parseStyleString(block.style) : undefined}
@@ -3984,7 +4171,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   />
                                 );
                               }
-                              
+
                               if (block.type === 'heading2') {
                                 return (
                                   <h2 key={idx} className="text-sm md:text-base font-black text-slate-800 dark:text-zinc-100 mt-6 mb-3 border-l-4 border-red-550 pl-2.5 leading-snug">
@@ -3992,7 +4179,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   </h2>
                                 );
                               }
-                              
+
                               if (block.type === 'heading3') {
                                 return (
                                   <h3 key={idx} className="text-xs md:text-sm font-extrabold text-slate-800 dark:text-zinc-200 mt-5 mb-2">
@@ -4000,13 +4187,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   </h3>
                                 );
                               }
-                              
+
                               if (block.type === 'image' && block.url) {
                                 return (
                                   <div key={idx} className="w-full my-5 flex flex-col items-center select-none">
-                                    <img 
-                                      src={block.url} 
-                                      alt={block.caption || 'Article Image'} 
+                                    <img
+                                      src={block.url}
+                                      alt={block.caption || 'Article Image'}
                                       className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
                                     />
                                     {block.caption && (
@@ -4017,7 +4204,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   </div>
                                 );
                               }
-                              
+
                               return (
                                 <p key={idx} className="text-xs md:text-sm text-slate-750 dark:text-slate-300 mb-3.5 leading-relaxed font-semibold">
                                   {block.text}
@@ -4193,322 +4380,319 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </div>
               </div>
 
-          {/* Luồng 2: Tự viết tay & Giọng nói tích hợp */}
-          {inputMode === 'manual' && (
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
-              <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
-                <Layers size={18} className="text-primary" />
-                <h3 className="text-lg font-bold text-text">{language === 'vi' ? 'Tự viết tay & Giọng nói tích hợp' : 'Write & Voice Integrated Post'}</h3>
-              </div>
-
-              {/* Form fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Post Title'}</label>
-                  <input
-                    type="text"
-                    value={postData.title}
-                    onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold"
-                    placeholder={language === 'vi' ? 'Nhập tiêu đề bài viết của bạn tại đây...' : 'Enter post title here...'}
-                  />
-                </div>
-
-                {/* Speech to Text Collapsible Accordion */}
-                <div className="md:col-span-2 bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
-                  <div className="flex items-center justify-between w-full select-none">
-                    <div className="flex items-center gap-2">
-                      <Mic size={15} className="text-primary" />
-                      <span className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Trợ lý Giọng nói (Speech-to-Text)' : 'Voice Assistant (Speech-to-Text)'}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsVoiceAssistantExpanded(!isVoiceAssistantExpanded)}
-                      className="bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-0 cursor-pointer flex items-center gap-1 shadow-sm"
-                    >
-                      {isVoiceAssistantExpanded ? (
-                        <>
-                          {language === 'vi' ? 'Thu gọn' : 'Collapse'} <span>▲</span>
-                        </>
-                      ) : (
-                        <>
-                          {language === 'vi' ? 'Mở rộng' : 'Expand'} <span>▼</span>
-                        </>
-                      )}
-                    </button>
+              {/* Luồng 2: Tự viết tay & Giọng nói tích hợp */}
+              {inputMode === 'manual' && (
+                <div className="bg-white border border-gray-200/80 rounded-2xl p-8 flex flex-col gap-6 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+                    <Layers size={18} className="text-primary" />
+                    <h3 className="text-lg font-bold text-text">{language === 'vi' ? 'Tự viết tay & Giọng nói tích hợp' : 'Write & Voice Integrated Post'}</h3>
                   </div>
-                  
-                  {isVoiceAssistantExpanded && (
-                    <div className="flex flex-col gap-4 mt-1">
-                      {isRecording ? (
-                        /* Live Recording Panel */
-                        <div className="border border-dashed border-primary bg-primary/5 rounded-xl p-4 text-center flex flex-col items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
-                            <span className="text-xs font-bold text-red-600 uppercase tracking-widest">{language === 'vi' ? 'Đang ghi âm...' : 'Recording...'}</span>
-                          </div>
-                          
-                          {/* Live Waveform Canvas */}
-                          <div className="w-full bg-white rounded-lg overflow-hidden border border-gray-150 shadow-inner">
-                            <canvas ref={canvasRef} width={400} height={60} className="w-full h-[60px]" />
-                          </div>
 
-                          <div className="text-lg font-mono font-bold text-text-muted mt-1">
-                            {formatDuration(recordDuration)}
-                          </div>
-                          <div className="flex items-center gap-3 w-full justify-center">
-                            <button
-                              type="button"
-                              onClick={stopRecording}
-                              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-red-200 cursor-pointer border-0 flex items-center gap-1.5"
-                            >
-                              <span className="w-2 h-2 bg-white rounded-sm" />
-                              {language === 'vi' ? 'Hoàn thành' : 'Done'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelRecording}
-                              className="bg-white border border-gray-200 text-text-muted hover:text-text px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                            >
-                              {language === 'vi' ? 'Hủy' : 'Cancel'}
-                            </button>
-                          </div>
+                  {/* Form fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="md:col-span-2 flex flex-col gap-1.5">
+                      <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Tiêu đề bài viết' : 'Post Title'}</label>
+                      <input
+                        type="text"
+                        value={postData.title}
+                        onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                        className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold"
+                        placeholder={language === 'vi' ? 'Nhập tiêu đề bài viết của bạn tại đây...' : 'Enter post title here...'}
+                      />
+                    </div>
+
+                    {/* Speech to Text Collapsible Accordion */}
+                    <div className="md:col-span-2 bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/80 flex flex-col gap-3">
+                      <div className="flex items-center justify-between w-full select-none">
+                        <div className="flex items-center gap-2">
+                          <Mic size={15} className="text-primary" />
+                          <span className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Trợ lý Giọng nói (Speech-to-Text)' : 'Voice Assistant (Speech-to-Text)'}</span>
                         </div>
-                      ) : (
-                        /* Audio File Upload or Record Trigger */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Mic Trigger */}
-                          <button
-                            type="button"
-                            onClick={startRecording}
-                            className="bg-primary hover:bg-primary-hover text-white rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 border-0 shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[120px]"
-                          >
-                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
-                              <Mic size={20} />
-                            </div>
-                            <div className="text-center">
-                              <span className="text-[11px] font-black uppercase tracking-wider block">{language === 'vi' ? 'Ghi âm trực tiếp' : 'Direct Record'}</span>
-                              <span className="text-[9px] opacity-75 mt-0.5 block">{language === 'vi' ? 'Sử dụng Micro của thiết bị' : 'Use system microphone'}</span>
-                            </div>
-                          </button>
-
-                          {/* Upload audio file */}
-                          <div 
-                            onClick={() => voiceFileInputRef.current?.click()}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setIsAudioDragging(true);
-                            }}
-                            onDragLeave={() => setIsAudioDragging(false)}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setIsAudioDragging(false);
-                              const file = e.dataTransfer.files?.[0];
-                              if (file) {
-                                if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.m4a') || file.name.endsWith('.webm') || file.name.endsWith('.mp4')) {
-                                  setVoiceFile(file);
-                                  setSttError(null);
-                                } else {
-                                  alert(language === 'vi' ? 'Vui lòng chỉ tải lên tệp âm thanh.' : 'Please upload audio files only.');
-                                }
-                              }
-                            }}
-                            className={`border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all min-h-[120px] ${
-                              isAudioDragging
-                                ? 'border-primary bg-primary/10 text-primary scale-[1.02]'
-                                : 'border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 text-text-muted hover:text-primary hover:bg-primary/5'
-                            }`}
-                          >
-                            <UploadCloud size={24} className={isAudioDragging ? "text-primary animate-bounce" : "opacity-80"} />
-                            <div className="text-center">
-                              <span className="text-[11px] font-black uppercase tracking-wider block">
-                                {isAudioDragging
-                                  ? (language === 'vi' ? 'Thả tệp vào đây' : 'Drop file here')
-                                  : (language === 'vi' ? 'Tải tệp âm thanh' : 'Upload Audio File')}
-                              </span>
-                              <span className="text-[9px] text-text-muted mt-0.5 block">MP3, WAV, WEBM, M4A</span>
-                            </div>
-                            <input 
-                              type="file"
-                              ref={voiceFileInputRef}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setVoiceFile(file);
-                                  setSttError(null);
-                                }
-                              }}
-                              accept="audio/*"
-                              className="hidden"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Micro Permission Guide Alert */}
-                      {showMicGuide && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-800 leading-relaxed font-medium">
-                          <span>⚠️</span>
-                          <div className="flex-1">
-                            {language === 'vi' 
-                              ? 'Không thể truy cập Micro. Vui lòng kiểm tra quyền thiết bị trong cài đặt trình duyệt và thử lại.' 
-                              : 'Cannot access microphone. Please verify device permissions in browser settings.'}
-                          </div>
-                          <button onClick={() => setShowMicGuide(false)} className="text-amber-500 hover:text-amber-700 font-bold">×</button>
-                        </div>
-                      )}
-
-                      {/* Selected audio file preview & Transcribe button */}
-                      {voiceFile && !isRecording && (
-                        <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-gray-150 dark:border-zinc-800/80 flex flex-col gap-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-text truncate max-w-[70%]">🎵 {voiceFile.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => setVoiceFile(null)}
-                              className="text-red-500 hover:text-red-700 text-xs font-semibold"
-                            >
-                              {language === 'vi' ? 'Xóa' : 'Remove'}
-                            </button>
-                          </div>
-                          
-                          {audioUrl && (
-                            <CustomAudioPlayer src={audioUrl} fileName={voiceFile.name} language={language} />
+                        <button
+                          type="button"
+                          onClick={() => setIsVoiceAssistantExpanded(!isVoiceAssistantExpanded)}
+                          className="bg-primary/10 hover:bg-primary/20 text-primary px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-0 cursor-pointer flex items-center gap-1 shadow-sm"
+                        >
+                          {isVoiceAssistantExpanded ? (
+                            <>
+                              {language === 'vi' ? 'Thu gọn' : 'Collapse'} <span>▲</span>
+                            </>
+                          ) : (
+                            <>
+                              {language === 'vi' ? 'Mở rộng' : 'Expand'} <span>▼</span>
+                            </>
                           )}
-                          
-                          <button
-                            type="button"
-                            onClick={handleTranscribeAndRewrite}
-                            disabled={isTranscribing}
-                            className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white w-full py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer border-0"
-                          >
-                            {isTranscribing ? (
-                              <>
-                                <Loader2 size={12} className="animate-spin" />
-                                {language === 'vi' ? 'Đang dịch giọng nói...' : 'Transcribing voice...'}
-                              </>
-                            ) : (
-                              <>
-                                <Wand2 size={12} />
-                                {language === 'vi' ? 'Dịch giọng nói bằng AI' : 'Transcribe & Rewrite with AI'}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-
-                      {sttError && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed">
-                          <span>⚠️</span>
-                          <div className="flex-1 font-semibold">{sttError}</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Drag and Drop Document Area */}
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Hình ảnh bài viết' : 'Post Images'}</label>
-                  
-                  {/* Image Previews grid */}
-                  {postData.imageUrl && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
-                      {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
-                        <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
-                          <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteImage(idx)}
-                            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-0 cursor-pointer shadow-sm"
-                            title="Xóa hình ảnh này"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
-                      isDraggingFile
-                        ? 'border-primary bg-primary/5'
-                        : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
-                    }`}
-                  >
-                    <UploadCloud size={28} className="text-text-muted opacity-80" />
-                    <div>
-                      <span className="text-xs font-extrabold text-text uppercase tracking-wider block">
-                        {language === 'vi' ? 'Kéo thả file vào đây hoặc click để chọn' : 'Drag & drop files here or click to browse'}
-                      </span>
-                      <span className="text-[10px] text-text-muted mt-1 block">
-                        {language === 'vi' ? 'Hỗ trợ: PDF, Word (docx, doc) hoặc Hình ảnh (JPEG, PNG)' : 'Supports: PDF, Word (docx, doc) or Images (JPEG, PNG)'}
-                      </span>
-                    </div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      accept="image/*,.pdf,.docx,.doc"
-                      multiple
-                      className="hidden"
-                    />
-                  </div>
-
-                  {isParsingDoc && (
-                    <div className="flex items-center justify-center gap-2 text-xs text-text-muted mt-2">
-                      <Loader2 size={14} className="animate-spin text-primary" />
-                      <span>{language === 'vi' ? 'Đang trích xuất nội dung từ tài liệu...' : 'Parsing document content...'}</span>
-                    </div>
-                  )}
-
-                  {docError && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed mt-2">
-                      <span>⚠️</span>
-                      <div className="flex-1 font-semibold">{docError}</div>
-                    </div>
-                  )}
-                </div>
-
-
-
-                <div className="md:col-span-2 flex flex-col gap-1.5 relative">
-                  <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Nội dung chi tiết bài viết' : 'Detailed Post Content'}</label>
-                  
-                  {/* Drop zone visual indicator directly on the textarea */}
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className="relative w-full"
-                  >
-                    <textarea
-                      value={postData.full_text}
-                      onChange={(e) => setPostData({ ...postData, full_text: e.target.value, description: e.target.value })}
-                      rows={12}
-                      className={`w-full bg-[#F8F9FE] dark:bg-black/40 border rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all ${
-                        isDraggingFile ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-[#E4E6F8] dark:border-zinc-800'
-                      }`}
-                      placeholder={language === 'vi' ? 'Nhập nội dung bài viết gốc của bạn tại đây hoặc kéo thả file Word, PDF vào ô này...' : 'Enter your original post content here, or drag and drop Word / PDF file into this box...'}
-                    />
-                    {isDraggingFile && (
-                      <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-xl flex items-center justify-center pointer-events-none">
-                        <span className="text-xs font-bold text-primary uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
-                          <UploadCloud size={14} />
-                          {language === 'vi' ? 'Thả tài liệu để trích xuất text' : 'Drop document to extract text'}
-                        </span>
+                        </button>
                       </div>
-                    )}
+
+                      {isVoiceAssistantExpanded && (
+                        <div className="flex flex-col gap-4 mt-1">
+                          {isRecording ? (
+                            /* Live Recording Panel */
+                            <div className="border border-dashed border-primary bg-primary/5 rounded-xl p-4 text-center flex flex-col items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
+                                <span className="text-xs font-bold text-red-600 uppercase tracking-widest">{language === 'vi' ? 'Đang ghi âm...' : 'Recording...'}</span>
+                              </div>
+
+                              {/* Live Waveform Canvas */}
+                              <div className="w-full bg-white rounded-lg overflow-hidden border border-gray-150 shadow-inner">
+                                <canvas ref={canvasRef} width={400} height={60} className="w-full h-[60px]" />
+                              </div>
+
+                              <div className="text-lg font-mono font-bold text-text-muted mt-1">
+                                {formatDuration(recordDuration)}
+                              </div>
+                              <div className="flex items-center gap-3 w-full justify-center">
+                                <button
+                                  type="button"
+                                  onClick={stopRecording}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-red-200 cursor-pointer border-0 flex items-center gap-1.5"
+                                >
+                                  <span className="w-2 h-2 bg-white rounded-sm" />
+                                  {language === 'vi' ? 'Hoàn thành' : 'Done'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelRecording}
+                                  className="bg-white border border-gray-200 text-text-muted hover:text-text px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  {language === 'vi' ? 'Hủy' : 'Cancel'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Audio File Upload or Record Trigger */
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* Mic Trigger */}
+                              <button
+                                type="button"
+                                onClick={startRecording}
+                                className="bg-primary hover:bg-primary-hover text-white rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 border-0 shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[120px]"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                                  <Mic size={20} />
+                                </div>
+                                <div className="text-center">
+                                  <span className="text-[11px] font-black uppercase tracking-wider block">{language === 'vi' ? 'Ghi âm trực tiếp' : 'Direct Record'}</span>
+                                  <span className="text-[9px] opacity-75 mt-0.5 block">{language === 'vi' ? 'Sử dụng Micro của thiết bị' : 'Use system microphone'}</span>
+                                </div>
+                              </button>
+
+                              {/* Upload audio file */}
+                              <div
+                                onClick={() => voiceFileInputRef.current?.click()}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setIsAudioDragging(true);
+                                }}
+                                onDragLeave={() => setIsAudioDragging(false)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  setIsAudioDragging(false);
+                                  const file = e.dataTransfer.files?.[0];
+                                  if (file) {
+                                    if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.m4a') || file.name.endsWith('.webm') || file.name.endsWith('.mp4')) {
+                                      setVoiceFile(file);
+                                      setSttError(null);
+                                    } else {
+                                      alert(language === 'vi' ? 'Vui lòng chỉ tải lên tệp âm thanh.' : 'Please upload audio files only.');
+                                    }
+                                  }
+                                }}
+                                className={`border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all min-h-[120px] ${isAudioDragging
+                                    ? 'border-primary bg-primary/10 text-primary scale-[1.02]'
+                                    : 'border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 text-text-muted hover:text-primary hover:bg-primary/5'
+                                  }`}
+                              >
+                                <UploadCloud size={24} className={isAudioDragging ? "text-primary animate-bounce" : "opacity-80"} />
+                                <div className="text-center">
+                                  <span className="text-[11px] font-black uppercase tracking-wider block">
+                                    {isAudioDragging
+                                      ? (language === 'vi' ? 'Thả tệp vào đây' : 'Drop file here')
+                                      : (language === 'vi' ? 'Tải tệp âm thanh' : 'Upload Audio File')}
+                                  </span>
+                                  <span className="text-[9px] text-text-muted mt-0.5 block">MP3, WAV, WEBM, M4A</span>
+                                </div>
+                                <input
+                                  type="file"
+                                  ref={voiceFileInputRef}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setVoiceFile(file);
+                                      setSttError(null);
+                                    }
+                                  }}
+                                  accept="audio/*"
+                                  className="hidden"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Micro Permission Guide Alert */}
+                          {showMicGuide && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-800 leading-relaxed font-medium">
+                              <span>⚠️</span>
+                              <div className="flex-1">
+                                {language === 'vi'
+                                  ? 'Không thể truy cập Micro. Vui lòng kiểm tra quyền thiết bị trong cài đặt trình duyệt và thử lại.'
+                                  : 'Cannot access microphone. Please verify device permissions in browser settings.'}
+                              </div>
+                              <button onClick={() => setShowMicGuide(false)} className="text-amber-500 hover:text-amber-700 font-bold">×</button>
+                            </div>
+                          )}
+
+                          {/* Selected audio file preview & Transcribe button */}
+                          {voiceFile && !isRecording && (
+                            <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-gray-150 dark:border-zinc-800/80 flex flex-col gap-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-text truncate max-w-[70%]">🎵 {voiceFile.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setVoiceFile(null)}
+                                  className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                                >
+                                  {language === 'vi' ? 'Xóa' : 'Remove'}
+                                </button>
+                              </div>
+
+                              {audioUrl && (
+                                <CustomAudioPlayer src={audioUrl} fileName={voiceFile.name} language={language} />
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={handleTranscribeAndRewrite}
+                                disabled={isTranscribing}
+                                className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white w-full py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                              >
+                                {isTranscribing ? (
+                                  <>
+                                    <Loader2 size={12} className="animate-spin" />
+                                    {language === 'vi' ? 'Đang dịch giọng nói...' : 'Transcribing voice...'}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 size={12} />
+                                    {language === 'vi' ? 'Dịch giọng nói bằng AI' : 'Transcribe & Rewrite with AI'}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+
+                          {sttError && (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed">
+                              <span>⚠️</span>
+                              <div className="flex-1 font-semibold">{sttError}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Drag and Drop Document Area */}
+                    <div className="md:col-span-2 flex flex-col gap-1.5">
+                      <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Hình ảnh bài viết' : 'Post Images'}</label>
+
+                      {/* Image Previews grid */}
+                      {postData.imageUrl && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
+                          {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
+                            <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
+                              <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteImage(idx)}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-0 cursor-pointer shadow-sm"
+                                title="Xóa hình ảnh này"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isDraggingFile
+                            ? 'border-primary bg-primary/5'
+                            : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
+                          }`}
+                      >
+                        <UploadCloud size={28} className="text-text-muted opacity-80" />
+                        <div>
+                          <span className="text-xs font-extrabold text-text uppercase tracking-wider block">
+                            {language === 'vi' ? 'Kéo thả file vào đây hoặc click để chọn' : 'Drag & drop files here or click to browse'}
+                          </span>
+                          <span className="text-[10px] text-text-muted mt-1 block">
+                            {language === 'vi' ? 'Hỗ trợ: PDF, Word (docx, doc) hoặc Hình ảnh (JPEG, PNG)' : 'Supports: PDF, Word (docx, doc) or Images (JPEG, PNG)'}
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/*,.pdf,.docx,.doc"
+                          multiple
+                          className="hidden"
+                        />
+                      </div>
+
+                      {isParsingDoc && (
+                        <div className="flex items-center justify-center gap-2 text-xs text-text-muted mt-2">
+                          <Loader2 size={14} className="animate-spin text-primary" />
+                          <span>{language === 'vi' ? 'Đang trích xuất nội dung từ tài liệu...' : 'Parsing document content...'}</span>
+                        </div>
+                      )}
+
+                      {docError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-[11px] text-red-800 leading-relaxed mt-2">
+                          <span>⚠️</span>
+                          <div className="flex-1 font-semibold">{docError}</div>
+                        </div>
+                      )}
+                    </div>
+
+
+
+                    <div className="md:col-span-2 flex flex-col gap-1.5 relative">
+                      <label className="text-xs font-extrabold text-text uppercase tracking-wider">{language === 'vi' ? 'Nội dung chi tiết bài viết' : 'Detailed Post Content'}</label>
+
+                      {/* Drop zone visual indicator directly on the textarea */}
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className="relative w-full"
+                      >
+                        <textarea
+                          value={postData.full_text}
+                          onChange={(e) => setPostData({ ...postData, full_text: e.target.value, description: e.target.value })}
+                          rows={12}
+                          className={`w-full bg-[#F8F9FE] dark:bg-black/40 border rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all ${isDraggingFile ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-[#E4E6F8] dark:border-zinc-800'
+                            }`}
+                          placeholder={language === 'vi' ? 'Nhập nội dung bài viết gốc của bạn tại đây hoặc kéo thả file Word, PDF vào ô này...' : 'Enter your original post content here, or drag and drop Word / PDF file into this box...'}
+                        />
+                        {isDraggingFile && (
+                          <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary rounded-xl flex items-center justify-center pointer-events-none">
+                            <span className="text-xs font-bold text-primary uppercase tracking-wider bg-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                              <UploadCloud size={14} />
+                              {language === 'vi' ? 'Thả tài liệu để trích xuất text' : 'Drop document to extract text'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
               {/* AI Caption Generator - moved to dialog */}
               <div className="hidden">
@@ -4581,8 +4765,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       type="button"
                       onClick={() => { setSelectedModel('gpt4'); setGenerateError(null); }}
                       className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gpt4'
-                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
-                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                        : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
                         }`}
                     >
                       <Sparkles size={12} className={selectedModel === 'gpt4' ? 'text-white' : 'text-primary'} />
@@ -4592,8 +4776,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       type="button"
                       onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
                       className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gemini'
-                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
-                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                        : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
                         }`}
                     >
                       <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
@@ -4603,8 +4787,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       type="button"
                       onClick={() => { setSelectedModel('claude'); setGenerateError(null); }}
                       className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'claude'
-                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
-                          : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
+                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                        : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
                         }`}
                     >
                       <Wand2 size={12} className={selectedModel === 'claude' ? 'text-white' : 'text-amber-500'} />
@@ -4673,8 +4857,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       className={`relative bg-white border rounded-2xl p-4 overflow-hidden transition-all duration-500 ${generateDone
-                          ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20"
-                          : "border-primary/30"
+                        ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-2 ring-emerald-400/20"
+                        : "border-primary/30"
                         }`}
                     >
                       {/* Shimmer bar while generating */}
@@ -4828,230 +5012,230 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               {/* 3. Article Live Preview Card (Bài viết gốc) */}
               {step === 2 && (
                 <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
-                  <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
-                    <Smartphone size={16} className="text-primary" />
-                    {t('aiCreator.articlePreview')}
-                  </h3>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    {language === 'vi' ? 'Trực tiếp' : 'Live'}
-                  </span>
-                </div>
-
-                {/* Preview Content */}
-                <div 
-                  onClick={() => setIsOriginalPostModalOpen(true)}
-                  className="border border-gray-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white dark:bg-black/20 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group relative"
-                  title={language === 'vi' ? 'Click để xem toàn bộ bài viết gốc' : 'Click to view full original post'}
-                >
-                  <div className="h-44 bg-gray-100 relative overflow-hidden">
-                    {postData.imageUrl ? (
-                      <img
-                        src={postData.imageUrl.split('\n')[0].trim()}
-                        alt={postData.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-80"></div>
-                    )}
-                    
-                    {/* Hover indicator overlay */}
-                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="bg-white/95 dark:bg-zinc-900/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                        <Eye size={13} />
-                        {language === 'vi' ? 'XEM TOÀN BỘ BÀI' : 'VIEW FULL POST'}
-                      </span>
-                    </div>
-
-                    {postData.category && (
-                      <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        {postData.category}
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
+                    <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
+                      <Smartphone size={16} className="text-primary" />
+                      {t('aiCreator.articlePreview')}
+                    </h3>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {language === 'vi' ? 'Trực tiếp' : 'Live'}
+                    </span>
                   </div>
 
-                  <div className="p-5 flex flex-col gap-3.5">
-                    <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
-                      {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
-                    </h4>
+                  {/* Preview Content */}
+                  <div
+                    onClick={() => setIsOriginalPostModalOpen(true)}
+                    className="border border-gray-100 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm flex flex-col bg-white dark:bg-black/20 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group relative"
+                    title={language === 'vi' ? 'Click để xem toàn bộ bài viết gốc' : 'Click to view full original post'}
+                  >
+                    <div className="h-44 bg-gray-100 relative overflow-hidden">
+                      {postData.imageUrl ? (
+                        <img
+                          src={postData.imageUrl.split('\n')[0].trim()}
+                          alt={postData.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-80"></div>
+                      )}
 
-                    <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
-                      <span className="flex items-center gap-1">
-                        <User size={12} />
-                        {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
-                      </span>
+                      {/* Hover indicator overlay */}
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-white/95 dark:bg-zinc-900/95 text-primary text-[10px] font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                          <Eye size={13} />
+                          {language === 'vi' ? 'XEM TOÀN BỘ BÀI' : 'VIEW FULL POST'}
+                        </span>
+                      </div>
+
+                      {postData.category && (
+                        <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          {postData.category}
+                        </span>
+                      )}
                     </div>
 
-                    <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
-                      {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
-                    </p>
+                    <div className="p-5 flex flex-col gap-3.5">
+                      <h4 className="text-base font-extrabold text-[#1E293B] leading-tight">
+                        {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
+                      </h4>
 
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {postData.tags.split(',').map((tag, idx) => {
-                        const trimmed = tag.trim();
-                        if (!trimmed) return null;
-                        return (
-                          <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
-                            {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
-                          </span>
-                        );
-                      })}
-                    </div>
+                      <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
+                        <span className="flex items-center gap-1">
+                          <User size={12} />
+                          {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} />
+                          {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
+                        </span>
+                      </div>
 
-                    <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
-                      <span className="flex items-center gap-1.5">
-                        <Eye size={14} className="text-amber-500" />
-                        {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
-                      </span>
+                      <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
+                        {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {postData.tags.split(',').map((tag, idx) => {
+                          const trimmed = tag.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
+                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                            </span>
+                          );
+                        })}
+                      </div>
+
+                      <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                        <span className="flex items-center gap-1.5">
+                          <Eye size={14} className="text-amber-500" />
+                          {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
                 </div>
               )}
 
               {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
-                {step === 1 && (
-                  <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
+              {step === 1 && (
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4 font-sans">
 
 
-                    {/* Platform Selection Tabs */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-                        <Sparkles size={11} className="text-primary" /> {language === 'vi' ? 'Kênh đăng' : 'Platform'}
-                      </span>
-                      <div className="flex bg-slate-100 dark:bg-black/40 rounded-xl p-1 border border-slate-200/70 dark:border-white/5">
-                        {(['facebook', 'threads', 'instagram'] as const).map((p) => (
-                          <button key={p} type="button" onClick={() => setSelectedPlatform(p)}
-                            className={`flex-1 text-[10px] font-extrabold py-1.5 rounded-lg uppercase tracking-wider transition-all ${selectedPlatform === p ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'}`}
-                          >{p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram'}</button>
-                        ))}
-                      </div>
+                  {/* Platform Selection Tabs */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
+                      <Sparkles size={11} className="text-primary" /> {language === 'vi' ? 'Kênh đăng' : 'Platform'}
+                    </span>
+                    <div className="flex bg-slate-100 dark:bg-black/40 rounded-xl p-1 border border-slate-200/70 dark:border-white/5">
+                      {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                        <button key={p} type="button" onClick={() => setSelectedPlatform(p)}
+                          className={`flex-1 text-[10px] font-extrabold py-1.5 rounded-lg uppercase tracking-wider transition-all ${selectedPlatform === p ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:text-text'}`}
+                        >{p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram'}</button>
+                      ))}
                     </div>
-
-                    {/* Layer 1: Platform Preset */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? `1. Quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'}` : `1. ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'} Rules`}
-                      </span>
-                      <select value={selectedPlatformPresetId} onChange={(e) => setSelectedPlatformPresetId(e.target.value)}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
-                      >
-                        {platformPresets.map((preset: any) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.name}{!preset.user_id ? ' (Hệ thống)' : ''}{preset.is_default ? ' ★' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {(() => {
-                        const preset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
-                        return preset?.rules ? (
-                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
-                            <div className="line-clamp-3">
-                              {preset.rules}
-                            </div>
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-
-                    {/* Layer 2: Brand Style */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                          {language === 'vi' ? '2. Văn phong thương hiệu' : '2. Brand Style'}
-                        </span>
-                        <button type="button" onClick={() => setIsStyleModalOpen(true)}
-                          className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2 py-0.5 rounded transition-all cursor-pointer"
-                        >{language === 'vi' ? 'Quản lý' : 'Manage'}</button>
-                      </div>
-                      <select value={selectedConfigId} onChange={(e) => setSelectedConfigId(e.target.value)}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
-                      >
-                        <option value="">{language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}</option>
-                        {savedConfigs.map((cfg: any) => (
-                          <option key={cfg.id} value={cfg.id}>{cfg.name}{cfg.is_default ? ' ★' : ''}</option>
-                        ))}
-                      </select>
-                      {(() => {
-                        const cfg = savedConfigs.find((c: any) => c.id === selectedConfigId);
-                        if (!cfg?.rules) return null;
-                        
-                        let displayRules = cfg.rules;
-                        try {
-                          const parsed = JSON.parse(cfg.rules);
-                          const generalRules = parsed.general || '';
-                          const platformRules = parsed[selectedPlatform] || '';
-                          if (generalRules && platformRules) {
-                            displayRules = generalRules + '\n\n' + platformRules;
-                          } else {
-                            displayRules = generalRules || platformRules || '';
-                          }
-                        } catch (e) {
-                          // Fallback to raw string if not JSON
-                        }
-
-                        if (!displayRules) return null;
-
-                        return (
-                          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
-                            <div className="line-clamp-3">
-                              {displayRules}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Layer 3: Custom Instructions */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                        {language === 'vi' ? '3. Yêu cầu tùy chỉnh' : '3. Custom Instructions'}
-                      </span>
-                      <textarea value={customPromptText} onChange={(e) => setCustomPromptText(e.target.value)} rows={3}
-                        placeholder={language === 'vi' ? 'Ví dụ: Bắt đầu bằng câu trích dẫn, tập trung vào số liệu...' : 'E.g.: Start with a quote, focus on statistics...'}
-                        className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed shadow-sm"
-                      />
-                    </div>
-
-                    {/* Prompt Preview Accordion */}
-                    <div className="flex flex-col gap-1 mt-2">
-                      <button type="button" onClick={() => setIsPromptPreviewOpen(!isPromptPreviewOpen)}
-                        className="flex items-center justify-between w-full text-left bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-3 text-[10px] font-black text-text uppercase tracking-widest hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer shadow-sm group"
-                      >
-                        <span className="flex items-center gap-2"><Eye size={14} className="text-slate-400 group-hover:text-primary transition-colors" /> {language === 'vi' ? 'Xem trước Prompt gửi đi' : 'Preview Final Prompt'}</span>
-                        <motion.span animate={{ rotate: isPromptPreviewOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                          <ChevronDown size={14} className="text-slate-400" />
-                        </motion.span>
-                      </button>
-                      <AnimatePresence>
-                        {isPromptPreviewOpen && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
-                            <div className="pt-1.5">
-                              <pre className="bg-slate-50 dark:bg-zinc-900/50 text-slate-700 dark:text-slate-300 text-[10.5px] leading-relaxed p-4 rounded-xl overflow-x-auto whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar font-mono border border-slate-200 dark:border-zinc-800 shadow-inner">
-                                {compilePromptPreview()}
-                              </pre>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Proceed Button */}
-                    <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
-                      className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
-                    >
-                      {isGeneratingAB ? (
-                        <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? `Đang sinh ${variantCount} biến thể...` : `AI generating ${variantCount} variants...`}</>
-                      ) : (
-                        <>{t('aiCreator.proceedToAb')}<ArrowRight size={16} /></>
-                      )}
-                    </motion.button>
                   </div>
-                )}
+
+                  {/* Layer 1: Platform Preset */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                      {language === 'vi' ? `1. Quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'}` : `1. ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'} Rules`}
+                    </span>
+                    <select value={selectedPlatformPresetId} onChange={(e) => setSelectedPlatformPresetId(e.target.value)}
+                      className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
+                    >
+                      {platformPresets.map((preset: any) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.name}{!preset.user_id ? ' (Hệ thống)' : ''}{preset.is_default ? ' ★' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const preset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
+                      return preset?.rules ? (
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
+                          <div className="line-clamp-3">
+                            {preset.rules}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  {/* Layer 2: Brand Style */}
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                        {language === 'vi' ? '2. Văn phong thương hiệu' : '2. Brand Style'}
+                      </span>
+                      <button type="button" onClick={() => setIsStyleModalOpen(true)}
+                        className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2 py-0.5 rounded transition-all cursor-pointer"
+                      >{language === 'vi' ? 'Quản lý' : 'Manage'}</button>
+                    </div>
+                    <select value={selectedConfigId} onChange={(e) => setSelectedConfigId(e.target.value)}
+                      className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm"
+                    >
+                      <option value="">{language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}</option>
+                      {savedConfigs.map((cfg: any) => (
+                        <option key={cfg.id} value={cfg.id}>{cfg.name}{cfg.is_default ? ' ★' : ''}</option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const cfg = savedConfigs.find((c: any) => c.id === selectedConfigId);
+                      if (!cfg?.rules) return null;
+
+                      let displayRules = cfg.rules;
+                      try {
+                        const parsed = JSON.parse(cfg.rules);
+                        const generalRules = parsed.general || '';
+                        const platformRules = parsed[selectedPlatform] || '';
+                        if (generalRules && platformRules) {
+                          displayRules = generalRules + '\n\n' + platformRules;
+                        } else {
+                          displayRules = generalRules || platformRules || '';
+                        }
+                      } catch (e) {
+                        // Fallback to raw string if not JSON
+                      }
+
+                      if (!displayRules) return null;
+
+                      return (
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200/60 dark:border-zinc-800/80 rounded-xl p-3 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed shadow-inner">
+                          <div className="line-clamp-3">
+                            {displayRules}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Layer 3: Custom Instructions */}
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                      {language === 'vi' ? '3. Yêu cầu tùy chỉnh' : '3. Custom Instructions'}
+                    </span>
+                    <textarea value={customPromptText} onChange={(e) => setCustomPromptText(e.target.value)} rows={3}
+                      placeholder={language === 'vi' ? 'Ví dụ: Bắt đầu bằng câu trích dẫn, tập trung vào số liệu...' : 'E.g.: Start with a quote, focus on statistics...'}
+                      className="w-full bg-white dark:bg-black/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed shadow-sm"
+                    />
+                  </div>
+
+                  {/* Prompt Preview Accordion */}
+                  <div className="flex flex-col gap-1 mt-2">
+                    <button type="button" onClick={() => setIsPromptPreviewOpen(!isPromptPreviewOpen)}
+                      className="flex items-center justify-between w-full text-left bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-3 text-[10px] font-black text-text uppercase tracking-widest hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer shadow-sm group"
+                    >
+                      <span className="flex items-center gap-2"><Eye size={14} className="text-slate-400 group-hover:text-primary transition-colors" /> {language === 'vi' ? 'Xem trước Prompt gửi đi' : 'Preview Final Prompt'}</span>
+                      <motion.span animate={{ rotate: isPromptPreviewOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                        <ChevronDown size={14} className="text-slate-400" />
+                      </motion.span>
+                    </button>
+                    <AnimatePresence>
+                      {isPromptPreviewOpen && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                          <div className="pt-1.5">
+                            <pre className="bg-slate-50 dark:bg-zinc-900/50 text-slate-700 dark:text-slate-300 text-[10.5px] leading-relaxed p-4 rounded-xl overflow-x-auto whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar font-mono border border-slate-200 dark:border-zinc-800 shadow-inner">
+                              {compilePromptPreview()}
+                            </pre>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Proceed Button */}
+                  <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
+                    className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-6 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-sm cursor-pointer"
+                  >
+                    {isGeneratingAB ? (
+                      <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? `Đang sinh ${variantCount} biến thể...` : `AI generating ${variantCount} variants...`}</>
+                    ) : (
+                      <>{t('aiCreator.proceedToAb')}<ArrowRight size={16} /></>
+                    )}
+                  </motion.button>
+                </div>
+              )}
             </div>
           )}
 
@@ -5095,6 +5279,42 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       );
                     })}
                 </div>
+              </div>
+
+              {/* Prompt Selector for Active Platform */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-primary" />
+                  <span className="text-xs font-bold text-text-muted uppercase">
+                    {language === 'vi' ? 'Chọn Prompt viết bài' : 'Select Prompt'}
+                  </span>
+                </div>
+                <select
+                  value={selectedPromptId}
+                  onChange={async (e) => {
+                    const nextPromptId = e.target.value;
+                    setSelectedPromptId(nextPromptId);
+                    const foundPrompt = promptsList.find(p => p.id === nextPromptId);
+                    if (foundPrompt) {
+                      setSelectedPrompt(foundPrompt);
+                      // Trigger regeneration of both variant A and B for this platform
+                      handleRegenerateVariantWithPrompt('A', foundPrompt);
+                      handleRegenerateVariantWithPrompt('B', foundPrompt);
+                    }
+                  }}
+                  className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold max-w-xs w-full"
+                >
+                  <option value="">{language === 'vi' ? '── Chọn prompt mẫu ──' : '── Select a prompt ──'}</option>
+                  {promptsList
+                    .filter(p => {
+                      const targetPlat = selectedPlatform === 'threads' ? 'thread' : selectedPlatform;
+                      return p.platform === targetPlat;
+                    })
+                    .map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  }
+                </select>
               </div>
 
               {/* Displaying Variants in 2-Columns grid */}
@@ -5332,7 +5552,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                             {toggles.showImage && postData.imageUrl && (
                               <div className="aspect-square w-full bg-gray-50 relative overflow-hidden border-t border-b border-gray-100">
-                                <img src={postData.imageUrl} alt="Instagram asset" className="w-full h-full object-cover" />
+                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full h-full object-cover" />
                               </div>
                             )}
 
@@ -6030,6 +6250,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </div>
 
                 {/* Step 3 Actions */}
+                {schedulingError && (
+                  <div className="bg-red-50 border border-red-200 text-red-650 rounded-2xl p-4 text-xs font-bold mb-4 font-sans flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{schedulingError}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
                   <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
                     <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
@@ -6049,124 +6275,123 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
         {/* CREATE AUTHOR PROFILE & TRAIN MODAL (US-2.09) */}
         <AnimatePresence>
-          
-        {/* BRAND STYLE CONFIGURATION MODAL */}
-        <AnimatePresence>
-          {isStyleModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-              onClick={(e) => { if (e.target === e.currentTarget && !isSavingConfig) setIsStyleModalOpen(false); }}
-            >
+
+          {/* BRAND STYLE CONFIGURATION MODAL */}
+          <AnimatePresence>
+            {isStyleModalOpen && (
               <motion.div
-                initial={{ scale: 0.95, y: 15 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 15 }}
-                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+                onClick={(e) => { if (e.target === e.currentTarget && !isSavingConfig) setIsStyleModalOpen(false); }}
               >
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
-                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
-                    {editingConfigId ? (language === 'vi' ? 'Chỉnh sửa văn phong' : 'Edit brand style') : (language === 'vi' ? 'Tạo văn phong mới' : 'Create brand style')}
-                  </h3>
-                  <button
-                    onClick={() => { if (!isSavingConfig) setIsStyleModalOpen(false); }}
-                    disabled={isSavingConfig}
-                    className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent disabled:opacity-50"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                      {language === 'vi' ? 'Tên văn phong' : 'Style Name'}
-                    </label>
-                    <input
-                      type="text"
-                      value={styleFormName}
-                      onChange={(e) => setStyleFormName(e.target.value)}
-                      placeholder={language === 'vi' ? 'Ví dụ: Giọng GenZ Vui Vẻ, Chuyên nghiệp sâu...' : 'E.g., GenZ Fun, Corporate...'}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
-                    />
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-205 dark:border-zinc-800 shadow-2xl p-6 max-w-md w-full flex flex-col gap-4 focus-visible:outline-none"
+                >
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                      {editingConfigId ? (language === 'vi' ? 'Chỉnh sửa văn phong' : 'Edit brand style') : (language === 'vi' ? 'Tạo văn phong mới' : 'Create brand style')}
+                    </h3>
+                    <button
+                      onClick={() => { if (!isSavingConfig) setIsStyleModalOpen(false); }}
+                      disabled={isSavingConfig}
+                      className="text-gray-400 hover:text-slate-650 hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer border-none bg-transparent disabled:opacity-50"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                      {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
-                    </label>
-                    <div className="flex bg-slate-100 dark:bg-zinc-800/50 rounded-lg p-1 gap-1">
-                      {['general', 'facebook', 'threads', 'instagram'].map((tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setStyleRulesTab(tab as any)}
-                          className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${
-                            styleRulesTab === tab 
-                              ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' 
-                              : 'bg-transparent text-slate-500 hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-slate-700'
-                          }`}
-                        >
-                          {tab === 'general' ? (language === 'vi' ? 'Quy tắc chung' : 'General') : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                      ))}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                        {language === 'vi' ? 'Tên văn phong' : 'Style Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={styleFormName}
+                        onChange={(e) => setStyleFormName(e.target.value)}
+                        placeholder={language === 'vi' ? 'Ví dụ: Giọng GenZ Vui Vẻ, Chuyên nghiệp sâu...' : 'E.g., GenZ Fun, Corporate...'}
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans"
+                      />
                     </div>
-                    <textarea
-                      value={styleFormRulesObj[styleRulesTab] || ''}
-                      onChange={(e) => setStyleFormRulesObj(prev => ({ ...prev, [styleRulesTab]: e.target.value }))}
-                      placeholder={
-                        styleRulesTab === 'general' 
-                          ? '- Hình mẫu thương hiệu (Persona): ...\n- Từ ngữ khuyên dùng: ...\n- Từ ngữ cấm dùng: ...'
-                          : styleRulesTab === 'facebook'
-                          ? '# GHI CHÚ RIÊNG CHO FACEBOOK\n- Cách xưng hô: [Ví dụ: Xưng AntBiz, gọi người đọc là Bạn]\n- Tone giọng: [Ví dụ: Chuyên nghiệp, lịch sự]\n- Kêu gọi hành động (CTA): [Ví dụ: Luôn có link đăng ký ở cuối]'
-                          : styleRulesTab === 'threads'
-                          ? '# GHI CHÚ RIÊNG CHO THREADS\n- Cách xưng hô: [Ví dụ: Xưng mình, gọi người đọc là Các bác]\n- Tone giọng: [Ví dụ: Hài hước, thân mật, bắt trend]\n- Định dạng: [Ví dụ: Xuống dòng liên tục, dùng nhiều emoji]'
-                          : '# GHI CHÚ RIÊNG CHO INSTAGRAM\n- Tone giọng: [Ví dụ: Truyền cảm hứng, tập trung vào hình ảnh]\n- Hashtag: [Ví dụ: Luôn chèn #AntBiz ở cuối]'
-                      }
-                      rows={8}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-mono placeholder:text-slate-400/70 dark:placeholder:text-zinc-600/70"
-                    />
-                  </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="checkbox"
-                      id="styleFormIsDefault"
-                      checked={styleFormIsDefault}
-                      onChange={(e) => setStyleFormIsDefault(e.target.checked)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer"
-                    />
-                    <label htmlFor="styleFormIsDefault" className="text-xs font-bold text-slate-650 dark:text-zinc-400 cursor-pointer font-sans select-none">
-                      {language === 'vi' ? 'Đặt làm mặc định cho mọi bài đăng' : 'Set as default style'}
-                    </label>
-                  </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+                        {language === 'vi' ? 'Quy chuẩn văn phong thương hiệu (Markdown)' : 'Brand Style Rules (Markdown)'}
+                      </label>
+                      <div className="flex bg-slate-100 dark:bg-zinc-800/50 rounded-lg p-1 gap-1">
+                        {['general', 'facebook', 'threads', 'instagram'].map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setStyleRulesTab(tab as any)}
+                            className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${styleRulesTab === tab
+                                ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
+                                : 'bg-transparent text-slate-500 hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-slate-700'
+                              }`}
+                          >
+                            {tab === 'general' ? (language === 'vi' ? 'Quy tắc chung' : 'General') : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={styleFormRulesObj[styleRulesTab] || ''}
+                        onChange={(e) => setStyleFormRulesObj(prev => ({ ...prev, [styleRulesTab]: e.target.value }))}
+                        placeholder={
+                          styleRulesTab === 'general'
+                            ? '- Hình mẫu thương hiệu (Persona): ...\n- Từ ngữ khuyên dùng: ...\n- Từ ngữ cấm dùng: ...'
+                            : styleRulesTab === 'facebook'
+                              ? '# GHI CHÚ RIÊNG CHO FACEBOOK\n- Cách xưng hô: [Ví dụ: Xưng AntBiz, gọi người đọc là Bạn]\n- Tone giọng: [Ví dụ: Chuyên nghiệp, lịch sự]\n- Kêu gọi hành động (CTA): [Ví dụ: Luôn có link đăng ký ở cuối]'
+                              : styleRulesTab === 'threads'
+                                ? '# GHI CHÚ RIÊNG CHO THREADS\n- Cách xưng hô: [Ví dụ: Xưng mình, gọi người đọc là Các bác]\n- Tone giọng: [Ví dụ: Hài hước, thân mật, bắt trend]\n- Định dạng: [Ví dụ: Xuống dòng liên tục, dùng nhiều emoji]'
+                                : '# GHI CHÚ RIÊNG CHO INSTAGRAM\n- Tone giọng: [Ví dụ: Truyền cảm hứng, tập trung vào hình ảnh]\n- Hashtag: [Ví dụ: Luôn chèn #AntBiz ở cuối]'
+                        }
+                        rows={8}
+                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed font-mono placeholder:text-slate-400/70 dark:placeholder:text-zinc-600/70"
+                      />
+                    </div>
 
-                  <div className="flex gap-3 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsStyleModalOpen(false)}
-                      disabled={isSavingConfig}
-                      className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
-                    >
-                      {language === 'vi' ? 'Hủy' : 'Cancel'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveStyleConfig}
-                      disabled={isSavingConfig}
-                      className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
-                    >
-                      {isSavingConfig ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                      {language === 'vi' ? 'Lưu cấu hình' : 'Save Style'}
-                    </button>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="checkbox"
+                        id="styleFormIsDefault"
+                        checked={styleFormIsDefault}
+                        onChange={(e) => setStyleFormIsDefault(e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer"
+                      />
+                      <label htmlFor="styleFormIsDefault" className="text-xs font-bold text-slate-650 dark:text-zinc-400 cursor-pointer font-sans select-none">
+                        {language === 'vi' ? 'Đặt làm mặc định cho mọi bài đăng' : 'Set as default style'}
+                      </label>
+                    </div>
+
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsStyleModalOpen(false)}
+                        disabled={isSavingConfig}
+                        className="flex-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-zinc-350 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none font-sans"
+                      >
+                        {language === 'vi' ? 'Hủy' : 'Cancel'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveStyleConfig}
+                        disabled={isSavingConfig}
+                        className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all text-xs cursor-pointer border-none shadow-md shadow-primary/10 flex items-center justify-center gap-1.5 font-sans"
+                      >
+                        {isSavingConfig ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                        {language === 'vi' ? 'Lưu cấu hình' : 'Save Style'}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
 
         </AnimatePresence>
 
@@ -6327,14 +6552,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('threads') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-gray-100 text-text text-[10px] font-bold">Threads</span>
+                        <span className="px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold">Threads</span>
                         <span className="font-semibold text-text-muted">{threadsDate} @ {threadsTime}</span>
                       </div>
                     )}
 
                     {getPromptTargetPlatforms(selectedPrompt).includes('instagram') && (
                       <div className="flex items-center justify-between text-xs font-sans">
-                        <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-600 text-[10px] font-bold">Instagram</span>
+                        <span className="px-2 py-0.5 rounded bg-pink-600 text-white text-[10px] font-bold">Instagram</span>
                         <span className="font-semibold text-text-muted">{instagramDate} @ {instagramTime}</span>
                       </div>
                     )}
@@ -6483,96 +6708,243 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           )}
         </AnimatePresence>
 
-        {/* PROMPT SELECTOR POPUP DIALOG */}
+
+        {/* ════════════════════════════════════════════════════════
+            AI PROMPT CONFIGURATION DIALOG
+            Compact bar click → tabbed modal: Editor + Sinh Prompt bằng mẫu
+        ════════════════════════════════════════════════════════ */}
         <AnimatePresence>
-          {isPromptModalOpen && (
+          {isAiPromptDialogOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
-              onClick={(e) => { if (e.target === e.currentTarget) setIsPromptModalOpen(false); }}
+              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsAiPromptDialogOpen(false); }}
             >
               <motion.div
-                initial={{ scale: 0.95, y: 15 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 15 }}
+                initial={{ scale: 0.96, y: 20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.96, y: 20, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onKeyDown={handleFocusTrap}
                 role="dialog"
                 aria-modal="true"
                 tabIndex={-1}
-                className="bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[80vh] focus-visible:outline-none"
+                className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-200 dark:border-zinc-800/80 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden focus-visible:outline-none"
               >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <h3 className="text-base font-extrabold text-text uppercase tracking-wider flex items-center gap-2 font-sans">
-                    📝 {language === 'vi' ? 'Chọn Prompt từ thư viện' : 'Select Prompt from Library'}
-                  </h3>
+                {/* Dialog Header */}
+                <div className="bg-gray-50/50 dark:bg-zinc-900/40 border-b border-gray-100 dark:border-zinc-800/60 px-7 py-5 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-black text-slate-800 dark:text-zinc-100">{t('aiCreator.promptConfigBarTitle')}</h2>
+                      <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">{t('aiCreator.promptConfigDialogSubtitle')}</p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => setIsPromptModalOpen(false)}
-                    className="text-text-muted hover:text-text hover:bg-gray-100 p-1.5 rounded-full transition-colors cursor-pointer"
+                    type="button"
+                    onClick={() => setIsAiPromptDialogOpen(false)}
+                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-750 text-gray-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer border-none"
                   >
-                    <X size={18} />
+                    <X size={17} />
                   </button>
                 </div>
 
-                {/* Search Field */}
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
-                  <input
-                    type="text"
-                    value={promptSearch}
-                    onChange={(e) => setPromptSearch(e.target.value)}
-                    placeholder={language === 'vi' ? "Tìm kiếm prompt..." : "Search prompts..."}
-                    className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-full py-2.5 pl-10 pr-4 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                  />
+                {/* Tab Bar */}
+                <div className="flex border-b border-gray-100 dark:border-zinc-800/80 px-7 shrink-0 bg-gray-50/60 dark:bg-zinc-900/30">
+                  {[
+                    { key: 'editor' as const, label: t('aiCreator.promptConfigTabEditor'), icon: Wand2 },
+                    { key: 'generator' as const, label: t('aiCreator.promptConfigTabLibrary'), icon: Sparkles }
+                  ].map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveAiTab(key)}
+                      className={`flex items-center gap-1.5 px-5 py-3.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all -mb-px cursor-pointer ${activeAiTab === key ? 'border-primary text-primary dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                        }`}
+                    >
+                      <Icon size={13} />
+                      {label}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Prompts list */}
-                <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 font-sans">
-                  {loadingPrompts ? (
-                    <div className="flex items-center justify-center py-12 text-xs text-text-muted font-bold gap-2">
-                      <Loader2 className="animate-spin" size={16} />
-                      {language === 'vi' ? 'Đang tải...' : 'Loading...'}
-                    </div>
-                  ) : filteredPromptsForModal.length === 0 ? (
-                    <div className="text-center py-12 text-xs text-text-muted font-semibold">
-                      {language === 'vi' ? 'Không tìm thấy prompt nào' : 'No prompts found'}
-                    </div>
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-5 custom-scrollbar">
+                  {activeAiTab === 'editor' ? (
+                    <>
+                      {/* Platform selector */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigSocialPlatform')}</label>
+                        <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800/80 w-fit">
+                          {(['facebook', 'threads', 'instagram'] as const).map((p) => (
+                            <button key={p} type="button" onClick={() => setPromptPlatform(p)}
+                              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${promptPlatform === p
+                                  ? 'bg-white dark:bg-zinc-800 text-primary dark:text-primary shadow-sm border border-zinc-200/50 dark:border-zinc-700/50'
+                                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}>
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom prompt title */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigNameOptional')}</label>
+                        <input type="text" value={customPromptTitle} onChange={(e) => setCustomPromptTitle(e.target.value)}
+                          placeholder={t('aiCreator.promptConfigNamePlaceholder')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all font-semibold placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {/* Textarea for prompt */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('aiCreator.promptConfigContentLabel')}</label>
+                          <button type="button" onClick={handleGenerateSmartPrompt} disabled={isGeneratingSmartPrompt || isGenerating}
+                            className="flex items-center gap-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-40 text-primary dark:text-indigo-300 text-[10px] font-black px-3 py-1.5 rounded-xl transition-all border border-primary/15 dark:border-primary/30 cursor-pointer">
+                            <RefreshCw size={11} className={isGeneratingSmartPrompt ? 'animate-spin' : ''} />
+                            {t('aiCreator.promptConfigSmartPromptBtn')}
+                          </button>
+                        </div>
+                        <textarea value={activePrompt} onChange={(e) => setActivePrompt(e.target.value)}
+                          placeholder={t('aiCreator.promptConfigSmartPromptPlaceholder')} rows={16}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 resize-none leading-relaxed transition-all placeholder:text-slate-400 font-medium custom-scrollbar"
+                        />
+                      </div>
+                    </>
                   ) : (
-                    filteredPromptsForModal.map((p) => {
-                      const isSelected = selectedPrompt?.id === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedPrompt(p);
-                            setIsPromptModalOpen(false);
-                          }}
-                          className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSelected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
-                            : 'border-gray-150 hover:bg-gray-50 hover:border-gray-200'
-                            }`}
-                        >
-                          <div className="flex items-center justify-between w-full font-sans">
-                            <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
-                            <span className="text-[8px] bg-primary/10 text-primary font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                    /* ─── TAB 2: SINH PROMPT BẰNG MẪU (Thư viện) ─── */
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3 bg-primary/5 dark:bg-primary/10 border border-primary/15 dark:border-primary/30 rounded-2xl px-4 py-3">
+                        <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                          <Layers size={15} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-800">{t('aiCreator.promptConfigLibTitle')}</p>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{t('aiCreator.promptConfigLibSubtitle')}</p>
+                        </div>
+                      </div>
+
+                      {/* Search */}
+                      <div className="relative text-slate-400 dark:text-zinc-500">
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input type="text" value={promptSearch} onChange={(e) => setPromptSearch(e.target.value)}
+                          placeholder={t('aiCreator.promptConfigLibSearchPlaceholder')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-full py-3 pl-10 pr-4 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {/* Library Results as cards */}
+                      <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                        {loadingPrompts ? (
+                          <div className="flex items-center justify-center py-12 text-xs text-slate-400 gap-2">
+                            <Loader2 size={16} className="animate-spin text-primary" /> {t('aiCreator.promptConfigLibLoading')}
                           </div>
-                          <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
-                            "{p.content}"
-                          </p>
-                        </button>
-                      );
-                    })
+                        ) : filteredPromptsForModal.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 gap-2">
+                            <Layers size={24} className="text-slate-200" />
+                            <p className="text-xs text-slate-400 font-semibold">{t('aiCreator.promptConfigLibNoPrompts')}</p>
+                          </div>
+                        ) : (
+                          filteredPromptsForModal.map((p) => {
+                            const isSel = selectedPrompt?.id === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setCustomPromptTitle(p.name);
+                                  setActivePrompt(p.content);
+                                  setSelectedPrompt(p);
+                                  setPromptPlatform(p.platform as 'facebook' | 'threads' | 'instagram' || 'facebook');
+                                  const plat = p.platform === 'thread' || p.platform === 'threads' ? 'threads' : p.platform;
+                                  setSelectedPlatform(plat);
+                                }}
+                                className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 font-sans ${isSel
+                                  ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary shadow-sm'
+                                  : 'border-gray-150 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:border-gray-200 dark:hover:border-zinc-700'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between w-full font-sans">
+                                  <span className="text-xs font-extrabold text-text truncate max-w-[70%] font-sans">{p.name}</span>
+                                  <span className="text-[8px] bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 font-black px-1.5 py-0.5 rounded uppercase font-sans">{p.platform}</span>
+                                </div>
+                                <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed font-semibold italic">
+                                  "{p.content}"
+                                </p>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dialog Footer */}
+                <div className="border-t border-gray-150 dark:border-zinc-800/60 px-7 py-4 bg-gray-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-3 shrink-0">
+                  {activeAiTab === 'editor' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!activePrompt) return;
+                          const finalTitle = customPromptTitle.trim() || `Custom Prompt ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
+                          const newPrompt = { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
+                          setIsAiPromptDialogOpen(false);
+                        }}
+                        disabled={!activePrompt}
+                        className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-indigo-300 hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                      >
+                        {t('aiCreator.promptConfigBtnUseOnly')}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!activePrompt) return;
+                          const savedPrompt = await handleSaveCurrentPrompt();
+                          const finalTitle = customPromptTitle.trim() || `AI Generated - ${new Date().toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}`;
+                          const newPrompt = savedPrompt || { id: selectedPrompt?.id || `custom-${Date.now()}`, name: finalTitle, content: activePrompt, platform: promptPlatform };
+                          setSelectedPrompt(newPrompt);
+                          const plat = promptPlatform === 'thread' || promptPlatform === 'threads' ? 'threads' : promptPlatform;
+                          setSelectedPlatform(plat);
+                          setIsAiPromptDialogOpen(false);
+                        }}
+                        disabled={!activePrompt || isSavingPrompt}
+                        className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none flex items-center gap-2"
+                      >
+                        {isSavingPrompt && <Loader2 size={14} className="animate-spin" />}
+                        {t('aiCreator.promptConfigBtnSaveUse')}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedPrompt) {
+                          setIsAiPromptDialogOpen(false);
+                        }
+                      }}
+                      disabled={!selectedPrompt}
+                      className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-primary/20 transition-all cursor-pointer border-none"
+                    >
+                      {t('aiCreator.promptConfigBtnUseThis')}
+                    </button>
                   )}
                 </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
-
-
-
 
         {/* Onboarding Tour Overlay */}
         {mounted && createPortal(
@@ -6701,7 +7073,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
               {/* Scrollable Content (Newspaper layout) */}
               <div className="flex-1 overflow-y-auto bg-[#ffffff] dark:bg-zinc-950 flex flex-col custom-scrollbar">
-                
+
                 {/* 1. Header Web Newspaper Mock */}
                 <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 border-b border-slate-150 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm backdrop-blur-md">
                   {/* Logo Group */}
@@ -6717,9 +7089,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   {/* Mock Search Input */}
                   <div className="hidden sm:flex items-center gap-2 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3.5 py-1.5 rounded-full w-64 select-none">
                     <Search size={12} className="text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Tìm kiếm bài viết, tác giả..." 
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm bài viết, tác giả..."
                       className="bg-transparent border-none text-[10px] font-bold outline-none text-slate-700 dark:text-zinc-200 placeholder-slate-400/80 w-full cursor-not-allowed"
                       disabled
                     />
@@ -6749,7 +7121,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                   {/* Right Column: Main Article Body */}
                   <div className="flex-1 flex flex-col">
-                    
+
                     {/* Category tag */}
                     {postData.category && (
                       <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-3 block select-none">
@@ -6790,7 +7162,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0">
                         {postData.author ? postData.author.slice(0, 2) : 'CD'}
                       </div>
-                      
+
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
                           {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
@@ -6824,9 +7196,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           if (block.type === 'image' && block.url) {
                             return (
                               <div key={idx} className="w-full my-6 flex flex-col items-center select-none animate-in fade-in duration-300">
-                                <img 
-                                  src={block.url} 
-                                  alt={block.caption || 'Article Image'} 
+                                <img
+                                  src={block.url}
+                                  alt={block.caption || 'Article Image'}
                                   className="w-full max-h-[380px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm"
                                 />
                                 {block.caption && (
@@ -6881,21 +7253,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         {isLightboxOpen && postData.imageUrl && (() => {
           const imageUrls = postData.imageUrl.split('\n').map(url => url.trim()).filter(Boolean);
           if (imageUrls.length === 0) return null;
-          
+
           const currentUrl = imageUrls[lightboxIndex] || imageUrls[0];
-          
+
           const handleNext = (e?: React.MouseEvent) => {
             e?.stopPropagation();
             setLightboxIndex((prev) => (prev + 1) % imageUrls.length);
           };
-          
+
           const handlePrev = (e?: React.MouseEvent) => {
             e?.stopPropagation();
             setLightboxIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
           };
 
           return createPortal(
-            <div 
+            <div
               onClick={() => setIsLightboxOpen(false)}
               className="fixed inset-0 bg-black/95 backdrop-blur-md z-[1000] flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
             >
@@ -6926,13 +7298,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               )}
 
               {/* Main Image */}
-              <div 
+              <div
                 onClick={(e) => e.stopPropagation()}
                 className="max-w-[85vw] max-h-[75vh] rounded-2xl overflow-hidden shadow-2xl relative"
               >
-                <img 
-                  src={currentUrl} 
-                  alt={`Zoom view ${lightboxIndex + 1}`} 
+                <img
+                  src={currentUrl}
+                  alt={`Zoom view ${lightboxIndex + 1}`}
                   className="max-w-full max-h-[75vh] object-contain animate-in zoom-in-95 duration-200"
                 />
               </div>
@@ -6944,7 +7316,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
               {/* Thumbnails list at bottom (if multiple images) */}
               {imageUrls.length > 1 && (
-                <div 
+                <div
                   onClick={(e) => e.stopPropagation()}
                   className="flex items-center gap-2 mt-6 max-w-[80vw] overflow-x-auto py-2 px-4 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-sm custom-scrollbar"
                 >
@@ -6952,9 +7324,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     <button
                       key={idx}
                       onClick={() => setLightboxIndex(idx)}
-                      className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                        idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
-                      }`}
+                      className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
+                        }`}
                     >
                       <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
                     </button>

@@ -769,7 +769,9 @@ export default function ContentCalendarView() {
   }, []);
 
   const filteredPosts = posts.filter(post => {
-    const platformMatch = selectedPlatforms.includes(post.platform?.toLowerCase() || 'blog');
+    const rawPlat = post.platform?.toLowerCase();
+    const platKey = rawPlat === 'thread' ? 'threads' : (rawPlat || 'blog');
+    const platformMatch = selectedPlatforms.includes(platKey);
     if (!platformMatch) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -1420,11 +1422,11 @@ export default function ContentCalendarView() {
                     } else if (platform === 'threads' || platform === 'thread') {
                       platIcon = <ThreadsIcon size={11} className="text-black dark:text-white" />;
                       platLabel = 'Threads';
-                      platBg = 'bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 border border-slate-200/65 dark:border-slate-800';
+                      platBg = 'bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white';
                     } else if (platform === 'instagram') {
                       platIcon = <Instagram size={11} className="text-pink-650 dark:text-pink-400" />;
                       platLabel = 'Instagram';
-                      platBg = 'bg-pink-50 dark:bg-pink-950/40 text-pink-650 dark:text-pink-400 border border-pink-100/60 dark:border-pink-900/30';
+                      platBg = 'bg-pink-600 text-white dark:bg-pink-700 dark:text-white border border-pink-600 dark:border-pink-700';
                     } else if (platform === 'blog') {
                       platIcon = <Globe size={11} className="text-emerald-700 dark:text-emerald-400" />;
                       platLabel = 'Blog';

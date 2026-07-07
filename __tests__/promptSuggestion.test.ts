@@ -19,11 +19,12 @@ function makePrompt(overrides: Partial<Prompt & { usage_count?: number }> = {}):
     content: 'Test content',
     tags: [],
     is_deleted: false,
+    is_default: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     usage_count: 0,
     ...overrides,
-  };
+  } as Prompt & { usage_count?: number };
 }
 
 // ── 1. computeRelevanceScore ─────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { publishToFacebookPage } from '../facebook';
+import { postThread } from '../threads';
+import { publishToInstagram, publishMedia } from '../instagram';
 import { logAndNotifyPublishResult } from '../email';
 import { createNotification } from '../services/notificationService';
 
@@ -17,7 +19,7 @@ export async function runSchedulerCycle() {
   // 1. Lấy toàn bộ các bài đăng có trạng thái 'pending' mà thời gian scheduled_at <= hiện tại
   const { data: pendingPosts, error } = await supabase
     .from('scheduled_posts')
-    .select('*, captions(id, ai_content, edited_content, articles(id, title)), users(id, email)')
+    .select('*, captions(id, platform, ai_content, edited_content, articles(id, title)), users(id, email)')
     .eq('status', 'pending')
     .lte('scheduled_at', new Date().toISOString());
 
@@ -59,31 +61,80 @@ export async function runSchedulerCycle() {
     const postTitle = article?.title || 'Bài viết không tên';
     const recipientEmail = user?.email || '';
     const userId = user?.id || post.created_by;
-    const platformName = post.platform === 'facebook' ? 'Facebook' : post.platform === 'thread' ? 'Threads' : 'Instagram';
+    const platform = post.platform || caption?.platform || 'facebook';
+    const dbPlatform = platform === 'threads' ? 'thread' : platform;
+    const platformName = dbPlatform === 'facebook' ? 'Facebook' : dbPlatform === 'thread' ? 'Threads' : 'Instagram';
 
     console.log(`[Scheduler] Bắt đầu đăng bài ID ${post.id}: "${postTitle}" lên nền tảng ${platformName}`);
 
+    let activeToken: string | undefined = undefined;
+    let activeAccountId: string | undefined = undefined;
+
+    if (userId) {
+      const { data: linkedAccount } = await supabase
+        .from('linked_accounts')
+        .select('access_token, account_id')
+        .eq('user_id', userId)
+        .eq('platform', dbPlatform)
+        .maybeSingle();
+
+      if (linkedAccount) {
+        activeToken = linkedAccount.access_token;
+        activeAccountId = linkedAccount.account_id;
+      }
+    }
+
     // 2. Gọi API đăng lên nền tảng tương ứng
-    let publishResult;
-    if (post.platform === 'facebook') {
-      publishResult = await publishToFacebookPage(message, post.image_urls || []);
+    let publishResult: { success: boolean; postId?: string; error?: string } = { success: false, error: 'Không xác định' };
+
+    if (dbPlatform === 'thread') {
+      let attempts = 0;
+      let success = false;
+      while (attempts < 3 && !success) {
+        attempts++;
+        publishResult = await postThread(message, post.image_urls || [], activeToken);
+        if (publishResult.success) {
+          success = true;
+        } else {
+          console.warn(`[Scheduler] Đăng bài lên Threads thử lần ${attempts} thất bại: ${publishResult.error}`);
+          if (attempts < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      }
+    } else if (dbPlatform === 'instagram') {
+      let attempts = 0;
+      let success = false;
+      while (attempts < 3 && !success) {
+        attempts++;
+        publishResult = await publishToInstagram(message, post.image_urls || [], activeAccountId, activeToken);
+        if (publishResult.success) {
+          success = true;
+        } else {
+          console.warn(`[Scheduler] Đăng bài lên Instagram thử lần ${attempts} thất bại: ${publishResult.error}`);
+          if (attempts < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      }
     } else {
-      // Giả lập đăng bài thành công đối với Threads và Instagram chưa có API chính thức
-      console.log(`[Scheduler] Nền tảng ${platformName} chưa cấu hình kết nối API chính thức. Thực hiện giả lập đăng bài thành công.`);
-      publishResult = {
-        success: true,
-        postId: `mock_${post.platform}_post_id_${Date.now()}`
-      };
+      publishResult = await publishToFacebookPage(message, post.image_urls || [], activeAccountId, activeToken);
     }
 
     if (publishResult.success && publishResult.postId) {
-      console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài đăng ${platformName}: ${publishResult.postId}`);
+      console.log(`[Scheduler] Đăng bài ID ${post.id} thành công! ID bài viết ${platformName}: ${publishResult.postId}`);
 
-      // Cập nhật thêm thông tin fb_post_id và post_result cho post đã được đánh dấu là 'posted' trước đó
+      // Cập nhật thêm thông tin và post_result cho post đã được đánh dấu là 'posted' trước đó
+      const isThreads = dbPlatform === 'thread';
+      const isInstagram = dbPlatform === 'instagram';
       await supabase
         .from('scheduled_posts')
         .update({
-          fb_post_id: publishResult.postId,
+          ...(isThreads
+            ? { threads_post_id: publishResult.postId }
+            : isInstagram
+            ? { instagram_media_id: publishResult.postId }
+            : { fb_post_id: publishResult.postId }),
           post_result: publishResult,
           updated_at: new Date().toISOString(),
         })

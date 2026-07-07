@@ -85,6 +85,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Nếu đánh dấu là mặc định, reset các prompt khác cùng platform về false
+  if (parsed.data.is_default === true) {
+    await supabase
+      .from('prompts')
+      .update({ is_default: false })
+      .eq('created_by', user.id)
+      .eq('platform', parsed.data.platform)
+      .eq('is_deleted', false);
+  }
+
   const { data, error } = await supabase
     .from('prompts')
     .insert({ ...parsed.data, created_by: user.id })

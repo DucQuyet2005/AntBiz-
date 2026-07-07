@@ -64,6 +64,7 @@ type FormState = {
   platform: PromptPlatform;
   content: string;
   tagsText: string;
+  is_default: boolean;
 };
 
 const EMPTY_FORM: FormState = {
@@ -71,6 +72,7 @@ const EMPTY_FORM: FormState = {
   platform: "facebook",
   content: "",
   tagsText: "",
+  is_default: false,
 };
 
 type ModalState = { mode: "create" } | { mode: "edit"; prompt: Prompt } | null;
@@ -351,6 +353,7 @@ export default function PromptsView() {
       platform: prompt.platform,
       content: prompt.content,
       tagsText: prompt.tags.join(", "),
+      is_default: prompt.is_default || false,
     });
     setFormError(null);
     setModal({ mode: "edit", prompt });
@@ -400,6 +403,7 @@ export default function PromptsView() {
       platform: form.platform,
       content: form.content,
       tags: parseTagsText(form.tagsText),
+      is_default: form.is_default,
     };
 
     try {
@@ -698,7 +702,6 @@ export default function PromptsView() {
               {actionError}
             </div>
           )}
-
           {/* List */}
           {loading ? (
             <div className="flex items-center justify-center py-16 text-text-muted gap-2 text-xs font-bold">
@@ -1187,6 +1190,21 @@ export default function PromptsView() {
                   <option key={tag} value={tag} />
                 ))}
               </datalist>
+            </div>
+
+            <div className="flex items-center gap-2 py-1">
+              <input
+                type="checkbox"
+                id="is_default"
+                checked={form.is_default}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, is_default: e.target.checked }))
+                }
+                className="rounded border-gray-300 text-primary focus:ring-primary/20"
+              />
+              <label htmlFor="is_default" className="text-xs font-bold text-text-muted cursor-pointer select-none">
+                Đặt làm prompt mặc định cho nền tảng này
+              </label>
             </div>
 
             <div className="flex justify-end gap-3 mt-1">

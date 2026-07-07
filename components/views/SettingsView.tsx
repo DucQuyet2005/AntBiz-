@@ -10,10 +10,12 @@ import {
   FileText,
   GitBranch,
   Check,
-  Sliders,
-  Sparkles,
-  Type,
-  Loader2
+  Sliders, 
+  Sparkles, 
+  Type, 
+  Loader2,
+  Facebook,
+  Instagram
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
@@ -25,6 +27,12 @@ import PlatformPresetsTab from './PlatformPresetsTab';
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+  </svg>
+);
+
+const ThreadsIcon = ({ size = 20 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
   </svg>
 );
 
@@ -60,12 +68,51 @@ export default function SettingsView() {
   };
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+  const [socialLoading, setSocialLoading] = useState(false);
   const supabase = createClient();
+
+  const loadSocialAccounts = async () => {
+    try {
+      const res = await fetch('/api/linked-accounts');
+      if (res.ok) {
+        const json = await res.json();
+        setSocialAccounts(json.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching linked social accounts:', err);
+    }
+  };
+
+  const handleConnectSocial = (platform: string) => {
+    window.location.href = `/api/auth/${platform}`;
+  };
+
+  const handleDisconnectSocial = async (platform: string) => {
+    const platformLabel = platform === 'thread' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram';
+    if (!window.confirm(`Bạn có chắc chắn muốn hủy liên kết tài khoản ${platformLabel}?`)) {
+      return;
+    }
+    setSocialLoading(true);
+    try {
+      const res = await fetch(`/api/linked-accounts?platform=${platform}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await loadSocialAccounts();
+      }
+    } catch (err) {
+      console.error('Error disconnecting social account:', err);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
+    loadSocialAccounts();
   }, []);
 
   const handleThemeChange = async (newTheme: Theme, colorLabel: string) => {
@@ -220,6 +267,135 @@ export default function SettingsView() {
                   {midjourneyConnected ? t('settings.disconnect') : t('settings.connect')}
                 </button>
               </div>
+
+              {/* Facebook Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'facebook');
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <Facebook size={20} className="fill-current" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Facebook Page</h3>
+                        <span className="text-[10px] font-bold block mt-[2px]">
+                          {socialLoading ? (
+                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                              <Loader2 size={10} className="animate-spin" />
+                              {t('common.updating')}
+                            </span>
+                          ) : conn ? (
+                            <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                              {t('settings.connected')}: {conn.account_name}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted">{t('common.notConnected')}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => conn ? handleDisconnectSocial('facebook') : handleConnectSocial('facebook')}
+                      disabled={socialLoading}
+                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                        conn 
+                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                      }`}
+                    >
+                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                      {conn ? t('settings.disconnect') : t('settings.connect')}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Threads Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'thread');
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 text-black dark:text-white flex items-center justify-center shrink-0 border dark:border-white/5">
+                        <ThreadsIcon size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Meta Threads</h3>
+                        <span className="text-[10px] font-bold block mt-[2px]">
+                          {socialLoading ? (
+                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                              <Loader2 size={10} className="animate-spin" />
+                              {t('common.updating')}
+                            </span>
+                          ) : conn ? (
+                            <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                              {t('settings.connected')}: @{conn.account_name}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted">{t('common.notConnected')}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => conn ? handleDisconnectSocial('thread') : handleConnectSocial('threads')}
+                      disabled={socialLoading}
+                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                        conn 
+                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                      }`}
+                    >
+                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                      {conn ? t('settings.disconnect') : t('settings.connect')}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Instagram Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'instagram');
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0">
+                        <Instagram size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Instagram Business</h3>
+                        <span className="text-[10px] font-bold block mt-[2px]">
+                          {socialLoading ? (
+                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                              <Loader2 size={10} className="animate-spin" />
+                              {t('common.updating')}
+                            </span>
+                          ) : conn ? (
+                            <span className="text-emerald-655 dark:text-emerald-400 font-extrabold text-[10px] line-clamp-1 max-w-[200px]">
+                              {t('settings.connected')}: {conn.account_name}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted">{t('common.notConnected')}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => conn ? handleDisconnectSocial('instagram') : handleConnectSocial('instagram')}
+                      disabled={socialLoading}
+                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                        conn 
+                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                      }`}
+                    >
+                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                      {conn ? t('settings.disconnect') : t('settings.connect')}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
