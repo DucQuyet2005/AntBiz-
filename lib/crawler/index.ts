@@ -35,7 +35,11 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
             'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         });
 
-        await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        } catch (e: any) {
+          console.warn(`⚠️ [Playwright] page.goto timeout or error, proceeding to parse anyway: ${e.message || e}`);
+        }
         
         // Chờ skeleton loading (nếu có) biến mất trước khi bắt đầu cào dữ liệu
         try {

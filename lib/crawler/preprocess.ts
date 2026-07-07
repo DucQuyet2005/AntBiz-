@@ -7,6 +7,22 @@
 import * as cheerio from 'cheerio';
 import type { CrawlResult } from './index';
 
+export type PageType = 'ARTICLE' | 'LISTING';
+
+export type ArticleLayout =
+  | 'standard'
+  | 'video'
+  | 'photo'
+  | 'dmagazine' // Dan Tri longform
+  | 'megastory' // Tuoi Tre longform
+  | 'podcast'
+  | 'infographic'
+  | 'tamdiem'    // Dan Tri editorial
+  | 'bandoc'     // Dan Tri reader submissions
+  | 'sub_publication' // cuoi.tuoitre.vn, etc.
+  | 'gocnhinmoi_standard'
+  | 'gocnhinmoi_spotlight';
+
 export interface BodyBlock {
   type: 'paragraph' | 'heading2' | 'heading3' | 'image';
   text?: string;
@@ -20,6 +36,7 @@ export interface ImageBlock {
 }
 
 export interface ArticleData {
+  type: 'ARTICLE';
   url: string;
   title: string;
   category: string;
@@ -33,57 +50,25 @@ export interface ArticleData {
   full_text: string;
 }
 
+export interface ListingItem {
+  url: string;
+  title: string;
+}
+
+export interface ListingData {
+  type: 'LISTING';
+  url: string;
+  extractedUrls: ListingItem[];
+  warning: string;
+}
+
 function cleanText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Find the common ancestor of h1 and #html_content to scope the article area.
- * This prevents picking up sidebar hashtags/authors. Equivalent to find_article_scope() in Python.
- */
-function findArticleScope($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
-  const h1 = $('h1').first();
-  let contentRoot = $('#html_content').first();
-
-  // If #html_content is not found, try <article> or <main>
-  if (!contentRoot.length) {
-    contentRoot = $('article').first();
-  }
-  if (!contentRoot.length) {
-    contentRoot = $('main').first();
-  }
-
-  if (!h1.length || !contentRoot.length) return $.root() as cheerio.Cheerio<any>;
-
-  // Build ancestor set by walking up from h1
-  const h1AncestorSet = new Set<unknown>();
-  let node = h1.parent();
-  while (node.length) {
-    node.each((_, el) => { h1AncestorSet.add(el); });
-    node = node.parent();
-  }
-
-  // Walk up from contentRoot until we find a shared ancestor with h1
-  let scope = contentRoot.parent();
-  while (scope.length) {
-    let found = false;
-    scope.each((_, el) => { if (h1AncestorSet.has(el)) found = true; });
-    if (found) return scope;
-    scope = scope.parent();
-  }
-
-  return $.root() as cheerio.Cheerio<any>;
-}
-
-
-/**
- * Parse crawled HTML into structured article data.
- * Equivalent to preprocess() in auto_post_pipeline.py
- */
 function cleanCaption(alt: string | undefined): string {
   if (!alt) return '';
   const cleaned = cleanText(alt);
-  // If it's a JSON path or key like sections.0.sectionContents.0.images.0.url
   if (/^sections\.\d+/i.test(cleaned) || /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_.-]+$/i.test(cleaned)) {
     return '';
   }
@@ -105,18 +90,15 @@ function parsePublishedAt(rawStr: string): string {
   const clean = rawStr.trim();
   if (!clean) return '';
 
-  // If it's relative time, return as-is
   const isRelative = /phút|phut|tiếng|tieng|giờ|gio|ngày|ngay|trước|truoc|hôm|hom/i.test(clean);
   if (isRelative) {
     return clean;
   }
 
-  // If already in DD/MM/YYYY HH:mm format
   if (/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(clean)) {
     return clean;
   }
 
-  // If it's an ISO date or parseable timestamp, format it nicely
   const parsedTimestamp = Date.parse(clean);
   if (!isNaN(parsedTimestamp)) {
     if (clean.includes('-') || clean.includes('T') || clean.includes(':')) {
@@ -127,13 +109,183 @@ function parsePublishedAt(rawStr: string): string {
   return clean;
 }
 
-export function preprocessArticle(raw: CrawlResult): ArticleData {
-  console.log('\n🔧 [Preprocess] Đang tiền xử lý dữ liệu...');
+/**
+ * Detects whether a page is an ARTICLE or a LISTING page, and what layout it has.
+ */
+export function detectPageType(url: string, html: string): { type: PageType; layout: ArticleLayout } {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+
+    if (hostname.includes('dantri.com.vn')) {
+      const isListing =
+        urlObj.pathname.includes('/event/') ||
+        urlObj.pathname.includes('/chu-de/') ||
+        urlObj.pathname.includes('/tag/') ||
+        (urlObj.pathname.endsWith('.htm') &&
+          !/-\d{6,}\.htm$/i.test(urlObj.pathname) &&
+          !/(dmagazine|photo-news|photo-story|tam-diem|ban-doc|infographic|interactive|video)/i.test(urlObj.pathname)) ||
+        (!urlObj.pathname.endsWith('.htm') && urlObj.pathname !== '/');
+
+      if (isListing) {
+        return { type: 'LISTING', layout: 'standard' };
+      }
+
+      let layout: ArticleLayout = 'standard';
+      if (urlObj.pathname.includes('/dt360/') || urlObj.pathname.includes('/video/')) {
+        layout = 'video';
+      } else if (urlObj.pathname.includes('/photo-news') || urlObj.pathname.includes('/photo-story')) {
+        layout = 'photo';
+      } else if (urlObj.pathname.includes('/dmagazine')) {
+        layout = 'dmagazine';
+      } else if (urlObj.pathname.includes('/tam-diem')) {
+        layout = 'tamdiem';
+      } else if (urlObj.pathname.includes('/ban-doc')) {
+        layout = 'bandoc';
+      } else if (urlObj.pathname.includes('/infographic') || urlObj.pathname.includes('/interactive')) {
+        layout = 'infographic';
+      } else {
+        const $ = cheerio.load(html);
+        if ($('.dmagazine-container, .dmagazine-body, .dmagazine').length > 0) {
+          layout = 'dmagazine';
+        } else if ($('.video-player, .dt-video').length > 0) {
+          layout = 'video';
+        }
+      }
+      return { type: 'ARTICLE', layout };
+    }
+
+    if (hostname.includes('tuoitre.vn')) {
+      const isListing =
+        urlObj.pathname.includes('/tac-gia/') ||
+        /-\s*e\d+\.htm$/i.test(urlObj.pathname) ||
+        (urlObj.pathname.endsWith('.htm') &&
+          !/-\d{6,}\.htm$/i.test(urlObj.pathname) &&
+          !/(video|photo|infographic|megastory|podcast)/i.test(urlObj.pathname)) ||
+        (!urlObj.pathname.endsWith('.htm') && urlObj.pathname !== '/');
+
+      if (isListing) {
+        return { type: 'LISTING', layout: 'standard' };
+      }
+
+      let layout: ArticleLayout = 'standard';
+      if (hostname.startsWith('cuoi.') || hostname.startsWith('cuoituan.') || hostname.startsWith('news.')) {
+        layout = 'sub_publication';
+      } else if (urlObj.pathname.includes('/video/') || hostname.startsWith('video.')) {
+        layout = 'video';
+      } else if (hostname.startsWith('podcast.') || urlObj.pathname.includes('/podcast/')) {
+        layout = 'podcast';
+      } else if (urlObj.pathname.includes('/photo/') || urlObj.pathname.includes('/photo.htm')) {
+        layout = 'photo';
+      } else if (urlObj.pathname.includes('/infographic/')) {
+        layout = 'infographic';
+      } else if (urlObj.pathname.includes('/megastory/')) {
+        layout = 'megastory';
+      }
+      return { type: 'ARTICLE', layout };
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return { type: 'ARTICLE', layout: 'standard' };
+}
+
+function extractListingLinks(url: string, $: cheerio.CheerioAPI): ListingItem[] {
+  const urlObj = new URL(url);
+  const domain = urlObj.hostname.replace('www.', '');
+  const items: ListingItem[] = [];
+  const seenUrls = new Set<string>();
+
+  $('a').each((_, el) => {
+    const href = $(el).attr('href');
+    if (!href) return;
+
+    try {
+      const resolvedUrl = new URL(href, url).href;
+      const resolvedObj = new URL(resolvedUrl);
+
+      if (resolvedObj.hostname.includes(domain)) {
+        const path = resolvedObj.pathname.toLowerCase();
+        if (
+          path === '/' ||
+          path.includes('/search') ||
+          path.includes('/login') ||
+          path.includes('/register') ||
+          path.includes('/terms') ||
+          path.includes('/privacy')
+        ) {
+          return;
+        }
+
+        if (domain.includes('dantri.com.vn') || domain.includes('tuoitre.vn')) {
+          if (!resolvedObj.pathname.endsWith('.htm')) return;
+        }
+
+        if (!seenUrls.has(resolvedUrl)) {
+          seenUrls.add(resolvedUrl);
+          const title = cleanText($(el).text() || $(el).attr('title') || '');
+          items.push({ url: resolvedUrl, title });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  });
+
+  return items;
+}
+
+function findArticleScope($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
+  const h1 = $('h1').first();
+  let contentRoot = $('#html_content').first();
+
+  if (!contentRoot.length) {
+    contentRoot = $('article').first();
+  }
+  if (!contentRoot.length) {
+    contentRoot = $('main').first();
+  }
+
+  if (!h1.length || !contentRoot.length) return $.root() as cheerio.Cheerio<any>;
+
+  const h1AncestorSet = new Set<unknown>();
+  let node = h1.parent();
+  while (node.length) {
+    node.each((_, el) => { h1AncestorSet.add(el); });
+    node = node.parent();
+  }
+
+  let scope = contentRoot.parent();
+  while (scope.length) {
+    let found = false;
+    scope.each((_, el) => { if (h1AncestorSet.has(el)) found = true; });
+    if (found) return scope;
+    scope = scope.parent();
+  }
+
+  return $.root() as cheerio.Cheerio<any>;
+}
+
+export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
+  console.log(`\n🔧 [Preprocess] Đang tiền xử lý dữ liệu cho: ${raw.url}`);
 
   const fullHtml = raw.fullPageHtml || raw.contentHtml;
   const $ = cheerio.load(fullHtml);
 
-  const scope = findArticleScope($);
+  // Detect Type & Layout
+  const { type, layout } = detectPageType(raw.url, fullHtml);
+
+  if (type === 'LISTING') {
+    const extractedUrls = extractListingLinks(raw.url, $);
+    console.log(`   📂 Nhận diện trang LISTING — Trích xuất được ${extractedUrls.length} liên kết`);
+    return {
+      type: 'LISTING',
+      url: raw.url,
+      extractedUrls,
+      warning: `Trang này là danh sách, đã trích xuất ${extractedUrls.length} liên kết con.`,
+    };
+  }
 
   // ── JSON-LD Schema Extraction ─────────────────────────
   let jsonLdCategory = '';
@@ -194,14 +346,13 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     // ignore
   }
 
+  const scope = findArticleScope($);
+
   // ── Category ──────────────────────
   let category = jsonLdCategory;
   if (!category) {
-    // Narrow scope: only check elements before the first H1, or within a specific category tag at the top of the article.
     const h1 = $('h1').first();
     const preTitleArea = h1.length ? h1.prevAll() : null;
-    
-    // Find category links in elements preceding the h1
     if (preTitleArea && preTitleArea.length) {
       const links = preTitleArea.find('a[href*="/category/"], a[href*="/the-loai/"], a[href*="/hashtag/"]');
       links.each((_, el) => {
@@ -213,7 +364,6 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
       });
     }
 
-    // Fallback: check elements that are inside a meta category class, but only within the article header area
     if (!category) {
       const metaCategory = $('.article-category, .post-category, .news-category').first();
       if (metaCategory.length) {
@@ -221,9 +371,6 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
         if (text) category = text.startsWith('#') ? text : `#${text}`;
       }
     }
-    
-    // NOTE: No global search on scope.find("a[href^='/hashtag/']") or tags! 
-    // If not found in the immediate top area, category remains empty to prevent random grabs from sidebar/footer.
   }
 
   // ── Title ──────────────────────────────────────────────────────────────
@@ -233,11 +380,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
       const text = cleanText($(el).text());
       if (text && text.toLowerCase() !== 'spotlight' && text.toLowerCase() !== 'góc nhìn mới') {
         title = text;
-        return false; // Break loop
+        return false;
       }
     });
   }
-
   if (!title) {
     title = cleanText(raw.title || $('title').text().replace(/ - Góc Nhìn Mới.*/i, ''));
   }
@@ -245,12 +391,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   // ── Description / sapo ────────────────────────────────────────────────
   let description = jsonLdDescription;
   if (!description) {
-    // Try h4 (often used as sapo in Spotlight layouts)
     const h4Text = cleanText($('h4').first().text());
     description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
       cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
   }
-
   if (!description && raw.metadata?.description) {
     description = cleanText(raw.metadata.description);
   }
@@ -258,9 +402,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   // ── Author ────────────────────────────────────────────────────────────
   let author = jsonLdAuthor;
   if (!author) {
-    // For Spotlight style: look for a parent with class space-x-3 or gap-3 containing date and author text
     const authorP = $('.flex-row, .space-x-3').find('p.text-body-sm, span.font-semibold').first();
-    
     author = cleanText(
       authorP.text() ||
       scope.find('span.font-bold.text-gray-900').first().text() ||
@@ -280,7 +422,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   }
   const published_at = parsePublishedAt(rawPublishedAt);
 
-  // ── Views (element next to lucide-eye svg) ────────────────────────────
+  // ── Views ─────────────────────────────────────────────────────────────
   let views = '';
   let eyeSvg = scope.find('svg.lucide-eye').first();
   if (!eyeSvg.length) {
@@ -291,92 +433,132 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     if (parentSpan.length) views = cleanText(parentSpan.text());
   }
 
-  // ── Body paragraphs + images from #html_content ───────────────────────
+  // ── Body blocks & images ──────────────────────────────────────────────
   const bodyBlocks: BodyBlock[] = [];
   const images: ImageBlock[] = [];
-  const contentRoot = $('#html_content');
 
-  if (contentRoot.length) {
-    contentRoot.find('[data-content-type]').each((_, el) => {
-      const block = $(el);
-      const btype = block.attr('data-content-type');
+  const isDantri = raw.url.includes('dantri.com.vn');
+  const isTuoitre = raw.url.includes('tuoitre.vn');
 
-      if (btype === 'paragraph') {
-        const text = cleanText(block.text());
-        if (text) bodyBlocks.push({ type: 'paragraph', text });
-      } else if (btype === 'heading') {
-        const text = cleanText(block.text());
-        const level = block.attr('data-level') || '2';
-        if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
-      } else if (btype === 'image') {
-        const imgUrl = block.attr('data-url') || '';
-        const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
-        if (imgUrl) {
-          images.push({ url: imgUrl, caption });
-          bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+  if (isDantri || isTuoitre) {
+    const contentRoot = $('.singular-content, .detail-content, .dmagazine-content, .fck, article').first();
+    if (contentRoot.length) {
+      contentRoot.find('p, h2, h3, figure, .photo, .picture, .video-player, img').each((_, el) => {
+        const cheerioEl = $(el);
+        const tagName = (el as any).tagName || el.name;
+
+        if (tagName === 'figure' || cheerioEl.hasClass('photo') || cheerioEl.hasClass('picture')) {
+          const img = cheerioEl.find('img').first();
+          const src = img.attr('src') || img.attr('data-src') || '';
+          if (src && !src.includes('logo') && !src.startsWith('/')) {
+            const caption = cleanCaption(cheerioEl.find('figcaption, .caption, .photo-description, .cap').first().text() || img.attr('alt'));
+            images.push({ url: src, caption });
+            bodyBlocks.push({ type: 'image', url: src, caption });
+          }
+        } else if (tagName === 'img') {
+          // If it is a standalone image not inside a figure
+          const src = cheerioEl.attr('src') || cheerioEl.attr('data-src') || '';
+          if (src && !src.includes('logo') && !src.startsWith('/') && !images.some(img => img.url === src)) {
+            const caption = cleanCaption(cheerioEl.attr('alt') || cheerioEl.attr('title'));
+            images.push({ url: src, caption });
+            bodyBlocks.push({ type: 'image', url: src, caption });
+          }
+        } else if (tagName === 'p') {
+          const text = cleanText(cheerioEl.text());
+          // Skip author signature in body if it matches author field or is too short
+          if (text && text.length > 10 && text !== author) {
+            bodyBlocks.push({ type: 'paragraph', text });
+          }
+        } else if (tagName === 'h2') {
+          const text = cleanText(cheerioEl.text());
+          if (text) bodyBlocks.push({ type: 'heading2', text });
+        } else if (tagName === 'h3') {
+          const text = cleanText(cheerioEl.text());
+          if (text) bodyBlocks.push({ type: 'heading3', text });
         }
-      }
-    });
+      });
+    }
   } else {
-    // Fallback: parse generic p/h2/h3/div tags and images in DOM order within the determined scope
-    const seenTexts = new Set<string>();
-    const seenImageUrls = new Set<string>();
+    // Goc Nhin Moi or Fallback
+    const contentRoot = $('#html_content');
+    if (contentRoot.length) {
+      contentRoot.find('[data-content-type]').each((_, el) => {
+        const block = $(el);
+        const btype = block.attr('data-content-type');
 
-    scope.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
-      const tagName = (el as any).tagName || el.name;
-      const cheerioEl = $(el);
-
-      // Avoid matching parent elements whose children will be parsed individually to prevent duplicate text blocks
-      if (tagName !== 'img' && cheerioEl.find('p, h2, h3').length > 0) {
-        return;
-      }
-
-      if (tagName === 'img') {
-        const src = cheerioEl.attr('src') || '';
-        if (
-          !src ||
-          src.startsWith('/') ||
-          src.includes('logo') ||
-          src.includes('no-data') ||
-          src.includes('track-view') ||
-          src.includes('author')
-        ) {
-          return;
+        if (btype === 'paragraph') {
+          const text = cleanText(block.text());
+          if (text) bodyBlocks.push({ type: 'paragraph', text });
+        } else if (btype === 'heading') {
+          const text = cleanText(block.text());
+          const level = block.attr('data-level') || '2';
+          if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
+        } else if (btype === 'image') {
+          const imgUrl = block.attr('data-url') || '';
+          const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+          if (imgUrl) {
+            images.push({ url: imgUrl, caption });
+            bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+          }
         }
-        if (!seenImageUrls.has(src)) {
-          seenImageUrls.add(src);
-          const caption = cleanCaption(cheerioEl.attr('alt'));
-          images.push({ url: src, caption });
-          bodyBlocks.push({ type: 'image', url: src, caption });
-        }
-      } else {
-        const text = cleanText(cheerioEl.text());
-        if (!text || text.length <= 20) return;
+      });
+    } else {
+      const seenTexts = new Set<string>();
+      const seenImageUrls = new Set<string>();
 
-        // Skip boilerplate / author / date / category / bookmark text
-        if (
-          text.includes('Bạn chưa lưu nội dung nào') ||
-          text.includes('Hãy khám phá và lưu lại để xem') ||
-          text === author ||
-          text === published_at ||
-          text.startsWith('#') ||
-          text === category
-        ) {
+      scope.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
+        const tagName = (el as any).tagName || el.name;
+        const cheerioEl = $(el);
+
+        if (tagName !== 'img' && cheerioEl.find('p, h2, h3').length > 0) {
           return;
         }
 
-        if (seenTexts.has(text)) return;
-        seenTexts.add(text);
+        if (tagName === 'img') {
+          const src = cheerioEl.attr('src') || '';
+          if (
+            !src ||
+            src.startsWith('/') ||
+            src.includes('logo') ||
+            src.includes('no-data') ||
+            src.includes('track-view') ||
+            src.includes('author')
+          ) {
+            return;
+          }
+          if (!seenImageUrls.has(src)) {
+            seenImageUrls.add(src);
+            const caption = cleanCaption(cheerioEl.attr('alt'));
+            images.push({ url: src, caption });
+            bodyBlocks.push({ type: 'image', url: src, caption });
+          }
+        } else {
+          const text = cleanText(cheerioEl.text());
+          if (!text || text.length <= 20) return;
 
-        let btype: BodyBlock['type'] = 'paragraph';
-        if (tagName === 'h2') btype = 'heading2';
-        else if (tagName === 'h3') btype = 'heading3';
-        // If it's a div and contains significant text, treat as paragraph
-        else if (tagName === 'div' && text.length > 50) btype = 'paragraph';
+          if (
+            text.includes('Bạn chưa lưu nội dung nào') ||
+            text.includes('Hãy khám phá và lưu lại để xem') ||
+            text === author ||
+            text === published_at ||
+            text.startsWith('#') ||
+            text === category
+          ) {
+            return;
+          }
 
-        bodyBlocks.push({ type: btype, text });
-      }
-    });
+          if (seenTexts.has(text)) return;
+          seenTexts.add(text);
+
+          let btype: BodyBlock['type'] = 'paragraph';
+          if (tagName === 'h2') btype = 'heading2';
+          else if (tagName === 'h3') btype = 'heading3';
+          else if (tagName === 'div' && text.length > 50) btype = 'paragraph';
+
+          bodyBlocks.push({ type: btype, text });
+        }
+      });
+    }
   }
 
   // ── Fallback image from og:image if no body images found ─────────────
@@ -391,7 +573,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
     }
   }
 
-  // ── Tags (article tags, not sidebar ones) ─────────────────────────────
+  // ── Tags ──────────────────────────────────────────────────────────────
   const tags: string[] = [];
   scope.find('a').each((_, el) => {
     const href = $(el).attr('href') || '';
@@ -409,6 +591,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData {
   console.log(`   ✅ Preprocess xong — ${bodyBlocks.length} blocks, ${images.length} ảnh, ${tags.length} hashtag`);
 
   return {
+    type: 'ARTICLE',
     url: raw.url,
     title,
     category,
