@@ -383,7 +383,7 @@ export default function DashboardLayout({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="w-full"
+            className="w-full relative z-10"
           >
             {children}
           </motion.div>

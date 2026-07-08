@@ -378,7 +378,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   };
 
   return (
-    <header className="flex items-center justify-between py-6 gap-3 sm:gap-6">
+    <header className="flex items-center justify-between py-6 gap-3 sm:gap-6 relative z-20">
       <div className="flex items-center flex-1 min-w-0">
         <button
           onClick={onMenuClick}

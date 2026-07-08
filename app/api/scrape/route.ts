@@ -169,7 +169,8 @@ export async function GET(request: NextRequest) {
       published_at: cleanData.published_at || '',
       views: cleanData.views || '',
       url: targetUrl,
-      body: cleanData.body || []
+      body: cleanData.body || [],
+      author_image_url: cleanData.author_image_url || ''
     });
   } catch (error: any) {
     console.error(`[Scrape API] Error scraping ${targetUrl}:`, error);

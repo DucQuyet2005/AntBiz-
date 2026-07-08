@@ -63,10 +63,145 @@ export interface ArticleData {
   images: ImageBlock[];
   body: BodyBlock[];
   full_text: string;
+  author_image_url?: string;
+}
+
+function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  let decoded = str
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#[xX]([a-fA-F0-9]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&apos;/g, "'");
+
+  // In case of double encoding (e.g. &amp;#243; -> &#243; -> ó)
+  if (decoded.includes('&')) {
+    decoded = decoded
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+      .replace(/&#[xX]([a-fA-F0-9]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&apos;/g, "'");
+  }
+  return decoded;
 }
 
 function cleanText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return decodeHtmlEntities(text.replace(/\s+/g, ' ').trim());
+}
+
+function isInvalidImage(src: string, alt?: string, title?: string): boolean {
+  if (!src) return true;
+  
+  const lowerSrc = src.toLowerCase();
+  const lowerAlt = alt ? alt.toLowerCase() : '';
+  const lowerTitle = title ? title.toLowerCase() : '';
+
+  // Check common logo, icons, avatars, trackers, and social media/promo patterns in URL
+  const invalidUrlPatterns = [
+    'logo', 'no-data', 'track-view', 'author', 'avatar', 'icon', 'banner', 'ads', 
+    'loading', 'placeholder', 'pixel', 'gif', 'spacer', 'facebook', 'twitter', 
+    'instagram', 'youtube', 'google-news', 'googlenews', 'google_news', 'news-google',
+    'rating', 'star', 'star-rating', 'widget', 'gift', 'avatar'
+  ];
+
+  if (invalidUrlPatterns.some(pattern => lowerSrc.includes(pattern))) {
+    return true;
+  }
+
+  // Check relative paths (often local icons/logos)
+  if (src.startsWith('/') && !src.startsWith('//')) {
+    return true;
+  }
+
+  // Check common logo, icons, avatars, promo patterns in Alt/Title text
+  const invalidTextPatterns = [
+    'logo', 'avatar', 'ảnh đại diện', 'icon', 'biểu tượng', 'banner', 'quảng cáo', 
+    'google news', 'theo dõi trên', 'thông tin tài khoản', 'tài khoản', 'bình luận',
+    'tặng sao'
+  ];
+
+  if (
+    invalidTextPatterns.some(pattern => lowerAlt.includes(pattern) || lowerTitle.includes(pattern))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isBoilerplateText(
+  text: string, 
+  author?: string, 
+  published_at?: string, 
+  category?: string, 
+  title?: string, 
+  description?: string
+): boolean {
+  if (!text) return true;
+  const clean = text.trim();
+  if (clean.length <= 15) return true; // Too short to be a meaningful paragraph
+
+  const lowerText = clean.toLowerCase();
+
+  // Duplicate checks as in original preprocess
+  const lowerTitle = title ? title.toLowerCase() : '';
+  const lowerAuthor = author ? author.toLowerCase() : '';
+  const lowerPub = published_at ? published_at.toLowerCase() : '';
+  const lowerDesc = description ? description.toLowerCase() : '';
+  const lowerCate = category ? category.toLowerCase().replace('#', '') : '';
+
+  if (
+    lowerText === lowerAuthor ||
+    lowerText === lowerPub ||
+    lowerText === lowerCate ||
+    lowerText === lowerTitle ||
+    (lowerTitle && lowerText.includes(lowerTitle)) ||
+    (lowerAuthor && lowerText.includes(lowerAuthor)) ||
+    (lowerDesc && (lowerDesc.includes(lowerText) || lowerText.includes(lowerDesc))) ||
+    clean.startsWith('#') ||
+    (category && lowerText === category.toLowerCase())
+  ) {
+    return true;
+  }
+
+  const boilerplateKeywords = [
+    'bạn chưa lưu nội dung nào',
+    'hãy khám phá và lưu lại',
+    'bình luận',
+    'chia sẻ ý kiến',
+    'gửi ý kiến',
+    'tặng sao',
+    'nạp thêm sao',
+    'cho tác giả',
+    'chuyển sao',
+    'tặng 0',
+    'thông tin tài khoản',
+    'đăng nhập',
+    'tạo tài khoản',
+    'quên mật khẩu',
+    'dòng sự kiện',
+    'tin cùng chuyên mục',
+    'tin liên quan',
+    'tải ứng dụng',
+    'theo dõi trên',
+    'nhận gói tin tức',
+    'đăng ký ngay',
+    'gửi đến bạn những tin',
+    'mời bạn quay lại bài viết',
+    'đã có lỗi xảy ra',
+    'không thành công',
+    'tặng sao không thành công'
+  ];
+
+  return boilerplateKeywords.some(keyword => lowerText.includes(keyword));
 }
 
 /**
@@ -407,6 +542,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
 
 
   const scope = findArticleScope($);
+  let author_image_url = '';
 
   // ── JSON-LD Schema Extraction ─────────────────────────
   let jsonLdCategory = '';
@@ -470,33 +606,44 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   // ── Category ──────────────────────
   let category = jsonLdCategory;
   if (!category) {
-    // Narrow scope: only check elements before the first H1, or within a specific category tag at the top of the article.
-    const h1 = $('h1').first();
-    const preTitleArea = h1.length ? h1.prevAll() : null;
-    
-    // Find category links in elements preceding the h1
-    if (preTitleArea && preTitleArea.length) {
-      const links = preTitleArea.find('a[href*="/category/"], a[href*="/the-loai/"], a[href*="/hashtag/"]');
-      links.each((_, el) => {
-        const text = cleanText($(el).text());
-        if (text && (text.startsWith('#') || $(el).attr('href')?.includes('/category/') || $(el).attr('href')?.includes('/the-loai/'))) {
-          category = text.startsWith('#') ? text : `#${text}`;
-          return false;
-        }
-      });
+    if (url.includes('dantri.com.vn')) {
+      const breadcrumbs = $('.breadcrumbs, .breadcrumb, .dt-breadcrumb');
+      if (breadcrumbs.length) {
+        const lastBreadcrumb = breadcrumbs.find('a, li').last();
+        category = cleanText(lastBreadcrumb.text());
+      }
+    } else if (url.includes('tuoitre.vn')) {
+      category = cleanText($('.detail-cate, .category').first().text());
     }
 
-    // Fallback: check elements that are inside a meta category class, but only within the article header area
     if (!category) {
-      const metaCategory = $('.article-category, .post-category, .news-category').first();
-      if (metaCategory.length) {
-        const text = cleanText(metaCategory.text());
-        if (text) category = text.startsWith('#') ? text : `#${text}`;
+      // Narrow scope: only check elements before the first H1, or within a specific category tag at the top of the article.
+      const h1 = $('h1').first();
+      const preTitleArea = h1.length ? h1.prevAll() : null;
+      
+      // Find category links in elements preceding the h1
+      if (preTitleArea && preTitleArea.length) {
+        const links = preTitleArea.find('a[href*="/category/"], a[href*="/the-loai/"], a[href*="/hashtag/"]');
+        links.each((_, el) => {
+          const text = cleanText($(el).text());
+          if (text && (text.startsWith('#') || $(el).attr('href')?.includes('/category/') || $(el).attr('href')?.includes('/the-loai/'))) {
+            category = text.startsWith('#') ? text : `#${text}`;
+            return false;
+          }
+        });
       }
+
+      // Fallback: check elements that are inside a meta category class, but only within the article header area
+      if (!category) {
+        const metaCategory = $('.article-category, .post-category, .news-category').first();
+        if (metaCategory.length) {
+          const text = cleanText(metaCategory.text());
+          if (text) category = text.startsWith('#') ? text : `#${text}`;
+        }
+      }
+    } else {
+      category = category.startsWith('#') ? category : `#${category}`;
     }
-    
-    // NOTE: No global search on scope.find("a[href^='/hashtag/']") or tags! 
-    // If not found in the immediate top area, category remains empty to prevent random grabs from sidebar/footer.
   }
 
   // ── Title ──────────────────────────────────────────────────────────────
@@ -518,10 +665,19 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   // ── Description / sapo ────────────────────────────────────────────────
   let description = jsonLdDescription;
   if (!description) {
-    // Try h4 (often used as sapo in Spotlight layouts)
-    const h4Text = cleanText($('h4').first().text());
-    description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
-      cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+    if (url.includes('dantri.com.vn')) {
+      description = cleanText($('h2.sapo, h2.sing-sapo, h2.detail-sapo').first().text()) || 
+                    cleanText($('h2').first().text());
+    } else if (url.includes('tuoitre.vn')) {
+      description = cleanText($('.detail-sapo, .sapo').first().text());
+    }
+
+    if (!description) {
+      // Try h4 (often used as sapo in Spotlight layouts)
+      const h4Text = cleanText($('h4').first().text());
+      description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
+        cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+    }
   }
 
   if (!description && raw.metadata?.description) {
@@ -531,23 +687,40 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   // ── Author ────────────────────────────────────────────────────────────
   let author = jsonLdAuthor;
   if (!author) {
-    // For Spotlight style: look for a parent with class space-x-3 or gap-3 containing date and author text
-    const authorP = $('.flex-row, .space-x-3').find('p.text-body-sm, span.font-semibold').first();
-    
-    author = cleanText(
-      authorP.text() ||
-      scope.find('span.font-bold.text-gray-900').first().text() ||
-      scope.find('a[href^="/authors/"] p').first().text() ||
-      $('span.font-bold.text-gray-900').first().text() ||
-      $('a[href^="/authors/"] p').first().text() || ''
-    );
+    if (url.includes('dantri.com.vn')) {
+      author = cleanText($('.author-name, .author, .tac-gia').first().text());
+    } else if (url.includes('tuoitre.vn')) {
+      author = cleanText($('.detail-author, .author-info, .author, .tac-gia').first().text());
+    }
+
+    if (!author) {
+      // For Spotlight style: look for a parent with class space-x-3 or gap-3 containing date and author text
+      const authorP = $('.flex-row, .space-x-3').find('p.text-body-sm, span.font-semibold').first();
+      
+      author = cleanText(
+        authorP.text() ||
+        scope.find('span.font-bold.text-gray-900').first().text() ||
+        scope.find('a[href^="/authors/"] p').first().text() ||
+        $('span.font-bold.text-gray-900').first().text() ||
+        $('a[href^="/authors/"] p').first().text() || ''
+      );
+    }
   }
 
   // ── Published date ────────────────────────────────────────────────────
-  let rawPublishedAt = cleanText(
-    scope.find('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() ||
-    $('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() || ''
-  );
+  let rawPublishedAt = '';
+  if (url.includes('dantri.com.vn')) {
+    rawPublishedAt = cleanText($('.author-time, .pub-date, .date').first().text());
+  } else if (url.includes('tuoitre.vn')) {
+    rawPublishedAt = cleanText($('.detail-time, .date, .time').first().text());
+  }
+
+  if (!rawPublishedAt) {
+    rawPublishedAt = cleanText(
+      scope.find('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() ||
+      $('.article-date, .post-date, .date, .time, time, p.text-gray-400, span.text-gray-500').first().text() || ''
+    );
+  }
   if (!rawPublishedAt) {
     rawPublishedAt = jsonLdPublishedAt;
   }
@@ -568,7 +741,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   const bodyBlocks: BodyBlock[] = [];
   const images: ImageBlock[] = [];
   const contentRoot = $('#html_content');
-  const isSpotlight = $('section').length > 2 && $('#html_content').length === 0;
+  const isSpotlight = (layout === 'dmagazine' || layout === 'megastory' || layout === 'tamdiem') && $('#html_content').length === 0;
   let spotlightFullText = '';
 
   if (contentRoot.length) {
@@ -622,16 +795,26 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
       // Normalize images inside section
       cleanSec('img').each((_, imgEl) => {
         const img = cleanSec(imgEl);
-        let src = img.attr('src') || '';
+        let src = img.attr('data-original') ||
+                  img.attr('data-src') ||
+                  img.attr('data-lazy-src') ||
+                  img.attr('data-cke-saved-src') ||
+                  img.attr('src') || '';
 
-        if (!src || src.startsWith('data:')) {
-          src = img.attr('data-src') || img.attr('data-lazy-src') || '';
+        if (src && src.startsWith('/') && !src.startsWith('//')) {
+          try {
+            const parsedUrl = new URL(raw.url);
+            src = `${parsedUrl.origin}${src}`;
+            img.attr('src', src);
+          } catch (e) {
+            // ignore
+          }
         }
 
-        if (src && src.startsWith('/')) {
-          const parsedUrl = new URL(raw.url);
-          src = `${parsedUrl.origin}${src}`;
-          img.attr('src', src);
+        const alt = cleanCaption(img.attr('alt'));
+        const titleAttr = cleanCaption(img.attr('title'));
+        if (isInvalidImage(src, alt, titleAttr)) {
+          return;
         }
 
         img.removeClass('opacity-0');
@@ -640,7 +823,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
 
         if (src) {
           seenImageUrls.add(src);
-          images.push({ url: src, caption: img.attr('alt') || '' });
+          images.push({ url: src, caption: alt });
         }
       });
 
@@ -687,9 +870,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     const seenTexts = new Set<string>();
     const seenImageUrls = new Set<string>();
 
-    scope.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
+    // Try to find the specific body container first to exclude header/footer/sidebar elements
+    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content').first();
+    if (!bodyContainer.length) {
+      bodyContainer = scope;
+    }
+
+    bodyContainer.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
       const tagName = (el as any).tagName || el.name;
       const cheerioEl = $(el);
+
+      // Skip related news sections (Các phần có hiển thị tin liên quan thì không crawl)
+      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan').length > 0;
+      if (isRelated) {
+        return;
+      }
 
       // Avoid matching parent elements whose children will be parsed individually to prevent duplicate text blocks
       if (tagName !== 'img' && cheerioEl.find('p, h2, h3').length > 0) {
@@ -710,37 +905,51 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
         return;
       }
 
-            if (tagName === 'img') {
-        const src = cheerioEl.attr('src') || '';
-        if (
-          !src ||
-          src.startsWith('/') ||
-          src.includes('logo') ||
-          src.includes('no-data') ||
-          src.includes('track-view') ||
-          src.includes('author')
-        ) {
+      if (tagName === 'img') {
+        let src = cheerioEl.attr('data-original') || 
+                  cheerioEl.attr('data-src') || 
+                  cheerioEl.attr('data-lazy-src') || 
+                  cheerioEl.attr('data-cke-saved-src') || 
+                  cheerioEl.attr('src') || '';
+
+        if (src && src.startsWith('/') && !src.startsWith('//')) {
+          try {
+            const parsedUrl = new URL(raw.url);
+            src = `${parsedUrl.origin}${src}`;
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        const alt = cleanCaption(cheerioEl.attr('alt'));
+        const titleAttr = cleanCaption(cheerioEl.attr('title'));
+
+        if (isInvalidImage(src, alt, titleAttr)) {
           return;
         }
+
+        // Check if this image is the author's avatar/portrait (Phân biệt cả ảnh Avatar tác giả)
+        const isAuthorImage = 
+          (alt && author && alt.toLowerCase() === author.toLowerCase()) ||
+          (titleAttr && author && titleAttr.toLowerCase() === author.toLowerCase()) ||
+          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="avatar"], .tac-gia').length > 0;
+
+        if (isAuthorImage) {
+          if (!author_image_url) {
+            author_image_url = src;
+            console.log(`   👤 Phát hiện ảnh đại diện tác giả: ${src}`);
+          }
+          return; // Skip adding to body images
+        }
+
         if (!seenImageUrls.has(src)) {
           seenImageUrls.add(src);
-          const caption = cleanCaption(cheerioEl.attr('alt'));
-          images.push({ url: src, caption });
-          bodyBlocks.push({ type: 'image', url: src, caption });
+          images.push({ url: src, caption: alt });
+          bodyBlocks.push({ type: 'image', url: src, caption: alt });
         }
       } else {
         const text = cleanText(cheerioEl.text());
-        if (!text || text.length <= 20) return;
-
-        // Skip boilerplate / author / date / category / bookmark text
-        if (
-          text.includes('Bạn chưa lưu nội dung nào') ||
-          text.includes('Hãy khám phá và lưu lại để xem') ||
-          text === author ||
-          text === published_at ||
-          text.startsWith('#') ||
-          text === category
-        ) {
+        if (isBoilerplateText(text, author, published_at, category, title, description)) {
           return;
         }
 
@@ -802,5 +1011,6 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     images,
     body: bodyBlocks,
     full_text,
+    author_image_url,
   };
 }

@@ -4,14 +4,52 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.7.4] - 2026-07-08
+
+### Added
+- **Cấu hình độc lập cho từng nền tảng đăng bài (Multi-platform Configuration)**:
+  - Tách biệt hoàn toàn trạng thái cấu hình (gồm Quy chuẩn/Platform Preset, Văn phong/Style Preset, Chọn nhanh/Quick Picks và Yêu cầu tùy chỉnh bổ sung bằng chữ/Custom instructions) cho từng nền tảng (`facebook`, `threads`, `instagram`).
+  - Tự động lưu cấu hình của nền tảng hiện tại vào một bảng ánh xạ (`platformConfigMap`) khi người dùng thay đổi các cấu hình đầu vào, và tải lại cấu hình tương ứng ngay khi người dùng chuyển đổi qua lại giữa các tab nền tảng.
+  - Hỗ trợ truyền đúng cấu hình độc lập của từng nền tảng khi sinh hàng loạt bài đăng AI ở Bước 1 và khi tạo lại (regenerate) một biến thể cụ thể ở Bước 2.
+- **Hoạt ảnh thu gọn cấu hình & Popup chỉnh sửa cấu hình ở Bước 2**:
+  - Tích hợp Framer Motion `layoutId="ai-creator-config-panel"` cho cả Panel cấu hình ở Bước 1 và Card cấu hình hoạt động ở Bước 2 để tạo hoạt ảnh thu gọn và "nhét" mượt mà vào khung nhỏ khi chuyển đổi giữa các bước.
+  - Khi click vào Card cấu hình hoạt động ở Bước 2 hoặc nút "Chỉnh sửa", một Popup Modal với thiết kế cao cấp và giao diện giống hệt cấu hình cũ sẽ hiển thị, cho phép người dùng thay đổi trực tiếp cấu hình AI mà không cần quay lại Bước 1.
+  - Hỗ trợ nút "Lưu & Tạo lại" trong Modal để lưu cấu hình mới và tự động tái tạo lại biến thể nội dung hiện tại bằng AI ngay lập tức, gia tăng trải nghiệm người dùng tiện lợi.
+
+### Fixed
+- Khắc phục lỗi hiển thị định dạng của bài viết cào về từ báo Tuổi Trẻ (ví dụ: `&#243;`, `&#224;`...): Tích hợp tính năng tự động giải mã các thực thể HTML (HTML entities) cả dạng đơn và dạng kép (double-encoded) trong hàm `cleanText` của bộ tiền xử lý cào dữ liệu ([preprocess.ts](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/lib/crawler/preprocess.ts)), giúp bài viết hiển thị đầy đủ tiếng Việt chuẩn và sạch đẹp trên giao diện xem trước.
+- Nâng cấp bộ lọc cào dữ liệu bài viết (đặc biệt là báo Tuổi Trẻ):
+  - Tự động giới hạn phạm vi cào nội dung bằng cách ưu tiên chọn các container chứa bài viết chính xác (`[itemprop="articleBody"]`, `.detail-content`, `#html_content`) để loại bỏ hoàn toàn các phần chân trang (footer), đầu trang (header), và điều hướng linh tinh bên ngoài.
+  - Hỗ trợ phân tích và trích xuất các thuộc tính ảnh lười (lazy load) phổ biến (`data-original`, `data-src`, `data-lazy-src`, `data-cke-saved-src`) để lấy đúng liên kết ảnh gốc thay vì ảnh placeholder mặc định (`tto_default_avatar.png`), đồng thời tự động chuẩn hóa các đường dẫn tương đối trước khi kiểm tra.
+  - Lọc bỏ các hình ảnh quảng cáo, logo thương hiệu, avatar mặc định, nút tặng sao, và biểu tượng mạng xã hội dựa trên tên tệp hình ảnh và văn bản chú thích (sử dụng hàm kiểm tra `isInvalidImage`).
+  - Loại trừ các đoạn văn bản thuộc hệ thống tặng sao (star donation system), thông báo lỗi kết nối, thông tin tài khoản, và luồng sự kiện/tin tức liên quan ở cuối bài viết (sử dụng hàm kiểm tra `isBoilerplateText`).
+- Sửa lỗi Footer che mất Dropdown khi mở rộng các hộp cấu hình (như "Yêu cầu tùy chỉnh"): Tải cấu trúc phân lớp xếp chồng (CSS stacking contexts) trong [layout.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/app/(dashboard)/layout.tsx) bằng cách thêm `relative z-10` vào container chứa nội dung trang `motion.div`, đồng thời thêm `relative z-20` vào [Header.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/Header.tsx) để giữ các menu thả xuống của Header luôn nằm trên cùng. Việc này giúp nâng nội dung trang và các dropdown cấu hình hiển thị đè lên trên Footer khi bị tràn dòng thay vì bị Footer (sau DOM flow) che khuất.
+- Sửa lỗi nút "Xác nhận" (Confirm) trong mục "Yêu cầu tùy chỉnh" không đóng được dropdown:
+  - Loại bỏ hoàn toàn hiệu ứng đua trạng thái (state race conditions) giữa tiến trình lưu và tải cấu hình khi người dùng chuyển đổi tab nền tảng bằng cách gán giá trị cấu hình trực tiếp vào `platformConfigMap` khi click chọn Preset, Tone, chọn nhanh thẻ gợi ý, hay gõ nhập chỉ thị thay vì sử dụng đồng thời hai hook `useEffect` dễ gây xung đột thứ tự cập nhật.
+  - Ngăn chặn hiện tượng nổi bọt sự kiện (event bubbling/propagation) khi click vào nút "Xác nhận" bằng cách gọi `e.stopPropagation()` và `e.preventDefault()`, đảm bảo sự kiện click không lan ra ngoài gây lỗi logic đóng mở dropdown.
+- Khắc phục lỗi Header đè lên giao diện cấu hình và nút "X" không phản hồi:
+  - Sử dụng `createPortal` từ `react-dom` để kết xuất Popup Modal của "Cấu hình AI hoạt động" trực tiếp tại `document.body` thoát khỏi cấu trúc phân lớp CSS của trang chính.
+  - Sắp xếp lại thứ tự bọc thẻ đúng chuẩn: Đặt `createPortal` ở ngoài cùng bao bọc thẻ `<AnimatePresence>` của Framer Motion. Việc này giúp sửa lỗi React Portal object không tương thích khi làm con trực tiếp của AnimatePresence (nguyên nhân khiến modal không thể hiển thị khi click), giúp Popup Modal hoạt động hoàn hảo và nút "X" phản hồi ngay lập tức.
+  - Gán chỉ số xếp chồng `z-[999]` cực cao cho lớp phủ Backdrop, giúp giải quyết triệt để lỗi Header che mất modal.
+- Loại bỏ hiệu ứng chuyển tiếp động (Resizing & Stretch Animations) của cấu hình Prompt ở cả Bước 1 và Bước 2:
+  - Gỡ bỏ hoàn toàn thuộc tính `layoutId="ai-creator-config-panel"`, các cấu hình chuyển tiếp `transition` và các wrapper `<motion.div>` khỏi Panel cấu hình AI ở Bước 1 và thẻ Cấu hình AI hoạt động ở Bước 2.
+  - Chuyển đổi các thẻ chứa này về dạng các thẻ `div` tĩnh chuẩn của React, giúp giao diện hiển thị tức thời và triệt tiêu hoàn toàn bất kỳ hiệu ứng giãn nở, co bóp hay co giãn méo mó chữ/nút nào khi chuyển đổi trạng thái.
+- Nâng cấp trải nghiệm tự động cuộn khi bấm "Xem Prompt":
+  - Thay thế cơ chế hẹn giờ `setTimeout` cũ dễ bị lệch bằng cách đăng ký trực tiếp hàm cuộn `.scrollIntoView({ behavior: 'smooth', block: 'end' })` vào sự kiện `onAnimationComplete` của container hiển thị.
+  - Nhờ đó, ngay khi hoạt ảnh mở rộng chiều cao của khung preview hoàn tất 100%, hệ thống mới kích hoạt cuộn, kéo thanh scrollbar của modal xuống tận cùng một cách mượt mà và chính xác tuyệt đối.
+
 ## [1.7.3] - 2026-07-07
 
 ### Changed
 - Đồng bộ hóa các biểu tượng và màu sắc của Facebook, Threads và Instagram trong phần "Tích hợp API" của trang Cài đặt ([SettingsView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/SettingsView.tsx)) khớp chính xác với thiết kế chuẩn của [ContentCalendarView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/ContentCalendarView.tsx). Thay thế logo Threads cũ có độ phân giải thấp bằng logo SVG 192x192 sắc nét và tô màu thương hiệu chính thức cho Facebook (`#1877F2`) và Instagram (`#E4405F`).
 - Cập nhật nhãn của nút quay lại trong Bước 3 thành "Quay lại Bước 2" (tiếng Việt) và "Back to Step 2" (tiếng Anh) để nhất quán với trải nghiệm quy trình 3 bước thay vì kiểm thử A/B chung chung.
 - Tối ưu hóa cấu hình build trong `next.config.mjs` để tắt kiểm tra kiểu TypeScript lúc build (`ignoreBuildErrors: true`). Điều này giúp tránh việc VPS dung lượng RAM thấp (ví dụ: 1GB) bị crash tiến trình biên dịch (lỗi "Killed" do Out-of-Memory).
+- Nâng cấp giao diện xem trước bài viết gốc (Article Preview Card) và các Modal chi tiết bài viết trong [AiCreatorView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/AiCreatorView.tsx) để tự động ẩn (không hiển thị) các trường thông tin bị thiếu/rỗng (như Tác giả, Ngày đăng, Lượt xem, Hashtags, Mô tả) thay vì hiển thị văn bản fallback mặc định (như "Không rõ", "Không có ngày", "0 lượt xem"), giúp tối ưu hóa giao diện khi cào dữ liệu từ báo Tuổi Trẻ, Dân Trí.
 
 ### Fixed
+- Khắc phục lỗi `TypeError: Failed to fetch` khi cào dữ liệu trên các môi trường thiếu thư viện trình duyệt của Playwright và chưa cấu hình Firecrawl API Key (như trên VPS). Thêm cơ chế tự động fallback sang phương thức cào dữ liệu thứ 3 là **Simple HTTP Fetch** (sử dụng User-Agent tiêu chuẩn để lấy HTML tĩnh) giúp nâng cao tính ổn định của tính năng cào báo Tuổi Trẻ, Dân Trí.
+- Khắc phục lỗi định dạng (format) hiển thị của tính năng xem trước bài viết cào về: (1) Sửa lỗi nhận diện sai layout Spotlight (`isSpotlight` luôn bằng `true` trên các bài viết tiêu chuẩn có chứa thẻ section) dẫn tới việc render các ô trống không có nội dung; (2) Tự động lọc bỏ các phần text trùng lặp của Tác giả, Ngày đăng, Tiêu đề, Sapo và Chuyên mục khỏi danh sách nội dung bài viết (`bodyBlocks`); (3) Tích hợp kiểm tra và tự động loại trừ không cào các box liên quan hoặc tin tức liên quan trên trang báo Tuổi Trẻ và Dân Trí.
+- Cập nhật logo của giao diện giả lập tờ báo (Mock Newspaper Header) trong [AiCreatorView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/AiCreatorView.tsx) tự động thay đổi động theo tên miền của bài viết cào về (Hiển thị logo **DÂN TRÍ** màu xanh lá đặc trưng cho link từ `dantri.com.vn`, logo **TuổiTrẻ** màu đỏ cho link từ `tuoitre.vn`, và logo mặc định **GócNhìnMới** cho các link khác). Đồng thời, cập nhật vòng tròn avatar của tác giả tự động lấy chữ cái đầu của tên tác giả (Initials) và đổi tông màu nền/chữ (xanh lá cho Dân Trí, đỏ cho Tuổi Trẻ) đồng bộ theo nhận diện thương hiệu. Thêm tính năng tự động phát hiện, trích xuất ảnh chân dung tác giả (nhận dạng qua tên tác giả hoặc các lớp CSS đặc trưng), di chuyển ảnh này vào vòng tròn avatar của tác giả trong UI và loại bỏ hoàn toàn nó khỏi danh sách ảnh/nội dung chính của bài viết (`bodyBlocks`).
 - Khắc phục lỗi thiếu gói thư viện `mammoth` tại route xử lý tài liệu `app/api/parse-doc/route.ts` bằng việc cài đặt và đồng bộ lại các package trong dự án, giúp tính năng phân tích file DOCX/tài liệu thông qua Gemini hoạt động bình thường.
 - Khắc phục lỗi nút "Xác nhận và Lên lịch" (Confirm & Schedule) không lên lịch cho toàn bộ các kênh đã chọn khi đăng bài đồng thời. Giờ đây, hệ thống hỗ trợ lên lịch song song cho tất cả các nền tảng hoạt động đã chọn ở Bước 1 thông qua `Promise.all`.
 - Sửa lỗi hệ thống "im lặng" (silent fail) khi có lỗi xảy ra trong quá trình lên lịch (như chọn sai giờ trong quá khứ). Các thông báo lỗi (`schedulingError`) giờ đây sẽ được hiển thị rõ ràng ngay phía trên nút Xác nhận thay vì bị ẩn dưới console hoặc không phản hồi.

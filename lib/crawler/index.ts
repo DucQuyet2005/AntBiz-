@@ -194,56 +194,75 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
   }
 
   // Cách dự phòng hoặc chạy trên Vercel: Dùng Firecrawl API
-  console.log(`\n📥 [Firecrawl API] Crawling: ${targetUrl}`);
-
   const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) {
-    throw new Error('Chưa cấu hình FIRECRAWL_API_KEY trong biến môi trường (.env.local hoặc Vercel Settings)');
+  if (apiKey) {
+    console.log(`\n📥 [Firecrawl API] Crawling: ${targetUrl}`);
+    try {
+      const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          url: targetUrl,
+          formats: ['html'], // Request HTML format
+          actions: [
+            { type: 'scroll', direction: 'down' },
+            { type: 'wait', milliseconds: 1500 }
+          ]
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const title = result.data.metadata?.title || 'Bài viết không tên';
+          const html = result.data.html || '';
+          console.log(`   ✅ [Firecrawl API] Crawl thành công — HTML dài ${html.length} ký tự`);
+          return {
+            url: targetUrl,
+            title,
+            contentHtml: html,
+            fullPageHtml: html,
+            crawledAt: new Date().toISOString(),
+            metadata: result.data.metadata,
+          };
+        }
+      }
+    } catch (firecrawlError: any) {
+      console.warn(`⚠️ [Firecrawl API] Lỗi cào dữ liệu, thử phương pháp Simple Fetch:`, firecrawlError.message || firecrawlError);
+    }
+  } else {
+    console.warn('⚠️ Chưa cấu hình FIRECRAWL_API_KEY, tự động chuyển sang Simple Fetch.');
   }
 
+  // Phương pháp cào dữ liệu thứ 3: Simple HTTP Fetch (đảm bảo cào được HTML tĩnh nếu Playwright và Firecrawl đều không hoạt động)
+  console.log(`\n📥 [Simple Fetch Fallback] Fetching: ${targetUrl}`);
   try {
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
+    const response = await fetch(targetUrl, {
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
       },
-      body: JSON.stringify({
-        url: targetUrl,
-        formats: ['html'], // Request HTML format
-        actions: [
-          { type: 'scroll', direction: 'down' },
-          { type: 'wait', milliseconds: 1500 }
-        ]
-      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Firecrawl API trả về lỗi: ${response.status} - ${errorText}`);
+      throw new Error(`Simple fetch failed with status: ${response.status}`);
     }
 
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'Yêu cầu crawl thất bại từ Firecrawl');
-    }
-
-    const title = result.data.metadata?.title || 'Bài viết không tên';
-    const html = result.data.html || '';
-
-    console.log(`   ✅ [Firecrawl API] Crawl thành công — HTML dài ${html.length} ký tự`);
+    const html = await response.text();
+    console.log(`   ✅ [Simple Fetch Fallback] Crawl thành công — HTML dài ${html.length} ký tự`);
 
     return {
       url: targetUrl,
-      title,
+      title: '',
       contentHtml: html,
       fullPageHtml: html,
       crawledAt: new Date().toISOString(),
-      metadata: result.data.metadata,
     };
-  } catch (error: any) {
-    console.error(`[Firecrawl API] Lỗi cào dữ liệu từ ${targetUrl}:`, error.message || error);
-    throw error;
+  } catch (simpleFetchError: any) {
+    console.error(`[Simple Fetch Fallback] Lỗi cào dữ liệu từ ${targetUrl}:`, simpleFetchError.message || simpleFetchError);
+    throw new Error(`Tất cả các phương pháp cào dữ liệu (Playwright, Firecrawl, Simple Fetch) đều thất bại.`);
   }
+
 }

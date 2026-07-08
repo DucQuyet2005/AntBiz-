@@ -601,8 +601,8 @@ export const EditableText = ({
         setEditState({ variantId, field });
       }}
       className={`group relative rounded-xl px-2 py-1.5 transition-all duration-200 border border-dashed ${isLocked
-          ? 'border-transparent cursor-default'
-          : 'border-transparent hover:border-primary bg-transparent hover:bg-primary/5 cursor-pointer'
+        ? 'border-transparent cursor-default'
+        : 'border-transparent hover:border-primary bg-transparent hover:bg-primary/5 cursor-pointer'
         } ${className}`}
     >
       <div className="flex flex-col w-full">
@@ -753,6 +753,40 @@ export default function AiCreatorView() {
   const [savedConfigs, setSavedConfigs] = useState<any[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string>('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+  // --- Platform-specific configurations map & syncing ---
+  const [platformConfigMap, setPlatformConfigMap] = useState<Record<string, {
+    presetId: string;
+    customText: string;
+    quickPicks: string[];
+    configId: string;
+  }>>({
+    facebook: { presetId: '', customText: '', quickPicks: [], configId: '' },
+    threads: { presetId: '', customText: '', quickPicks: [], configId: '' },
+    instagram: { presetId: '', customText: '', quickPicks: [], configId: '' },
+  });
+
+  const platformConfigMapRef = useRef(platformConfigMap);
+  useEffect(() => {
+    platformConfigMapRef.current = platformConfigMap;
+  }, [platformConfigMap]);
+
+  const promptPreviewRef = useRef<HTMLDivElement>(null);
+
+
+  // Load platform-specific configuration when switching platforms
+  useEffect(() => {
+    if (selectedPlatform) {
+      const config = platformConfigMap[selectedPlatform];
+      if (config) {
+        setSelectedPlatformPresetId(config.presetId);
+        setCustomPromptText(config.customText);
+        setSelectedQuickPicks(config.quickPicks);
+        setSelectedConfigId(config.configId);
+      }
+    }
+  }, [selectedPlatform]);
 
   // --- Redesigned Brand Style Modal States ---
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
@@ -1151,9 +1185,25 @@ export default function AiCreatorView() {
 
     const streamVariant = async (variantId: string, variantIndex: number, groupId: string, platform: 'facebook' | 'threads' | 'instagram') => {
       const abortSignal = abortControllerRef.current?.signal;
-      // API will handle merging everything using platformPresetId and stylePresetId.
-      // We only send the user's custom instructions (textarea) plus variant modifiers.
-      const customPromptPayload = buildVariantPrompt(variantIndex, customPromptText || resolvedActivePrompt || '');
+
+      const platformConfig = platformConfigMap[platform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
+      let finalCustomText = platformConfig.customText.trim();
+      const requirementsList = [
+        { id: 'cta', name: 'Thêm kêu gọi hành động' },
+        { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
+        { id: 'emoji', name: 'Sử dụng nhiều emoji' },
+        { id: 'stats', name: 'Tập trung vào số liệu' },
+        { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
+      ];
+      if (platformConfig.quickPicks.length > 0) {
+        const picksText = platformConfig.quickPicks.map(id => requirementsList.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+        finalCustomText = finalCustomText
+          ? `${finalCustomText} (Yêu cầu nhanh: ${picksText})`
+          : `Yêu cầu nhanh: ${picksText}`;
+      }
+
+      const basePrompt = finalCustomText || resolvedActivePrompt || '';
+      const customPromptPayload = buildVariantPrompt(variantIndex, basePrompt);
       try {
         const res = await fetch('/api/captions/generate', {
           method: 'POST',
@@ -1166,8 +1216,8 @@ export default function AiCreatorView() {
             variantGroupId: groupId,
             variantIndex,
             model: selectedModel,
-            stylePresetId: selectedConfigId || 'none',
-            platformPresetId: selectedPlatformPresetId || undefined,
+            stylePresetId: platformConfig.configId || 'none',
+            platformPresetId: platformConfig.presetId || undefined,
             ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
               ? { promptId: selectedPrompt.id }
               : {}),
@@ -1311,7 +1361,24 @@ export default function AiCreatorView() {
     const groupId = variantGroupId || crypto.randomUUID();
     if (!variantGroupId) setVariantGroupId(groupId);
 
-    const customPromptText = buildVariantPrompt(variantIndex, activePrompt);
+    const platformConfig = platformConfigMap[selectedPlatform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
+    let finalCustomText = platformConfig.customText.trim();
+    const requirementsList = [
+      { id: 'cta', name: 'Thêm kêu gọi hành động' },
+      { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
+      { id: 'emoji', name: 'Sử dụng nhiều emoji' },
+      { id: 'stats', name: 'Tập trung vào số liệu' },
+      { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
+    ];
+    if (platformConfig.quickPicks.length > 0) {
+      const picksText = platformConfig.quickPicks.map(id => requirementsList.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+      finalCustomText = finalCustomText
+        ? `${finalCustomText} (Yêu cầu nhanh: ${picksText})`
+        : `Yêu cầu nhanh: ${picksText}`;
+    }
+
+    const basePrompt = finalCustomText || activePrompt || '';
+    const customPromptText = buildVariantPrompt(variantIndex, basePrompt);
 
     try {
       const res = await fetch('/api/captions/generate', {
@@ -1326,8 +1393,8 @@ export default function AiCreatorView() {
           variantIndex,
           oldCaptionId,
           model: selectedModel,
-          stylePresetId: selectedConfigId || 'none',
-          platformPresetId: selectedPlatformPresetId || undefined,
+          stylePresetId: platformConfig.configId || 'none',
+          platformPresetId: platformConfig.presetId || undefined,
           ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
             ? { promptId: selectedPrompt.id }
             : {}),
@@ -2184,7 +2251,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         const presets = json.data || [];
         setPlatformPresets(presets);
 
-        if (presets.length > 0) {
+        const currentSaved = platformConfigMapRef.current[platform]?.presetId;
+        if (currentSaved) {
+          setSelectedPlatformPresetId(currentSaved);
+        } else if (presets.length > 0) {
           const defaultPreset = presets.find((p: any) => p.is_default && p.user_id)
             || presets.find((p: any) => p.user_id)
             || presets.find((p: any) => p.is_default && !p.user_id)
@@ -2216,6 +2286,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         const config = json.data;
         if (config) {
           setSelectedConfigId(config.id);
+          setPlatformConfigMap(prev => ({
+            facebook: { ...prev.facebook, configId: config.id },
+            threads: { ...prev.threads, configId: config.id },
+            instagram: { ...prev.instagram, configId: config.id },
+          }));
           if (config.params) {
             if (config.params.tone) setTone(config.params.tone);
             if (config.params.length) setLength(config.params.length);
@@ -2716,7 +2791,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     tags: '',
     imageUrl: '',
     full_text: '',
-    body: [] as any[]
+    body: [] as any[],
+    author_image_url: '',
+    url: ''
   });
 
   // Input Ingestion Mode selection state (crawl vs manual)
@@ -3196,6 +3273,80 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  const renderNewspaperLogo = (size: 'sm' | 'lg' = 'sm') => {
+    const isDanTri = url.includes('dantri.com.vn') || (postData?.url && postData.url.includes('dantri.com.vn'));
+    const isTuoiTre = url.includes('tuoitre.vn') || (postData?.url && postData.url.includes('tuoitre.vn'));
+
+    let logoText = 'GócNhìnMới';
+    let subText = language === 'vi' ? 'Mạng xã hội' : 'Social Network';
+    let colorClass = 'text-red-650';
+
+    if (isDanTri) {
+      logoText = 'DÂN TRÍ';
+      subText = language === 'vi' ? 'Báo điện tử' : 'E-Newspaper';
+      colorClass = 'text-[#007f3f]';
+    } else if (isTuoiTre) {
+      logoText = 'TuổiTrẻ';
+      subText = language === 'vi' ? 'Tin nóng mỗi ngày' : 'Daily News';
+      colorClass = 'text-[#E43A45]';
+    }
+
+    if (size === 'lg') {
+      return (
+        <div className="flex flex-col gap-0.5 select-none">
+          <span className={`${colorClass} font-black text-lg tracking-tighter uppercase font-sans`}>
+            {logoText}
+          </span>
+          <span className="text-[8px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+            {subText}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-0.5 select-none">
+        <span className={`${colorClass} font-black text-base tracking-tighter uppercase font-sans`}>
+          {logoText}
+        </span>
+        <span className="text-[7px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
+          {subText}
+        </span>
+      </div>
+    );
+  };
+
+  const getAvatarProps = () => {
+    const isDanTri = url.includes('dantri.com.vn') || (postData?.url && postData.url.includes('dantri.com.vn'));
+    const isTuoiTre = url.includes('tuoitre.vn') || (postData?.url && postData.url.includes('tuoitre.vn'));
+
+    let bgClass = 'bg-red-100 dark:bg-red-955/40';
+    let textClass = 'text-red-650 dark:text-red-400';
+    let defaultInit = 'CD';
+
+    if (isDanTri) {
+      bgClass = 'bg-[#E6F4EA] dark:bg-emerald-955/40';
+      textClass = 'text-[#007f3f] dark:text-emerald-450';
+      defaultInit = 'DT';
+    } else if (isTuoiTre) {
+      bgClass = 'bg-[#FCE8E6] dark:bg-rose-955/40';
+      textClass = 'text-[#E43A45] dark:text-rose-450';
+      defaultInit = 'TT';
+    }
+
+    let initials = defaultInit;
+    if (postData.author) {
+      const parts = postData.author.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      } else if (parts.length === 1 && parts[0]) {
+        initials = parts[0].slice(0, 2).toUpperCase();
+      }
+    }
+
+    return { bgClass, textClass, initials, imageUrl: postData.author_image_url || '' };
+  };
+
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     if (!url || !url.trim()) {
@@ -3218,7 +3369,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
             full_text: data.full_text || data.description || '',
-            body: data.body || []
+            body: data.body || [],
+            author_image_url: data.author_image_url || '',
+            url: data.url || ''
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -3322,7 +3475,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             tags: data.tags || '',
             imageUrl: data.imageUrl || '',
             full_text: data.full_text || data.description || '',
-            body: data.body || []
+            body: data.body || [],
+            author_image_url: data.author_image_url || '',
+            url: data.url || ''
           };
           setPostData(updatedPostData);
           setArticleId(data.id || null);
@@ -3451,7 +3606,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   const ensureCaptionDraft = async (platform: SocialPlatform) => {
     const activeId = selectedVariantId || (variants.length > 0 ? variants[0].id : 'A');
     const selectedVariant = variants.find((v) => v.id === activeId) || variants[0];
-    
+
     if (!selectedVariant) {
       throw new Error(
         language === 'vi'
@@ -3586,10 +3741,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       const schedule = scheduleByPlatform[platform];
       const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
       if (scheduledAt.getTime() <= Date.now()) {
-        const errorMsg = language === 'vi' 
+        const errorMsg = language === 'vi'
           ? `Thời gian lên lịch của ${platform === 'facebook' ? 'Facebook' : platform === 'threads' ? 'Threads' : 'Instagram'} phải ở tương lai.`
           : `Schedule time for ${platform} must be in the future.`;
-        
+
         setSchedulingError(errorMsg);
         return;
       }
@@ -3608,7 +3763,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       await Promise.all(activePlatforms.map(async (platform) => {
         const schedule = scheduleByPlatform[platform];
         const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
-        
+
         const draftCaptionId = await ensureCaptionDraft(platform);
 
         // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
@@ -3643,6 +3798,300 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     } finally {
       setIsSchedulingLoading(false);
     }
+  };
+
+  const renderAiConfigForm = (isModal: boolean = false) => {
+    return (
+      <div className="flex flex-col gap-4 text-left">
+        {/* Platform tabs */}
+        <div className="flex gap-1.5 bg-slate-100/80 dark:bg-zinc-900/80 rounded-2xl p-1.5 mb-2">
+          {selectedPlatforms.map(pid => {
+            const pm = [
+              { id: 'facebook', label: 'Facebook', emoji: '🔵', bgColor: 'bg-blue-600' },
+              { id: 'threads', label: 'Threads', emoji: '💬', bgColor: 'bg-zinc-900' },
+              { id: 'instagram', label: 'Instagram', emoji: '📷', bgColor: 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600' }
+            ].find(p => p.id === pid)!;
+            const isActive = selectedPlatform === pid;
+            return (
+              <button
+                key={pid}
+                type="button"
+                onClick={() => setSelectedPlatform(pid as any)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${isActive
+                  ? 'bg-white dark:bg-slate-800 shadow-md border-primary/20 dark:border-primary/30 text-primary dark:text-white ring-1 ring-primary/20 scale-[1.02] z-10'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 bg-transparent scale-100'
+                  }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  {pm.id === 'facebook' && <Facebook size={14} className={`transition-colors ${isActive ? 'fill-primary text-primary' : 'fill-slate-400 text-slate-400'}`} />}
+                  {pm.id === 'threads' && <ThreadsIcon size={14} className={`transition-colors ${isActive ? 'text-primary dark:text-white' : 'text-slate-400'}`} />}
+                  {pm.id === 'instagram' && <Instagram size={14} className={`transition-colors ${isActive ? 'text-primary dark:text-primary-hover' : 'text-slate-400'}`} />}
+                  {pm.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Platform-specific hint */}
+        {(() => {
+          const hints = {
+            facebook: {
+              vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+              en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
+            },
+            threads: {
+              vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+              en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
+            },
+            instagram: {
+              vi: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
+              en: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.'
+            }
+          };
+          const hint = hints[selectedPlatform] || hints.facebook;
+          return (
+            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-zinc-900/60 px-4 py-3 rounded-xl border border-slate-100 dark:border-zinc-800 leading-relaxed">
+              💡 {language === 'vi' ? hint.vi : hint.en}
+            </div>
+          );
+        })()}
+
+        {/* 1. Preset Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => { setPresetOpen(!presetOpen); setToneOpen(false); setInstructionOpen(false); }}
+            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-755 dark:text-slate-350 hover:border-primary/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+          >
+            <span className="flex items-center gap-2">
+              ⚙️ {language === 'vi' ? 'Quy chuẩn: ' : 'Preset: '}
+              <span className="font-bold text-primary">
+                {platformPresets.find(p => p.id === selectedPlatformPresetId)?.name || 'Default'}
+              </span>
+            </span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${presetOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {presetOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 flex flex-col p-1.5 gap-1 max-h-48 overflow-y-auto custom-scrollbar"
+              >
+                {platformPresets.map(preset => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlatformPresetId(preset.id);
+                      setPresetOpen(false);
+                      setPlatformConfigMap(prev => ({
+                        ...prev,
+                        [selectedPlatform]: { ...prev[selectedPlatform], presetId: preset.id }
+                      }));
+                    }}
+                    className={`w-full text-left p-2.5 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer flex flex-col gap-0.5 ${selectedPlatformPresetId === preset.id
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                      : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                      }`}
+                  >
+                    <span className="font-bold">{preset.name}{!preset.user_id ? ` (${language === 'vi' ? 'Hệ thống' : 'System'})` : ''}</span>
+                    <span className="text-[10px] opacity-75 line-clamp-1">{preset.rules}</span>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 2. Tone Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => { setToneOpen(!toneOpen); setPresetOpen(false); setInstructionOpen(false); }}
+            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-355 hover:border-primary/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+          >
+            <span className="flex items-center gap-2">
+              🎭 {language === 'vi' ? 'Văn phong: ' : 'Brand Tone: '}
+              <span className="font-bold text-primary">
+                {savedConfigs.find(cfg => cfg.id === selectedConfigId)?.name || (language === 'vi' ? 'Tự do (Không áp dụng)' : 'None')}
+              </span>
+            </span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${toneOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {toneOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 flex flex-col p-1.5 gap-1 max-h-48 overflow-y-auto custom-scrollbar"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedConfigId('');
+                    setToneOpen(false);
+                    setPlatformConfigMap(prev => ({
+                      ...prev,
+                      [selectedPlatform]: { ...prev[selectedPlatform], configId: '' }
+                    }));
+                  }}
+                  className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${selectedConfigId === ''
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                    : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                    }`}
+                >
+                  {language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}
+                </button>
+                {savedConfigs.map(cfg => (
+                  <button
+                    key={cfg.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedConfigId(cfg.id);
+                      setToneOpen(false);
+                      setPlatformConfigMap(prev => ({
+                        ...prev,
+                        [selectedPlatform]: { ...prev[selectedPlatform], configId: cfg.id }
+                      }));
+                    }}
+                    className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${selectedConfigId === cfg.id
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                      : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                      }`}
+                  >
+                    {cfg.name}
+                  </button>
+                ))}
+                <div className="border-t border-slate-100 dark:border-zinc-800 mt-1 pt-1.5 px-1.5 flex justify-end">
+                  <button type="button" onClick={() => { setIsStyleModalOpen(true); setToneOpen(false); if (isModal) setIsConfigModalOpen(false); }}
+                    className="text-[10px] font-bold text-primary hover:text-white bg-primary/10 hover:bg-primary px-3 py-1 rounded-lg transition-all cursor-pointer border-0"
+                  >{language === 'vi' ? 'Quản lý văn phong' : 'Manage Styles'}</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 3. Instructions Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => { setInstructionOpen(!instructionOpen); setPresetOpen(false); setToneOpen(false); }}
+            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-755 dark:text-slate-350 hover:border-primary/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+          >
+            <span className="flex items-center gap-2">
+              ✍️ {language === 'vi' ? 'Yêu cầu tùy chỉnh' : 'Custom Instructions'}
+              {(selectedQuickPicks.length > 0 || customPromptText) && (
+                <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">
+                  {selectedQuickPicks.length + (customPromptText ? 1 : 0)}
+                </span>
+              )}
+            </span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${instructionOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {instructionOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 p-4 flex flex-col gap-3"
+              >
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-widest">{language === 'vi' ? 'CHỌN NHANH' : 'QUICK PICKS'}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'cta', name: 'Thêm kêu gọi hành động' },
+                    { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
+                    { id: 'emoji', name: 'Sử dụng nhiều emoji' },
+                    { id: 'stats', name: 'Tập trung vào số liệu' },
+                    { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
+                  ].map(req => {
+                    const isSel = selectedQuickPicks.includes(req.id);
+                    return (
+                      <button
+                        key={req.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedQuickPicks(prev => {
+                            const nextPicks = prev.includes(req.id) ? prev.filter(x => x !== req.id) : [...prev, req.id];
+                            setPlatformConfigMap(mapPrev => ({
+                              ...mapPrev,
+                              [selectedPlatform]: { ...mapPrev[selectedPlatform], quickPicks: nextPicks }
+                            }));
+                            return nextPicks;
+                          });
+                        }}
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${isSel
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-zinc-700 hover:border-primary/40'
+                          }`}
+                      >
+                        {req.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <textarea
+                  value={customPromptText}
+                  onChange={e => {
+                    const text = e.target.value;
+                    setCustomPromptText(text);
+                    setPlatformConfigMap(prev => ({
+                      ...prev,
+                      [selectedPlatform]: { ...prev[selectedPlatform], customText: text }
+                    }));
+                  }}
+                  rows={2}
+                  placeholder={language === 'vi' ? 'Chỉ dẫn thêm bằng chữ...' : 'Extra text instructions...'}
+                  className="w-full bg-slate-50 dark:bg-zinc-955 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 text-xs leading-relaxed outline-none resize-none focus:ring-1 focus:ring-primary/50"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setInstructionOpen(false);
+                  }}
+                  className="w-full bg-primary text-white py-2 text-xs font-bold rounded-xl border-0 cursor-pointer active:scale-95 transition-all"
+                >
+                  {language === 'vi' ? 'Xác nhận' : 'Confirm'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 4. Prompt Preview Accordion */}
+        <div className="relative" ref={promptPreviewRef}>
+          <button
+            type="button"
+            onClick={() => { setIsPromptPreviewOpen(!isPromptPreviewOpen); setPresetOpen(false); setToneOpen(false); setInstructionOpen(false); }}
+            className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-355 hover:border-primary/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
+          >
+            <span className="flex items-center gap-2">
+              👁️ {language === 'vi' ? 'Xem Prompt cho nền tảng này' : 'View prompt for this platform'}
+            </span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${isPromptPreviewOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {isPromptPreviewOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "tween", ease: "easeInOut", duration: 0.25 }}
+                onAnimationComplete={() => {
+                  promptPreviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }}
+                className="w-full mt-2 bg-slate-50/50 dark:bg-zinc-955/30 border border-slate-200/60 dark:border-zinc-800/60 rounded-2xl p-4 overflow-hidden"
+              >
+                <pre className="text-slate-700 dark:text-slate-350 text-[10.5px] leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-[250px] overflow-y-auto custom-scrollbar font-mono">
+                  {compilePromptPreview()}
+                </pre>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -3780,8 +4229,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       setInputMode('crawl');
                     }}
                     className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'crawl'
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'text-text-muted hover:text-text bg-transparent'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text-muted hover:text-text bg-transparent'
                       }`}
                   >
                     <Globe size={13} />
@@ -3793,8 +4242,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       setInputMode('manual');
                     }}
                     className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'manual'
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'text-text-muted hover:text-text bg-transparent'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text-muted hover:text-text bg-transparent'
                       }`}
                   >
                     <Mic size={13} />
@@ -3937,14 +4386,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                     {/* Mock Newspaper Header */}
                     <div className="bg-white/95 dark:bg-zinc-950/95 border-b border-slate-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between shrink-0">
-                      <div className="flex flex-col gap-0.5 select-none">
-                        <span className="text-red-650 font-black text-base tracking-tighter uppercase font-sans">
-                          GócNhìnMới
-                        </span>
-                        <span className="text-[7px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
-                          Mạng xã hội
-                        </span>
-                      </div>
+                      {renderNewspaperLogo('sm')}
                       <div className="flex items-center gap-1.5 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-full w-48 select-none">
                         <Search size={10} className="text-slate-400" />
                         <span className="text-[9px] font-bold text-slate-450 dark:text-zinc-500">Tìm kiếm...</span>
@@ -4008,21 +4450,40 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         )}
 
                         {/* Author Info */}
-                        <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
-                          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-955/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0">
-                            {postData.author ? postData.author.slice(0, 2) : 'CD'}
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                              {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
-                            </span>
-                            <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
-                              <span>{postData.published_at || new Date().toLocaleDateString()}</span>
-                              <span>•</span>
-                              <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                        {(postData.author || postData.published_at || postData.views) && (
+                          <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
+                            {postData.author && (() => {
+                              const { bgClass, textClass, initials, imageUrl } = getAvatarProps();
+                              return (
+                                <div className={`w-8 h-8 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
+                                  {imageUrl ? (
+                                    <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            <div className="flex flex-col gap-0.5">
+                              {postData.author && (
+                                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                                  {postData.author}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
+                                {postData.published_at && (
+                                  <span>{postData.published_at}</span>
+                                )}
+                                {postData.published_at && postData.views && (
+                                  <span>•</span>
+                                )}
+                                {postData.views && (
+                                  <span>{postData.views} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Sections & Blocks rendering */}
                         <div className="article-body-sections text-slate-700 dark:text-slate-350 min-h-[150px]">
@@ -4369,8 +4830,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   }
                                 }}
                                 className={`border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all min-h-[120px] ${isAudioDragging
-                                    ? 'border-primary bg-primary/10 text-primary scale-[1.02]'
-                                    : 'border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 text-text-muted hover:text-primary hover:bg-primary/5'
+                                  ? 'border-primary bg-primary/10 text-primary scale-[1.02]'
+                                  : 'border-slate-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-black/20 text-text-muted hover:text-primary hover:bg-primary/5'
                                   }`}
                               >
                                 <UploadCloud size={24} className={isAudioDragging ? "text-primary animate-bounce" : "opacity-80"} />
@@ -4490,8 +4951,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                         className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isDraggingFile
-                            ? 'border-primary bg-primary/5'
-                            : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-slate-200 dark:border-zinc-800 bg-[#F8F9FE] dark:bg-black/40 hover:bg-primary/5 hover:border-primary/40'
                           }`}
                       >
                         <UploadCloud size={28} className="text-text-muted opacity-80" />
@@ -4845,31 +5306,42 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </motion.div>
               )}
 
-              {/* 2. Active AI Configuration Summary - ONLY in Step 2 */}
               {step === 2 && (
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-5 shadow-sm flex flex-col gap-3 font-sans">
+                <div
+                  onClick={() => setIsConfigModalOpen(true)}
+                  className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-5 shadow-sm flex flex-col gap-3 font-sans cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group"
+                >
                   <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-2">
                     <span className="text-[10px] font-black text-text-muted uppercase tracking-wider flex items-center gap-1.5">
                       ⚙️ {language === 'vi' ? 'Cấu hình AI hoạt động' : 'Active AI Config'}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
-                      className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2.5 py-1 rounded transition-all cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsConfigModalOpen(true);
+                      }}
+                      className="text-[9px] font-extrabold text-primary hover:text-white bg-primary/10 hover:bg-primary px-2.5 py-1 rounded transition-all cursor-pointer border-0"
                     >
                       {language === 'vi' ? 'Chỉnh sửa' : 'Edit'}
                     </button>
                   </div>
                   <div className="flex flex-col gap-2 text-[11px] font-medium text-text">
                     <div>
-                      <span className="text-text-muted">Nền tảng:</span> <span className="font-extrabold text-primary uppercase">{selectedPlatform}</span>
+                      <span className="text-text-muted">{language === 'vi' ? 'Nền tảng:' : 'Platform:'}</span>{' '}
+                      <span className="font-extrabold text-primary uppercase">{selectedPlatform}</span>
                     </div>
                     <div>
-                      <span className="text-text-muted">Văn phong:</span> <span className="font-bold">{selectedConfigId && selectedConfigId !== 'none' ? savedConfigs.find(c => c.id === selectedConfigId)?.name : 'Tự do'}</span>
+                      <span className="text-text-muted">{language === 'vi' ? 'Văn phong:' : 'Brand Tone:'}</span>{' '}
+                      <span className="font-bold">
+                        {selectedConfigId && selectedConfigId !== 'none'
+                          ? savedConfigs.find((c) => c.id === selectedConfigId)?.name
+                          : language === 'vi' ? 'Tự do' : 'None'}
+                      </span>
                     </div>
 
                     {activePrompt && (
-                      <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg border border-gray-100 dark:border-white/5 italic text-text-muted text-[10px] mt-1 line-clamp-2">
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg border border-gray-100 dark:border-white/5 italic text-text-muted text-[10px] mt-1 line-clamp-2 group-hover:text-primary transition-colors">
                         "Yêu cầu: {activePrompt}"
                       </div>
                     )}
@@ -4927,39 +5399,51 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         {postData.title || (language === 'vi' ? 'Chưa có tiêu đề' : 'Untitled Post')}
                       </h4>
 
-                      <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
-                        <span className="flex items-center gap-1">
-                          <User size={12} />
-                          {postData.author || (language === 'vi' ? 'Không rõ' : 'Unknown')}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} />
-                          {postData.published_at || (language === 'vi' ? 'Không có ngày' : 'No Date')}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
-                        {postData.description || (language === 'vi' ? 'Không có mô tả.' : 'No description provided.')}
-                      </p>
-
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {postData.tags.split(',').map((tag, idx) => {
-                          const trimmed = tag.trim();
-                          if (!trimmed) return null;
-                          return (
-                            <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
-                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                      {(postData.author || postData.published_at) && (
+                        <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold">
+                          {postData.author && (
+                            <span className="flex items-center gap-1">
+                              <User size={12} />
+                              {postData.author}
                             </span>
-                          );
-                        })}
-                      </div>
+                          )}
+                          {postData.published_at && (
+                            <span className="flex items-center gap-1">
+                              <Calendar size={12} />
+                              {postData.published_at}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                      <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
-                        <span className="flex items-center gap-1.5">
-                          <Eye size={14} className="text-amber-500" />
-                          {postData.views || (language === 'vi' ? '0 lượt xem' : '0 views')}
-                        </span>
-                      </div>
+                      {postData.description && (
+                        <p className="text-xs text-text-muted leading-relaxed font-medium line-clamp-3">
+                          {postData.description}
+                        </p>
+                      )}
+
+                      {postData.tags && postData.tags.trim() && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {postData.tags.split(',').map((tag, idx) => {
+                            const trimmed = tag.trim();
+                            if (!trimmed) return null;
+                            return (
+                              <span key={idx} className="bg-[#F3F4FD] text-primary px-2.5 py-1 rounded-full text-[10px] font-bold">
+                                {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {postData.views && (
+                        <div className="border-t border-gray-100 pt-3 mt-1 flex items-center justify-between text-[11px] font-bold text-text-muted">
+                          <span className="flex items-center gap-1.5">
+                            <Eye size={14} className="text-amber-500" />
+                            {postData.views}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4967,7 +5451,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
               {/* ═══ AI ENGINE CONTROL PANEL (Step 1 only) ═══ */}
               {step === 1 && (
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+                <div
+                  className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-4"
+                >
                   {/* == Step Navigator == */}
                   <div className="flex border-b border-gray-200 dark:border-white/5 pb-0 mb-4">
                     <button
@@ -5060,8 +5546,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                 });
                               }}
                               className={`w-full py-4 px-4 rounded-2xl border-2 text-left transition-all cursor-pointer bg-white dark:bg-slate-900 flex items-center justify-between gap-3 ${isSel
-                                  ? `${pm.borderActive} ring-2 ${pm.ringActive}`
-                                  : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-650'
+                                ? `${pm.borderActive} ring-2 ${pm.ringActive}`
+                                : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-650'
                                 }`}
                             >
                               <span className="flex items-center gap-3">
@@ -5101,7 +5587,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                   {subStep === 2 && (
                     <div className="flex flex-col gap-4">
-                      {/* Platform tabs */}
+                      {renderAiConfigForm()}
+                      {false && (
+                        <>
+                          {/* Platform tabs */}
                       <div className="flex gap-1.5 bg-slate-100/80 dark:bg-zinc-900/80 rounded-2xl p-1.5 mb-2">
                         {selectedPlatforms.map(pid => {
                           const pm = [
@@ -5116,8 +5605,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               type="button"
                               onClick={() => setSelectedPlatform(pid as any)}
                               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${isActive
-                                  ? 'bg-white dark:bg-slate-800 shadow-md border-primary/20 dark:border-primary/30 text-primary dark:text-white ring-1 ring-primary/20 scale-[1.02] z-10'
-                                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 bg-transparent scale-100'
+                                ? 'bg-white dark:bg-slate-800 shadow-md border-primary/20 dark:border-primary/30 text-primary dark:text-white ring-1 ring-primary/20 scale-[1.02] z-10'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/5 bg-transparent scale-100'
                                 }`}
                             >
                               <span className="flex items-center gap-1.5">
@@ -5180,10 +5669,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                 <button
                                   key={preset.id}
                                   type="button"
-                                  onClick={() => { setSelectedPlatformPresetId(preset.id); setPresetOpen(false); }}
+                                  onClick={() => {
+                                    setSelectedPlatformPresetId(preset.id);
+                                    setPresetOpen(false);
+                                    setPlatformConfigMap(prev => ({
+                                      ...prev,
+                                      [selectedPlatform]: { ...prev[selectedPlatform], presetId: preset.id }
+                                    }));
+                                  }}
                                   className={`w-full text-left p-2.5 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer flex flex-col gap-0.5 ${selectedPlatformPresetId === preset.id
-                                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-                                      : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                                    : 'text-slate-700 dark:text-slate-355 bg-transparent'
                                     }`}
                                 >
                                   <span className="font-bold">{preset.name}{!preset.user_id ? ` (${language === 'vi' ? 'Hệ thống' : 'System'})` : ''}</span>
@@ -5218,10 +5714,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             >
                               <button
                                 type="button"
-                                onClick={() => { setSelectedConfigId(''); setToneOpen(false); }}
+                                onClick={() => {
+                                  setSelectedConfigId('');
+                                  setToneOpen(false);
+                                  setPlatformConfigMap(prev => ({
+                                    ...prev,
+                                    [selectedPlatform]: { ...prev[selectedPlatform], configId: '' }
+                                  }));
+                                }}
                                 className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${selectedConfigId === ''
-                                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-                                    : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                  ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                                  : 'text-slate-700 dark:text-slate-355 bg-transparent'
                                   }`}
                               >
                                 {language === 'vi' ? 'Tự do (Không áp dụng)' : 'None'}
@@ -5230,10 +5733,17 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                 <button
                                   key={cfg.id}
                                   type="button"
-                                  onClick={() => { setSelectedConfigId(cfg.id); setToneOpen(false); }}
+                                  onClick={() => {
+                                    setSelectedConfigId(cfg.id);
+                                    setToneOpen(false);
+                                    setPlatformConfigMap(prev => ({
+                                      ...prev,
+                                      [selectedPlatform]: { ...prev[selectedPlatform], configId: cfg.id }
+                                    }));
+                                  }}
                                   className={`w-full text-left p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all border-0 cursor-pointer ${selectedConfigId === cfg.id
-                                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-                                      : 'text-slate-700 dark:text-slate-355 bg-transparent'
+                                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                                    : 'text-slate-700 dark:text-slate-355 bg-transparent'
                                     }`}
                                 >
                                   {cfg.name}
@@ -5287,13 +5797,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                       key={req.id}
                                       type="button"
                                       onClick={() => {
-                                        setSelectedQuickPicks(prev =>
-                                          prev.includes(req.id) ? prev.filter(x => x !== req.id) : [...prev, req.id]
-                                        );
+                                        setSelectedQuickPicks(prev => {
+                                          const nextPicks = prev.includes(req.id) ? prev.filter(x => x !== req.id) : [...prev, req.id];
+                                          setPlatformConfigMap(mapPrev => ({
+                                            ...mapPrev,
+                                            [selectedPlatform]: { ...mapPrev[selectedPlatform], quickPicks: nextPicks }
+                                          }));
+                                          return nextPicks;
+                                        });
                                       }}
                                       className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${isSel
-                                          ? 'bg-primary text-white border-primary'
-                                          : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-zinc-700 hover:border-primary/40'
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-350 border-slate-200 dark:border-zinc-700 hover:border-primary/40'
                                         }`}
                                     >
                                       {req.name}
@@ -5303,14 +5818,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               </div>
                               <textarea
                                 value={customPromptText}
-                                onChange={e => setCustomPromptText(e.target.value)}
+                                onChange={e => {
+                                  const text = e.target.value;
+                                  setCustomPromptText(text);
+                                  setPlatformConfigMap(prev => ({
+                                    ...prev,
+                                    [selectedPlatform]: { ...prev[selectedPlatform], customText: text }
+                                  }));
+                                }}
                                 rows={2}
                                 placeholder={language === 'vi' ? 'Chỉ dẫn thêm bằng chữ...' : 'Extra text instructions...'}
-                                className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 text-xs leading-relaxed outline-none resize-none focus:ring-1 focus:ring-primary/50"
+                                className="w-full bg-slate-50 dark:bg-zinc-955 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 text-xs leading-relaxed outline-none resize-none focus:ring-1 focus:ring-primary/50"
                               />
                               <button
                                 type="button"
-                                onClick={() => setInstructionOpen(false)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setInstructionOpen(false);
+                                }}
                                 className="w-full bg-primary text-white py-2 text-xs font-bold rounded-xl border-0 cursor-pointer active:scale-95 transition-all"
                               >
                                 {language === 'vi' ? 'Xác nhận' : 'Confirm'}
@@ -5328,7 +5854,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           className="w-full flex items-center justify-between py-3.5 px-4 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl text-xs font-bold text-slate-750 dark:text-slate-355 hover:border-primary/40 hover:bg-slate-100/40 transition-all cursor-pointer text-left shadow-sm"
                         >
                           <span className="flex items-center gap-2">
-                            👁️ {language === 'vi' ? 'XEM PROMPT CHO NỀN TẢNG NÀY' : 'VIEW PROMPT FOR THIS PLATFORM'}
+                            👁️ {language === 'vi' ? 'Xem Prompt cho nền tảng này' : 'View prompt for this platform'}
                           </span>
                           <ChevronDown size={14} className={`text-slate-400 transition-transform ${isPromptPreviewOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -5347,6 +5873,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           )}
                         </AnimatePresence>
                       </div>
+                      </>
+                      )}
 
                       {/* Proceed Button */}
                       <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
@@ -5410,8 +5938,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           key={platform}
                           onClick={() => setSelectedPlatform(platform)}
                           className={`flex items-center gap-1.5 text-[11px] font-semibold px-3.5 py-1.5 rounded-lg capitalize border-0 cursor-pointer ${isActive
-                              ? 'bg-primary text-white'
-                              : 'text-text-muted dark:text-slate-400 hover:text-text dark:hover:text-white bg-transparent'
+                            ? 'bg-primary text-white'
+                            : 'text-text-muted dark:text-slate-400 hover:text-text dark:hover:text-white bg-transparent'
                             }`}
                         >
                           {icons[platform]}
@@ -5429,8 +5957,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/5">
                     <div className="flex items-center gap-2">
                       <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0 ${selectedPlatform === 'facebook' ? 'bg-blue-600' :
-                          selectedPlatform === 'threads' ? 'bg-black' :
-                            'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600'
+                        selectedPlatform === 'threads' ? 'bg-black' :
+                          'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600'
                         }`}>
                         {selectedPlatform === 'facebook' && <Facebook size={12} className="fill-white" />}
                         {selectedPlatform === 'threads' && <ThreadsIcon size={12} />}
@@ -5499,8 +6027,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               {language === 'vi' ? 'Đã ẩn kênh này' : 'Channel excluded'}
                             </h4>
                             <p className="text-[11px] text-slate-500 leading-relaxed">
-                              {language === 'vi' 
-                                ? 'Nền tảng này sẽ không xuất hiện trong danh sách lên lịch và đăng bài ở bước tiếp theo.' 
+                              {language === 'vi'
+                                ? 'Nền tảng này sẽ không xuất hiện trong danh sách lên lịch và đăng bài ở bước tiếp theo.'
                                 : 'This platform will not appear in the scheduling list in the next step.'}
                             </p>
                           </div>
@@ -5804,8 +6332,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     const activeChannelsCount = selectedPlatforms.filter(p => !excludedPlatforms.includes(p)).length;
                     const isDisabled = isGeneratingAB || activeChannelsCount === 0;
 
-                    let buttonText = language === 'vi' 
-                      ? `Lên lịch đăng ${activeChannelsCount} kênh` 
+                    let buttonText = language === 'vi'
+                      ? `Lên lịch đăng ${activeChannelsCount} kênh`
                       : `Schedule ${activeChannelsCount} channels`;
 
                     if (isGeneratingAB) {
@@ -5818,11 +6346,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       <button
                         onClick={() => { if (!isDisabled) changeStep(3); }}
                         disabled={isDisabled}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold transition-all border-0 whitespace-nowrap active:scale-95 shadow-md ${
-                          isDisabled 
-                            ? 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed shadow-none' 
-                            : 'bg-primary hover:bg-primary-hover text-white cursor-pointer shadow-primary/20'
-                        }`}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold transition-all border-0 whitespace-nowrap active:scale-95 shadow-md ${isDisabled
+                          ? 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+                          : 'bg-primary hover:bg-primary-hover text-white cursor-pointer shadow-primary/20'
+                          }`}
                       >
                         {isGeneratingAB ? (
                           <Loader2 size={14} className="animate-spin" />
@@ -6359,8 +6886,71 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
 
 
-        {/* CREATE AUTHOR PROFILE & TRAIN MODAL (US-2.09) */}
-        <AnimatePresence>
+        {/* ACTIVE AI CONFIGURATION MODAL */}
+        {mounted && createPortal(
+          <AnimatePresence>
+            {isConfigModalOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setIsConfigModalOpen(false);
+                }}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="bg-white dark:bg-zinc-950 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-2xl p-6 max-w-lg w-full flex flex-col gap-4 max-h-[85vh] overflow-hidden"
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-850 pb-3">
+                    <h3 className="text-sm font-extrabold text-text dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      ⚙️ {language === 'vi' ? 'CẤU HÌNH AI HOẠT ĐỘNG' : 'ACTIVE AI CONFIGURATION'}
+                    </h3>
+                    <button
+                      onClick={() => setIsConfigModalOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer border-0 bg-transparent"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Modal Form Scroll Area */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+                    {renderAiConfigForm(true)}
+                  </div>
+
+                  {/* Modal Footer Actions */}
+                  <div className="flex gap-3 justify-end border-t border-gray-100 dark:border-zinc-850 pt-4 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfigModalOpen(false)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold rounded-xl border-0 cursor-pointer transition-all"
+                    >
+                      {language === 'vi' ? 'Đóng' : 'Close'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsConfigModalOpen(false);
+                        const activeId = selectedVariantId || (variants.length > 0 ? variants[0].id : 'A');
+                        await handleRegenerateVariant(activeId);
+                      }}
+                      className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl border-0 cursor-pointer shadow-md shadow-primary/20 transition-all flex items-center gap-1.5 active:scale-95"
+                    >
+                      <RefreshCw size={13} />
+                      {language === 'vi' ? 'Lưu & Tạo lại' : 'Save & Regenerate'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
           {/* BRAND STYLE CONFIGURATION MODAL */}
           <AnimatePresence>
@@ -6416,8 +7006,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             type="button"
                             onClick={() => setStyleRulesTab(tab as any)}
                             className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded-md transition-all cursor-pointer border-none ${styleRulesTab === tab
-                                ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
-                                : 'bg-transparent text-slate-500 hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-slate-700'
+                              ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
+                              : 'bg-transparent text-slate-500 hover:bg-slate-200 dark:hover:bg-zinc-700/50 hover:text-slate-700'
                               }`}
                           >
                             {tab === 'general' ? (language === 'vi' ? 'Quy tắc chung' : 'General') : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -6478,8 +7068,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               </motion.div>
             )}
           </AnimatePresence>
-
-        </AnimatePresence>
 
         {/* LIVE GOCNHINMOI PORTAL BROWSER PROXY MODAL */}
         <AnimatePresence>
@@ -7016,14 +7604,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 {/* 1. Header Web Newspaper Mock */}
                 <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 border-b border-slate-150 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm backdrop-blur-md">
                   {/* Logo Group */}
-                  <div className="flex flex-col gap-0.5 select-none">
-                    <span className="text-red-650 font-black text-lg tracking-tighter uppercase font-sans">
-                      GócNhìnMới
-                    </span>
-                    <span className="text-[8px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">
-                      Mạng xã hội
-                    </span>
-                  </div>
+                  {renderNewspaperLogo('lg')}
 
                   {/* Mock Search Input */}
                   <div className="hidden sm:flex items-center gap-2 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3.5 py-1.5 rounded-full w-64 select-none">
@@ -7096,23 +7677,41 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     )}
 
                     {/* Author & Publication metadata */}
-                    <div className="flex items-center gap-3 mb-8 border-b border-slate-100 dark:border-zinc-800/80 pb-4 select-none">
-                      {/* Round Avatar mockup */}
-                      <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0">
-                        {postData.author ? postData.author.slice(0, 2) : 'CD'}
-                      </div>
+                    {(postData.author || postData.published_at || postData.views) && (
+                      <div className="flex items-center gap-3 mb-8 border-b border-slate-100 dark:border-zinc-800/80 pb-4 select-none">
+                        {postData.author && (() => {
+                          const { bgClass, textClass, initials, imageUrl } = getAvatarProps();
+                          return (
+                            <div className={`w-9 h-9 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
+                              {imageUrl ? (
+                                <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                              ) : (
+                                initials
+                              )}
+                            </div>
+                          );
+                        })()}
 
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                          {postData.author || (language === 'vi' ? 'Chân Diệu' : 'Chan Dieu')}
-                        </span>
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 font-bold">
-                          <span>{postData.published_at || new Date().toLocaleDateString()}</span>
-                          <span>•</span>
-                          <span>{postData.views || '0'} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                        <div className="flex flex-col gap-0.5">
+                          {postData.author && (
+                            <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                              {postData.author}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-zinc-500 font-bold">
+                            {postData.published_at && (
+                              <span>{postData.published_at}</span>
+                            )}
+                            {postData.published_at && postData.views && (
+                              <span>•</span>
+                            )}
+                            {postData.views && (
+                              <span>{postData.views} {language === 'vi' ? 'lượt xem' : 'views'}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Article Body Content */}
                     <div className="article-body-sections text-slate-700 dark:text-slate-350">
