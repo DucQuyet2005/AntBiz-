@@ -964,7 +964,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
       const cheerioEl = $(el);
 
       // Skip related news sections (Các phần có hiển thị tin liên quan thì không crawl)
-      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan').length > 0;
+      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]').length > 0 ||
+                        cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]');
       if (isRelated) {
         return;
       }
