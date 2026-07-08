@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { executeWithRotation } from '@/lib/services/geminiRotationManager';
 
 export const maxDuration = 60; // 60s timeout
 
 /**
  * POST /api/generate-missing
- * Automatically generates missing fields (title, full_text, category, tags) using Gemini.
+ * Automatically generates missing fields (title, full_text, category, tags) using Gemini with rotation.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -14,13 +15,7 @@ export async function POST(request: NextRequest) {
     const { unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
     if (unauthorized) return unauthorized;
 
-    // 2. API Key check
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Thiếu GEMINI_API_KEY trong .env' }, { status: 500 });
-    }
-
-    // 3. Parse input
+    // 2. Parse input
     const { title = '', full_text = '', category = '', tags = '' } = await request.json().catch(() => ({}));
 
     // If both major fields are empty, we cannot generate content
@@ -31,10 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Construct AI prompt
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const primaryModelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    
+    // 3. Construct AI prompt
     const systemInstruction = 
       "Bạn là một biên tập viên và chuyên gia phát triển nội dung marketing chuyên nghiệp.\n" +
       "Nhiệm vụ của bạn là bổ sung các trường thông tin còn thiếu cho bài viết và trả về định dạng JSON thuần túy.\n" +
@@ -64,21 +56,14 @@ Bạn phải trả về một đối tượng JSON có cấu trúc chính xác n
 Lưu ý quan trọng: Chỉ trả về chuỗi JSON thô, không có ký tự bao ngoài như \`\`\`json hay \`\`\`.
 `;
 
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: primaryModelName, systemInstruction });
-      result = await model.generateContent(prompt);
-    } catch (err: any) {
-      const errMsg = err.message || '';
-      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
-        const fallbackModelName = primaryModelName === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
-        console.warn(`[Generate Missing 429] falling back to ${fallbackModelName}`);
-        const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName, systemInstruction });
-        result = await fallbackModel.generateContent(prompt);
-      } else {
-        throw err;
+    const result = await executeWithRotation(
+      { title, content: full_text },
+      async (key, modelName) => {
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+        return model.generateContent(prompt);
       }
-    }
+    );
 
     const response = await result.response;
     let jsonText = response.text().trim();
