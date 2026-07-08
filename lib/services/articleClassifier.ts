@@ -68,76 +68,7 @@ export async function classifyArticle(
   title: string,
   content: string
 ): Promise<CategoryResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-
-  if (!apiKey) {
-    // Fallback: keyword-based (vẫn tốt hơn regex URL)
-    console.warn('[classifyArticle] GEMINI_API_KEY not set, using keyword fallback');
-    return fallbackClassify(title, content);
-  }
-
-  const prompt = `Bạn là chuyên gia phân loại nội dung truyền thông.
-Phân tích bài viết sau và chọn ĐÚNG MỘT category phù hợp nhất từ danh sách.
-
-Danh sách category: ${VALID_CATEGORIES.join(', ')}
-
-Tiêu đề: ${title}
-Nội dung (tóm tắt): ${content.substring(0, 800)}
-
-Trả về JSON với format chính xác (không có markdown):
-{"category":"<tên category>","confidence":<số từ 0.0 đến 1.0>}`;
-
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 100,
-            responseMimeType: 'application/json',
-          },
-        }),
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-
-    if (!res.ok) {
-      console.error('[classifyArticle] Gemini API error:', res.status);
-      return fallbackClassify(title, content);
-    }
-
-    const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-
-    // Strip markdown code fences nếu Gemini trả về ```json ... ```
-    const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-
-    let parsed: { category: string; confidence: number };
-    try {
-      parsed = JSON.parse(cleaned) as { category: string; confidence: number };
-    } catch {
-      console.warn('[classifyArticle] Gemini không trả về JSON hợp lệ, dùng fallback. Raw:', text.substring(0, 100));
-      return fallbackClassify(title, content);
-    }
-
-    // Validate category nằm trong danh sách hợp lệ
-    const validCategory = VALID_CATEGORIES.includes(parsed.category as ValidCategory)
-      ? parsed.category
-      : fallbackClassify(title, content).category;
-
-    return {
-      category: validCategory,
-      confidence: typeof parsed.confidence === 'number'
-        ? Math.max(0, Math.min(1, parsed.confidence))
-        : 0.7,
-    };
-  } catch (err) {
-    console.error('[classifyArticle] error:', err);
-    return fallbackClassify(title, content);
-  }
+  // T-1.19.1: Bỏ qua việc gọi Gemini API để tiết kiệm tối đa quota/API Key phục vụ cho tính năng viết bài.
+  // Sử dụng bộ phân loại bằng từ khóa cục bộ cực kỳ nhanh, ổn định và 100% miễn phí.
+  return fallbackClassify(title, content);
 }
