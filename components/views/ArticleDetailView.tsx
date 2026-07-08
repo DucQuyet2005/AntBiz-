@@ -1101,7 +1101,7 @@ export default function ArticleDetailView() {
                           key={idx}
                           className={`relative overflow-hidden bg-gray-50 dark:bg-zinc-950 ${activeArticle.images.length === 1 ? 'aspect-[1.91/1]' : 'aspect-square'}`}
                         >
-                          <img
+                          <img referrerPolicy="no-referrer" 
                             src={img.url}
                             alt={img.caption || `Ảnh ${idx + 1}`}
                             className="w-full h-full object-cover"
@@ -1200,7 +1200,7 @@ export default function ArticleDetailView() {
                         <div className="flex flex-col gap-2 mt-1">
                           {activeArticle.images.map((img: any, idx: number) => (
                             <div key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm">
-                              <img
+                              <img referrerPolicy="no-referrer" 
                                 src={img.url}
                                 alt={img.caption || `Ảnh ${idx + 1}`}
                                 className="w-full object-cover"
@@ -1284,7 +1284,7 @@ export default function ArticleDetailView() {
                   {/* Main Visual Image (Instagram style aspect-square) */}
                   {activeArticle.images && activeArticle.images.length > 0 ? (
                     <div className="relative w-full aspect-square bg-gray-50 dark:bg-zinc-955 overflow-hidden border-b border-gray-55 dark:border-zinc-850/50">
-                      <img
+                      <img referrerPolicy="no-referrer" 
                         src={activeArticle.images[0].url}
                         alt={activeArticle.images[0].caption || "Instagram Main Visual"}
                         className="w-full h-full object-cover"
@@ -1441,7 +1441,7 @@ export default function ArticleDetailView() {
                         if (block.type === 'image' && block.url) {
                           return (
                             <figure key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-105 dark:border-zinc-800 shadow-sm">
-                              <img
+                              <img referrerPolicy="no-referrer" 
                                 src={block.url}
                                 alt={block.caption || `Hình ảnh ${idx + 1}`}
                                 className="w-full object-cover"
@@ -1528,7 +1528,7 @@ export default function ArticleDetailView() {
               <div className="grid grid-cols-2 gap-5">
                 {activeArticle.images.map((img: any, idx: number) => (
                   <div key={idx} className="relative rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
-                    <img
+                    <img referrerPolicy="no-referrer" 
                       src={img.url}
                       alt={img.caption || `Image ${idx + 1}`}
                       className="w-full object-cover transition-transform duration-500 group-hover:scale-105"

@@ -515,7 +515,7 @@ export default function ArchiveView() {
 
                   {/* Image if available */}
                   {item.image ? (
-                    <img
+                    <img referrerPolicy="no-referrer" 
                       src={item.image}
                       alt={item.title}
                       className="w-full h-full object-cover"

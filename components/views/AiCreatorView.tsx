@@ -4457,7 +4457,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               return (
                                 <div className={`w-8 h-8 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
                                   {imageUrl ? (
-                                    <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                                    <img referrerPolicy="no-referrer" src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
                                   ) : (
                                     initials
                                   )}
@@ -4520,7 +4520,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               if (block.type === 'image' && block.url) {
                                 return (
                                   <div key={idx} className="w-full my-5 flex flex-col items-center select-none">
-                                    <img
+                                    <img referrerPolicy="no-referrer" 
                                       src={block.url}
                                       alt={block.caption || 'Article Image'}
                                       className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
@@ -4931,7 +4931,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
                           {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
                             <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
-                              <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
+                              <img referrerPolicy="no-referrer" src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
                               <button
                                 type="button"
                                 onClick={() => handleDeleteImage(idx)}
@@ -5370,7 +5370,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   >
                     <div className="h-44 bg-gray-100 relative overflow-hidden">
                       {postData.imageUrl ? (
-                        <img
+                        <img referrerPolicy="no-referrer" 
                           src={postData.imageUrl.split('\n')[0].trim()}
                           alt={postData.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -6120,7 +6120,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                             {toggles.showImage && postData.imageUrl && (
                               <div className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 mt-1.5 shadow-sm bg-gray-50 dark:bg-black/50 flex items-center justify-center">
-                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[500px] object-contain" />
+                                <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[500px] object-contain" />
                               </div>
                             )}
 
@@ -6193,7 +6193,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                         {toggles.showImage && postData.imageUrl && (
                           <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-b border-gray-100 dark:border-white/5 flex items-center justify-center">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[500px] object-contain" />
+                            <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[500px] object-contain" />
                           </div>
                         )}
 
@@ -6298,7 +6298,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                         {toggles.showImage && postData.imageUrl && (
                           <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-gray-100 dark:border-white/5 flex items-center justify-center">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[500px] object-contain" />
+                            <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[500px] object-contain" />
                           </div>
                         )}
 
@@ -6477,7 +6477,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                               {toggles.showImage && postData.imageUrl && (
                                 <div className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 mt-1.5 shadow-sm bg-gray-50 dark:bg-black/50 flex items-center justify-center">
-                                  <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[400px] object-contain" />
+                                  <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[400px] object-contain" />
                                 </div>
                               )}
 
@@ -6510,7 +6510,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                           {toggles.showImage && postData.imageUrl && (
                             <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-b border-gray-100 dark:border-white/5 flex items-center justify-center">
-                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[400px] object-contain" />
+                              <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[400px] object-contain" />
                             </div>
                           )}
 
@@ -6593,7 +6593,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                           {toggles.showImage && postData.imageUrl && (
                             <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-gray-100 dark:border-white/5 flex items-center justify-center">
-                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[400px] object-contain" />
+                              <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[400px] object-contain" />
                             </div>
                           )}
 
@@ -7684,7 +7684,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           return (
                             <div className={`w-9 h-9 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
                               {imageUrl ? (
-                                <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                                <img referrerPolicy="no-referrer" src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
                               ) : (
                                 initials
                               )}
@@ -7734,7 +7734,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           if (block.type === 'image' && block.url) {
                             return (
                               <div key={idx} className="w-full my-6 flex flex-col items-center select-none animate-in fade-in duration-300">
-                                <img
+                                <img referrerPolicy="no-referrer" 
                                   src={block.url}
                                   alt={block.caption || 'Article Image'}
                                   className="w-full max-h-[380px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm"
@@ -7840,7 +7840,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 onClick={(e) => e.stopPropagation()}
                 className="max-w-[85vw] max-h-[75vh] rounded-2xl overflow-hidden shadow-2xl relative"
               >
-                <img
+                <img referrerPolicy="no-referrer" 
                   src={currentUrl}
                   alt={`Zoom view ${lightboxIndex + 1}`}
                   className="max-w-full max-h-[75vh] object-contain animate-in zoom-in-95 duration-200"
@@ -7865,7 +7865,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                     >
-                      <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                      <img referrerPolicy="no-referrer" src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
