@@ -1720,8 +1720,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
     // Layer 1: Platform preset rules
     const selectedPreset = platformPresets.find((p: any) => p.id === selectedPlatformPresetId);
-    const presetRules = selectedPreset?.rules || `(Chưa chọn quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'})`;
-
+    let presetRules = selectedPreset?.rules || `(Chưa chọn quy chuẩn ${selectedPlatform === 'facebook' ? 'Facebook' : selectedPlatform === 'threads' ? 'Threads' : 'Instagram'})`;
     // Layer 2: Brand style
     const selectedStyle = savedConfigs.find((c: any) => c.id === selectedConfigId);
     let styleSection = '';
@@ -1760,6 +1759,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
         : `Yêu cầu nhanh: ${picksText}`;
     }
     const customSection = finalCustomText ? `*   ${finalCustomText}\n` : '';
+    
+    // Nếu người dùng yêu cầu độ dài riêng (chứa chữ "từ", "chữ", "ký tự"), xóa bỏ luật độ dài mặc định để hiển thị chuẩn xác
+    const hasCustomLength = finalCustomText && (finalCustomText.toLowerCase().includes('từ') || finalCustomText.toLowerCase().includes('chữ') || finalCustomText.toLowerCase().includes('ký tự'));
+    if (hasCustomLength) {
+      presetRules = presetRules.replace(/LƯU Ý ĐỘ DÀI:.*$/i, '').trim();
+    }
 
     return `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 

@@ -355,7 +355,14 @@ export async function POST(request: NextRequest) {
     const fullText = article.full_text || article.description || '';
     const truncatedContent = fullText.length > 3000 ? fullText.slice(0, 3000) + '... (Nội dung rút gọn)' : fullText;
 
-    const presetRulesStr = platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`;
+    let presetRulesStr = platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`;
+    
+    // Nếu người dùng yêu cầu độ dài riêng (chứa chữ "từ", "chữ", "ký tự"), xóa bỏ luật độ dài mặc định để AI không bị lú lẫn
+    const hasCustomLength = promptContent && (promptContent.toLowerCase().includes('từ') || promptContent.toLowerCase().includes('chữ') || promptContent.toLowerCase().includes('ký tự'));
+    if (hasCustomLength) {
+      presetRulesStr = presetRulesStr.replace(/LƯU Ý ĐỘ DÀI:.*$/i, '').trim();
+    }
+
     const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
     const styleSectionStr = styleContent ? `\n${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
