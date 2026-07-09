@@ -1052,13 +1052,13 @@ export default function AiCreatorView() {
           if (sttRes.ok) {
             const sttData = await sttRes.json();
             currentFullText = sttData.rewritten_post || '';
-            currentTitle = currentTitle || sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, '');
 
             setPostData(prev => ({
               ...prev,
               full_text: currentFullText,
               description: currentFullText,
-              title: currentTitle
+              // Always overwrite title from audio transcription
+              title: sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
             }));
           } else {
             const sttErr = await sttRes.json().catch(() => ({ error: 'Lỗi dịch giọng nói tự động' }));
@@ -3098,6 +3098,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     try {
       const fd = new FormData();
       fd.append('file', voiceFile);
+      // Always let backend generate title — frontend decides whether to apply it
 
       const res = await fetch('/api/stt', {
         method: 'POST',
@@ -3112,7 +3113,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           ...prev,
           full_text: finalText,
           description: finalText,
-          title: prev.title || data.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
+          // Always overwrite title from audio transcription
+          title: data.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
         }));
       }
     } catch (err: any) {

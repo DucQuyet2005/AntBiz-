@@ -23,17 +23,20 @@ const ALLOWED_AUDIO_TYPES = [
   'video/quicktime',
 ];
 
-const CORRECT_PROMPT = `Bạn là một trợ lý hiệu đính và biên tập nhẹ tiếng Việt.
-Dưới đây là văn bản được chuyển tự động từ giọng nói (speech-to-text), có thể có lỗi chính tả, thiếu dấu câu, từ đệm, hoặc diễn đạt lủng củng.
-Nhiệm vụ của bạn:
-- Sửa lỗi chính tả tiếng Việt (dấu thanh, phụ âm sai, từ sai)
-- Thêm dấu câu đúng chỗ (dấu phẩy, dấu chấm, dấu hỏi, dấu hai chấm...)
-- Loại bỏ từ đệm vô nghĩa ("ừm", "à", "thì là", "ờ", nói lắp)
-- Sửa nhẹ văn phong: câu văn mạch lạc hơn, từ ngữ tự nhiên hơn, tránh lặp từ
-- GIỮ NGUYÊN ý chính, cấu trúc và giọng điệu của người nói
-- KHÔNG viết lại hoàn toàn, KHÔNG thêm ý mới, KHÔNG rút gọn nội dung
+const CORRECT_PROMPT = `Bạn là công cụ hiệu đính văn bản thuần túy. Nhiệm vụ DUY NHẤT của bạn là:
+1. Sửa lỗi CHÍNH TẢ tiếng Việt (dấu thanh sai, phụ âm sai, từ viết sai)
+2. Thêm DẤU CÂU đúng chỗ (dấu phẩy, dấu chấm, dấu hỏi)
+3. Xóa TỪ ĐỆM vô nghĩa ("ừm", "à", "ờ", "thì là", từ bị nói lắp)
 
-CHỈ TRẢ VỀ VĂN BẢN ĐÃ HIỆU ĐÍNH. KHÔNG có lời dẫn hay giải thích.`;
+QUY TẮC TUYỆT ĐỐI — VI PHẠM LÀ SAI:
+- KHÔNG thay đổi từ ngữ, cách diễn đạt, cấu trúc câu của người nói
+- KHÔNG thêm bất kỳ từ, câu, ý tưởng mới nào
+- KHÔNG rút gọn hoặc tóm tắt nội dung
+- KHÔNG viết lại văn phong hay làm câu "hay hơn"
+- KHÔNG thay thế từ của người nói bằng từ đồng nghĩa khác
+- Đầu ra phải phản ánh CHÍNH XÁC những gì người nói đã nói
+
+CHỈ TRẢ VỀ VĂN BẢN SAU KHI HIỆU ĐÍNH. KHÔNG có lời dẫn, không giải thích.`;
 
 const TITLE_PROMPT = `Bạn là một tiêu đề editor chuyên nghiệp.
 Dưới đây là nội dung một bài viết. Hãy sinh ra một tiêu đề ngắn gọn, sút tích và lôi cuốn cho bài viết đó.
@@ -290,11 +293,14 @@ export async function POST(request: NextRequest) {
 
     // 6. Correct spelling/punctuation + generate title via Gemini — run in parallel
     //    Use allSettled so one failure doesn't abort the other
-    const correctionInput = bullets ? `${transcript}\n\n${bullets}` : transcript;
+    // IMPORTANT: correctWithGemini only receives the raw STT transcript so it
+    // doesn't synthesize new content by mixing transcript + bullet notes.
+    // generateTitleWithGemini may use bullets (if provided) as extra context.
+    const titleInput = bullets ? `${transcript}\n\n${bullets}` : transcript;
 
     const [correctionResult, titleResult] = await Promise.allSettled([
-      correctWithGemini(correctionInput, geminiKey),
-      generateTitleWithGemini(correctionInput, geminiKey),
+      correctWithGemini(transcript, geminiKey),
+      generateTitleWithGemini(titleInput, geminiKey),
     ]);
 
     const correctedTranscript =
