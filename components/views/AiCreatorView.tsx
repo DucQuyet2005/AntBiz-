@@ -3850,7 +3850,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         {(() => {
           const hints = {
             facebook: {
-              vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+              vi: 'Tối đa 500 từ, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
               en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
             },
             threads: {
@@ -5539,7 +5539,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             bgColor: 'bg-blue-600',
                             borderActive: 'border-blue-500',
                             ringActive: 'ring-blue-500/15',
-                            hint: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                            hint: 'Tối đa 500 từ, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
                             hintEn: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.',
                             emoji: '🔵'
                           },
@@ -5659,7 +5659,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       {(() => {
                         const hints = {
                           facebook: {
-                            vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                            vi: 'Tối đa 500 từ, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
                             en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
                           },
                           threads: {

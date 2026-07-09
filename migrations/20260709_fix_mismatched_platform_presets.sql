@@ -6,7 +6,7 @@
 -- 1. Cập nhật các quy chuẩn mặc định của hệ thống (user_id IS NULL)
 -- Facebook: Tối đa 500 ký tự (lấy từ rules Threads cũ và đổi giới hạn ký tự thành 500)
 UPDATE public.platform_presets 
-SET rules = 'Nội dung cực kỳ ngắn gọn (giới hạn dưới 500 ký tự), đi thẳng vào vấn đề chính. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'
+SET rules = 'Tối đa 500 từ. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'
 WHERE platform = 'facebook' AND user_id IS NULL;
 
 -- Threads (thread): Caption ngắn gọn (lấy từ rules Instagram cũ)
@@ -22,7 +22,7 @@ WHERE platform = 'instagram' AND user_id IS NULL;
 
 -- 2. Cập nhật các bản ghi mặc định của người dùng đang sử dụng nội dung cũ để đồng bộ
 UPDATE public.platform_presets
-SET rules = 'Nội dung cực kỳ ngắn gọn (giới hạn dưới 500 ký tự), đi thẳng vào vấn đề chính. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'
+SET rules = 'Tối đa 500 từ. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'
 WHERE platform = 'facebook' AND user_id IS NOT NULL AND name = 'Mặc định' 
   AND (rules LIKE '%Bài viết cung cấp đầy đủ thông tin%' OR rules LIKE '%Tối ưu độ dài 80-180%');
 

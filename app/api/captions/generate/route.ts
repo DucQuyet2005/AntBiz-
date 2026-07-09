@@ -363,7 +363,7 @@ export async function POST(request: NextRequest) {
     } else if (targetPlatform === 'instagram') {
       strictLengthRule = "Ngắn gọn, khoảng 100 từ";
     } else if (targetPlatform === 'facebook') {
-      strictLengthRule = "Khoảng 150 - 200 từ";
+      strictLengthRule = "Khoảng 400 - 500 từ";
     }
 
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:

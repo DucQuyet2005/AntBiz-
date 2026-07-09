@@ -518,7 +518,7 @@ CREATE POLICY "platform_presets: service role write"
 
 -- Chèn d? li?u m?c đ?nh ban đ?u
 INSERT INTO public.platform_presets (platform, rules) VALUES
-('facebook', 'Nội dung cực kỳ ngắn gọn (giới hạn dưới 500 ký tự), đi thẳng vào vấn đề chính. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'),
+('facebook', 'Tối đa 500 từ. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'),
 ('instagram', 'Bài viết cung cấp đầy đủ thông tin, có lời dẫn dắt, chia đoạn rõ ràng để dễ đọc. Kết thúc bằng lời kêu gọi hành động (Call to Action) và 3-5 hashtag.'),
 ('thread', 'Bài viết ngắn gọn, tập trung chủ yếu vào hình ảnh. Dùng nhiều emoji biểu cảm. Cuối bài phải có 5-10 hashtag liên quan đến chủ đề.')
 ON CONFLICT (platform) DO UPDATE SET rules = EXCLUDED.rules;
