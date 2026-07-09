@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
     } else if (platform === 'instagram') {
       strictLengthRule = "Ngắn gọn, khoảng 100 từ";
     } else if (platform === 'facebook') {
-      strictLengthRule = "Khoảng 400 - 500 từ";
-      bodyInstruction = "phân tích chi tiết, sâu sắc";
+      strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có yêu cầu viết ngắn lại, HÃY ƯU TIÊN tuân thủ theo yêu cầu đó)";
+      bodyInstruction = "phân tích chi tiết (trừ khi có yêu cầu viết ngắn)";
     }
 
     const prompt = customPrompt || `Bạn là một chuyên gia Content Marketing. 

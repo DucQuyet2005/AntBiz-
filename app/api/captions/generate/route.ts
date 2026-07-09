@@ -368,8 +368,8 @@ export async function POST(request: NextRequest) {
       strictLengthRule = "Ngắn gọn, khoảng 100 từ";
       bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
     } else if (targetPlatform === 'facebook') {
-      strictLengthRule = "Khoảng 400 - 500 từ";
-      bodyInstruction = "Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh để cung cấp nhiều giá trị cho người đọc.";
+      strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có Yêu cầu bổ sung yêu cầu viết ngắn lại hoặc quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ theo yêu cầu bổ sung đó)";
+      bodyInstruction = "Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh để cung cấp nhiều giá trị cho người đọc (trừ khi có yêu cầu viết ngắn).";
     }
 
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
