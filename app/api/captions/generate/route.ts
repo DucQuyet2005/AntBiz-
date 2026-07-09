@@ -394,8 +394,7 @@ ${targetPlatform === 'instagram' ? '- LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT 
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: "Đang gọi AI AntBiz Qwen (vui lòng đợi khoảng 15 phút)...\n\n" })}\n\n`));
-            
+            // Text generated loading UI is now handled gracefully on the frontend.
             const systemPrompt = "Bạn là AI viết content chuyên nghiệp bằng tiếng Việt. Tuyệt đối KHÔNG dùng hashtag tiếng Anh. Hãy luôn tạo 3-5 hashtag tiếng Việt bám sát nội dung bài viết.";
             
             const client = await Client.connect(spaceId);

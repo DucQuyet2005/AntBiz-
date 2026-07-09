@@ -6131,12 +6131,16 @@ ${selectedPlatform === 'instagram' ? '- LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆ
                       </div>
                     )}
 
-                    {/* Regenerating overlay */}
-                    {regeneratingVariantId === activeVariant?.id && (
+                    {/* Loading/Regenerating overlay */}
+                    {(regeneratingVariantId === activeVariant?.id || isGenerating) && (
                       <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-10 backdrop-blur-[2px] rounded-b-2xl">
                         <div className="flex flex-col items-center gap-2">
                           <RefreshCw size={20} className="animate-spin text-primary" />
-                          <span className="text-xs font-semibold text-primary">{language === 'vi' ? 'AI đang viết lại...' : 'AI rewriting...'}</span>
+                          <span className="text-xs font-semibold text-primary">
+                            {language === 'vi' 
+                              ? (isGenerating ? 'AI đang viết...' : 'AI đang viết lại...') 
+                              : (isGenerating ? 'AI is writing...' : 'AI rewriting...')}
+                          </span>
                         </div>
                       </div>
                     )}
