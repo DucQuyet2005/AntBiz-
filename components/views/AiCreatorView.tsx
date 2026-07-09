@@ -1039,6 +1039,7 @@ export default function AiCreatorView() {
       let currentFullText = postData.full_text;
       let currentTitle = postData.title;
 
+
       // 1. STT Auto-transcription if voiceFile is present but full_text is empty
       if (voiceFile && !currentFullText.trim()) {
         setIsAutoGenerating(true);
@@ -1051,15 +1052,22 @@ export default function AiCreatorView() {
           });
           if (sttRes.ok) {
             const sttData = await sttRes.json();
-            currentFullText = sttData.rewritten_post || '';
+            currentFullText = sttData.rewritten_post || sttData.transcript || '';
+
+            const finalTitle = sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, '');
+            const finalCategory = sttData.generated_category || '';
+            const finalTags = sttData.generated_tags || '';
 
             setPostData(prev => ({
               ...prev,
               full_text: currentFullText,
               description: currentFullText,
-              // Always overwrite title from audio transcription
-              title: sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
+              // Always overwrite title, category, and tags from audio transcription
+              title: finalTitle,
+              category: finalCategory,
+              tags: finalTags
             }));
+            currentTitle = finalTitle;
           } else {
             const sttErr = await sttRes.json().catch(() => ({ error: 'Lỗi dịch giọng nói tự động' }));
             throw new Error(sttErr.error || 'STT transcription failed');
@@ -1079,50 +1087,6 @@ export default function AiCreatorView() {
         return;
       }
 
-      // 3. Auto-fill missing fields if either title, content, category or tags is empty
-      if (!currentTitle.trim() || !currentFullText.trim() || !postData.category.trim() || !postData.tags.trim()) {
-        setIsAutoGenerating(true);
-        try {
-          const genRes = await fetch('/api/generate-missing', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: currentTitle,
-              full_text: currentFullText,
-              category: postData.category,
-              tags: postData.tags
-            })
-          });
-          if (genRes.ok) {
-            const genData = await genRes.json();
-            if (genData.success && genData.data) {
-              const result = genData.data;
-              currentTitle = result.title || currentTitle;
-              currentFullText = result.full_text || currentFullText;
-
-              setPostData(prev => ({
-                ...prev,
-                title: result.title || prev.title,
-                full_text: result.full_text || prev.full_text,
-                description: result.full_text || prev.description,
-                category: result.category || prev.category,
-                tags: result.tags || prev.tags
-              }));
-            }
-          } else {
-            const genErr = await genRes.json().catch(() => ({ error: 'Lỗi tự động sinh dữ liệu' }));
-            throw new Error(genErr.error || 'Failed to auto-generate missing fields');
-          }
-        } catch (err: any) {
-          console.error('[Auto Fill Error]:', err);
-          alert(language === 'vi' ? `Lỗi tự động sinh phần còn thiếu: ${err.message}` : `Auto-fill missing fields error: ${err.message}`);
-          setIsAutoGenerating(false);
-          return;
-        } finally {
-          setIsAutoGenerating(false);
-        }
-      }
-
       // 4. Save manual article draft
       if (!resolvedArticleId) {
         setIsGeneratingAB(true);
@@ -1138,11 +1102,10 @@ export default function AiCreatorView() {
               imageUrl: postData.imageUrl
             })
           });
-          if (!saveRes.ok) {
-            const errJson = await saveRes.json().catch(() => ({ error: 'Lỗi lưu bài viết' }));
-            throw new Error(errJson.error || 'Failed to save');
+          const savedData = await saveRes.json().catch(() => ({ error: 'Lỗi lưu bài viết' }));
+          if (!saveRes.ok || savedData.error || !savedData.id) {
+            throw new Error(savedData.error || 'Failed to save');
           }
-          const savedData = await saveRes.json();
           resolvedArticleId = savedData.id;
           setArticleId(savedData.id);
         } catch (err: any) {
@@ -2855,6 +2818,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
   const handleUploadFiles = async (files: File[]) => {
     setDocError(null);
+    setArticleId(null);
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     const docFiles = files.filter(f => {
       const ext = f.name.toLowerCase();
@@ -2864,14 +2828,35 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     // 1. Xử lý file ảnh
     if (imageFiles.length > 0) {
       const urls = postData.imageUrl ? postData.imageUrl.split('\n').filter(Boolean) : [];
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || 'public';
+
       for (const file of imageFiles) {
-        const reader = new FileReader();
-        const loadPromise = new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
+        const fileExt = file.name.split('.').pop() || 'png';
+        const path = `${userId}/article_images_${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
+        
+        const { error } = await supabase.storage.from('avatars').upload(path, file, {
+          upsert: true,
+          contentType: file.type
         });
-        reader.readAsDataURL(file);
-        const dataUrl = await loadPromise;
-        urls.push(dataUrl);
+
+        if (error) {
+          console.error('[Upload Image Error]:', error);
+          // Fallback to data URL if upload fails
+          const reader = new FileReader();
+          const loadPromise = new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+          });
+          reader.readAsDataURL(file);
+          const dataUrl = await loadPromise;
+          urls.push(dataUrl);
+        } else {
+          const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+          if (data?.publicUrl) {
+            urls.push(data.publicUrl);
+          }
+        }
       }
       setPostData(prev => ({ ...prev, imageUrl: urls.join('\n') }));
     }
@@ -3092,6 +3077,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   };
 
   const handleTranscribeAndRewrite = async () => {
+    setArticleId(null);
     if (!voiceFile) return;
     setIsTranscribing(true);
     setSttError(null);
@@ -3113,8 +3099,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           ...prev,
           full_text: finalText,
           description: finalText,
-          // Always overwrite title from audio transcription
+          // Always overwrite title, category, and tags from audio transcription
           title: data.generated_title || voiceFile.name.replace(/\.[^/.]+$/, ''),
+          category: data.generated_category || prev.category || '',
+          tags: data.generated_tags || prev.tags || ''
         }));
       }
     } catch (err: any) {
@@ -4276,6 +4264,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     type="button"
                     onClick={() => {
                       setInputMode('crawl');
+                      setArticleId(null);
                     }}
                     className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'crawl'
                       ? 'bg-primary text-white shadow-sm'
@@ -4289,6 +4278,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     type="button"
                     onClick={() => {
                       setInputMode('manual');
+                      setArticleId(null);
                     }}
                     className={`flex-1 text-xs font-extrabold py-2.5 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-0 ${inputMode === 'manual'
                       ? 'bg-primary text-white shadow-sm'
@@ -4773,7 +4763,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       <input
                         type="text"
                         value={postData.title}
-                        onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                        onChange={(e) => {
+                          setPostData({ ...postData, title: e.target.value });
+                          setArticleId(null);
+                        }}
                         className="w-full bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold"
                         placeholder={language === 'vi' ? 'Nhập tiêu đề bài viết của bạn tại đây...' : 'Enter post title here...'}
                       />
@@ -5052,7 +5045,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       >
                         <textarea
                           value={postData.full_text}
-                          onChange={(e) => setPostData({ ...postData, full_text: e.target.value, description: e.target.value })}
+                          onChange={(e) => {
+                            setPostData({ ...postData, full_text: e.target.value, description: e.target.value });
+                            setArticleId(null);
+                          }}
                           rows={12}
                           className={`w-full bg-[#F8F9FE] dark:bg-black/40 border rounded-xl px-4 pt-3 pb-6 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed transition-all ${isDraggingFile ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-[#E4E6F8] dark:border-zinc-800'
                             }`}
@@ -5399,7 +5395,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               )}
 
               {/* 3. Article Live Preview Card (Bài viết gốc) */}
-              {step === 2 && (
+              {step === 2 && inputMode !== 'manual' && (
                 <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
                   <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
                     <h3 className="text-sm font-extrabold text-text uppercase tracking-wider flex items-center gap-1.5">
@@ -5937,7 +5933,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-4 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs sm:text-sm cursor-pointer border-0 whitespace-nowrap"
                       >
                         {isGeneratingAB ? (
-                          <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? `Đang sinh ${variantCount} biến thể...` : `AI generating ${variantCount} variants...`}</>
+                          <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? 'Đang sinh bài viết...' : 'Generating posts...'}</>
                         ) : (
                           <>{language === 'vi' ? 'Tạo nội dung AI cho tất cả nền tảng' : 'Generate AI content for all platforms'}<ArrowRight size={16} /></>
                         )}
@@ -5956,6 +5952,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
               selectedPlatform === 'threads' ? 'originalThreads' :
                 'originalInstagram';
+            const categoryClean = postData.category.replace('#', '').trim();
+            const showCategory = categoryClean && categoryClean.toLowerCase() !== 'manual';
 
             if (!activeVariant) {
               return (
@@ -5969,7 +5967,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   <div className="flex flex-col items-center gap-3">
                     <Loader2 className="animate-spin text-primary" size={24} />
                     <span className="text-xs text-text-muted">
-                      {language === 'vi' ? 'Đang chuẩn bị bản xem trước...' : 'Preparing preview...'}
+                      {language === 'vi' ? 'Đang sinh biến thể...' : 'Generating variants...'}
                     </span>
                   </div>
                 </motion.div>
@@ -6159,7 +6157,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
                               {toggles.showTitle && (
                                 <div className="font-extrabold text-xs text-text">
-                                  [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
+                                  {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
                                 </div>
                               )}
 
@@ -6285,7 +6283,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                           {toggles.showTitle && (
                             <div className="font-extrabold text-xs text-text">
-                              [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
+                              {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
                             </div>
                           )}
 
@@ -6338,7 +6336,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text dark:text-slate-300 leading-relaxed flex flex-col gap-2.5">
                           {toggles.showTitle && (
                             <div className="font-extrabold text-xs text-text dark:text-white mb-0.5">
-                              [{postData.category.replace('#', '')}] <EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
+                              {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={activeVariant.id} field="title" value={activeVariant.title} />
                             </div>
                           )}
 
@@ -6524,7 +6522,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               <div className="flex flex-col gap-2.5 text-[11px] text-text leading-relaxed">
                                 {toggles.showTitle && (
                                   <div className="font-extrabold text-xs text-text">
-                                    [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                    {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={v.id} field="title" value={v.title} />
                                   </div>
                                 )}
                                 {toggles.showDescription && (
@@ -6598,7 +6596,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-1.5">
                             {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text">
-                                [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
                             {toggles.showDescription && (
@@ -6641,7 +6639,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-text leading-relaxed flex flex-col gap-2.5">
                             {toggles.showTitle && (
                               <div className="font-extrabold text-xs text-text mb-0.5">
-                                [{postData.category.replace('#', '')}] <EditableText variantId={v.id} field="title" value={v.title} />
+                                {showCategory ? `[${categoryClean}] ` : ''}<EditableText variantId={v.id} field="title" value={v.title} />
                               </div>
                             )}
                             {toggles.showDescription && (

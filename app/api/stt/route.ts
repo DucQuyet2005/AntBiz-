@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { executeWithRotation } from '@/lib/services/geminiRotationManager';
 
 // VPS production config: cho phép route chạy tối đa 120 giây
 // (Groq Whisper ~10s + 2x Gemini calls ~10s mỗi cái + retry buffer)
@@ -38,15 +40,16 @@ QUY TẮC TUYỆT ĐỐI — VI PHẠM LÀ SAI:
 
 CHỈ TRẢ VỀ VĂN BẢN SAU KHI HIỆU ĐÍNH. KHÔNG có lời dẫn, không giải thích.`;
 
-const TITLE_PROMPT = `Bạn là một tiêu đề editor chuyên nghiệp.
-Dưới đây là nội dung một bài viết. Hãy sinh ra một tiêu đề ngắn gọn, sút tích và lôi cuốn cho bài viết đó.
-Yêu cầu:
-- Tối đa 12 từ
-- Không có dấu nọm kép, không có tiền tố như "Tiêu đề:", "Bài viết:"
-- Ngôn ngữ phù hợp với nội dung (tiếng Việt nếu nội dung tiếng Việt)
-- Phản ánh đúng chủ đề chính
+const METADATA_PROMPT = `Bạn là một biên tập viên nội dung chuyên nghiệp.
+Dưới đây là nội dung một bài viết. Hãy phân tích nội dung và sinh ra các thông tin sau dưới dạng JSON object hợp lệ:
+{
+  "title": "tiêu đề ngắn gọn, súc tích và lôi cuốn (dưới 12 từ)",
+  "category": "danh mục/chuyên mục ngắn gọn phù hợp nhất (ví dụ: Âm nhạc, Lịch sử, Thể thao, Công nghệ, Kinh doanh, Đời sống...)",
+  "tags": "3-5 từ khóa/hashtag liên quan nhất, phân tách bằng dấu phẩy"
+}
 
-CHỈ TRẢ VỀ DUY NHẤT TIÊU ĐỀ. KHÔNG giải thích gì thêm.`;
+Yêu cầu:
+- Trả về DUY NHẤT một chuỗi JSON hợp lệ. KHÔNG giải thích, không thêm ký tự markdown hay lời dẫn.`;
 
 /**
  * Transcribe audio via Groq Whisper API.
@@ -75,133 +78,68 @@ async function transcribeWithGroq(file: File, groqKey: string): Promise<string> 
   return transcript.trim();
 }
 
-/** Delay helper for retry backoff */
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-/** Retryable status codes — transient server errors ONLY, NOT quota errors */
-const RETRYABLE_STATUS = new Set([503, 502, 504]); // 429 = quota exhausted, never retry
-const MAX_RETRIES = 2;        // chỉ 2 lần — ít hơn để tránh timeout trên VPS
-const BASE_DELAY_MS = 500;    // 500ms → 1s (giảm xuống từ 1s → 2s)
-const GEMINI_TIMEOUT_MS = 25_000; // 25s per Gemini call (VPS network SLA)
-
-/** Parse Gemini retryDelay from a 429 error body, return seconds or null */
-function parseRetryDelay(errText: string): number | null {
-  try {
-    const body = JSON.parse(errText);
-    const details: any[] = body?.error?.details ?? [];
-    for (const d of details) {
-      if (d['@type']?.includes('RetryInfo') && d.retryDelay) {
-        const match = String(d.retryDelay).match(/(\d+)/);
-        if (match) return parseInt(match[1], 10);
-      }
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
-/** Shared helper: one Gemini text-in, text-out call with exponential backoff retry */
+/** Shared helper: one Gemini text-in, text-out call using the key rotation manager and official SDK */
 async function callGemini(
   prompt: string,
   inputText: string,
-  geminiKey: string,
   temperature = 0.2,
   label = 'Gemini'
 ): Promise<string> {
-  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-  const modelsToTry = [
-    primaryModel,
-    'gemini-3.5-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-2.5-flash-lite',
-    'gemini-2.0-flash-lite'
-  ].filter((val, index, self) => self.indexOf(val) === index);
-
-  let lastError = '';
-  for (const modelName of modelsToTry) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
-    const body = JSON.stringify({
-      contents: [{ parts: [{ text: `${prompt}\n\n---\n${inputText}\n---` }] }],
-      generationConfig: { temperature },
-    });
-
-    let modelSuccess = false;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-
-      let response: Response;
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body,
-          signal: controller.signal,
-        });
-      } catch (fetchErr: any) {
-        clearTimeout(timeoutId);
-        if (fetchErr?.name === 'AbortError') {
-          console.warn(`[STT] ${label} (${modelName}) timed out after ${GEMINI_TIMEOUT_MS / 1000}s`);
-          break; // Try next model
-        }
-        throw fetchErr;
-      }
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        const text: string =
-          data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-        return text.trim();
-      }
-
-      const errText = await response.text();
-      lastError = errText;
-
-      if (RETRYABLE_STATUS.has(response.status) && attempt < MAX_RETRIES) {
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 500ms, 1s
-        console.warn(`[STT] ${label} (${modelName}) got ${response.status}, retry ${attempt}/${MAX_RETRIES - 1} in ${delay}ms...`);
-        await sleep(delay);
-        continue;
-      }
-
-      // If rate limited or quota exceeded, break the attempt loop to try the next model
-      if (response.status === 429 || errText.includes('quota') || errText.includes('Quota')) {
-        console.warn(`[STT] ${label} (${modelName}) rate limited (429/quota). Trying fallback...`);
-        break;
-      }
-
-      // Other non-retryable errors — throw so caller can fail
-      throw new Error(`[STT] ${label} (${modelName}) failed (${response.status}): ${lastError}`);
+  const result = await executeWithRotation(
+    { title: label, content: inputText },
+    async (key, modelName) => {
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: { temperature }
+      });
+      const response = await model.generateContent(`${prompt}\n\n---\n${inputText}\n---`);
+      return response.response.text();
     }
-  }
-
-  throw new Error(`[STT] ${label} failed all models. Last error: ${lastError}`);
+  );
+  return result.trim();
 }
 
 /**
  * Correct spelling, punctuation and filler words in raw transcript via Gemini.
  */
-async function correctWithGemini(inputText: string, geminiKey: string): Promise<string> {
+async function correctWithGemini(inputText: string): Promise<string> {
   return callGemini(
     `${CORRECT_PROMPT}\n\nVĂN BẢN GỐC:`,
     inputText,
-    geminiKey,
     0.2,
     'Correction'
   );
 }
 
 /**
- * Generate a short, catchy title from the corrected text via Gemini.
+ * Generate a short, catchy title, category, and tags from the corrected text via Gemini.
  */
-async function generateTitleWithGemini(inputText: string, geminiKey: string): Promise<string> {
-  return callGemini(
-    `${TITLE_PROMPT}\n\nNỘI DUNG:`,
-    inputText,
-    geminiKey,
-    0.7,
-    'TitleGen'
-  );
+async function generateMetadataWithGemini(inputText: string): Promise<{ title: string; category: string; tags: string }> {
+  let rawJson = '';
+  try {
+    rawJson = await callGemini(
+      `${METADATA_PROMPT}\n\nNỘI DUNG:`,
+      inputText,
+      0.7,
+      'MetadataGen'
+    );
+    // Parse JSON safely
+    const cleanJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    return {
+      title: (parsed.title || '').trim(),
+      category: (parsed.category || '').trim(),
+      tags: (parsed.tags || '').trim()
+    };
+  } catch (e) {
+    console.warn('[STT] Failed to parse metadata JSON, using raw string as title:', e);
+    return {
+      title: rawJson.trim(),
+      category: '',
+      tags: ''
+    };
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -221,11 +159,6 @@ export async function POST(request: NextRequest) {
         { error: 'Chưa cấu hình GROQ_API_KEY. Đăng ký miễn phí tại console.groq.com' },
         { status: 500 }
       );
-    }
-
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
-      return NextResponse.json({ error: 'Chưa cấu hình GEMINI_API_KEY' }, { status: 500 });
     }
 
     // 3. Parse form
@@ -291,16 +224,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Correct spelling/punctuation + generate title via Gemini — run in parallel
+    // 6. Correct spelling/punctuation + generate title/category/tags via Gemini — run in parallel
     //    Use allSettled so one failure doesn't abort the other
     // IMPORTANT: correctWithGemini only receives the raw STT transcript so it
     // doesn't synthesize new content by mixing transcript + bullet notes.
-    // generateTitleWithGemini may use bullets (if provided) as extra context.
+    // generateMetadataWithGemini may use bullets (if provided) as extra context.
     const titleInput = bullets ? `${transcript}\n\n${bullets}` : transcript;
 
-    const [correctionResult, titleResult] = await Promise.allSettled([
-      correctWithGemini(transcript, geminiKey),
-      generateTitleWithGemini(titleInput, geminiKey),
+    const [correctionResult, metadataResult] = await Promise.allSettled([
+      correctWithGemini(transcript),
+      generateMetadataWithGemini(titleInput),
     ]);
 
     const correctedTranscript =
@@ -308,17 +241,19 @@ export async function POST(request: NextRequest) {
         ? correctionResult.value
         : (console.warn('[STT] Correction unavailable, using raw transcript:', (correctionResult as PromiseRejectedResult).reason?.message), transcript);
 
-    const generatedTitle =
-      titleResult.status === 'fulfilled'
-        ? titleResult.value
-        : (console.warn('[STT] Title generation unavailable:', (titleResult as PromiseRejectedResult).reason?.message), '');
+    const generatedMetadata =
+      metadataResult.status === 'fulfilled'
+        ? metadataResult.value
+        : { title: '', category: '', tags: '' };
 
-    if (generatedTitle) console.log(`[STT] Generated title: "${generatedTitle}"`);
+    if (generatedMetadata.title) console.log(`[STT] Generated title: "${generatedMetadata.title}"`);
 
     return NextResponse.json({
       transcript,
       rewritten_post: correctedTranscript,
-      generated_title: generatedTitle,
+      generated_title: generatedMetadata.title,
+      generated_category: generatedMetadata.category,
+      generated_tags: generatedMetadata.tags,
     });
   } catch (error: any) {
     console.error('[STT API] Error:', error);

@@ -39,14 +39,15 @@ export function evaluateComplexity(metrics: ComplexityMetrics): 'high' | 'medium
 }
 
 export function selectModel(complexity: 'high' | 'medium' | 'low'): string {
+  const globalDefault = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   switch (complexity) {
     case 'high':
-      return process.env.GEMINI_HIGH_MODEL || 'gemini-2.5-pro';
+      return process.env.GEMINI_HIGH_MODEL || globalDefault;
     case 'low':
       return process.env.GEMINI_LOW_MODEL || 'gemini-2.5-flash-lite';
     case 'medium':
     default:
-      return process.env.GEMINI_MEDIUM_MODEL || 'gemini-2.5-flash';
+      return process.env.GEMINI_MEDIUM_MODEL || globalDefault;
   }
 }
 
@@ -126,17 +127,8 @@ export async function executeWithRotation<T>(
   // Fetch keys from DB via REST client
   const keys = await fetchKeysFromDB();
 
-  // Filter keys: remove currently rate-limited ones
-  const now = new Date();
-  const availableKeys: GeminiKeyRecord[] = keys.filter((key) => {
-    if (key.status === 'rate_limited' && key.rate_limited_until) {
-      const limitTime = new Date(key.rate_limited_until);
-      if (limitTime > now) {
-        return false; // Still rate limited
-      }
-    }
-    return true;
-  });
+  // Filter keys: keep all non-invalid keys (including rate-limited ones as fallback)
+  const availableKeys: GeminiKeyRecord[] = keys.filter((key) => key.status !== 'invalid');
 
   // If no keys in DB, fallback to environment variable (GEMINI_API_KEY)
   if (availableKeys.length === 0) {
@@ -149,8 +141,17 @@ export async function executeWithRotation<T>(
     throw new Error('Không tìm thấy API Key Gemini nào khả dụng (trong Database lẫn biến môi trường)');
   }
 
-  // Round-robin: Sort by last_used_at ascending (nulls first) to pick the least recently used key
+  // Sort strategy:
+  // 1. Active keys first, rate-limited keys last.
+  // 2. Within the same status, sort by last_used_at ascending (nulls first) to pick the least recently used key
+  const now = new Date();
   availableKeys.sort((a, b) => {
+    const aIsRateLimited = a.status === 'rate_limited' && a.rate_limited_until && new Date(a.rate_limited_until) > now;
+    const bIsRateLimited = b.status === 'rate_limited' && b.rate_limited_until && new Date(b.rate_limited_until) > now;
+
+    if (aIsRateLimited && !bIsRateLimited) return 1;
+    if (!aIsRateLimited && bIsRateLimited) return -1;
+
     if (!a.last_used_at) return -1;
     if (!b.last_used_at) return 1;
     return new Date(a.last_used_at).getTime() - new Date(b.last_used_at).getTime();
