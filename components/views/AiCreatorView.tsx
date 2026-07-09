@@ -733,6 +733,25 @@ export default function AiCreatorView() {
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
   const [selectedPlatforms, setSelectedPlatforms] = useState<('facebook' | 'threads' | 'instagram')[]>(['facebook']);
   const [excludedPlatforms, setExcludedPlatforms] = useState<('facebook' | 'threads' | 'instagram')[]>([]);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch('/api/linked-accounts');
+        if (res.ok) {
+          const json = await res.json();
+          const platforms = (json.data || []).map((acc: any) => 
+            acc.platform === 'thread' ? 'threads' : acc.platform
+          );
+          setConnectedPlatforms(platforms);
+        }
+      } catch (err) {
+        console.error('Error checking platform integrations:', err);
+      }
+    };
+    fetchConnections();
+  }, []);
   const [variantCount, setVariantCount] = useState<2 | 3>(2);
   const [subStep, setSubStep] = useState<number>(1);
 
@@ -2606,6 +2625,20 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
 
   const handleGenerate = async () => {
+    // Check if selected platforms are connected
+    const unconnected = selectedPlatforms.filter(p => !connectedPlatforms.includes(p));
+    if (unconnected.length > 0) {
+      const platformLabels = unconnected.map(p => p === 'threads' ? 'Meta Threads' : p === 'instagram' ? 'Instagram Business' : 'Facebook Page').join(', ');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' 
+          ? `Bạn chưa liên kết tài khoản cho: ${platformLabels}. Vui lòng liên kết tài khoản trong trang Cài đặt trước khi sinh nội dung.`
+          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before generating content.`
+      });
+      return;
+    }
+
     if (!selectedPromptId) {
       setGenerateError(language === 'vi' ? 'Vui lòng chọn một prompt trước.' : 'Please select a prompt first.');
       return;
@@ -3731,12 +3764,26 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   };
 
   const handleConfirmSchedule = async () => {
+    // Lọc ra các platform được chọn từ step 1 mà chưa bị loại trừ
+    const activePlatforms = selectedPlatforms.filter((plat) => !excludedPlatforms.includes(plat));
+
+    // Check if active platforms are connected
+    const unconnected = activePlatforms.filter(p => !connectedPlatforms.includes(p));
+    if (unconnected.length > 0) {
+      const platformLabels = unconnected.map(p => p === 'threads' ? 'Meta Threads' : p === 'instagram' ? 'Instagram Business' : 'Facebook Page').join(', ');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' 
+          ? `Bạn chưa liên kết tài khoản cho: ${platformLabels}. Vui lòng liên kết tài khoản trong trang Cài đặt trước khi lên lịch đăng bài.`
+          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before scheduling posts.`
+      });
+      return;
+    }
+
     // Không thực hiện lên lịch nếu có lỗi xảy ra hoặc đang xử lý yêu cầu trước đó
     if (facebookError || threadsError || instagramError) return;
     if (isSchedulingLoading) return;
-
-    // Lọc ra các platform được chọn từ step 1 mà chưa bị loại trừ
-    const activePlatforms = selectedPlatforms.filter((plat) => !excludedPlatforms.includes(plat));
 
     if (activePlatforms.length === 0) {
       setSchedulingError(language === 'vi' ? 'Vui lòng chọn ít nhất một nền tảng.' : 'Please select at least one platform.');
@@ -4502,7 +4549,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               return (
                                 <div className={`w-8 h-8 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
                                   {imageUrl ? (
-                                    <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                                    <img referrerPolicy="no-referrer" src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
                                   ) : (
                                     initials
                                   )}
@@ -4565,7 +4612,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                               if (block.type === 'image' && block.url) {
                                 return (
                                   <div key={idx} className="w-full my-5 flex flex-col items-center select-none">
-                                    <img
+                                    <img referrerPolicy="no-referrer" 
                                       src={block.url}
                                       alt={block.caption || 'Article Image'}
                                       className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
@@ -4976,7 +5023,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
                           {postData.imageUrl.split('\n').filter(Boolean).map((imgUrl, idx) => (
                             <div key={idx} className="aspect-video bg-gray-50 border border-gray-150 rounded-xl overflow-hidden relative group">
-                              <img src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
+                              <img referrerPolicy="no-referrer" src={imgUrl.trim()} alt="Preview" className="w-full h-full object-cover" />
                               <button
                                 type="button"
                                 onClick={() => handleDeleteImage(idx)}
@@ -5405,7 +5452,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   >
                     <div className="h-44 bg-gray-100 relative overflow-hidden">
                       {postData.imageUrl ? (
-                        <img
+                        <img referrerPolicy="no-referrer" 
                           src={postData.imageUrl.split('\n')[0].trim()}
                           alt={postData.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -5592,8 +5639,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   {pm.id === 'instagram' && <Instagram size={16} className="text-white" />}
                                 </span>
                                 <span className="flex flex-col gap-0.5">
-                                  <span className={`text-xs font-bold uppercase tracking-wider ${isSel ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    {pm.label}
+                                  <span className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${isSel ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                                      {pm.label}
+                                    </span>
+                                    {!connectedPlatforms.includes(pm.id) && (
+                                      <span className="text-[9px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                        {language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-medium leading-relaxed">
                                     {language === 'vi' ? pm.hint : pm.hintEn}
@@ -6155,7 +6209,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                             {toggles.showImage && postData.imageUrl && (
                               <div className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 mt-1.5 shadow-sm bg-gray-50 dark:bg-black/50 flex items-center justify-center">
-                                <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[500px] object-contain" />
+                                <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[500px] object-contain" />
                               </div>
                             )}
 
@@ -6228,7 +6282,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                         {toggles.showImage && postData.imageUrl && (
                           <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-b border-gray-100 dark:border-white/5 flex items-center justify-center">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[500px] object-contain" />
+                            <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[500px] object-contain" />
                           </div>
                         )}
 
@@ -6333,7 +6387,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                         {toggles.showImage && postData.imageUrl && (
                           <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-gray-100 dark:border-white/5 flex items-center justify-center">
-                            <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[500px] object-contain" />
+                            <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[500px] object-contain" />
                           </div>
                         )}
 
@@ -6512,7 +6566,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                               {toggles.showImage && postData.imageUrl && (
                                 <div className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 mt-1.5 shadow-sm bg-gray-50 dark:bg-black/50 flex items-center justify-center">
-                                  <img src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[400px] object-contain" />
+                                  <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Threads content" className="w-full max-h-[400px] object-contain" />
                                 </div>
                               )}
 
@@ -6545,7 +6599,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                           {toggles.showImage && postData.imageUrl && (
                             <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-b border-gray-100 dark:border-white/5 flex items-center justify-center">
-                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[400px] object-contain" />
+                              <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Instagram asset" className="w-full max-h-[400px] object-contain" />
                             </div>
                           )}
 
@@ -6628,7 +6682,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                           {toggles.showImage && postData.imageUrl && (
                             <div className="w-full bg-gray-50 dark:bg-black/50 relative overflow-hidden border-t border-gray-100 dark:border-white/5 flex items-center justify-center">
-                              <img src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[400px] object-contain" />
+                              <img referrerPolicy="no-referrer" src={postData.imageUrl.split('\n')[0].trim()} alt="Post asset" className="w-full max-h-[400px] object-contain" />
                             </div>
                           )}
 
@@ -7719,7 +7773,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           return (
                             <div className={`w-9 h-9 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
                               {imageUrl ? (
-                                <img src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
+                                <img referrerPolicy="no-referrer" src={imageUrl} alt={postData.author} className="w-full h-full object-cover" />
                               ) : (
                                 initials
                               )}
@@ -7769,7 +7823,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                           if (block.type === 'image' && block.url) {
                             return (
                               <div key={idx} className="w-full my-6 flex flex-col items-center select-none animate-in fade-in duration-300">
-                                <img
+                                <img referrerPolicy="no-referrer" 
                                   src={block.url}
                                   alt={block.caption || 'Article Image'}
                                   className="w-full max-h-[380px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm"
@@ -7875,7 +7929,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 onClick={(e) => e.stopPropagation()}
                 className="max-w-[85vw] max-h-[75vh] rounded-2xl overflow-hidden shadow-2xl relative"
               >
-                <img
+                <img referrerPolicy="no-referrer" 
                   src={currentUrl}
                   alt={`Zoom view ${lightboxIndex + 1}`}
                   className="max-w-full max-h-[75vh] object-contain animate-in zoom-in-95 duration-200"
@@ -7900,7 +7954,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${idx === lightboxIndex ? 'border-primary scale-105 shadow-md shadow-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                     >
-                      <img src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                      <img referrerPolicy="no-referrer" src={url} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -7911,6 +7965,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         })()}
 
       </div>
+      {popup && (
+        <PopupDialog
+          isOpen={popup.isOpen}
+          onClose={() => setPopup(null)}
+          message={popup.message}
+          type={popup.type}
+        />
+      )}
     </EditableTextContext.Provider>
   );
 }

@@ -6,16 +6,29 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 ## [1.7.5] - 2026-07-09
 
+### Added
+- **Thông báo trạng thái liên kết tài khoản (OAuth callback feedback)**:
+  - Tự động bắt tham số URL kết quả từ callback OAuth (`connected=success` hoặc `connected=failed`) trên trang Cài đặt (Settings).
+  - Tích hợp `PopupDialog` để hiển thị trực quan thông báo kết quả liên kết tài khoản mxh (Facebook Page, Instagram Business, Meta Threads) và tự động dọn phức các tham số URL để tránh lặp lại thông báo.
+- **Ràng buộc kiểm tra liên kết tài khoản ở AI Creator (Publish Validation)**:
+  - Tích hợp hiển thị badge màu đỏ "Chưa kết nối" (Not Connected) bên cạnh các checkbox lựa chọn kênh đăng bài chưa được liên kết.
+  - Chặn tiến trình tạo nội dung AI (`handleGenerate` ở Bước 1) và tiến trình xác nhận lên lịch (`handleConfirmSchedule` ở Bước 2) nếu người dùng chọn kênh chưa kết nối tài khoản, đồng thời hiển thị cảnh báo hướng dẫn liên kết thông qua `PopupDialog`.
+- **Tài liệu hướng dẫn (Guides)**:
+  - Bổ sung tài liệu hướng dẫn liên kết & kiểm thử Instagram Business chi tiết từ việc chuẩn bị tài khoản đến cấu hình Meta app tại [instagram-connection-guide.md](file:///e:/User/Work_Space/Netspace/AntBiz/docs/guides/instagram-connection-guide.md).
+
 ### Fixed
 - **Sửa lỗi lệch quy chuẩn nền tảng (Facebook, Threads, Instagram)**:
   - Đồng bộ và căn chỉnh lại các gợi ý hướng dẫn (hints) cho cả phiên bản tiếng Việt và tiếng Anh ở Bước 1 và Bước 2 của không gian AI Creator:
-    - **Facebook**: Đổi gợi ý độ dài cũ từ 80-180 ký tự thành giới hạn độ dài mới tối đa 500 ký tự và giọng văn casual.
+    - **Facebook**: Đổi gợi ý độ dài cũ từ 80-180 ký tự thành giới hạn độ dài mới tối đa 500 từ và giọng văn casual.
     - **Threads**: Nhận cấu hình cũ của Instagram (Caption ngắn gọn + hashtag, chú trọng hình ảnh và cảm xúc).
     - **Instagram**: Nhận cấu hình tối ưu độ dài cũ của Facebook (80-180 ký tự + dùng CTA rõ ràng).
   - Cập nhật cơ sở dữ liệu mẫu (`database.sql`) và viết thêm tệp cơ chế di trú SQL (`migrations/20260709_fix_mismatched_platform_presets.sql`) để tự động cập nhật và đồng bộ hóa các quy chuẩn mặc định của hệ thống (`platform_presets`) và các quy chuẩn mặc định của người dùng trên môi trường production.
 - **Sửa lỗi dính chữ "Đang gọi AI AntBiz Qwen" vào bài viết**:
   - Khắc phục lỗi trên Client (trong file `AiCreatorView.tsx`) không xử lý thuộc tính `replace` của Server stream khi sinh biến thể.
   - Khi luồng stream từ mô hình `Qwen` trả về sự kiện kết thúc kèm thuộc tính `replace: true`, frontend sẽ ghi đè lại toàn bộ nội dung đã sinh để loại bỏ dòng thông báo chờ tải thay vì tích lũy (accumulate) cộng dồn vào văn bản.
+- **Sửa lỗi giới hạn chiều dài và trùng lặp Hashtag ở mô hình Qwen**:
+  - Tiêm các hướng dẫn chiều dài cứng (500 từ cho FB, 30 từ cho Threads, 100 từ cho Insta) vào System Prompt.
+  - Sửa lại System Prompt để Qwen không tự chèn `#AntBiz` và biết cách trích xuất hashtag phù hợp với bài báo.
 
 ## [1.7.4] - 2026-07-08
 

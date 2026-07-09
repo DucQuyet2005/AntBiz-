@@ -221,6 +221,8 @@ export const translations = {
         Sun: "CN",
       },
       admin: {
+        geminiKeys: "Quản lý API Key",
+        geminiKeysDesc: "Xem, chỉnh sửa, thêm và xoay vòng danh sách các Google Gemini API Keys dự phòng.",
         loadingStats: "Đang tải số liệu thống kê...",
         title: "Bảng điều khiển Admin",
         welcome: "Chào mừng trở lại, {name}!",
@@ -1287,6 +1289,8 @@ export const translations = {
         Sun: "Sun"
       },
       admin: {
+        geminiKeys: "Gemini Keys Management",
+        geminiKeysDesc: "Manage, edit, add, and rotate backup Google Gemini API Keys.",
         loadingStats: "Loading statistics...",
         title: "Admin Dashboard",
         welcome: "Welcome back, {name}!",

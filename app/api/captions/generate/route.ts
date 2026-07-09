@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { crawlUrl } from '@/lib/crawler';
 import { preprocessArticle } from '@/lib/crawler/preprocess';
 import { validateThreadsLength } from '@/lib/validations/threads';
+import { executeWithRotation } from '@/lib/services/geminiRotationManager';
 
 // Create a service role client to bypass RLS for articles insertion
 function createServiceClient() {
@@ -348,6 +349,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 4. Connect to Gemini API for Streaming using Rotation
     const platformLabel = (platform || '').charAt(0).toUpperCase() + (platform || '').slice(1);
     const truncatedTitle = article.title && article.title.length > 300 ? article.title.slice(0, 300) + '...' : article.title;
     const fullText = article.full_text || article.description || '';
@@ -496,37 +498,44 @@ ${styleSectionStr}
       return NextResponse.json({ error: 'Chưa cấu hình model cho Gemini' }, { status: 500 });
     }
 
-    const isTunedModel = resolvedModel.startsWith('tunedModels/');
-    const modelPath = isTunedModel ? resolvedModel : `models/${resolvedModel}`;
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:streamGenerateContent?key=${geminiKey}`;
-    // Use higher temperature for variant B/C (index >= 1) to increase caption diversity
     const temperature = resolvedVariantIndex >= 1 ? 1.0 : 0.7;
-    const response = await fetchGeminiWithRetry(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
+
+    const response = await executeWithRotation(
+      { title: article.title || '', content: fullText },
+      async (key, modelName) => {
+        const isTunedModel = modelName.startsWith('tunedModels/');
+        const modelPath = isTunedModel ? modelName : `models/${modelName}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:streamGenerateContent?key=${key}`;
+        
+        const res = await fetchGeminiWithRetry(geminiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
               {
-                text: promptText,
+                parts: [
+                  {
+                    text: promptText,
+                  },
+                ],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          temperature,
-        },
-      }),
-    });
+            generationConfig: {
+              temperature,
+            },
+          }),
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Generate API] Gemini API returned error status:', response.status, errorText);
-      return NextResponse.json({ error: `AI API error: ${response.statusText}` }, { status: response.status });
-    }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`[Gemini API Error] Status: ${res.status}, Body: ${errorText}`);
+        }
+
+        return res;
+      }
+    );
 
     // 5. Stream response and save to DB on complete
     const reader = response.body?.getReader();
