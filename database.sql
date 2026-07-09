@@ -565,3 +565,38 @@ CREATE POLICY "platform_presets: authenticated modify own"
   ON public.platform_presets FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- Migration: Create gemini_api_keys table for rotation
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.gemini_api_keys (
+  id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_value           TEXT            NOT NULL UNIQUE,
+  label               TEXT            NOT NULL,
+  status              TEXT            NOT NULL DEFAULT 'active', -- 'active' | 'rate_limited' | 'invalid'
+  rate_limited_until  TIMESTAMPTZ,
+  error_count         INTEGER         NOT NULL DEFAULT 0,
+  last_used_at        TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.gemini_api_keys ENABLE ROW LEVEL SECURITY;
+
+-- Allow authenticated users to SELECT (read) keys for server-side generation
+CREATE POLICY "gemini_api_keys: authenticated read"
+  ON public.gemini_api_keys FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Allow admins to perform all operations
+CREATE POLICY "gemini_api_keys: admin manage"
+  ON public.gemini_api_keys FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.id = auth.uid() AND users.role = 'admin'
+    )
+  );
+

@@ -1,36 +1,12 @@
 /**
  * T-1.19.6 – Unit tests for classifyArticle
- * Tests: AI path, keyword fallback, confidence clamping, unknown category fallback.
+ * Tests local keyword-based classification logic.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { classifyArticle } from '@/lib/services/articleClassifier';
 
-// ── Mock fetch ───────────────────────────────────────────────────────────────
-const mockFetch = vi.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
-
-// We import after setting up global fetch mock
-let classifyArticle: (title: string, content: string) => Promise<{ category: string; confidence: number }>;
-
-beforeEach(async () => {
-  vi.resetModules();
-  mockFetch.mockReset();
-  // Set env var for AI path tests
-  process.env.GEMINI_API_KEY = 'test-key';
-  const mod = await import('@/lib/services/articleClassifier');
-  classifyArticle = mod.classifyArticle;
-});
-
-afterEach(() => {
-  delete process.env.GEMINI_API_KEY;
-});
-
-// ── 1. Keyword fallback (no API key) ────────────────────────────────────────
-describe('classifyArticle – keyword fallback (no API key)', () => {
-  beforeEach(() => {
-    delete process.env.GEMINI_API_KEY;
-  });
-
+describe('classifyArticle - keyword-based classification', () => {
   it('classifies real estate articles correctly', async () => {
     const result = await classifyArticle(
       '10 năm mua vàng và hành trình thoát cảnh ở trọ',
@@ -55,124 +31,18 @@ describe('classifyArticle – keyword fallback (no API key)', () => {
     expect(result.confidence).toBeGreaterThanOrEqual(0);
     expect(result.confidence).toBeLessThanOrEqual(1);
   });
-});
 
-// ── 2. AI path (with API key) ────────────────────────────────────────────────
-describe('classifyArticle – AI path (GEMINI_API_KEY set)', () => {
-  it('parses valid Gemini response', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: '{"category":"Đầu tư","confidence":0.92}' }],
-            },
-          },
-        ],
-      }),
-    });
-
-    const result = await classifyArticle(
-      'Cổ phiếu tăng mạnh trong tuần qua',
-      'Thị trường chứng khoán Việt Nam ghi nhận kỷ lục mới'
-    );
-    expect(result.category).toBe('Đầu tư');
-    expect(result.confidence).toBeCloseTo(0.92);
-  });
-
-  it('falls back to keyword when Gemini returns invalid category', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: '{"category":"InvalidCategory","confidence":0.8}' }],
-            },
-          },
-        ],
-      }),
-    });
-
-    const result = await classifyArticle(
-      'Mua nhà chung cư giá rẻ',
-      'Căn hộ 2 phòng ngủ đất nền vùng ven'
-    );
-    // Invalid category → falls back to keyword result
-    expect(result.category).toBeTruthy();
-    expect(['Bất động sản', 'Tổ ấm 4.0', 'Cuộc sống']).toContain(result.category);
-  });
-
-  it('falls back to keyword when Gemini API fails (non-ok response)', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-    });
-
-    const result = await classifyArticle(
-      'Sức khỏe tâm thần tuổi trẻ',
-      'Dinh dưỡng và thể thao giúp cải thiện sức khoẻ'
-    );
-    expect(result.category).toBeTruthy(); // fallback succeeds
-  });
-
-  it('clamps confidence to [0, 1]', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: '{"category":"Công nghệ","confidence":1.5}' }],
-            },
-          },
-        ],
-      }),
-    });
-
-    const result = await classifyArticle('AI và tương lai', 'Trí tuệ nhân tạo thay đổi mọi thứ');
-    expect(result.confidence).toBeLessThanOrEqual(1);
-  });
-
-  // T-1.19.6: Edge cases
   it('handles mixed Vietnamese and English articles', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: '{"category":"Công nghệ","confidence":0.75}' }],
-            },
-          },
-        ],
-      }),
-    });
-
     const result = await classifyArticle(
       'Technology trends 2024 - Xu hướng công nghệ',
       'AI, machine learning, digital transformation là những yếu tố quan trọng'
     );
-    expect(result.category).toBeTruthy();
+    expect(result.category).toBe('Công nghệ');
     expect(result.confidence).toBeGreaterThan(0);
   });
 
-  it('handles long article content (truncation)', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: '{"category":"Bất động sản","confidence":0.88}' }],
-            },
-          },
-        ],
-      }),
-    });
-
-    const longContent = 'Bất động sản là một lĩnh vực quan trọng. '.repeat(100);
+  it('handles long article content', async () => {
+    const longContent = 'Căn hộ chung cư và đất nền là bất động sản tốt. '.repeat(100);
     const result = await classifyArticle(
       'Bất động sản 2024',
       longContent

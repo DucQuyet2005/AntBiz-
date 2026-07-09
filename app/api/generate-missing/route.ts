@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { executeWithRotation } from '@/lib/services/geminiRotationManager';
 
 export const maxDuration = 60; // 60s timeout
 
 /**
  * POST /api/generate-missing
- * Automatically generates missing fields (title, full_text, category, tags) using Gemini.
+ * Automatically generates missing fields (title, full_text, category, tags) using Gemini with key rotation.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -14,13 +15,7 @@ export async function POST(request: NextRequest) {
     const { unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
     if (unauthorized) return unauthorized;
 
-    // 2. API Key check
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Thiếu GEMINI_API_KEY trong .env' }, { status: 500 });
-    }
-
-    // 3. Parse input
+    // 2. Parse input
     const { title = '', full_text = '', category = '', tags = '' } = await request.json().catch(() => ({}));
 
     // If both major fields are empty, we cannot generate content
@@ -31,10 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Construct AI prompt
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const primaryModelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    
+    // 3. Construct AI prompt
     const systemInstruction = 
       "Bạn là một biên tập viên và chuyên gia phát triển nội dung marketing chuyên nghiệp.\n" +
       "Nhiệm vụ của bạn là bổ sung các trường thông tin còn thiếu cho bài viết và trả về định dạng JSON thuần túy.\n" +
@@ -64,40 +56,15 @@ Bạn phải trả về một đối tượng JSON có cấu trúc chính xác n
 Lưu ý quan trọng: Chỉ trả về chuỗi JSON thô, không có ký tự bao ngoài như \`\`\`json hay \`\`\`.
 `;
 
-    const modelsToTry = [
-      primaryModelName,
-      'gemini-3.5-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash-lite',
-      'gemini-2.0-flash-lite'
-    ].filter((val, index, self) => self.indexOf(val) === index);
-
-    let result;
-    let success = false;
-    let lastError = null;
-
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`[Generate Missing] Trying model: ${modelName}`);
+    // 4. Execute with key rotation
+    const result = await executeWithRotation(
+      { title, content: full_text },
+      async (key, modelName) => {
+        const genAI = new GoogleGenerativeAI(key);
         const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
-        result = await model.generateContent(prompt);
-        success = true;
-        break;
-      } catch (err: any) {
-        lastError = err;
-        const errMsg = err.message || '';
-        console.warn(`[Generate Missing] Model ${modelName} failed: ${errMsg}`);
-        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
-          continue; // Try next model
-        } else {
-          throw err; // Throw immediately for other errors (e.g., auth, bad requests)
-        }
+        return model.generateContent(prompt);
       }
-    }
-
-    if (!success) {
-      throw lastError || new Error('All Gemini models failed');
-    }
+    );
 
     const response = await result.response;
     let jsonText = response.text().trim();

@@ -22,6 +22,7 @@ import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { createClient } from '@/utils/supabase/client';
 import { useFont, fonts } from '@/contexts/FontContext';
 import PlatformPresetsTab from './PlatformPresetsTab';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // API Plug / Connection icon custom SVG to match mockup
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
@@ -71,6 +72,10 @@ export default function SettingsView() {
   const [userId, setUserId] = useState<string | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [socialLoading, setSocialLoading] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupType, setPopupType] = useState<PopupType>('info');
+  const [popupTitle, setPopupTitle] = useState("");
   const supabase = createClient();
 
   const loadSocialAccounts = async () => {
@@ -115,6 +120,41 @@ export default function SettingsView() {
     });
     loadSocialAccounts();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    const platform = params.get('platform');
+    const errorMsg = params.get('error');
+
+    if (connected) {
+      const platformLabel = platform === 'threads' || platform === 'thread' ? 'Meta Threads' : 
+                            platform === 'instagram' ? 'Instagram Business' : 'Facebook Page';
+      
+      if (connected === 'success') {
+        setPopupType('success');
+        setPopupTitle(language === 'vi' ? 'Liên kết thành công' : 'Connection Success');
+        setPopupMessage(
+          language === 'vi' 
+            ? `Tài khoản ${platformLabel} của bạn đã được kết nối thành công.` 
+            : `${platformLabel} account has been connected successfully.`
+        );
+      } else {
+        setPopupType('error');
+        setPopupTitle(language === 'vi' ? 'Liên kết thất bại' : 'Connection Failed');
+        setPopupMessage(
+          language === 'vi'
+            ? `Không thể liên kết ${platformLabel}. Chi tiết: ${decodeURIComponent(errorMsg || 'Lỗi không xác định')}`
+            : `Failed to link ${platformLabel}. Detail: ${decodeURIComponent(errorMsg || 'Unknown error')}`
+        );
+      }
+      setPopupOpen(true);
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [language]);
 
   const handleThemeChange = async (newTheme: Theme, colorLabel: string) => {
     setTheme(newTheme);
@@ -677,6 +717,13 @@ export default function SettingsView() {
         <PlatformPresetsTab />
       )}
 
+      <PopupDialog
+        isOpen={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        title={popupTitle}
+        message={popupMessage}
+        type={popupType}
+      />
     </div>
   );
 }

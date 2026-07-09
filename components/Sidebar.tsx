@@ -16,6 +16,7 @@ import {
   X,
   Users,
   History,
+  Key,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -60,6 +61,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
       { href: "/admin/users", label: t("admin.userManagement"), icon: Users },
       { href: "/admin/audit-logs", label: t("admin.auditLogs"), icon: History },
       { href: "/admin/landing-editor", label: t("sidebar.landingEditor"), icon: Globe },
+      { href: "/admin/gemini-keys", label: t("admin.geminiKeys"), icon: Key },
     ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },

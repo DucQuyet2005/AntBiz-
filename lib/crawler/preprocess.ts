@@ -556,6 +556,19 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
       try {
         const text = $(el).text();
         const json = JSON.parse(text);
+
+        // Parse BreadcrumbList for Category
+        if (json['@type'] === 'BreadcrumbList' && Array.isArray(json.itemListElement)) {
+          const items = json.itemListElement;
+          if (items.length > 1) {
+            const lastItem = items[items.length - 1];
+            const name = lastItem.item?.name || lastItem.name;
+            if (name && name.toLowerCase() !== 'trang chủ') {
+              jsonLdCategory = name.startsWith('#') ? name : `#${name}`;
+            }
+          }
+        }
+
         const findArticle = (obj: any): any => {
           if (!obj) return null;
           const type = obj['@type'];
@@ -583,12 +596,16 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
             jsonLdDescription = cleanText(articleObj.description);
           }
           if (articleObj.author) {
+            let parsedAuthor = '';
             if (typeof articleObj.author === 'string') {
-              jsonLdAuthor = cleanText(articleObj.author);
+              parsedAuthor = cleanText(articleObj.author);
             } else if (Array.isArray(articleObj.author)) {
-              jsonLdAuthor = cleanText(articleObj.author[0]?.name || '');
+              parsedAuthor = cleanText(articleObj.author[0]?.name || '');
             } else if (articleObj.author.name) {
-              jsonLdAuthor = cleanText(articleObj.author.name);
+              parsedAuthor = cleanText(articleObj.author.name);
+            }
+            if (parsedAuthor && parsedAuthor.toLowerCase() !== 'trống') {
+              jsonLdAuthor = parsedAuthor;
             }
           }
           if (articleObj.datePublished) {
@@ -603,8 +620,55 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     // ignore
   }
 
+  // ── Dantri DT360/Video Javascript Data Extraction ──
+  let dtGlobalArticle: any = null;
+  let dtDistributionDate = '';
+  let dtGlobalCategoryName = '';
+  if (url.includes('dantri.com.vn')) {
+    $('script').each((_, el) => {
+      const text = $(el).text();
+      if (text.includes('window.DT_GLOBAL.article=')) {
+        try {
+          const match = text.match(/window\.DT_GLOBAL\.article\s*=\s*({.*?});/);
+          if (match && match[1]) {
+            dtGlobalArticle = JSON.parse(match[1]);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      if (text.includes('window.DT_GLOBAL.article.distributionDate')) {
+        try {
+          const match = text.match(/window\.DT_GLOBAL\.article\.distributionDate\s*=\s*"(.*?)"/);
+          if (match && match[1]) {
+            dtDistributionDate = match[1];
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      if (text.includes('window.DT_GLOBAL.article.category=')) {
+        try {
+          const match = text.match(/window\.DT_GLOBAL\.article\.category\s*=\s*({.*?});/);
+          if (match && match[1]) {
+            const catObj = JSON.parse(match[1]);
+            if (catObj && catObj.name) {
+              dtGlobalCategoryName = catObj.name;
+            }
+          }
+        } catch (e) {}
+      }
+    });
+  }
+
   // ── Category ──────────────────────
   let category = jsonLdCategory;
+  if (!category && dtGlobalArticle) {
+    const catName = dtGlobalArticle.category?.name || dtGlobalCategoryName;
+    if (catName) {
+      category = `#${catName}`;
+    }
+  }
   if (!category) {
     if (url.includes('dantri.com.vn')) {
       const breadcrumbs = $('.breadcrumbs, .breadcrumb, .dt-breadcrumb');
@@ -658,6 +722,9 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     });
   }
 
+  if (!title && dtGlobalArticle?.title) {
+    title = cleanText(dtGlobalArticle.title);
+  }
   if (!title) {
     title = cleanText(raw.title || $('title').text().replace(/ - Góc Nhìn Mới.*/i, ''));
   }
@@ -680,6 +747,9 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     }
   }
 
+  if (!description && dtGlobalArticle?.sapo) {
+    description = cleanText(dtGlobalArticle.sapo);
+  }
   if (!description && raw.metadata?.description) {
     description = cleanText(raw.metadata.description);
   }
@@ -707,6 +777,13 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     }
   }
 
+  if (!author && dtGlobalArticle) {
+    const listAuthor = dtGlobalArticle.listAuthor;
+    if (Array.isArray(listAuthor) && listAuthor.length > 0) {
+      author = cleanText(listAuthor[0].authorName || '');
+    }
+  }
+
   // ── Published date ────────────────────────────────────────────────────
   let rawPublishedAt = '';
   if (url.includes('dantri.com.vn')) {
@@ -723,6 +800,9 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   }
   if (!rawPublishedAt) {
     rawPublishedAt = jsonLdPublishedAt;
+  }
+  if (!rawPublishedAt && dtDistributionDate) {
+    rawPublishedAt = dtDistributionDate;
   }
   const published_at = parsePublishedAt(rawPublishedAt);
 
@@ -741,7 +821,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   const bodyBlocks: BodyBlock[] = [];
   const images: ImageBlock[] = [];
   const contentRoot = $('#html_content');
-  const isSpotlight = (layout === 'dmagazine' || layout === 'megastory' || layout === 'tamdiem') && $('#html_content').length === 0;
+  const isSpotlight = (layout === 'dmagazine' || layout === 'megastory' || layout === 'tamdiem') && 
+                      $('#html_content').length === 0 &&
+                      !url.includes('dantri.com.vn') &&
+                      !url.includes('tuoitre.vn');
   let spotlightFullText = '';
 
   if (contentRoot.length) {
@@ -871,7 +954,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     const seenImageUrls = new Set<string>();
 
     // Try to find the specific body container first to exclude header/footer/sidebar elements
-    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content').first();
+    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content, .e-magazine, .e-magazine__body, .dmagazine-container').first();
     if (!bodyContainer.length) {
       bodyContainer = scope;
     }
@@ -881,7 +964,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
       const cheerioEl = $(el);
 
       // Skip related news sections (Các phần có hiển thị tin liên quan thì không crawl)
-      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan').length > 0;
+      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]').length > 0 ||
+                        cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]');
       if (isRelated) {
         return;
       }

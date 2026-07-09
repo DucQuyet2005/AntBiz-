@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     'pages_manage_posts',
     'instagram_basic',
     'instagram_content_publish',
+    'business_management',
     'public_profile'
   ].join(',');
 

@@ -1458,7 +1458,7 @@ export default function ContentCalendarView() {
                       >
                         <div className="flex gap-3.5 items-start">
                           {imgUrl && (
-                            <img
+                            <img referrerPolicy="no-referrer" 
                               src={imgUrl}
                               alt={postTitle}
                               className="w-16 h-16 rounded-xl object-cover border border-slate-200/50 dark:border-zinc-800 shrink-0"
