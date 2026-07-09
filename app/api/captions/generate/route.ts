@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
 
 **QUY CHUẨN NỀN TẢNG (Mặc định):**
 *   ${presetRulesStr}
-${promptContent?.trim() ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (QUAN TRỌNG NHẤT - GHI ĐÈ LÊN QUY CHUẨN MẶC ĐỊNH):**\n*   ${promptContent.trim()}\n` : ''}
+${promptContent?.trim() ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (ƯU TIÊN TUYỆT ĐỐI NẾU CÓ MÂU THUẪN VỚI QUY CHUẨN):**\n*   ${promptContent.trim()}\n` : ''}
 **Văn phong:**
 ${styleSectionStr}
 

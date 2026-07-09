@@ -1771,7 +1771,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 
 **QUY CHUẨN NỀN TẢNG (Mặc định):**
 *   ${presetRules}
-${finalCustomText ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (QUAN TRỌNG NHẤT - GHI ĐÈ LÊN QUY CHUẨN MẶC ĐỊNH):**\n*   ${finalCustomText}\n` : ''}
+${finalCustomText ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (ƯU TIÊN TUYỆT ĐỐI NẾU CÓ MÂU THUẪN VỚI QUY CHUẨN):**\n*   ${finalCustomText}\n` : ''}
 **Văn phong:**
 ${styleSection}
 
