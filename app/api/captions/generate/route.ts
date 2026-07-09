@@ -359,19 +359,6 @@ export async function POST(request: NextRequest) {
     const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
     const styleSectionStr = styleContent ? `\n${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
-    let strictLengthRule = "Khoảng 100 - 150 từ";
-    let bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
-    if (targetPlatform === 'threads' || targetPlatform === 'thread') {
-      strictLengthRule = "Khoảng 30 từ (LƯU Ý: Nếu người dùng quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 500 ký tự của Threads)";
-      bodyInstruction = "Đưa ra quan điểm nhanh, đi thẳng vào vấn đề (hoặc theo yêu cầu bổ sung).";
-    } else if (targetPlatform === 'instagram') {
-      strictLengthRule = "Khoảng 100 từ (LƯU Ý: Nếu người dùng quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 2200 ký tự của Instagram)";
-      bodyInstruction = "Phát triển câu chuyện súc tích (hoặc theo yêu cầu bổ sung).";
-    } else if (targetPlatform === 'facebook') {
-      strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có Yêu cầu bổ sung yêu cầu viết ngắn lại hoặc quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ theo yêu cầu bổ sung đó)";
-      bodyInstruction = "Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh để cung cấp nhiều giá trị cho người đọc (trừ khi có yêu cầu viết ngắn).";
-    }
-
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 
 **Nền tảng:** ${platformLabel}
@@ -385,16 +372,12 @@ export async function POST(request: NextRequest) {
 ${customSectionStr}
 **Văn phong:**
 ${styleSectionStr}
-**Cấu trúc bài viết:**
-1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
-2.  Body (Nội dung chính): ${bodyInstruction}
-3.  Call to Action (CTA): Khuyến khích người đọc tương tác.
-4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
 
 **LƯU Ý ĐẶC BIỆT QUAN TRỌNG:**
-- ĐỘ DÀI: ${strictLengthRule}.
 - BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo. Phải viết lại bằng ngôn ngữ riêng, thân thiện mạng xã hội.
-- KẾT QUẢ: KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok". Trả về TRỰC TIẾP bài đăng.`;
+- KẾT QUẢ: KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok". Trả về TRỰC TIẾP bài đăng.
+${(targetPlatform === 'threads' || targetPlatform === 'thread') ? '- LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT ĐỐI KHÔNG ĐƯỢC VƯỢT QUÁ 500 KÝ TỰ.' : ''}
+${targetPlatform === 'instagram' ? '- LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT ĐỐI KHÔNG ĐƯỢC VƯỢT QUÁ 2200 KÝ TỰ.' : ''}`;
 
     if (requestedModel === 'qwen') {
       console.log('[Generate API] Using AntBiz Qwen via Hugging Face Space');

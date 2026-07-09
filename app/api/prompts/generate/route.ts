@@ -28,18 +28,6 @@ export async function POST(request: NextRequest) {
 
     let generatedText = "";
     
-    let strictLengthRule = "Khoảng 100 - 150 từ";
-    let bodyInstruction = "ngắn gọn, súc tích";
-    if (platform === 'threads' || platform === 'thread') {
-      strictLengthRule = "Khoảng 30 từ (LƯU Ý: Ưu tiên tuân thủ số lượng từ người dùng yêu cầu nếu có, nhưng TUYỆT ĐỐI KHÔNG vượt quá 500 ký tự)";
-      bodyInstruction = "đưa ra quan điểm nhanh (hoặc theo yêu cầu bổ sung)";
-    } else if (platform === 'instagram') {
-      strictLengthRule = "Khoảng 100 từ (LƯU Ý: Ưu tiên tuân thủ số lượng từ người dùng yêu cầu nếu có, nhưng TUYỆT ĐỐI KHÔNG vượt quá 2200 ký tự)";
-    } else if (platform === 'facebook') {
-      strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có yêu cầu viết ngắn lại, HÃY ƯU TIÊN tuân thủ theo yêu cầu đó)";
-      bodyInstruction = "phân tích chi tiết (trừ khi có yêu cầu viết ngắn)";
-    }
-
     const prompt = customPrompt || `Bạn là một chuyên gia Content Marketing. 
 Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
 Tiêu đề: ${title}
@@ -47,12 +35,11 @@ Nội dung tóm tắt: ${content}
 
 Yêu cầu bài viết:
 1. Thu hút, bắt trend và phù hợp với người dùng ${platform}.
-2. Có cấu trúc rõ ràng: Hook -> Body (${bodyInstruction}) -> CTA.
-3. Sử dụng Emoji phù hợp.
-4. Thêm 3-5 hashtag liên quan.
-5. LƯU Ý ĐỘ DÀI: ${strictLengthRule}.
-6. BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo gốc.
-7. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng.`;
+2. Sử dụng Emoji phù hợp.
+3. BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo gốc.
+4. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng.
+${(platform === 'threads' || platform === 'thread') ? '5. LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT ĐỐI KHÔNG ĐƯỢC VƯỢT QUÁ 500 KÝ TỰ.' : ''}
+${platform === 'instagram' ? '5. LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT ĐỐI KHÔNG ĐƯỢC VƯỢT QUÁ 2200 KÝ TỰ.' : ''}`;
 
     if (aiProvider === 'qwen') {
       const { Client } = await import('@gradio/client');

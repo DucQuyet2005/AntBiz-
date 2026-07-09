@@ -68,9 +68,9 @@ const MIGRATIONS = [
       CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_platform_preset ON public.platform_presets (user_id, platform) WHERE (is_default = TRUE AND user_id IS NOT NULL);
       CREATE UNIQUE INDEX IF NOT EXISTS unique_system_default_platform_preset ON public.platform_presets (platform) WHERE (is_default = TRUE AND user_id IS NULL);
       INSERT INTO public.platform_presets (platform, rules, is_default) VALUES
-      ('facebook', 'Bài viết cung cấp đầy đủ thông tin, có lời dẫn dắt, chia đoạn rõ ràng để dễ đọc. Kết thúc bằng lời kêu gọi hành động (Call to Action) và 3-5 hashtag.', true),
-      ('instagram', 'Bài viết ngắn gọn, tập trung chủ yếu vào hình ảnh. Dùng nhiều emoji biểu cảm. Cuối bài phải có 5-10 hashtag liên quan đến chủ đề.', true),
-      ('thread', 'Nội dung cực kỳ ngắn gọn (giới hạn dưới 280 ký tự), đi thẳng vào vấn đề chính. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.', true)
+      ('facebook', 'Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh. Cấu trúc rõ ràng: Hook -> Body -> CTA -> 3-5 hashtag. LƯU Ý ĐỘ DÀI: Khoảng 400 - 500 từ (Nếu có Yêu cầu bổ sung quy định số từ cụ thể, hãy BẮT BUỘC tuân thủ theo Yêu cầu bổ sung).', true),
+      ('instagram', 'Phát triển câu chuyện súc tích, hình ảnh hóa hoặc cảm xúc hóa nội dung. Cấu trúc: Hook -> Body -> CTA -> 5-10 hashtag. LƯU Ý ĐỘ DÀI: Ngắn gọn, khoảng 100 từ (Nếu có Yêu cầu bổ sung quy định số từ cụ thể, hãy BẮT BUỘC tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 2200 ký tự).', true),
+      ('thread', 'Đưa ra quan điểm nhanh, đi thẳng vào vấn đề. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng hashtag. LƯU Ý ĐỘ DÀI: Khoảng 30 từ, tối đa 2 câu (Nếu có Yêu cầu bổ sung quy định số từ cụ thể, hãy BẮT BUỘC tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 500 ký tự).', true)
       ON CONFLICT DO NOTHING;
     `,
   },
