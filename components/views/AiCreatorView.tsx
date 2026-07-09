@@ -1249,8 +1249,13 @@ export default function AiCreatorView() {
               }
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.text) {
+                if (parsed.replace) {
+                  accumulated = parsed.text || '';
+                } else if (parsed.text) {
                   accumulated += parsed.text;
+                }
+
+                if (parsed.replace || parsed.text) {
                   setVariants((prev) =>
                     prev.map((v) =>
                       v.id === variantId
@@ -1418,8 +1423,13 @@ export default function AiCreatorView() {
           if (data === '[DONE]') continue;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.text) {
+            if (parsed.replace) {
+              accumulated = parsed.text || '';
+            } else if (parsed.text) {
               accumulated += parsed.text;
+            }
+
+            if (parsed.replace || parsed.text) {
               setVariants((prev) =>
                 prev.map((v) =>
                   v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
@@ -2225,7 +2235,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   const [streamedCaption, setStreamedCaption] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateDone, setGenerateDone] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'gpt4' | 'gemini' | 'claude'>('gpt4');
+  const [selectedModel, setSelectedModel] = useState<'gemini' | 'qwen'>('gemini');
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch list configs of user
@@ -2647,7 +2657,10 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             }
             try {
               const parsed = JSON.parse(data);
-              if (parsed.text) {
+              if (parsed.replace) {
+                accumulated = parsed.text || '';
+                setStreamedCaption(accumulated);
+              } else if (parsed.text) {
                 accumulated += parsed.text;
                 setStreamedCaption(accumulated);
               }
@@ -3837,16 +3850,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         {(() => {
           const hints = {
             facebook: {
-              vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
-              en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
-            },
-            threads: {
               vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
               en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
             },
-            instagram: {
+            threads: {
               vi: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
               en: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.'
+            },
+            instagram: {
+              vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+              en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
             }
           };
           const hint = hints[selectedPlatform] || hints.facebook;
@@ -4057,6 +4070,38 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* AI Model Selection Switcher */}
+        <div className="flex flex-col gap-2 bg-[#F8F9FE] dark:bg-black/40 border border-[#E4E6F8] dark:border-zinc-800 rounded-2xl p-4">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-sans">
+            {language === 'vi' ? 'Engine AI (Mô hình ngôn ngữ)' : 'AI Engine (Language Model)'}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gemini'
+                ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                : 'bg-white hover:bg-gray-50 border-gray-200 text-slate-600 hover:text-slate-800 active:scale-95'
+                }`}
+            >
+              <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
+              <span>Gemini 2.5 (Nhanh)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSelectedModel('qwen'); setGenerateError(null); }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'qwen'
+                ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
+                : 'bg-white hover:bg-gray-50 border-gray-200 text-slate-600 hover:text-slate-800 active:scale-95'
+                }`}
+              title="Cảnh báo: Thời gian xử lý khoảng 15 phút do chạy trên CPU"
+            >
+              <Sparkles size={12} className={selectedModel === 'qwen' ? 'text-white' : 'text-amber-500'} />
+              <span>AntBiz Qwen (Chuyên gia)</span>
+            </button>
+          </div>
         </div>
 
         {/* 4. Prompt Preview Accordion */}
@@ -5092,17 +5137,6 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => { setSelectedModel('gpt4'); setGenerateError(null); }}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gpt4'
-                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
-                        : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
-                        }`}
-                    >
-                      <Sparkles size={12} className={selectedModel === 'gpt4' ? 'text-white' : 'text-primary'} />
-                      <span>GPT-4o</span>
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => { setSelectedModel('gemini'); setGenerateError(null); }}
                       className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'gemini'
                         ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
@@ -5110,18 +5144,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                         }`}
                     >
                       <Globe size={12} className={selectedModel === 'gemini' ? 'text-white' : 'text-blue-500'} />
-                      <span>Gemini</span>
+                      <span>Gemini 2.5 (Nhanh)</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setSelectedModel('claude'); setGenerateError(null); }}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'claude'
+                      onClick={() => { setSelectedModel('qwen'); setGenerateError(null); }}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-[11px] font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none ${selectedModel === 'qwen'
                         ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25 active:scale-95'
                         : 'bg-white hover:bg-gray-50 border-gray-200 text-text-muted hover:text-text active:scale-95'
                         }`}
+                      title="Cảnh báo: Thời gian xử lý khoảng 15 phút do chạy trên CPU"
                     >
-                      <Wand2 size={12} className={selectedModel === 'claude' ? 'text-white' : 'text-amber-500'} />
-                      <span>Claude</span>
+                      <Sparkles size={12} className={selectedModel === 'qwen' ? 'text-white' : 'text-amber-500'} />
+                      <span>AntBiz Qwen (Chuyên gia - 15p)</span>
                     </button>
                   </div>
                 </div>
@@ -5504,8 +5539,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             bgColor: 'bg-blue-600',
                             borderActive: 'border-blue-500',
                             ringActive: 'ring-blue-500/15',
-                            hint: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
-                            hintEn: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.',
+                            hint: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                            hintEn: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.',
                             emoji: '🔵'
                           },
                           {
@@ -5514,8 +5549,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             bgColor: 'bg-zinc-900 dark:bg-zinc-700',
                             borderActive: 'border-zinc-800 dark:border-white',
                             ringActive: 'ring-zinc-400/15',
-                            hint: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
-                            hintEn: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.',
+                            hint: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
+                            hintEn: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.',
                             emoji: '💬'
                           },
                           {
@@ -5524,8 +5559,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             bgColor: 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600',
                             borderActive: 'border-pink-500',
                             ringActive: 'ring-pink-500/15',
-                            hint: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
-                            hintEn: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.',
+                            hint: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+                            hintEn: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.',
                             emoji: '📷'
                           }
                         ].map(pm => {
@@ -5624,16 +5659,16 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       {(() => {
                         const hints = {
                           facebook: {
-                            vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
-                            en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
-                          },
-                          threads: {
                             vi: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
                             en: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.'
                           },
-                          instagram: {
+                          threads: {
                             vi: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
                             en: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.'
+                          },
+                          instagram: {
+                            vi: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+                            en: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.'
                           }
                         };
                         const hint = hints[selectedPlatform] || hints.facebook;

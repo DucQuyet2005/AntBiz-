@@ -4,6 +4,19 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.7.5] - 2026-07-09
+
+### Fixed
+- **Sửa lỗi lệch quy chuẩn nền tảng (Facebook, Threads, Instagram)**:
+  - Đồng bộ và căn chỉnh lại các gợi ý hướng dẫn (hints) cho cả phiên bản tiếng Việt và tiếng Anh ở Bước 1 và Bước 2 của không gian AI Creator:
+    - **Facebook**: Đổi gợi ý độ dài cũ từ 80-180 ký tự thành giới hạn độ dài mới tối đa 500 ký tự và giọng văn casual.
+    - **Threads**: Nhận cấu hình cũ của Instagram (Caption ngắn gọn + hashtag, chú trọng hình ảnh và cảm xúc).
+    - **Instagram**: Nhận cấu hình tối ưu độ dài cũ của Facebook (80-180 ký tự + dùng CTA rõ ràng).
+  - Cập nhật cơ sở dữ liệu mẫu (`database.sql`) và viết thêm tệp cơ chế di trú SQL (`migrations/20260709_fix_mismatched_platform_presets.sql`) để tự động cập nhật và đồng bộ hóa các quy chuẩn mặc định của hệ thống (`platform_presets`) và các quy chuẩn mặc định của người dùng trên môi trường production.
+- **Sửa lỗi dính chữ "Đang gọi AI AntBiz Qwen" vào bài viết**:
+  - Khắc phục lỗi trên Client (trong file `AiCreatorView.tsx`) không xử lý thuộc tính `replace` của Server stream khi sinh biến thể.
+  - Khi luồng stream từ mô hình `Qwen` trả về sự kiện kết thúc kèm thuộc tính `replace: true`, frontend sẽ ghi đè lại toàn bộ nội dung đã sinh để loại bỏ dòng thông báo chờ tải thay vì tích lũy (accumulate) cộng dồn vào văn bản.
+
 ## [1.7.4] - 2026-07-08
 
 ### Added

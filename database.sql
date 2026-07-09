@@ -518,9 +518,9 @@ CREATE POLICY "platform_presets: service role write"
 
 -- Chèn d? li?u m?c đ?nh ban đ?u
 INSERT INTO public.platform_presets (platform, rules) VALUES
-('facebook', 'Bài vi?t cung c?p đ?y đ? thông tin, có l?i d?n d?t, chia đo?n r? ràng đ? d? đ?c. K?t thúc b?ng l?i kêu g?i hành đ?ng (Call to Action) và 3-5 hashtag.'),
-('instagram', 'Bài vi?t ng?n g?n, t?p trung ch? y?u vào h?nh ?nh. Dùng nhi?u emoji bi?u c?m. Cu?i bài ph?i có 5-10 hashtag liên quan đ?n ch? đ?.'),
-('thread', 'N?i dung c?c k? ng?n g?n (gi?i h?n dư?i 280 k? t?), đi th?ng vào v?n đ? chính. Hành văn mang tính tr? chuy?n, tranh lu?n m?. H?n ch? dùng quá nhi?u hashtag.')
+('facebook', 'Nội dung cực kỳ ngắn gọn (giới hạn dưới 500 ký tự), đi thẳng vào vấn đề chính. Hành văn mang tính trò chuyện, tranh luận mở. Hạn chế dùng quá nhiều hashtag.'),
+('instagram', 'Bài viết cung cấp đầy đủ thông tin, có lời dẫn dắt, chia đoạn rõ ràng để dễ đọc. Kết thúc bằng lời kêu gọi hành động (Call to Action) và 3-5 hashtag.'),
+('thread', 'Bài viết ngắn gọn, tập trung chủ yếu vào hình ảnh. Dùng nhiều emoji biểu cảm. Cuối bài phải có 5-10 hashtag liên quan đến chủ đề.')
 ON CONFLICT (platform) DO UPDATE SET rules = EXCLUDED.rules;
 
 -- ============================================================

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
     }
 
-    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId, authorProfileId, stylePresetId, platformPresetId } = body;
+    const { url, articleId, promptId, customPrompt, platform, variantGroupId, variantIndex, oldCaptionId, authorProfileId, stylePresetId, platformPresetId, model: requestedModel } = body;
 
     const isThreads = platform === 'threads' || platform === 'thread';
     if (!promptId && !customPrompt && !stylePresetId && !platformPresetId && !isThreads) {
@@ -348,23 +348,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL || '';
-
-    let resolvedModel = model;
-
-    // 4. Connect to Gemini API for Streaming
-
-    if (!geminiKey) {
-      console.error('[Generate API] GEMINI_API_KEY is not defined in .env');
-      return NextResponse.json({ error: 'Chưa cấu hình API key cho Gemini' }, { status: 500 });
-    }
-
-    if (!model) {
-      console.error('[Generate API] GEMINI_MODEL is not defined in .env');
-      return NextResponse.json({ error: 'Chưa cấu hình model cho Gemini' }, { status: 500 });
-    }
-
     const platformLabel = (platform || '').charAt(0).toUpperCase() + (platform || '').slice(1);
     const truncatedTitle = article.title && article.title.length > 300 ? article.title.slice(0, 300) + '...' : article.title;
     const fullText = article.full_text || article.description || '';
@@ -389,10 +372,116 @@ ${customSectionStr}
 ${styleSectionStr}
 **Cấu trúc bài viết:**
 1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
-2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
+2.  Body (Nội dung chính): Phát triển câu chuyện chi tiết, hấp dẫn và cung cấp nhiều giá trị cho người đọc. Phân tích sâu sắc các khía cạnh.
 3.  Call to Action (CTA): Gợi mở tương tác, đặt câu hỏi cho độc giả.
 4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
 TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+
+    if (requestedModel === 'qwen') {
+      console.log('[Generate API] Using AntBiz Qwen via Hugging Face Space');
+      const { Client } = await import('@gradio/client');
+      const spaceId = process.env.HUGGINGFACE_SPACE_ID;
+      if (!spaceId) {
+        return NextResponse.json({ error: 'Thiếu HUGGINGFACE_SPACE_ID trong .env' }, { status: 500 });
+      }
+
+      let hfPlatform = 'Facebook';
+      if (targetPlatform === 'threads' || targetPlatform === 'thread') hfPlatform = 'Threads';
+      if (targetPlatform === 'instagram') hfPlatform = 'Instagram';
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: "Đang gọi AI AntBiz Qwen (vui lòng đợi khoảng 15 phút)...\n\n" })}\n\n`));
+            
+            const systemPrompt = "Bạn là AI viết content chuyên nghiệp của thương hiệu AntBiz. Tuyệt đối KHÔNG dùng hashtag tiếng Anh. Luôn đính kèm hashtag #AntBiz vào cuối bài.";
+            
+            const client = await Client.connect(spaceId);
+            const result = await client.predict("/generate_text", { 
+              system_prompt: systemPrompt,
+              user_prompt: promptText
+            });
+            
+            const generatedText = (result.data as any)[0] as string;
+            
+            // Push final result (using replace: true to overwrite the waiting message)
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: generatedText, replace: true })}\n\n`));
+
+            // Save generated caption to database
+            let captionId = '';
+            if (generatedText) {
+              const dbPlatform = (targetPlatform === 'threads' || targetPlatform === 'thread') ? 'thread' : targetPlatform;
+              const insertPayload: Record<string, unknown> = {
+                article_id: article.id,
+                prompt_id: dbPromptId || null,
+                created_by: user.id,
+                platform: dbPlatform,
+                ai_content: generatedText,
+                status: 'draft',
+                variant_index: resolvedVariantIndex,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              if (variantGroupId) insertPayload.variant_group_id = variantGroupId;
+
+              const { data: savedCaption, error: saveError } = await userSupabase
+                .from('captions')
+                .insert(insertPayload)
+                .select()
+                .single();
+
+              if (saveError) {
+                console.error('[Generate API] Lỗi khi tự động lưu caption Qwen:', saveError);
+              } else if (savedCaption) {
+                captionId = savedCaption.id;
+              }
+            }
+
+            controller.enqueue(
+              new TextEncoder().encode(
+                `data: ${JSON.stringify({
+                  done: true,
+                  captionId,
+                  articleId: article.id,
+                  variantGroupId: variantGroupId || null,
+                })}\n\n`
+              )
+            );
+            controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            controller.close();
+          } catch (err: any) {
+            console.error('[Generate API] Error with Qwen API:', err);
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: `\n\nLỗi gọi AI: ${err.message}` })}\n\n`));
+            controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    // 4. Connect to Gemini API for Streaming
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || '';
+
+    let resolvedModel = model;
+
+    if (!geminiKey) {
+      console.error('[Generate API] GEMINI_API_KEY is not defined in .env');
+      return NextResponse.json({ error: 'Chưa cấu hình API key cho Gemini' }, { status: 500 });
+    }
+
+    if (!model) {
+      console.error('[Generate API] GEMINI_MODEL is not defined in .env');
+      return NextResponse.json({ error: 'Chưa cấu hình model cho Gemini' }, { status: 500 });
+    }
 
     const isTunedModel = resolvedModel.startsWith('tunedModels/');
     const modelPath = isTunedModel ? resolvedModel : `models/${resolvedModel}`;
