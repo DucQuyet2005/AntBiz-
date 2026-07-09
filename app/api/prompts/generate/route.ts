@@ -50,7 +50,12 @@ ${platform === 'instagram' ? '5. LƯU Ý KỸ THUẬT: BÀI VIẾT TUYỆT ĐỐ
 
       console.log(`[Qwen API] Calling Gradio Space: ${spaceId} for prompt API`);
       
-      const systemPrompt = "Bạn là AI viết content chuyên nghiệp bằng tiếng Việt. Tuyệt đối KHÔNG dùng hashtag tiếng Anh. Hãy luôn tạo 3-5 hashtag tiếng Việt bám sát nội dung bài viết.";
+      const systemPrompt = `Bạn là chuyên gia Content Marketing rành rọt tiếng Việt. Nhiệm vụ của bạn là viết một bài đăng mạng xã hội hoàn chỉnh.
+LUẬT TỐI CAO BẮT BUỘC TUÂN THỦ:
+1. NẾU YÊU CẦU ĐỘ DÀI (ví dụ: 100 từ, 360 từ), BẮT BUỘC viết ĐÚNG độ dài đó, KHÔNG ĐƯỢC viết dài miên man.
+2. TUYỆT ĐỐI KHÔNG COPY nguyên văn đầu vào. Phải diễn đạt lại bằng ngôn từ mạng xã hội.
+3. LUÔN LUÔN kết thúc bài bằng 3-5 hashtag tiếng Việt.
+4. KHÔNG BAO GIỜ được giao tiếp với người dùng (Tuyệt đối không có các câu như "Bài viết đã hoàn thành", "Hãy gửi cho tôi", "Ok"). CHỈ ĐƯỢC IN RA NỘI DUNG BÀI ĐĂNG.`;
       
       const client = await Client.connect(spaceId);
       const result = await client.predict("/generate_text", { 
