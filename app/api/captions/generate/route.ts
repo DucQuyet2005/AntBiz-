@@ -362,11 +362,11 @@ export async function POST(request: NextRequest) {
     let strictLengthRule = "Khoảng 100 - 150 từ";
     let bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
     if (targetPlatform === 'threads' || targetPlatform === 'thread') {
-      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 30 từ (tối đa 2 câu)";
-      bodyInstruction = "Đưa ra quan điểm nhanh, đi thẳng vào vấn đề.";
+      strictLengthRule = "Khoảng 30 từ (LƯU Ý: Nếu người dùng quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 500 ký tự của Threads)";
+      bodyInstruction = "Đưa ra quan điểm nhanh, đi thẳng vào vấn đề (hoặc theo yêu cầu bổ sung).";
     } else if (targetPlatform === 'instagram') {
-      strictLengthRule = "Ngắn gọn, khoảng 100 từ";
-      bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
+      strictLengthRule = "Khoảng 100 từ (LƯU Ý: Nếu người dùng quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ, nhưng TUYỆT ĐỐI KHÔNG vượt quá 2200 ký tự của Instagram)";
+      bodyInstruction = "Phát triển câu chuyện súc tích (hoặc theo yêu cầu bổ sung).";
     } else if (targetPlatform === 'facebook') {
       strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có Yêu cầu bổ sung yêu cầu viết ngắn lại hoặc quy định số từ cụ thể, HÃY ƯU TIÊN tuân thủ theo yêu cầu bổ sung đó)";
       bodyInstruction = "Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh để cung cấp nhiều giá trị cho người đọc (trừ khi có yêu cầu viết ngắn).";

@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     let strictLengthRule = "Khoảng 100 - 150 từ";
     let bodyInstruction = "ngắn gọn, súc tích";
     if (platform === 'threads' || platform === 'thread') {
-      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 30 từ (tối đa 2 câu)";
-      bodyInstruction = "đưa ra quan điểm nhanh";
+      strictLengthRule = "Khoảng 30 từ (LƯU Ý: Ưu tiên tuân thủ số lượng từ người dùng yêu cầu nếu có, nhưng TUYỆT ĐỐI KHÔNG vượt quá 500 ký tự)";
+      bodyInstruction = "đưa ra quan điểm nhanh (hoặc theo yêu cầu bổ sung)";
     } else if (platform === 'instagram') {
-      strictLengthRule = "Ngắn gọn, khoảng 100 từ";
+      strictLengthRule = "Khoảng 100 từ (LƯU Ý: Ưu tiên tuân thủ số lượng từ người dùng yêu cầu nếu có, nhưng TUYỆT ĐỐI KHÔNG vượt quá 2200 ký tự)";
     } else if (platform === 'facebook') {
       strictLengthRule = "Khoảng 400 - 500 từ (LƯU Ý: Nếu người dùng có yêu cầu viết ngắn lại, HÃY ƯU TIÊN tuân thủ theo yêu cầu đó)";
       bodyInstruction = "phân tích chi tiết (trừ khi có yêu cầu viết ngắn)";
