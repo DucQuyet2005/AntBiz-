@@ -372,8 +372,8 @@ ${customSectionStr}
 ${styleSectionStr}
 **Cấu trúc bài viết:**
 1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
-2.  Body (Nội dung chính): Phát triển câu chuyện chi tiết, hấp dẫn và cung cấp nhiều giá trị cho người đọc. Phân tích sâu sắc các khía cạnh.
-3.  Call to Action (CTA): Gợi mở tương tác, đặt câu hỏi cho độc giả.
+2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
+3.  Call to Action (CTA): Khuyến khích người đọc tương tác.
 4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
 TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
 
