@@ -387,7 +387,7 @@ ${styleSectionStr}
 
 **LƯU Ý ĐẶC BIỆT QUAN TRỌNG:**
 - ĐỘ DÀI: ${strictLengthRule}.
-- BẢN QUYỀN: TUYỆT ĐỐI KHÔNG copy lại Tiêu đề hay chép y nguyên bài báo. Phải tự viết lại một câu Hook mở đầu hoàn toàn mới mang tính trò chuyện.
+- BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo. Phải viết lại bằng ngôn ngữ riêng, thân thiện mạng xã hội.
 - KẾT QUẢ: KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok". Trả về TRỰC TIẾP bài đăng.`;
 
     if (requestedModel === 'qwen') {
