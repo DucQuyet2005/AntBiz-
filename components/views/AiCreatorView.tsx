@@ -1769,9 +1769,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Ok", không "Đây là bà
 *   **Tiêu đề bài báo:** "${truncatedTitle || '(Chưa có tiêu đề)'}"
 *   **Nội dung tóm tắt:** "${truncatedContent || '(Chưa có nội dung)'}"
 
-**Hướng dẫn khai thác nội dung:**
+**QUY CHUẨN NỀN TẢNG (Mặc định):**
 *   ${presetRules}
-${customSection}
+${finalCustomText ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (QUAN TRỌNG NHẤT - GHI ĐÈ LÊN QUY CHUẨN MẶC ĐỊNH):**\n*   ${finalCustomText}\n` : ''}
 **Văn phong:**
 ${styleSection}
 

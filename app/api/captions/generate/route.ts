@@ -367,9 +367,9 @@ export async function POST(request: NextRequest) {
 *   **Tiêu đề bài báo:** "${truncatedTitle || '(Chưa có tiêu đề)'}"
 *   **Nội dung tóm tắt:** "${truncatedContent || '(Chưa có nội dung)'}"
 
-**Hướng dẫn khai thác nội dung:**
+**QUY CHUẨN NỀN TẢNG (Mặc định):**
 *   ${presetRulesStr}
-${customSectionStr}
+${promptContent?.trim() ? `\n**YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG (QUAN TRỌNG NHẤT - GHI ĐÈ LÊN QUY CHUẨN MẶC ĐỊNH):**\n*   ${promptContent.trim()}\n` : ''}
 **Văn phong:**
 ${styleSectionStr}
 
