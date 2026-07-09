@@ -357,6 +357,15 @@ export async function POST(request: NextRequest) {
     const customSectionStr = promptContent?.trim() ? `*   ${promptContent.trim()}\n` : '';
     const styleSectionStr = styleContent ? `\n${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
+    let strictLengthRule = "Khoảng 100 - 150 từ";
+    if (targetPlatform === 'threads' || targetPlatform === 'thread') {
+      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 50 - 80 từ";
+    } else if (targetPlatform === 'instagram') {
+      strictLengthRule = "Ngắn gọn, khoảng 100 từ";
+    } else if (targetPlatform === 'facebook') {
+      strictLengthRule = "Khoảng 150 - 200 từ";
+    }
+
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 
 **Nền tảng:** ${platformLabel}
@@ -375,7 +384,11 @@ ${styleSectionStr}
 2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
 3.  Call to Action (CTA): Khuyến khích người đọc tương tác.
 4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
-TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+
+**LƯU Ý ĐẶC BIỆT QUAN TRỌNG:**
+- ĐỘ DÀI: ${strictLengthRule}.
+- BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo. Phải viết lại bằng ngôn ngữ riêng, thân thiện mạng xã hội.
+- KẾT QUẢ: KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok". Trả về TRỰC TIẾP bài đăng.`;
 
     if (requestedModel === 'qwen') {
       console.log('[Generate API] Using AntBiz Qwen via Hugging Face Space');
