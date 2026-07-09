@@ -4,6 +4,18 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.7.5] - 2026-07-09
+
+### Added
+- **Thông báo trạng thái liên kết tài khoản (OAuth callback feedback)**:
+  - Tự động bắt tham số URL kết quả từ callback OAuth (`connected=success` hoặc `connected=failed`) trên trang Cài đặt (Settings).
+  - Tích hợp `PopupDialog` để hiển thị trực quan thông báo kết quả liên kết tài khoản mxh (Facebook Page, Instagram Business, Meta Threads) và tự động dọn dẹp các tham số URL để tránh lặp lại thông báo.
+- **Ràng buộc kiểm tra liên kết tài khoản ở AI Creator (Publish Validation)**:
+  - Tích hợp hiển thị badge màu đỏ "Chưa kết nối" (Not Connected) bên cạnh các checkbox lựa chọn kênh đăng bài chưa được liên kết.
+  - Chặn tiến trình tạo nội dung AI (`handleGenerate` ở Bước 1) và tiến trình xác nhận lên lịch (`handleConfirmSchedule` ở Bước 2) nếu người dùng chọn kênh chưa kết nối tài khoản, đồng thời hiển thị cảnh báo hướng dẫn liên kết thông qua `PopupDialog`.
+- **Tài liệu hướng dẫn (Guides)**:
+  - Bổ sung tài liệu hướng dẫn liên kết & kiểm thử Instagram Business chi tiết từ việc chuẩn bị tài khoản đến cấu hình Meta app tại [instagram-connection-guide.md](file:///e:/User/Work_Space/Netspace/AntBiz/docs/guides/instagram-connection-guide.md).
+
 ## [1.7.4] - 2026-07-08
 
 ### Added

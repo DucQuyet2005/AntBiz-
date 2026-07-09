@@ -733,6 +733,25 @@ export default function AiCreatorView() {
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
   const [selectedPlatforms, setSelectedPlatforms] = useState<('facebook' | 'threads' | 'instagram')[]>(['facebook']);
   const [excludedPlatforms, setExcludedPlatforms] = useState<('facebook' | 'threads' | 'instagram')[]>([]);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch('/api/linked-accounts');
+        if (res.ok) {
+          const json = await res.json();
+          const platforms = (json.data || []).map((acc: any) => 
+            acc.platform === 'thread' ? 'threads' : acc.platform
+          );
+          setConnectedPlatforms(platforms);
+        }
+      } catch (err) {
+        console.error('Error checking platform integrations:', err);
+      }
+    };
+    fetchConnections();
+  }, []);
   const [variantCount, setVariantCount] = useState<2 | 3>(2);
   const [subStep, setSubStep] = useState<number>(1);
 
@@ -2596,6 +2615,20 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
 
   const handleGenerate = async () => {
+    // Check if selected platforms are connected
+    const unconnected = selectedPlatforms.filter(p => !connectedPlatforms.includes(p));
+    if (unconnected.length > 0) {
+      const platformLabels = unconnected.map(p => p === 'threads' ? 'Meta Threads' : p === 'instagram' ? 'Instagram Business' : 'Facebook Page').join(', ');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' 
+          ? `Bạn chưa liên kết tài khoản cho: ${platformLabels}. Vui lòng liên kết tài khoản trong trang Cài đặt trước khi sinh nội dung.`
+          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before generating content.`
+      });
+      return;
+    }
+
     if (!selectedPromptId) {
       setGenerateError(language === 'vi' ? 'Vui lòng chọn một prompt trước.' : 'Please select a prompt first.');
       return;
@@ -3718,12 +3751,26 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   };
 
   const handleConfirmSchedule = async () => {
+    // Lọc ra các platform được chọn từ step 1 mà chưa bị loại trừ
+    const activePlatforms = selectedPlatforms.filter((plat) => !excludedPlatforms.includes(plat));
+
+    // Check if active platforms are connected
+    const unconnected = activePlatforms.filter(p => !connectedPlatforms.includes(p));
+    if (unconnected.length > 0) {
+      const platformLabels = unconnected.map(p => p === 'threads' ? 'Meta Threads' : p === 'instagram' ? 'Instagram Business' : 'Facebook Page').join(', ');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' 
+          ? `Bạn chưa liên kết tài khoản cho: ${platformLabels}. Vui lòng liên kết tài khoản trong trang Cài đặt trước khi lên lịch đăng bài.`
+          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before scheduling posts.`
+      });
+      return;
+    }
+
     // Không thực hiện lên lịch nếu có lỗi xảy ra hoặc đang xử lý yêu cầu trước đó
     if (facebookError || threadsError || instagramError) return;
     if (isSchedulingLoading) return;
-
-    // Lọc ra các platform được chọn từ step 1 mà chưa bị loại trừ
-    const activePlatforms = selectedPlatforms.filter((plat) => !excludedPlatforms.includes(plat));
 
     if (activePlatforms.length === 0) {
       setSchedulingError(language === 'vi' ? 'Vui lòng chọn ít nhất một nền tảng.' : 'Please select at least one platform.');
@@ -5557,8 +5604,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   {pm.id === 'instagram' && <Instagram size={16} className="text-white" />}
                                 </span>
                                 <span className="flex flex-col gap-0.5">
-                                  <span className={`text-xs font-bold uppercase tracking-wider ${isSel ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    {pm.label}
+                                  <span className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${isSel ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                                      {pm.label}
+                                    </span>
+                                    {!connectedPlatforms.includes(pm.id) && (
+                                      <span className="text-[9px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                        {language === 'vi' ? 'Chưa kết nối' : 'Not Connected'}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-medium leading-relaxed">
                                     {language === 'vi' ? pm.hint : pm.hintEn}
@@ -7876,6 +7930,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         })()}
 
       </div>
+      {popup && (
+        <PopupDialog
+          isOpen={popup.isOpen}
+          onClose={() => setPopup(null)}
+          message={popup.message}
+          type={popup.type}
+        />
+      )}
     </EditableTextContext.Provider>
   );
 }

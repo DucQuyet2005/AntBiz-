@@ -53,11 +53,22 @@ export async function GET(request: NextRequest) {
 
     const userLongToken = longTokenData.access_token;
 
+    // Log debug thông tin người dùng Facebook thực tế đang đăng nhập
+    try {
+      const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=name,id&access_token=${userLongToken}`);
+      const meData = await meRes.json();
+      console.log('[Facebook Callback] Logged in Facebook User Info:', meData);
+    } catch (debugErr) {
+      console.error('[Facebook Callback] Debug fetch me error:', debugErr);
+    }
+
     // 3. Quét danh sách Pages của người dùng
     const accountsRes = await fetch(
       `https://graph.facebook.com/v19.0/me/accounts?access_token=${userLongToken}`
     );
     const accountsData = await accountsRes.json();
+    console.log('[Facebook Callback] Accounts list response data:', JSON.stringify(accountsData));
+
     if (!accountsRes.ok) {
       throw new Error(accountsData.error?.message || 'Không thể lấy danh sách Pages');
     }
