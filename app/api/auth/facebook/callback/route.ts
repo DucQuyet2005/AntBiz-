@@ -58,8 +58,12 @@ export async function GET(request: NextRequest) {
       const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=name,id&access_token=${userLongToken}`);
       const meData = await meRes.json();
       console.log('[Facebook Callback] Logged in Facebook User Info:', meData);
+
+      const permRes = await fetch(`https://graph.facebook.com/v19.0/me/permissions?access_token=${userLongToken}`);
+      const permData = await permRes.json();
+      console.log('[Facebook Callback] Active Token Permissions:', JSON.stringify(permData));
     } catch (debugErr) {
-      console.error('[Facebook Callback] Debug fetch me error:', debugErr);
+      console.error('[Facebook Callback] Debug fetch me or permissions error:', debugErr);
     }
 
     // 3. Quét danh sách Pages của người dùng
