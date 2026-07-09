@@ -407,7 +407,7 @@ ${styleSectionStr}
           try {
             controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: "Đang gọi AI AntBiz Qwen (vui lòng đợi khoảng 15 phút)...\n\n" })}\n\n`));
             
-            const systemPrompt = "Bạn là AI viết content chuyên nghiệp của thương hiệu AntBiz. Tuyệt đối KHÔNG dùng hashtag tiếng Anh. Luôn đính kèm hashtag #AntBiz vào cuối bài.";
+            const systemPrompt = "Bạn là AI viết content chuyên nghiệp bằng tiếng Việt. Tuyệt đối KHÔNG dùng hashtag tiếng Anh. Hãy luôn tạo 3-5 hashtag tiếng Việt bám sát nội dung bài viết.";
             
             const client = await Client.connect(spaceId);
             const result = await client.predict("/generate_text", { 
