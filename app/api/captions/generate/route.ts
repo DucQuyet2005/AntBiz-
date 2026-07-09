@@ -359,7 +359,7 @@ export async function POST(request: NextRequest) {
 
     let strictLengthRule = "Khoảng 100 - 150 từ";
     if (targetPlatform === 'threads' || targetPlatform === 'thread') {
-      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 50 - 80 từ";
+      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 30 từ (tối đa 2 câu)";
     } else if (targetPlatform === 'instagram') {
       strictLengthRule = "Ngắn gọn, khoảng 100 từ";
     } else if (targetPlatform === 'facebook') {
