@@ -360,12 +360,16 @@ export async function POST(request: NextRequest) {
     const styleSectionStr = styleContent ? `\n${styleContent}\n` : '*   Tone giọng yêu cầu: Tự do\n';
 
     let strictLengthRule = "Khoảng 100 - 150 từ";
+    let bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
     if (targetPlatform === 'threads' || targetPlatform === 'thread') {
       strictLengthRule = "Cực kỳ ngắn gọn, khoảng 30 từ (tối đa 2 câu)";
+      bodyInstruction = "Đưa ra quan điểm nhanh, đi thẳng vào vấn đề.";
     } else if (targetPlatform === 'instagram') {
       strictLengthRule = "Ngắn gọn, khoảng 100 từ";
+      bodyInstruction = "Phát triển câu chuyện ngắn gọn, súc tích.";
     } else if (targetPlatform === 'facebook') {
       strictLengthRule = "Khoảng 400 - 500 từ";
+      bodyInstruction = "Phát triển câu chuyện chi tiết, phân tích sâu sắc các khía cạnh để cung cấp nhiều giá trị cho người đọc.";
     }
 
     const promptText = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
@@ -383,7 +387,7 @@ ${customSectionStr}
 ${styleSectionStr}
 **Cấu trúc bài viết:**
 1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
-2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
+2.  Body (Nội dung chính): ${bodyInstruction}
 3.  Call to Action (CTA): Khuyến khích người đọc tương tác.
 4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
 

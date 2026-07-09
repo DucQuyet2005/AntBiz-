@@ -28,6 +28,18 @@ export async function POST(request: NextRequest) {
 
     let generatedText = "";
     
+    let strictLengthRule = "Khoảng 100 - 150 từ";
+    let bodyInstruction = "ngắn gọn, súc tích";
+    if (platform === 'threads' || platform === 'thread') {
+      strictLengthRule = "Cực kỳ ngắn gọn, khoảng 30 từ (tối đa 2 câu)";
+      bodyInstruction = "đưa ra quan điểm nhanh";
+    } else if (platform === 'instagram') {
+      strictLengthRule = "Ngắn gọn, khoảng 100 từ";
+    } else if (platform === 'facebook') {
+      strictLengthRule = "Khoảng 400 - 500 từ";
+      bodyInstruction = "phân tích chi tiết, sâu sắc";
+    }
+
     const prompt = customPrompt || `Bạn là một chuyên gia Content Marketing. 
 Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
 Tiêu đề: ${title}
@@ -35,10 +47,12 @@ Nội dung tóm tắt: ${content}
 
 Yêu cầu bài viết:
 1. Thu hút, bắt trend và phù hợp với người dùng ${platform}.
-2. Có cấu trúc rõ ràng: Hook -> Body -> CTA.
+2. Có cấu trúc rõ ràng: Hook -> Body (${bodyInstruction}) -> CTA.
 3. Sử dụng Emoji phù hợp.
 4. Thêm 3-5 hashtag liên quan.
-5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
+5. LƯU Ý ĐỘ DÀI: ${strictLengthRule}.
+6. BẢN QUYỀN: TUYỆT ĐỐI KHÔNG sao chép y nguyên bài báo gốc.
+7. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng.`;
 
     if (aiProvider === 'qwen') {
       const { Client } = await import('@gradio/client');
