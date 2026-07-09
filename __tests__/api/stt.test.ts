@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unit + Integration tests for /api/stt (Groq Whisper STT + Gemini Rewrite)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -74,11 +74,18 @@ describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
   });
 
   it('processes bullets-only (no file) → rewrite without calling Groq', async () => {
-    // Only Gemini rewrite call — Groq should NOT be called
+    // Mock 1: Gemini rewrite
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         candidates: [{ content: { parts: [{ text: 'Bài đăng hoàn chỉnh từ ý chính.' }] } }],
+      }),
+    });
+    // Mock 2: Gemini title gen
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Tiêu đề gợi ý' }] } }],
       }),
     });
 
@@ -89,8 +96,8 @@ describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
     const body = await res.json();
     expect(body.transcript).toBe('Hành trình khởi nghiệp 3 năm');
     expect(body.rewritten_post).toBe('Bài đăng hoàn chỉnh từ ý chính.');
-    // Only 1 fetch call = Gemini rewrite; Groq was NOT called
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Exactly 2 fetch calls: Gemini rewrite + Gemini title gen
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('googleapis.com'),
       expect.any(Object)
@@ -111,6 +118,13 @@ describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
         candidates: [{ content: { parts: [{ text: 'Hook mạnh. Nội dung hay. #hashtag' }] } }],
       }),
     });
+    // Mock 3: Gemini title gen
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Tiêu đề gợi ý' }] } }],
+      }),
+    });
 
     const { POST } = await import('@/app/api/stt/route');
     const audioFile = new File([new Uint8Array(100)], 'voice.mp3', { type: 'audio/mpeg' });
@@ -120,8 +134,8 @@ describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
     const body = await res.json();
     expect(body.transcript).toContain('Xin chào');
     expect(body.rewritten_post).toContain('Hook mạnh');
-    // Exactly 2 fetch calls: Groq STT + Gemini rewrite
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // Exactly 3 fetch calls: Groq STT + Gemini rewrite + Gemini title gen
+    expect(mockFetch).toHaveBeenCalledTimes(3);
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
       'https://api.groq.com/openai/v1/audio/transcriptions',

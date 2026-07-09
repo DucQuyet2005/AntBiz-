@@ -5901,6 +5901,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               selectedPlatform === 'threads' ? 'originalThreads' :
                 'originalInstagram';
 
+            if (!activeVariant) {
+              return (
+                <motion.div
+                  key="step2-loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="lg:col-span-8 flex items-center justify-center p-12 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl order-2"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-primary" size={24} />
+                    <span className="text-xs text-text-muted">
+                      {language === 'vi' ? 'Đang chuẩn bị bản xem trước...' : 'Preparing preview...'}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            }
+
             return (
               <motion.div
                 id="tour-creator-variants"

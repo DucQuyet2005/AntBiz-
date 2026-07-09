@@ -43,20 +43,39 @@ Yêu cầu bài viết:
 4. Thêm 3-5 hashtag liên quan.
 5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
 
+    const modelsToTry = [
+      primaryModelName,
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash-lite'
+    ].filter((val, index, self) => self.indexOf(val) === index);
+
     let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: primaryModelName, systemInstruction });
-      result = await model.generateContent(prompt);
-    } catch (err: any) {
-      const errMsg = err.message || '';
-      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
-        const fallbackModelName = primaryModelName === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
-        console.warn(`[Gemini API 429] falling back to ${fallbackModelName}`);
-        const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName, systemInstruction });
-        result = await fallbackModel.generateContent(prompt);
-      } else {
-        throw err;
+    let success = false;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`[Prompts Generate] Trying model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+        result = await model.generateContent(prompt);
+        success = true;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err.message || '';
+        console.warn(`[Prompts Generate] Model ${modelName} failed: ${errMsg}`);
+        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
+          continue; // Try next model
+        } else {
+          throw err;
+        }
       }
+    }
+
+    if (!success) {
+      throw lastError || new Error('All Gemini models failed');
     }
     const response = await result.response;
     const generatedText = response.text();

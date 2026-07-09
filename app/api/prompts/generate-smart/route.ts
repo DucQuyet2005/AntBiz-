@@ -61,20 +61,39 @@ Yêu cầu đối với Prompt bạn tạo ra:
 5. Prompt được tạo ra phải quy định nghiêm ngặt yêu cầu AI viết bài: TUYỆT ĐỐI KHÔNG có lời dẫn giải, không chào hỏi, không có câu chuyển tiếp hay lời dẫn, không có bất kỳ ký tự nào ngoài nội dung bài viết hoàn chỉnh.
 6. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẼP nội dung prompt.`;
 
+    const modelsToTry = [
+      primaryModelName,
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash-lite'
+    ].filter((val, index, self) => self.indexOf(val) === index);
+
     let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: primaryModelName, systemInstruction });
-      result = await model.generateContent(instruction);
-    } catch (err: any) {
-      const errMsg = err.message || '';
-      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
-        const fallbackModelName = primaryModelName === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
-        console.warn(`[Gemini API 429] falling back to ${fallbackModelName}`);
-        const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName, systemInstruction });
-        result = await fallbackModel.generateContent(instruction);
-      } else {
-        throw err;
+    let success = false;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`[Prompts Generate Smart] Trying model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+        result = await model.generateContent(instruction);
+        success = true;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err.message || '';
+        console.warn(`[Prompts Generate Smart] Model ${modelName} failed: ${errMsg}`);
+        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
+          continue; // Try next model
+        } else {
+          throw err;
+        }
       }
+    }
+
+    if (!success) {
+      throw lastError || new Error('All Gemini models failed');
     }
     const response = await result.response;
     const smartPromptText = response.text();

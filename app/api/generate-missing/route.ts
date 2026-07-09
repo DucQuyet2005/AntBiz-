@@ -64,20 +64,39 @@ Bạn phải trả về một đối tượng JSON có cấu trúc chính xác n
 Lưu ý quan trọng: Chỉ trả về chuỗi JSON thô, không có ký tự bao ngoài như \`\`\`json hay \`\`\`.
 `;
 
+    const modelsToTry = [
+      primaryModelName,
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash-lite'
+    ].filter((val, index, self) => self.indexOf(val) === index);
+
     let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: primaryModelName, systemInstruction });
-      result = await model.generateContent(prompt);
-    } catch (err: any) {
-      const errMsg = err.message || '';
-      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
-        const fallbackModelName = primaryModelName === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
-        console.warn(`[Generate Missing 429] falling back to ${fallbackModelName}`);
-        const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName, systemInstruction });
-        result = await fallbackModel.generateContent(prompt);
-      } else {
-        throw err;
+    let success = false;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`[Generate Missing] Trying model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+        result = await model.generateContent(prompt);
+        success = true;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err.message || '';
+        console.warn(`[Generate Missing] Model ${modelName} failed: ${errMsg}`);
+        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
+          continue; // Try next model
+        } else {
+          throw err; // Throw immediately for other errors (e.g., auth, bad requests)
+        }
       }
+    }
+
+    if (!success) {
+      throw lastError || new Error('All Gemini models failed');
     }
 
     const response = await result.response;

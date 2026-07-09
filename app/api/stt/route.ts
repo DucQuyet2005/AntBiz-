@@ -104,65 +104,75 @@ async function callGemini(
   temperature = 0.2,
   label = 'Gemini'
 ): Promise<string> {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: `${prompt}\n\n---\n${inputText}\n---` }] }],
-    generationConfig: { temperature },
-  });
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const modelsToTry = [
+    primaryModel,
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite'
+  ].filter((val, index, self) => self.indexOf(val) === index);
 
   let lastError = '';
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    // AbortController để timeout mỗi call — quan trọng trên VPS tờ một số network
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  for (const modelName of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: `${prompt}\n\n---\n${inputText}\n---` }] }],
+      generationConfig: { temperature },
+    });
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal: controller.signal,
-      });
-    } catch (fetchErr: any) {
-      clearTimeout(timeoutId);
-      if (fetchErr?.name === 'AbortError') {
-        throw new Error(`[STT] ${label} timed out after ${GEMINI_TIMEOUT_MS / 1000}s`);
+    let modelSuccess = false;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          signal: controller.signal,
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr?.name === 'AbortError') {
+          console.warn(`[STT] ${label} (${modelName}) timed out after ${GEMINI_TIMEOUT_MS / 1000}s`);
+          break; // Try next model
+        }
+        throw fetchErr;
       }
-      throw fetchErr;
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const text: string =
+          data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
+        return text.trim();
+      }
+
+      const errText = await response.text();
+      lastError = errText;
+
+      if (RETRYABLE_STATUS.has(response.status) && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 500ms, 1s
+        console.warn(`[STT] ${label} (${modelName}) got ${response.status}, retry ${attempt}/${MAX_RETRIES - 1} in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+
+      // If rate limited or quota exceeded, break the attempt loop to try the next model
+      if (response.status === 429 || errText.includes('quota') || errText.includes('Quota')) {
+        console.warn(`[STT] ${label} (${modelName}) rate limited (429/quota). Trying fallback...`);
+        break;
+      }
+
+      // Other non-retryable errors — throw so caller can fail
+      throw new Error(`[STT] ${label} (${modelName}) failed (${response.status}): ${lastError}`);
     }
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json();
-      const text: string =
-        data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-      return text.trim();
-    }
-
-    const errText = await response.text();
-    lastError = errText;
-
-    if (RETRYABLE_STATUS.has(response.status) && attempt < MAX_RETRIES) {
-      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 500ms, 1s
-      console.warn(`[STT] ${label} got ${response.status}, retry ${attempt}/${MAX_RETRIES - 1} in ${delay}ms...`);
-      await sleep(delay);
-      continue;
-    }
-
-    // 429 = quota exhausted — never retry, surface wait time to caller
-    if (response.status === 429) {
-      const waitSec = parseRetryDelay(errText);
-      const waitMsg = waitSec ? ` Thử lại sau ${waitSec} giây.` : '';
-      throw new Error(`[STT] ${label} quota exhausted (429).${waitMsg}`);
-    }
-
-    // Other non-retryable or exhausted retries — throw so caller can fallback
-    throw new Error(`[STT] ${label} failed (${response.status}): ${lastError}`);
   }
 
-  throw new Error(`[STT] ${label} failed after ${MAX_RETRIES} retries: ${lastError}`);
+  throw new Error(`[STT] ${label} failed all models. Last error: ${lastError}`);
 }
 
 /**

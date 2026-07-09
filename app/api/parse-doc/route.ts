@@ -11,43 +11,68 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc'];
  * Trích xuất text từ PDF sử dụng Gemini API (hỗ trợ cả tài liệu scan/ảnh nhờ OCR)
  */
 async function extractTextFromPdfWithGemini(pdfBuffer: Buffer, geminiKey: string): Promise<string> {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const modelsToTry = [
+    primaryModel,
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite'
+  ].filter((val, index, self) => self.indexOf(val) === index);
 
   const base64Data = pdfBuffer.toString('base64');
+  let lastError = '';
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
+  for (const modelName of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
             {
-              inlineData: {
-                mimeType: 'application/pdf',
-                data: base64Data,
-              },
-            },
-            {
-              text: 'Nhiệm vụ của bạn là trích xuất toàn bộ văn bản từ tài liệu PDF này một cách chính xác nhất có thể. Giữ nguyên cấu trúc xuống dòng và trật tự nội dung của tài liệu. KHÔNG tóm tắt, KHÔNG thêm bớt từ ngữ, KHÔNG thêm lời giải thích hay bất kỳ lời dẫn nào. Chỉ trả về nội dung văn bản trích xuất được.',
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'application/pdf',
+                    data: base64Data,
+                  },
+                },
+                {
+                  text: 'Nhiệm vụ của bạn là trích xuất toàn bộ văn bản từ tài liệu PDF này một cách chính xác nhất có thể. Giữ nguyên cấu trúc xuống dòng và trật tự nội dung của tài liệu. KHÔNG tóm tắt, KHÔNG thêm bớt từ ngữ, KHÔNG thêm lời giải thích hay bất kỳ lời dẫn nào. Chỉ trả về nội dung văn bản trích xuất được.',
+                },
+              ],
             },
           ],
-        },
-      ],
-      generationConfig: { temperature: 0.1 },
-    }),
-  });
+          generationConfig: { temperature: 0.1 },
+        }),
+      });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini PDF parse failed (${response.status}): ${errText}`);
+      if (response.ok) {
+        const data = await response.json();
+        const text: string =
+          data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
+        return text.trim();
+      }
+
+      const errText = await response.text();
+      lastError = errText;
+      console.warn(`[PDF Parse] Model ${modelName} failed (${response.status}): ${errText}`);
+      if (response.status === 429 || errText.includes('quota') || errText.includes('Quota')) {
+        continue; // Try next model
+      } else {
+        throw new Error(`Gemini PDF parse failed with ${modelName} (${response.status}): ${errText}`);
+      }
+    } catch (err: any) {
+      if (err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Quota')) {
+        continue; // Try next model
+      }
+      throw err;
+    }
   }
 
-  const data = await response.json();
-  const text: string =
-    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-  return text.trim();
+  throw new Error(`Gemini PDF parse failed all models. Last error: ${lastError}`);
 }
 
 export async function POST(request: NextRequest) {
