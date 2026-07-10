@@ -39,12 +39,12 @@ export function evaluateComplexity(metrics: ComplexityMetrics): 'high' | 'medium
 }
 
 export function selectModel(complexity: 'high' | 'medium' | 'low'): string {
-  const globalDefault = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const globalDefault = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   switch (complexity) {
     case 'high':
       return process.env.GEMINI_HIGH_MODEL || globalDefault;
     case 'low':
-      return process.env.GEMINI_LOW_MODEL || 'gemini-2.5-flash-lite';
+      return process.env.GEMINI_LOW_MODEL || 'gemini-3.1-flash-lite';
     case 'medium':
     default:
       return process.env.GEMINI_MEDIUM_MODEL || globalDefault;
@@ -128,13 +128,21 @@ export async function executeWithRotation<T>(
   const keys = await fetchKeysFromDB();
 
   // Filter keys: keep all non-invalid keys (including rate-limited ones as fallback)
-  const availableKeys: GeminiKeyRecord[] = keys.filter((key) => key.status !== 'invalid');
+  let availableKeys: GeminiKeyRecord[] = keys.filter((key) => key.status !== 'invalid');
+  let usingInvalidFallback = false;
+
+  // Self-healing fallback: If all keys in DB are invalid, try them as last resort before giving up
+  if (availableKeys.length === 0 && keys.length > 0) {
+    console.warn('[Gemini Rotation] All keys in DB are marked invalid. Attempting to use them as a self-healing fallback.');
+    availableKeys = keys;
+    usingInvalidFallback = true;
+  }
 
   // If no keys in DB, fallback to environment variable (GEMINI_API_KEY)
   if (availableKeys.length === 0) {
     const envKey = process.env.GEMINI_API_KEY;
     if (envKey) {
-      console.warn('[Gemini Rotation] No active keys found in database. Falling back to env GEMINI_API_KEY.');
+      console.warn('[Gemini Rotation] No keys found in database. Falling back to env GEMINI_API_KEY.');
       const finalModel = process.env.GEMINI_MODEL || modelName;
       return runner(envKey, finalModel);
     }
@@ -175,8 +183,33 @@ export async function executeWithRotation<T>(
       return result;
     } catch (err: any) {
       const errMsg = err.message || '';
-      const isRateLimit = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota') || err.status === 429;
-      const isAuthError = errMsg.includes('API key not valid') || errMsg.includes('API_KEY_INVALID') || err.status === 400 || err.status === 403;
+      
+      // Determine error type accurately to prevent false invalidations
+      const isRateLimit = 
+        errMsg.includes('429') || 
+        errMsg.toLowerCase().includes('quota') || 
+        errMsg.toLowerCase().includes('rate limit') || 
+        err.status === 429;
+        
+      const isAuthError = 
+        errMsg.toLowerCase().includes('api key not valid') || 
+        errMsg.toLowerCase().includes('api_key_invalid') || 
+        errMsg.toLowerCase().includes('key not valid') ||
+        errMsg.toLowerCase().includes('invalid key') ||
+        (err.status === 400 && errMsg.toLowerCase().includes('key')) ||
+        (err.status === 403 && (
+          errMsg.toLowerCase().includes('denied') || 
+          errMsg.toLowerCase().includes('disabled') || 
+          errMsg.toLowerCase().includes('blocked') ||
+          errMsg.toLowerCase().includes('forbidden')
+        ));
+
+      const isModelNotFoundError = 
+        errMsg.includes('404') || 
+        (errMsg.toLowerCase().includes('model') && (
+          errMsg.toLowerCase().includes('not found') || 
+          errMsg.toLowerCase().includes('not available')
+        ));
 
       console.warn(`[Gemini Rotation] Key "${keyRecord.label}" failed:`, err.message || err);
 
@@ -193,7 +226,13 @@ export async function executeWithRotation<T>(
           status: 'invalid',
           error_count: keyRecord.error_count + 1
         });
-        console.error(`[Gemini Rotation] Key "${keyRecord.label}" marked as invalid`);
+        console.error(`[Gemini Rotation] Key "${keyRecord.label}" marked as invalid due to auth error`);
+      } else if (isModelNotFoundError) {
+        // If the model itself is not found, do not mark the key as invalid since it is a configuration/model availability issue
+        console.warn(`[Gemini Rotation] Model not found error. Keeping key "${keyRecord.label}" active.`);
+        await updateKeyInDB(keyRecord.id, {
+          error_count: keyRecord.error_count + 1
+        });
       } else {
         const nextErrorCount = keyRecord.error_count + 1;
         const nextStatus = nextErrorCount >= 5 ? 'invalid' : keyRecord.status;
@@ -201,6 +240,9 @@ export async function executeWithRotation<T>(
           status: nextStatus,
           error_count: nextErrorCount
         });
+        if (nextStatus === 'invalid') {
+          console.error(`[Gemini Rotation] Key "${keyRecord.label}" marked as invalid after 5 errors`);
+        }
       }
 
       if (i === availableKeys.length - 1) {

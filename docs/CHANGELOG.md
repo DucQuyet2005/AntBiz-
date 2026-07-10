@@ -4,6 +4,16 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.7.6] - 2026-07-10
+
+### Fixed
+- **Sửa lỗi xoay vòng API Key Gemini (Root cause & Key Rotation Fixes)**:
+  - Cập nhật model mặc định từ `gemini-2.5-flash` (đã bị Google đánh dấu là legacy và trả về lỗi 404 cho các API key mới tạo) sang `gemini-3.5-flash` trong tệp cấu hình `.env.local` và fallback hệ thống trong `geminiRotationManager.ts`.
+  - Cập nhật model mặc định cho độ phức tạp thấp từ `gemini-2.5-flash-lite` sang `gemini-3.1-flash-lite`.
+  - Cải tiến hàm kiểm tra lỗi trong bộ xoay vòng key (`executeWithRotation`): loại bỏ việc khóa nhầm các API Key (đánh dấu `invalid`) khi gặp lỗi 404 do model không hợp lệ hoặc model không khả dụng. Chỉ đánh dấu khóa key (`invalid`) khi gặp đúng lỗi xác thực/quyền truy cập (`isAuthError` như sai key, project bị chặn/denied).
+  - Tích hợp cơ chế tự phục hồi thông minh (Self-healing fallback): nếu tất cả key trong database vô tình bị đánh dấu là `invalid`, hệ thống sẽ tự động thử lại các key này làm phương án dự phòng cuối cùng thay vì báo lỗi không có key khả dụng ngay lập tức. Nếu một key thành công, nó sẽ tự động được cập nhật trạng thái hoạt động trở lại (`active`).
+  - Viết và chạy thành công script khôi phục trạng thái database `scratch/reset_keys.ts` để kích hoạt lại toàn bộ 11 key đang bị khóa nhầm do lỗi 404 trước đó.
+
 ## [1.7.5] - 2026-07-09
 
 ### Added
