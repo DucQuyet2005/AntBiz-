@@ -142,4 +142,23 @@ describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
       expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer test-groq-key' } })
     );
   });
+
+  it('returns 422 error when Whisper returns a silent hallucination (e.g. Ghiền Mì Gõ)', async () => {
+    // Mock 1: Groq Whisper → returns "Ghiền Mì Gõ."
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () => 'Ghiền Mì Gõ.',
+      json: async () => ({}),
+    });
+
+    const { POST } = await import('@/app/api/stt/route');
+    const audioFile = new File([new Uint8Array(100)], 'voice.mp3', { type: 'audio/mpeg' });
+    const res = await POST(makeRequest(makeFormData({ file: audioFile })) as any);
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toContain('Không nhận dạng được giọng nói');
+    // Gemini rewrite should NOT be called at all, so fetch is called only once (Groq Whisper)
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 });

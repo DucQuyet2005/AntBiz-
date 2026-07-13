@@ -17,6 +17,7 @@ import {
   Users,
   History,
   Key,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -53,6 +54,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
     { href: "/overview", label: t("sidebar.overview"), icon: LayoutDashboard },
     ...(userRole !== 'admin' ? [
       { href: "/ai-creator", label: t("sidebar.aiCreator"), icon: Wand2 },
+      { href: "/ai-creator/preview", label: language === 'vi' ? 'AI Creator Preview' : 'AI Creator Preview', icon: Sparkles },
       { href: "/prompts", label: t("sidebar.prompts"), icon: FileText },
       { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
       { href: "/archive", label: t("sidebar.archive"), icon: Archive },

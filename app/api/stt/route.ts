@@ -165,8 +165,11 @@ export async function POST(request: NextRequest) {
     let formData: FormData;
     try {
       formData = await request.formData();
-    } catch {
-      return NextResponse.json({ error: 'Request phải là multipart/form-data' }, { status: 400 });
+    } catch (err: any) {
+      console.error('[STT API] formData parse error:', err);
+      return NextResponse.json({ 
+        error: `Không thể đọc dữ liệu yêu cầu: ${err.message || 'Yêu cầu phải là dữ liệu multipart/form-data hoặc tệp tin quá lớn'}` 
+      }, { status: 400 });
     }
 
     const file = formData.get('file') as File | null;
@@ -209,6 +212,30 @@ export async function POST(request: NextRequest) {
       console.log(`[STT] Groq Whisper processing: ${file.name} (${fileSizeMB.toFixed(2)}MB)`);
       transcript = await transcribeWithGroq(file, groqKey);
       console.log(`[STT] Transcript done: ${transcript.length} chars`);
+
+      // Kiểm tra nhiễu hoặc im lặng (Whisper thường hallucinate ra các câu lặp lại)
+      const norm = transcript.toLowerCase().trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+      const isHallucination = [
+        'ghiền mì gõ',
+        'ghien mi go',
+        'hãy đăng ký kênh',
+        'hãy đăng ký',
+        'đăng ký kênh',
+        'subscribe',
+        'cám ơn các bạn',
+        'cảm ơn các bạn',
+        'cám ơn',
+        'cảm ơn',
+        'tạm biệt',
+        'xin chào'
+      ].some(h => norm === h || norm.includes(h)) && norm.length < 50;
+
+      if (isHallucination || transcript.trim().length < 5) {
+        return NextResponse.json(
+          { error: 'Không nhận dạng được giọng nói rõ ràng. Vui lòng nói to/rõ hơn hoặc soạn thảo thủ công.' },
+          { status: 422 }
+        );
+      }
     }
 
     // 5. Fallback: bullets only (no file)
