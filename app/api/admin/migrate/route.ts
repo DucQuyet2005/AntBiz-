@@ -74,6 +74,43 @@ const MIGRATIONS = [
       ON CONFLICT DO NOTHING;
     `,
   },
+  {
+    id: 'post_interactions',
+    description: 'Tạo bảng post_interactions và seed dữ liệu ngẫu nhiên cho các bài đã đăng',
+    checkSql: `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'post_interactions') as exists`,
+    migrationSql: `
+      CREATE TABLE IF NOT EXISTS public.post_interactions (
+        id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id         UUID            NOT NULL UNIQUE REFERENCES public.scheduled_posts(id) ON DELETE CASCADE,
+        likes           INTEGER         NOT NULL DEFAULT 0,
+        comments        INTEGER         NOT NULL DEFAULT 0,
+        shares          INTEGER         NOT NULL DEFAULT 0,
+        clicks          INTEGER         NOT NULL DEFAULT 0,
+        reach           INTEGER         NOT NULL DEFAULT 0,
+        impressions     INTEGER         NOT NULL DEFAULT 0,
+        updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_post_interactions_post_id ON public.post_interactions(post_id);
+      ALTER TABLE public.post_interactions ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS "post_interactions: authenticated read" ON public.post_interactions;
+      CREATE POLICY "post_interactions: authenticated read" ON public.post_interactions FOR SELECT USING (auth.role() = 'authenticated');
+      DROP POLICY IF EXISTS "post_interactions: service role write" ON public.post_interactions;
+      CREATE POLICY "post_interactions: service role write" ON public.post_interactions FOR ALL USING (auth.role() = 'service_role');
+      
+      INSERT INTO public.post_interactions (post_id, likes, comments, shares, clicks, reach, impressions)
+      SELECT 
+        id, 
+        floor(random() * 491 + 10)::int as likes,
+        floor(random() * 99 + 2)::int as comments,
+        floor(random() * 46 + 5)::int as shares,
+        floor(random() * 191 + 10)::int as clicks,
+        floor(random() * 951 + 50)::int as reach,
+        floor(random() * 1901 + 100)::int as impressions
+      FROM public.scheduled_posts
+      WHERE status = 'posted'
+      ON CONFLICT (post_id) DO NOTHING;
+    `,
+  },
 ];
 
 /**
@@ -149,7 +186,11 @@ export async function GET() {
     const status: Array<{ id: string; description: string; exists: boolean }> = [];
 
     for (const migration of MIGRATIONS) {
-      const tableName = migration.id === 'us2_09_author_profiles' ? 'author_profiles' : 'platform_presets';
+      let tableName = '';
+      if (migration.id === 'us2_09_author_profiles') tableName = 'author_profiles';
+      else if (migration.id === 'platform_presets') tableName = 'platform_presets';
+      else if (migration.id === 'post_interactions') tableName = 'post_interactions';
+
       const { data } = await supabase
         .from('information_schema.tables' as any)
         .select('table_name')

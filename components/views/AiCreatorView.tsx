@@ -6471,6 +6471,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     platformLabel = language === 'vi' ? 'Xem trước Instagram' : 'Instagram Feed';
                   }
                   const previewTimestamp = postData.published_at || toDateInputValue(new Date());
+                  const categoryClean = (postData.category || '').replace('#', '').trim();
+                  const showCategory = categoryClean && categoryClean.toLowerCase() !== 'manual';
 
                   return (
                     <motion.div

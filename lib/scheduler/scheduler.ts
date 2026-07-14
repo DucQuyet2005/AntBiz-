@@ -162,6 +162,26 @@ export async function runSchedulerCycle() {
           .eq('id', caption.id);
       }
 
+      // Khởi tạo bản ghi post_interactions
+      await supabase
+        .from('post_interactions')
+        .insert({
+          post_id: post.id,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          clicks: 0,
+          reach: 0,
+          impressions: 0,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .then(({ error }) => {
+          if (error) {
+            console.error('[Scheduler] Lỗi khởi tạo post_interactions:', error.message);
+          }
+        });
+
       // 5. Gửi thông báo & Ghi log thành công
       await logAndNotifyPublishResult(
         userId,
