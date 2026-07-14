@@ -74,6 +74,12 @@ interface ChatMessage {
   options?: string[];
   /** Q&A mode: which option was selected */
   selectedOption?: string;
+  /** Suggestions mode: AI-generated edit suggestions for user to pick from */
+  suggestions?: string[];
+  /** Suggestions mode: original user request that triggered suggestions */
+  pendingUserMsg?: string;
+  /** Suggestions mode: whether user has picked a suggestion (locks the card) */
+  suggestionPicked?: boolean;
 }
 
 interface QAQuestion {
@@ -87,13 +93,6 @@ interface QAAnswer {
   questionId: string;
   question: string;
   answer: string;
-}
-
-interface PreviewPreset {
-  id: string;
-  name: string;
-  rules: string;
-  platform: string;
 }
 
 interface ScheduleSlot {
@@ -137,12 +136,7 @@ function getPlatformIcon(p: Platform, size = 14) {
   return <Instagram size={size} />;
 }
 
-function getLastPreset(): PreviewPreset | null {
-  try { return JSON.parse(localStorage.getItem('acp_last_preset') || 'null'); } catch { return null; }
-}
-function saveLastPreset(p: PreviewPreset) {
-  try { localStorage.setItem('acp_last_preset', JSON.stringify(p)); } catch { }
-}
+
 
 // ─── Audio Player ─────────────────────────────────────────────────────────────
 
@@ -513,14 +507,12 @@ export default function AICreatorPreviewView() {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [streamingPlatform, setStreamingPlatform] = useState<Platform | null>(null);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Preset ────────────────────────────────────────────────────────────────
-  const [selectedPreset, setSelectedPreset] = useState<PreviewPreset | null>(getLastPreset());
-  const [availablePresets, setAvailablePresets] = useState<PreviewPreset[]>([]);
-  const [presetDropOpen, setPresetDropOpen] = useState(false);
+  // ── Free chat (editing phase) ─────────────────────────────────────────────
 
   // ── Schedule ─────────────────────────────────────────────────────────────
   const [scheduleSlots, setScheduleSlots] = useState<Record<Platform, ScheduleSlot>>({
@@ -632,7 +624,6 @@ export default function AICreatorPreviewView() {
       threads: { platform: 'threads', date: d, time: '10:00' },
       instagram: { platform: 'instagram', date: d, time: '11:00' },
     });
-    fetchPresets();
   }, []);
 
   useEffect(() => {
@@ -641,12 +632,7 @@ export default function AICreatorPreviewView() {
     }
   }, [chatMessages]);
 
-  const fetchPresets = async () => {
-    try {
-      const res = await fetch('/api/platform-presets?platform=facebook');
-      if (res.ok) setAvailablePresets((await res.json()).data || []);
-    } catch { }
-  };
+
 
   // ─── Recording Logic ──────────────────────────────────────────────────────
 
@@ -1121,7 +1107,6 @@ export default function AICreatorPreviewView() {
     const contentAnswers = qaAnswers.filter(a => a.questionId !== 'q_platform');
     const answersText = contentAnswers.map(a => `${a.question}\n→ ${a.answer}`).join('\n\n');
     const contextPrompt = `Dựa trên tài liệu nguồn và thông tin người dùng cung cấp:\n\n${answersText}`;
-    const presetRules = selectedPreset?.rules || '';
     const platformLabel = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
     const bodyPrompt = `Tạo bài đăng ${platformLabel} chuyên nghiệp từ nội dung sau.
 
@@ -1131,8 +1116,6 @@ Nội dung: ${source.extractedText.substring(0, 2000)}
 
 YÊU CẦU TỪ NGƯỜI DÙNG:
 ${contextPrompt}
-
-${presetRules ? `QUY CHUẨN NỀN TẢNG:\n${presetRules}\n` : ''}
 
 Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về nội dung bài đăng, không có lời dẫn.`;
 
@@ -1144,7 +1127,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           articleId: source.articleId || undefined,
           customPrompt: bodyPrompt,
           platform: p,
-          platformPresetId: selectedPreset?.id,
         }),
         signal: abortRef.current?.signal,
       });
@@ -1294,16 +1276,91 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
 
 
 
+  // ─── Fetch suggestions for free-text (no highlight) requests ─────────────
+
+  const handleSuggestionPick = async (suggMsgId: string, chosenText: string) => {
+    // Mark suggestion card as picked
+    setChatMessages(prev => prev.map(m =>
+      m.id === suggMsgId ? { ...m, suggestionPicked: true } : m
+    ));
+    // Trigger the actual edit with the chosen suggestion text
+    await handleChatSend(chosenText, true);
+  };
+
   // ─── Free chat (editing phase) ────────────────────────────────────────────
 
-  const handleChatSend = async (text?: string) => {
+  const handleChatSend = async (text?: string, skipSuggest = false) => {
     const msg = (text || chatInput).trim();
-    if (!msg || isChatLoading) return;
+    if (!msg || isChatLoading || isSuggestLoading) return;
     setChatInput('');
-    setIsChatLoading(true);
 
     const activeHighlightToSend = activeHighlight;
     setActiveHighlight(null);
+
+    // ── When no highlight & not a picked suggestion → fetch suggestions first ──
+    if (!activeHighlightToSend && !skipSuggest) {
+      setIsSuggestLoading(true);
+      const userMsg: ChatMessage = {
+        id: genId(), role: 'user', timestamp: new Date(), content: msg,
+      };
+      setChatMessages(prev => [...prev, userMsg]);
+
+      try {
+        const res = await fetch('/api/ai-creator-preview/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userMessage: msg,
+            currentPlatformContent: segments[activePlatform]?.content || '',
+            platform: activePlatform,
+            globalContext,
+            sourceTitle: source.title,
+          }),
+        });
+        const data = await res.json();
+        const suggestions: string[] = data.suggestions?.length > 0
+          ? data.suggestions
+          : [
+              vi ? 'Viết lại theo phong cách chuyên nghiệp hơn' : 'Rewrite in a more professional tone',
+              vi ? 'Rút ngắn và súc tích hơn' : 'Make it shorter and more concise',
+              vi ? 'Thêm call-to-action hấp dẫn' : 'Add a compelling call-to-action',
+            ];
+
+        const suggMsgId = genId();
+        setChatMessages(prev => [...prev, {
+          id: suggMsgId,
+          role: 'assistant',
+          timestamp: new Date(),
+          content: vi
+            ? '💡 Dựa trên yêu cầu của bạn, đây là 3 cách tôi có thể chỉnh sửa bài đăng:'
+            : '💡 Based on your request, here are 3 ways I can edit the post:',
+          suggestions,
+          pendingUserMsg: msg,
+          suggestionPicked: false,
+        }]);
+      } catch {
+        const suggMsgId = genId();
+        setChatMessages(prev => [...prev, {
+          id: suggMsgId,
+          role: 'assistant',
+          timestamp: new Date(),
+          content: vi ? '💡 Chọn cách chỉnh sửa:' : '💡 Choose how to edit:',
+          suggestions: [
+            vi ? 'Viết lại theo yêu cầu' : 'Rewrite as requested',
+            vi ? 'Chỉnh sửa nhẹ nhàng' : 'Make light edits',
+            vi ? 'Cải thiện giọng văn' : 'Improve the tone',
+          ],
+          pendingUserMsg: msg,
+          suggestionPicked: false,
+        }]);
+      } finally {
+        setIsSuggestLoading(false);
+      }
+      return; // Stop here – wait for user to pick a suggestion
+    }
+
+    // ── Normal path: has highlight OR is a picked suggestion → call /chat ──
+    setIsChatLoading(true);
 
     const currentPlatformContentText = segments[activePlatform]?.content || '';
     const currentPlatformContentHtml = segments[activePlatform]?.htmlContent || '';
@@ -1339,7 +1396,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             currentPlatformContent: segments[activePlatform]?.content || '',
             highlightedPortion: activeHighlightToSend?.text || '',
             platform: activePlatform,
-            presetRules: selectedPreset?.rules || '',
+            presetRules: '',
             conversationHistory: history,
             globalContext: globalContext,
           },
@@ -1402,6 +1459,9 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           }
           if (parsed.done) {
             setStreamingPlatform(null);
+            // If AI refused (noChange), do NOT update the post content
+            if (parsed.noChange) break;
+
             const div = contentRef.current[activePlatform];
             const updatedHtml = div ? div.innerHTML : '';
             const updatedText = div ? div.innerText : '';
@@ -1462,12 +1522,64 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
   const handleSchedule = async () => {
     setIsScheduling(true);
     try {
-      for (const p of PLATFORMS) {
-        const seg = segments[p];
-        if (!seg?.content || !scheduleSlots[p].date) continue;
+      const targets = PLATFORMS.filter(p => !!segments[p]?.content);
+      if (targets.length === 0) {
+        setPopupType('warning');
+        setPopupTitle(vi ? 'Không có nội dung' : 'No Content');
+        setPopupMessage(vi ? 'Không có bài đăng nào chứa nội dung để lên lịch.' : 'There are no posts with content to schedule.');
+        setPopupOpen(true);
+        setIsScheduling(false);
+        return;
+      }
+
+      // 1. Validate schedule inputs for all active platforms
+      for (const p of targets) {
+        const platformName = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
+        
+        if (!scheduleSlots[p].date || !scheduleSlots[p].time) {
+          setPopupType('warning');
+          setPopupTitle(vi ? 'Thiếu thông tin lịch đăng' : 'Missing Schedule Info');
+          setPopupMessage(vi 
+            ? `Vui lòng nhập đầy đủ ngày và giờ lên lịch cho nền tảng ${platformName}.`
+            : `Please enter the scheduled date and time for platform ${platformName}.`
+          );
+          setPopupOpen(true);
+          setIsScheduling(false);
+          return;
+        }
+
         const scheduledAt = new Date(`${scheduleSlots[p].date}T${scheduleSlots[p].time}`);
-        if (isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) continue;
+        if (isNaN(scheduledAt.getTime())) {
+          setPopupType('warning');
+          setPopupTitle(vi ? 'Thời gian không hợp lệ' : 'Invalid Time');
+          setPopupMessage(vi 
+            ? `Thời gian lên lịch cho nền tảng ${platformName} không đúng định dạng.`
+            : `The scheduled time for platform ${platformName} is invalid.`
+          );
+          setPopupOpen(true);
+          setIsScheduling(false);
+          return;
+        }
+
+        if (scheduledAt <= new Date()) {
+          setPopupType('warning');
+          setPopupTitle(vi ? 'Thời gian ở quá khứ' : 'Past Time Error');
+          setPopupMessage(vi 
+            ? `Thời gian đăng cho nền tảng ${platformName} không được ở trong quá khứ. Vui lòng chọn một thời điểm trong tương lai.`
+            : `The scheduled time for platform ${platformName} cannot be in the past. Please choose a future time.`
+          );
+          setPopupOpen(true);
+          setIsScheduling(false);
+          return;
+        }
+      }
+
+      // 2. Process scheduling
+      for (const p of targets) {
+        const seg = segments[p];
+        const scheduledAt = new Date(`${scheduleSlots[p].date}T${scheduleSlots[p].time}`);
         let captionId = seg.captionId;
+        
         if (!captionId && source.articleId) {
           const res = await fetch('/api/captions', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1477,13 +1589,24 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
               edited_content: seg.content !== seg.originalContent ? seg.content : null,
             }),
           });
-          if (res.ok) captionId = (await res.json()).data?.id;
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || (vi ? `Lỗi tạo bài đăng (caption) cho ${p}` : `Error creating caption for ${p}`));
+          }
+          captionId = (await res.json()).data?.id;
         }
+        
         if (captionId) {
-          await fetch('/api/scheduled-posts', {
+          const res = await fetch('/api/scheduled-posts', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ captionId, scheduledAt: scheduledAt.toISOString(), imageUrls: source.imageUrls }),
           });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || (vi ? `Không thể lưu lịch đăng cho ${p}` : `Failed to save scheduled post for ${p}`));
+          }
+        } else {
+          throw new Error(vi ? `Không thể sinh Caption ID cho nền tảng ${p}` : `Could not generate Caption ID for platform ${p}`);
         }
       }
       setScheduleSuccess(true);
@@ -1870,7 +1993,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
   // ─── Render: Scheduling ────────────────────────────────────────────────────────
   if (phase === 'scheduling') {
     return (
-      <div className="flex flex-col h-[calc(100vh-76px)] overflow-hidden font-sans bg-slate-50 dark:bg-zinc-950 p-6">
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -40 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="flex flex-col h-[calc(100vh-76px)] overflow-hidden font-sans bg-slate-50 dark:bg-zinc-950 p-6"
+      >
         <div className="max-w-6xl w-full mx-auto flex flex-col h-full gap-6">
           {/* Header */}
           <div className="flex items-center justify-between shrink-0">
@@ -1888,41 +2017,9 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             </button>
           </div>
 
-          {/* Grid Layout */}
+          {/* Grid Layout: Calendar LEFT (8), Form RIGHT (4) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-            {/* Left Column: Form Inputs */}
-            <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-text mb-4 uppercase tracking-wider">{vi ? 'Thời gian đăng' : 'Publish Time'}</h3>
-                <div className="flex flex-col gap-4">
-                  {activePlatforms.map(p => {
-                    const hasCont = !!segments[p]?.content;
-                    return (
-                      <div key={p} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${hasCont ? 'border-slate-100 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/40' : 'border-dashed border-slate-200 dark:border-zinc-800 opacity-50'}`}>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${p === 'facebook' ? 'bg-blue-500' : p === 'threads' ? 'bg-zinc-900 dark:bg-zinc-700' : 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600'}`}>
-                          {getPlatformIcon(p, 18)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black text-text capitalize mb-2">{p}</p>
-                          <div className="flex gap-2">
-                            <input type="date" value={scheduleSlots[p].date} min={new Date().toISOString().split('T')[0]}
-                              onChange={e => setScheduleSlots(prev => ({ ...prev, [p]: { ...prev[p], date: e.target.value } }))}
-                              disabled={!hasCont}
-                              className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-text outline-none focus:border-primary/50 cursor-pointer disabled:cursor-not-allowed" />
-                            <input type="time" value={scheduleSlots[p].time}
-                              onChange={e => setScheduleSlots(prev => ({ ...prev, [p]: { ...prev[p], time: e.target.value } }))}
-                              disabled={!hasCont}
-                              className="w-24 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-text outline-none focus:border-primary/50 cursor-pointer disabled:cursor-not-allowed" />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: 2D Calendar */}
+            {/* Left Column: 2D Calendar */}
             <div className="lg:col-span-8 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-5 shadow-sm flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-4 shrink-0">
                 <h3 className="text-sm font-bold text-text uppercase tracking-wider flex items-center gap-2">
@@ -1983,7 +2080,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                               return toDateInputValue(d) === dayDate && d.getHours() === hr;
                             });
                             
-                            // Check if current user is scheduling in this slot
                             const activeInCell = activePlatforms.filter((p: Platform) => {
                               const s = scheduleSlots[p];
                               return segments[p]?.content && s.date === dayDate && parseInt(s.time.split(':')[0]) === hr;
@@ -2008,17 +2104,17 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                                 style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, height: `calc((100) / 24% - 4px)` }}>
                                 <div className="flex items-center gap-1">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                  <span className="text-[7px] font-bold text-text truncate uppercase">{post.title || 'Bài viết'}</span>
+                                  <span className="text-[7px] font-bold text-text-muted truncate">{post.platform?.substring(0, 2)?.toUpperCase()}</span>
                                 </div>
                               </div>
                             );
                             subIdx++;
                           });
 
-                          activeInCell.forEach(p => {
+                          activeInCell.forEach((p: Platform) => {
                             const cardWidth = `calc((100% / 7) / ${count} - 4px)`;
                             const cardLeft = `calc(${(col * 100) / 7}% + ${(subIdx * 100) / (7 * count)}% + 2px)`;
-                            const borderColor = p === 'facebook' ? 'border-[#1877F2]' : p === 'threads' ? 'border-zinc-900 dark:border-slate-100' : 'border-pink-500';
+                            const borderColor = p === 'facebook' ? 'border-[#1877F2]' : p === 'threads' ? 'border-zinc-800 dark:border-slate-300' : 'border-pink-500';
                             const bgColor = p === 'facebook' ? 'bg-[#1877F2]/10' : p === 'threads' ? 'bg-zinc-900/10 dark:bg-slate-100/10' : 'bg-pink-500/10';
                             let Icon: any;
                             if (p === 'facebook') Icon = Facebook;
@@ -2031,7 +2127,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                                 drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={(e, info) => handleDragEnd(p, e, info)}
                                 className={`absolute p-1 rounded-lg border-2 ${borderColor} ${bgColor} shadow-lg flex flex-col justify-center overflow-hidden z-20 cursor-pointer cursor-grab active:cursor-grabbing hover:brightness-95 transition-all`}
                                 onClick={() => {
-                                  // Click to sync all other platforms to this slot if empty
                                   setScheduleSlots(prev => {
                                     const next = { ...prev };
                                     const sourceSlot = prev[p];
@@ -2061,6 +2156,38 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 </div>
               </div>
             </div>
+
+            {/* Right Column: Publish Time Form */}
+            <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-text mb-4 uppercase tracking-wider">{vi ? 'Thời gian đăng' : 'Publish Time'}</h3>
+                <div className="flex flex-col gap-4">
+                  {activePlatforms.map(p => {
+                    const hasCont = !!segments[p]?.content;
+                    return (
+                      <div key={p} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${hasCont ? 'border-slate-100 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/40' : 'border-dashed border-slate-200 dark:border-zinc-800 opacity-50'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${p === 'facebook' ? 'bg-blue-500' : p === 'threads' ? 'bg-zinc-900 dark:bg-zinc-700' : 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600'}`}>
+                          {getPlatformIcon(p, 18)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-text capitalize mb-2">{p}</p>
+                          <div className="flex gap-2">
+                            <input type="date" value={scheduleSlots[p].date} min={new Date().toISOString().split('T')[0]}
+                              onChange={e => setScheduleSlots(prev => ({ ...prev, [p]: { ...prev[p], date: e.target.value } }))}
+                              disabled={!hasCont}
+                              className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-text outline-none focus:border-primary/50 cursor-pointer disabled:cursor-not-allowed" />
+                            <input type="time" value={scheduleSlots[p].time}
+                              onChange={e => setScheduleSlots(prev => ({ ...prev, [p]: { ...prev[p], time: e.target.value } }))}
+                              disabled={!hasCont}
+                              className="w-24 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-text outline-none focus:border-primary/50 cursor-pointer disabled:cursor-not-allowed" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <PopupDialog
@@ -2070,9 +2197,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           message={popupMessage}
           type={popupType}
         />
-      </div>
+      </motion.div>
     );
   }
+
+  // ─── Render: Source Review + Editing (shared layout) ─────────────────────
+
+
 
   // ─── Render: Source Review + Editing (shared layout) ─────────────────────
 
@@ -2621,24 +2752,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
         {/* Chat messages */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 min-h-0 relative">
           
-          {/* Preset Selector at the top during Q&A */}
-          {isSourceReview && qaQuestions.length > 0 && availablePresets.length > 0 && (
-            <div className="mb-2 p-3 bg-slate-50 dark:bg-zinc-900/50 rounded-2xl border border-slate-100 dark:border-zinc-800">
-              <p className="text-[11px] font-bold text-text mb-2 flex items-center gap-1.5">
-                <Bookmark size={12} className="text-primary" />
-                {vi ? 'Sử dụng cấu hình lưu sẵn (Preset)?' : 'Use a saved Preset?'}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {availablePresets.map(p => (
-                  <button key={p.id} onClick={() => { setSelectedPreset(p); saveLastPreset(p); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all border ${selectedPreset?.id === p.id ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20' : 'bg-white dark:bg-zinc-900 text-text border-slate-200 dark:border-zinc-700 hover:border-primary/40'}`}>
-                    {selectedPreset?.id === p.id && <CheckCircle2 size={11} className="inline mr-1.5 -mt-0.5" />}
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* If manual mode and Q&A not started, render "Bắt đầu thiết lập" button */}
           {source.type === 'manual' && qaQuestions.length === 0 && (
@@ -2720,6 +2833,61 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                           <RotateCcw size={10} />
                           {vi ? 'Thu hồi sửa đổi' : 'Revert Edit'}
                         </button>
+                      </div>
+                    )}
+
+                    {/* Suggestions card – shown when AI offers edit options */}
+                    {msg.suggestions && msg.suggestions.length > 0 && (
+                      <div className={`mt-3 flex flex-col gap-2 transition-all ${msg.suggestionPicked ? 'opacity-40 pointer-events-none' : ''}`}>
+                        {msg.suggestions.map((sug, i) => (
+                          <motion.button
+                            key={i}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.08 }}
+                            onClick={() => !msg.suggestionPicked && handleSuggestionPick(msg.id, `${msg.pendingUserMsg} — ${sug}`)}
+                            className="w-full text-left text-[12px] font-semibold px-3.5 py-2.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 text-text transition-all flex items-start gap-2 cursor-pointer group"
+                          >
+                            <span className="w-5 h-5 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-all">
+                              {i + 1}
+                            </span>
+                            {sug}
+                          </motion.button>
+                        ))}
+                        {/* Custom input */}
+                        {!msg.suggestionPicked && (
+                          <div className="flex gap-2 mt-1">
+                            <input
+                              type="text"
+                              placeholder={vi ? 'Hoặc nhập yêu cầu của bạn...' : 'Or type your own request...'}
+                              className="flex-1 text-[12px] px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-text outline-none focus:border-primary/50 transition-all placeholder:text-text-muted"
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                  const customText = e.currentTarget.value.trim();
+                                  setChatMessages(prev => prev.map(m =>
+                                    m.id === msg.id ? { ...m, suggestionPicked: true } : m
+                                  ));
+                                  await handleChatSend(customText, true);
+                                }
+                              }}
+                            />
+                            <button
+                              className="px-3 py-2 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-primary-hover transition-all cursor-pointer shrink-0"
+                              onClick={async (e) => {
+                                const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                                if (input?.value.trim()) {
+                                  const customText = input.value.trim();
+                                  setChatMessages(prev => prev.map(m =>
+                                    m.id === msg.id ? { ...m, suggestionPicked: true } : m
+                                  ));
+                                  await handleChatSend(customText, true);
+                                }
+                              }}
+                            >
+                              {vi ? 'Gửi' : 'Send'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2905,7 +3073,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
       {/* Context Viewer Modal */}
       <AnimatePresence>
         {showContextModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

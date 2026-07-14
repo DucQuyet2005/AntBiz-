@@ -80,6 +80,11 @@ ${truncatedContent || '(Chưa có nội dung)'}
  
 ${highlightedPortion ? `NGƯỜI DÙNG ĐÃ BÔI ĐEN ĐOẠN SAU ĐỂ CHỈNH SỬA:\n"${highlightedPortion}"\n` : ''}
  
+QUAN TRỌNG – Lọc nội dung không liên quan:
+- Nếu yêu cầu người dùng hoàn toàn không liên quan đến việc chỉnh sửa/cải thiện bài đăng (ví dụ: câu hỏi lạc chủ đề, nội dung tục tĩu, yêu cầu vô nghĩa, spam, hoặc nội dung rác), hãy trả lời đúng một câu ngắn gọn giải thích rằng bạn không thể xử lý yêu cầu này và đề nghị người dùng đưa ra yêu cầu chỉnh sửa nội dung rõ ràng hơn.
+- Trong trường hợp đó, TUYỆT ĐỐI KHÔNG thay đổi bất kỳ nội dung bài đăng nào và kết thúc response bằng thẻ đặc biệt: [NO_CHANGE]
+- Chỉ phản hồi bình thường khi yêu cầu rõ ràng liên quan đến nội dung mạng xã hội.
+
 NHIỆM VỤ: Dựa vào yêu cầu người dùng, hãy chỉnh sửa hoặc cải thiện nội dung bài đăng. 
 ${highlightedPortion ? `
 - Bạn chỉ được phép trả về duy nhất đoạn văn bản mới đã được chỉnh sửa/rút gọn/sửa lỗi từ đoạn bôi đen "${highlightedPortion}" theo yêu cầu.
@@ -144,7 +149,11 @@ ${highlightedPortion ? `
             }
           }
 
-          send({ done: true, updatedContent: fullContent });
+          // Detect if AI refused to change content (returned [NO_CHANGE] tag)
+          const noChange = fullContent.includes('[NO_CHANGE]');
+          const cleanContent = fullContent.replace('[NO_CHANGE]', '').trim();
+
+          send({ done: true, updatedContent: noChange ? null : cleanContent, noChange });
           return fullContent;
         },
         'low' // Sửa bài bằng AI dùng 3.1 Flash Lite tiết kiệm và nhanh
