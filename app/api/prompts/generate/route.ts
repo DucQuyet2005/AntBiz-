@@ -43,7 +43,9 @@ Yêu cầu bài viết:
         const genAI = new GoogleGenerativeAI(key);
         const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
         return model.generateContent(prompt);
-      }
+      },
+      undefined,
+      platform
     );
 
     const response = await result.response;

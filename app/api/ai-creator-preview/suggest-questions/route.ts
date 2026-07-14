@@ -107,7 +107,8 @@ QUAN TRỌNG: Trả về JSON hợp lệ ĐÚNG định dạng này, không thê
           });
           const result = await model.generateContent(systemPrompt);
           return result.response.text();
-        }
+        },
+        'low' // Task đơn giản: sinh câu hỏi định hướng — không cần model mạnh
       );
 
       const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();

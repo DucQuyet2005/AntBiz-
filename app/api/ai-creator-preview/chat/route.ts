@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       platform = 'facebook',
       presetRules = '',
       conversationHistory = [],
+      globalContext = '',
     },
     userMessage = '',
   } = body;
@@ -64,6 +65,9 @@ export async function POST(request: NextRequest) {
   const truncatedContent = (currentPlatformContent || '').substring(0, 3000);
 
   const systemInstruction = `Bạn là AI chuyên gia tạo và chỉnh sửa nội dung mạng xã hội ${platformLabel} chuyên nghiệp.
+ 
+BỐI CẢNH TỔNG QUAN (Context tổng - dùng làm tham chiếu trực tiếp):
+${globalContext || '(Chưa có bối cảnh)'}
  
 NỘI DUNG NGUỒN (tài liệu gốc):
 Tiêu đề: ${sourceTitle || '(Chưa có tiêu đề)'}
@@ -91,12 +95,8 @@ ${highlightedPortion ? `
   (async () => {
     try {
       // Ép hệ thống dùng Flash (high/medium) khi sửa bài, và Flash Lite (low) khi trò chuyện
-      const metrics = highlightedPortion 
-        ? { title: 'Edit', content: 'x'.repeat(4000), layout: 'longform' } 
-        : { title: 'Chat', content: 'x', layout: 'standard' };
-
       await executeWithRotation(
-        metrics,
+        { title: 'Chat', content: userMessage },
         async (key, modelName) => {
           const genAI = new GoogleGenerativeAI(key);
           const model = genAI.getGenerativeModel({
@@ -105,11 +105,32 @@ ${highlightedPortion ? `
             generationConfig: { temperature: 0.7 },
           });
 
-          // Build history từ conversationHistory
-          const history = (conversationHistory || []).map((msg: { role: string; content: string }) => ({
+          // Build and clean history for Gemini:
+          // 1. Map roles to user/model
+          const rawHistory = (conversationHistory || []).map((msg: { role: string; content: string }) => ({
             role: msg.role === 'user' ? 'user' : 'model',
             parts: [{ text: msg.content }],
           }));
+
+          // 2. Remove leading model/assistant messages (Gemini requires first message to be user)
+          while (rawHistory.length > 0 && rawHistory[0].role === 'model') {
+            rawHistory.shift();
+          }
+
+          // 3. Ensure alternating roles (user -> model -> user -> model...)
+          const history: any[] = [];
+          for (const msg of rawHistory) {
+            if (history.length === 0) {
+              history.push(msg);
+            } else {
+              const lastMsg = history[history.length - 1];
+              if (lastMsg.role === msg.role) {
+                lastMsg.parts[0].text += '\n' + msg.parts[0].text;
+              } else {
+                history.push(msg);
+              }
+            }
+          }
 
           const chat = model.startChat({ history });
           const streamResult = await chat.sendMessageStream(userMessage);
@@ -125,7 +146,8 @@ ${highlightedPortion ? `
 
           send({ done: true, updatedContent: fullContent });
           return fullContent;
-        }
+        },
+        'low' // Sửa bài bằng AI dùng 3.1 Flash Lite tiết kiệm và nhanh
       );
     } catch (err: any) {
       console.error('[chat API] Error:', err);

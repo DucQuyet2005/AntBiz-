@@ -35,6 +35,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import dynamic from 'next/dynamic';
+import { mapErrorToHumanFriendly } from '@/lib/utils/errorMapper';
 
 const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
 
@@ -128,6 +129,7 @@ export default function ContentCalendarView() {
         }
       } catch (err) {
         console.error('Failed to fetch calendar token:', err);
+        showPopup(mapErrorToHumanFriendly(err, t), 'error');
       }
     }
     fetchToken();
@@ -208,10 +210,11 @@ export default function ContentCalendarView() {
           successCallback([]);
         }
       } else {
-        failureCallback(new Error('Failed to fetch calendar data'));
+        throw new Error('Failed to fetch calendar data');
       }
     } catch (err) {
       console.error('Error fetching calendar events:', err);
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
       failureCallback(err);
     }
   }, [selectedPlatforms]);
@@ -286,18 +289,18 @@ export default function ContentCalendarView() {
   const fetchPosts = useCallback(async () => {
     try {
       const res = await fetch('/api/scheduled-posts');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) {
-          setPosts(json.data);
-        }
+      if (!res.ok) throw new Error('Failed to fetch scheduled posts');
+      const json = await res.json();
+      if (json.data) {
+        setPosts(json.data);
       }
     } catch (err) {
       console.error('Failed to fetch scheduled posts:', err);
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showPopup, t]);
 
   useEffect(() => {
     fetchPosts();
@@ -357,11 +360,12 @@ export default function ContentCalendarView() {
         await fetchPosts();
       } else {
         const errJson = await res.json().catch(() => ({}));
-        showPopup(errJson.error || 'Lỗi khi hủy lịch đăng bài', 'error');
+        const friendlyMsg = mapErrorToHumanFriendly(new Error(errJson.error || 'Failed to cancel post'), t);
+        showPopup(friendlyMsg, 'error');
       }
     } catch (err) {
       console.error('Cancel error:', err);
-      showPopup('Lỗi kết nối khi hủy lịch đăng bài', 'error');
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
     } finally {
       setActionLoadingId(null);
     }
@@ -382,12 +386,13 @@ export default function ContentCalendarView() {
         await fetchPosts();
       } else {
         const errJson = await res.json().catch(() => ({}));
-        showPopup(errJson.error || 'Lỗi khi thay đổi lịch đăng bài', 'error');
+        const friendlyMsg = mapErrorToHumanFriendly(new Error(errJson.error || 'Failed to reschedule post'), t);
+        showPopup(friendlyMsg, 'error');
         if (onRevert) onRevert();
       }
     } catch (err) {
       console.error('Reschedule error:', err);
-      showPopup('Lỗi kết nối khi dời lịch đăng bài', 'error');
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
       if (onRevert) onRevert();
     } finally {
       setActionLoadingId(null);
@@ -596,12 +601,13 @@ export default function ContentCalendarView() {
               await fetchPosts();
             } else {
               const errJson = await res.json().catch(() => ({}));
-              showPopup(errJson.error || 'Lỗi khi thay đổi lịch đăng bài', 'error');
+              const friendlyMsg = mapErrorToHumanFriendly(new Error(errJson.error || 'Failed to bulk reschedule'), t);
+              showPopup(friendlyMsg, 'error');
               info.revert();
             }
           } catch (err) {
             console.error('Bulk reschedule error:', err);
-            showPopup('Lỗi kết nối khi dời lịch đăng bài', 'error');
+            showPopup(mapErrorToHumanFriendly(err, t), 'error');
             info.revert();
           } finally {
             setActionLoadingId(null);

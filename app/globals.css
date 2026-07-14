@@ -2164,3 +2164,34 @@ body {
     transition-delay: 0s !important;
   }
 }
+
+/* ══════════════════════════════════
+   AI STREAMING EDITOR EFFECTS
+   ══════════════════════════════════ */
+
+@keyframes ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes ai-border-glow {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 45%, transparent), 0 0 12px color-mix(in srgb, var(--color-primary) 15%, transparent); }
+}
+
+/* Applied to editor wrapper when AI is streaming content */
+.ai-streaming-editor {
+  animation: ai-border-glow 1.4s ease-in-out infinite;
+  border-radius: 8px;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Blinking cursor appended after streamed text */
+.ai-typing-cursor::after {
+  content: '|';
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--color-primary);
+  animation: ai-cursor-blink 0.8s step-start infinite;
+  font-weight: 300;
+}

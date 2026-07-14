@@ -117,9 +117,11 @@ async function updateKeyInDB(id: string, payload: Partial<GeminiKeyRecord>): Pro
  */
 export async function executeWithRotation<T>(
   complexityMetrics: ComplexityMetrics,
-  runner: (apiKey: string, modelName: string) => Promise<T>
+  runner: (apiKey: string, modelName: string) => Promise<T>,
+  forceComplexity?: 'high' | 'medium' | 'low',
+  seed?: string
 ): Promise<T> {
-  const complexity = evaluateComplexity(complexityMetrics);
+  const complexity = forceComplexity ?? evaluateComplexity(complexityMetrics);
   const modelName = selectModel(complexity);
 
   console.log(`[Gemini Rotation] Evaluated complexity: "${complexity}". Target model: "${modelName}"`);
@@ -141,25 +143,51 @@ export async function executeWithRotation<T>(
     throw new Error('Không tìm thấy API Key Gemini nào khả dụng (trong Database lẫn biến môi trường)');
   }
 
-  // Sort strategy:
-  // 1. Active keys first, rate-limited keys last.
-  // 2. Within the same status, sort by last_used_at ascending (nulls first) to pick the least recently used key
+  // Distribute parallel requests using seed:
+  // 1. Separate active keys and rate-limited keys
   const now = new Date();
-  availableKeys.sort((a, b) => {
-    const aIsRateLimited = a.status === 'rate_limited' && a.rate_limited_until && new Date(a.rate_limited_until) > now;
-    const bIsRateLimited = b.status === 'rate_limited' && b.rate_limited_until && new Date(b.rate_limited_until) > now;
+  const activeKeys = availableKeys.filter(
+    (k) => !(k.status === 'rate_limited' && k.rate_limited_until && new Date(k.rate_limited_until) > now)
+  );
+  const rateLimitedKeys = availableKeys.filter(
+    (k) => k.status === 'rate_limited' && k.rate_limited_until && new Date(k.rate_limited_until) > now
+  );
 
-    if (aIsRateLimited && !bIsRateLimited) return 1;
-    if (!aIsRateLimited && bIsRateLimited) return -1;
-
+  // 2. Sort active keys by last_used_at ascending (nulls first) to pick least recently used
+  activeKeys.sort((a, b) => {
     if (!a.last_used_at) return -1;
     if (!b.last_used_at) return 1;
     return new Date(a.last_used_at).getTime() - new Date(b.last_used_at).getTime();
   });
 
-  for (let i = 0; i < availableKeys.length; i++) {
-    const keyRecord = availableKeys[i];
-    console.log(`[Gemini Rotation] Trying key "${keyRecord.label}" (Attempt ${i + 1}/${availableKeys.length})...`);
+  // 3. Sort rateLimitedKeys by rate_limited_until ascending (to try the one ending earliest first)
+  rateLimitedKeys.sort((a, b) => {
+    const aTime = a.rate_limited_until ? new Date(a.rate_limited_until).getTime() : 0;
+    const bTime = b.rate_limited_until ? new Date(b.rate_limited_until).getTime() : 0;
+    return aTime - bTime;
+  });
+
+  // 4. Apply rotation offset based on seed if multiple active keys are available
+  let finalKeysList = [...activeKeys];
+  if (seed && activeKeys.length > 1) {
+    let hash = 0;
+    for (let j = 0; j < seed.length; j++) {
+      hash = seed.charCodeAt(j) + ((hash << 5) - hash);
+    }
+    const offset = Math.abs(hash) % activeKeys.length;
+    finalKeysList = [
+      ...activeKeys.slice(offset),
+      ...activeKeys.slice(0, offset)
+    ];
+    console.log(`[Gemini Rotation] Distributed active keys using seed "${seed}" (offset: ${offset}/${activeKeys.length})`);
+  }
+
+  // Append rate-limited keys at the end as fallback
+  finalKeysList = [...finalKeysList, ...rateLimitedKeys];
+
+  for (let i = 0; i < finalKeysList.length; i++) {
+    const keyRecord = finalKeysList[i];
+    console.log(`[Gemini Rotation] Trying key "${keyRecord.label}" (Attempt ${i + 1}/${finalKeysList.length})...`);
 
     try {
       const result = await runner(keyRecord.key_value, modelName);

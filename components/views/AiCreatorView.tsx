@@ -57,6 +57,7 @@ import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
 import { createClient } from '@/utils/supabase/client';
+import { mapErrorToHumanFriendly } from '@/lib/utils/errorMapper';
 
 
 // Threads Custom SVG Logo
@@ -1073,7 +1074,12 @@ export default function AiCreatorView() {
             throw new Error(sttErr.error || 'STT transcription failed');
           }
         } catch (err: any) {
-          alert(language === 'vi' ? `Lỗi dịch giọng nói tự động: ${err.message}` : `Auto-transcription error: ${err.message}`);
+          const friendlyMsg = mapErrorToHumanFriendly(err, t);
+          setPopup({
+            isOpen: true,
+            type: 'error',
+            message: friendlyMsg
+          });
           setIsAutoGenerating(false);
           return;
         } finally {
@@ -1083,7 +1089,11 @@ export default function AiCreatorView() {
 
       // 2. Reject if both Title and Content are still empty
       if (!currentTitle.trim() && !currentFullText.trim()) {
-        alert(language === 'vi' ? 'Vui lòng nhập tiêu đề, nội dung bài viết hoặc tải lên ghi âm giọng nói.' : 'Please enter the title, detailed content, or upload a voice recording.');
+        setPopup({
+          isOpen: true,
+          type: 'warning',
+          message: language === 'vi' ? 'Vui lòng nhập tiêu đề, nội dung bài viết hoặc tải lên ghi âm giọng nói.' : 'Please enter the title, detailed content, or upload a voice recording.'
+        });
         return;
       }
 
@@ -1110,14 +1120,23 @@ export default function AiCreatorView() {
           setArticleId(savedData.id);
         } catch (err: any) {
           console.error('[Manual Save Error]:', err);
-          alert(language === 'vi' ? `Không thể lưu bài viết tự soạn: ${err.message}` : `Cannot save manual article: ${err.message}`);
+          const friendlyMsg = mapErrorToHumanFriendly(err, t);
+          setPopup({
+            isOpen: true,
+            type: 'error',
+            message: friendlyMsg
+          });
           setIsGeneratingAB(false);
           return;
         }
       }
     } else {
       if (!url.trim() && !resolvedArticleId) {
-        alert(language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.');
+        setPopup({
+          isOpen: true,
+          type: 'warning',
+          message: language === 'vi' ? 'Vui lòng cào/nhập bài viết trước khi sinh nội dung.' : 'Please crawl or import an article before generating.'
+        });
         return;
       }
     }
@@ -1610,10 +1629,21 @@ export default function AiCreatorView() {
         const errMsg = errJson.error && errJson.details && Array.isArray(errJson.details)
           ? `${errJson.error} (${errJson.details.map((d: any) => `${d.path?.join('.') || 'trường'}: ${d.message || 'lỗi'}`).join(', ')})`
           : (errJson.error || 'Lỗi khi lưu prompt');
-        alert(errMsg);
+        const friendlyMsg = mapErrorToHumanFriendly(errMsg, t);
+        setPopup({
+          isOpen: true,
+          type: 'error',
+          message: friendlyMsg
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving prompt:', error);
+      const friendlyMsg = mapErrorToHumanFriendly(error, t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setIsSavingPrompt(false);
     }
@@ -1814,11 +1844,21 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         }
       } else {
         const errJson = await res.json().catch(() => ({}));
-        alert(errJson.error || 'Lỗi khi hủy lịch đăng bài');
+        const friendlyMsg = mapErrorToHumanFriendly(errJson.error || 'Lỗi khi hủy lịch đăng bài', t);
+        setPopup({
+          isOpen: true,
+          type: 'error',
+          message: friendlyMsg
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Cancel error:', err);
-      alert('Lỗi kết nối khi hủy lịch đăng bài');
+      const friendlyMsg = mapErrorToHumanFriendly(err || 'Lỗi kết nối khi hủy lịch đăng bài', t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setActionLoadingId(null);
     }
@@ -2378,7 +2418,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
   const handleSaveStyleConfig = async () => {
     if (!styleFormName.trim()) {
-      alert(language === 'vi' ? 'Vui lòng nhập tên văn phong' : 'Please enter style name');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' ? 'Vui lòng nhập tên văn phong' : 'Please enter style name'
+      });
       return;
     }
 
@@ -2420,7 +2464,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         type: 'success'
       });
     } catch (err: any) {
-      alert(err.message || 'Lỗi hệ thống');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setIsSavingConfig(false);
     }
@@ -2717,7 +2766,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           const textToCopy = activeVariant ? (activeVariant[selectedPlatform] || '') : '';
           if (textToCopy) {
             navigator.clipboard.writeText(textToCopy).then(() => {
-              alert(language === 'vi' ? 'Đã sao chép nội dung biến thể!' : 'Variant content copied to clipboard!');
+              setPopup({
+                isOpen: true,
+                type: 'success',
+                message: language === 'vi' ? 'Đã sao chép nội dung biến thể!' : 'Variant content copied to clipboard!'
+              });
             }).catch(err => {
               console.error('Failed to copy text: ', err);
             });
@@ -3106,7 +3159,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         }));
       }
     } catch (err: any) {
-      setSttError(err.message);
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setSttError(friendlyMsg);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setIsTranscribing(false);
     }
@@ -3373,7 +3432,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   // Fetch / Scrape Handler for original URL
   const handleFetch = async () => {
     if (!url || !url.trim()) {
-      alert(language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' ? 'Vui lòng nhập url bài viết' : 'Please enter an article URL'
+      });
       return;
     }
     setIsFetching(true);
@@ -3434,8 +3497,14 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           return;
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Scraper fetch error:", e);
+      const friendlyMsg = mapErrorToHumanFriendly(e, t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setIsFetching(false);
     }
@@ -4562,7 +4631,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                     <img referrerPolicy="no-referrer" 
                                       src={block.url}
                                       alt={block.caption || 'Article Image'}
-                                      className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                      className="w-full h-auto rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
                                     />
                                     {block.caption && (
                                       <span className="text-[9px] md:text-xs text-slate-400 font-bold italic mt-1.5 text-center bg-slate-50 dark:bg-zinc-900/30 px-3 py-0.5 rounded">
@@ -4867,7 +4936,11 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                       setVoiceFile(file);
                                       setSttError(null);
                                     } else {
-                                      alert(language === 'vi' ? 'Vui lòng chỉ tải lên tệp âm thanh.' : 'Please upload audio files only.');
+                                      setPopup({
+                                        isOpen: true,
+                                        type: 'warning',
+                                        message: language === 'vi' ? 'Vui lòng chỉ tải lên tệp âm thanh.' : 'Please upload audio files only.'
+                                      });
                                     }
                                   }
                                 }}
@@ -6457,6 +6530,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 {(() => {
                   const v = variants.find(sv => sv.id === selectedVariantId);
                   if (!v) return null;
+
+                  const categoryClean = (postData.category || '').replace('#', '').trim();
+                  const showCategory = categoryClean && categoryClean.toLowerCase() !== 'manual';
 
                   let iconBg = 'bg-black';
                   let platformLabel = '';

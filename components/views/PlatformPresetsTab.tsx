@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import { Plus, Pencil, Trash2, X, Loader2, Save, FileText, CheckCircle2 } from 'lucide-react';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
+import { mapErrorToHumanFriendly } from '@/lib/utils/errorMapper';
 import { getDefaultTemplateForPlatform } from '@/lib/utils/presetParser';
 
 const platforms = [
@@ -12,6 +14,7 @@ const platforms = [
 
 export default function PlatformPresetsTab() {
   const { t, language } = useLanguage();
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [activePlatform, setActivePlatform] = useState('facebook');
   const [presets, setPresets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +49,11 @@ export default function PlatformPresetsTab() {
   const handleOpenEdit = (preset?: any) => {
     if (preset) {
       if (!preset.user_id) {
-        alert(language === 'vi' ? 'Không thể chỉnh sửa quy chuẩn gốc của hệ thống.' : 'Cannot edit system preset.');
+        setPopup({
+          isOpen: true,
+          type: 'warning',
+          message: language === 'vi' ? 'Không thể chỉnh sửa quy chuẩn gốc của hệ thống.' : 'Cannot edit system preset.'
+        });
         return;
       }
       setEditItem(preset);
@@ -69,7 +76,11 @@ export default function PlatformPresetsTab() {
 
   const handleSave = async () => {
     if (!name.trim() || !rules.trim()) {
-      alert(language === 'vi' ? 'Vui lòng nhập tên và nội dung quy tắc.' : 'Please enter name and rules content.');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' ? 'Vui lòng nhập tên và nội dung quy tắc.' : 'Please enter name and rules content.'
+      });
       return;
     }
 
@@ -96,7 +107,12 @@ export default function PlatformPresetsTab() {
       await fetchPresets(activePlatform);
       handleCloseEdit();
     } catch (err: any) {
-      alert(err.message || 'Error saving preset');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     } finally {
       setIsSaving(false);
     }
@@ -104,7 +120,11 @@ export default function PlatformPresetsTab() {
 
   const handleDelete = async (preset: any) => {
     if (!preset.user_id) {
-      alert(language === 'vi' ? 'Không thể xóa quy chuẩn hệ thống.' : 'Cannot delete system preset.');
+      setPopup({
+        isOpen: true,
+        type: 'warning',
+        message: language === 'vi' ? 'Không thể xóa quy chuẩn hệ thống.' : 'Cannot delete system preset.'
+      });
       return;
     }
 
@@ -123,7 +143,12 @@ export default function PlatformPresetsTab() {
 
       await fetchPresets(activePlatform);
     } catch (err: any) {
-      alert(err.message || 'Error deleting preset');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({
+        isOpen: true,
+        type: 'error',
+        message: friendlyMsg
+      });
     }
   };
 
@@ -321,6 +346,13 @@ export default function PlatformPresetsTab() {
           </div>
         </div>
       )}
+
+      <PopupDialog
+        isOpen={!!popup?.isOpen}
+        onClose={() => setPopup(null)}
+        message={popup?.message || ''}
+        type={popup?.type || 'info'}
+      />
     </div>
   );
 }

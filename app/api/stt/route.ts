@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
       transcript = await transcribeWithGroq(file, groqKey);
       console.log(`[STT] Transcript done: ${transcript.length} chars`);
 
-      // Kiểm tra nhiễu hoặc im lặng (Whisper thường hallucinate ra các câu lặp lại)
+      // Kiểm tra nhiễu hoặc im lặng (Whisper thường hallucinate ra các câu lặp lại khi nhận được file im lặng hoặc nhiễu trắng)
       const norm = transcript.toLowerCase().trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
       const isHallucination = [
         'ghiền mì gõ',
@@ -228,7 +228,14 @@ export async function POST(request: NextRequest) {
         'cảm ơn',
         'tạm biệt',
         'xin chào'
-      ].some(h => norm === h || norm.includes(h)) && norm.length < 50;
+      ].some(h => {
+        // Nếu chứa các cụm từ ảo giác kinh điển 'ghiền mì gõ' thì chắc chắn là hallucination
+        if (h === 'ghiền mì gõ' || h === 'ghien mi go') {
+          return norm.includes(h);
+        }
+        // Các cụm từ thông thường thì chỉ chặn khi độ dài ngắn dưới 85 ký tự
+        return norm.includes(h) && norm.length < 85;
+      });
 
       if (isHallucination || transcript.trim().length < 5) {
         return NextResponse.json(

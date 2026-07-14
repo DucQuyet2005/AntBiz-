@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
+import { mapErrorToHumanFriendly } from '@/lib/utils/errorMapper';
 
 import {
   Facebook,
@@ -121,6 +122,7 @@ export default function ArchiveView() {
         }
       } catch (err) {
         console.error('Error fetching captions:', err);
+        showPopup(mapErrorToHumanFriendly(err, t), 'error');
       } finally {
         setLoading(false);
       }
@@ -144,6 +146,7 @@ export default function ArchiveView() {
         }
       } catch (err) {
         console.error('Error fetching user role:', err);
+        showPopup(mapErrorToHumanFriendly(err, t), 'error');
       }
     }
     fetchUserRole();
@@ -157,11 +160,13 @@ export default function ArchiveView() {
         .select('id, platform, ai_content, status, created_at, articles (title)')
         .order('created_at', { ascending: false })
         .limit(15);
-      if (!error && data) {
+      if (error) throw error;
+      if (data) {
         setPreviewData(data);
       }
     } catch (err) {
       console.error('Error fetching preview data:', err);
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
     } finally {
       setIsFetchingPreview(false);
     }
@@ -171,12 +176,12 @@ export default function ArchiveView() {
     setIsLoadingJobs(true);
     try {
       const res = await fetch('/api/export-jobs');
-      if (res.ok) {
-        const json = await res.json();
-        setExportJobs(json.data || []);
-      }
+      if (!res.ok) throw new Error('Failed to fetch export jobs');
+      const json = await res.json();
+      setExportJobs(json.data || []);
     } catch (err) {
       console.error('Error fetching export jobs:', err);
+      showPopup(mapErrorToHumanFriendly(err, t), 'error');
     } finally {
       setIsLoadingJobs(false);
     }
@@ -234,11 +239,13 @@ export default function ArchiveView() {
             errorMsg = await res.text();
           } catch (_) {}
         }
-        showPopup((language === 'vi' ? 'Lỗi: ' : 'Error: ') + errorMsg, 'error');
+        const friendlyMsg = mapErrorToHumanFriendly(new Error(errorMsg), t);
+        showPopup(friendlyMsg, 'error');
       }
     } catch (err) {
       console.error('Export error:', err);
-      showPopup(language === 'vi' ? 'Có lỗi xảy ra khi xuất dữ liệu.' : 'An error occurred while exporting.', 'error');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      showPopup(friendlyMsg, 'error');
     } finally {
       setIsExporting(false);
     }

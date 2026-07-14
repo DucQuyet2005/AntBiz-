@@ -8,10 +8,13 @@ import {
   Calendar, Check, Loader2, RefreshCw, Highlighter, RotateCcw,
   Play, Pause, Plus, ChevronDown, Save, Wand2, AlignLeft,
   FileSearch, Bookmark, ArrowRight, ImagePlus, Globe, Newspaper,
-  Volume2, FileType, Edit3, CheckCircle2, Clock, Search, Heart, ArrowLeft
+  Volume2, FileType, Edit3, CheckCircle2, Clock, Search, Heart, ArrowLeft,
+  ThumbsUp, MessageSquare
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { createClient } from '@/utils/supabase/client';
+import PopupDialog from '@/components/PopupDialog';
+import { mapErrorToHumanFriendly } from '@/lib/utils/errorMapper';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,7 +29,12 @@ interface SourceDocument {
   extractedText: string;
   title: string;
   author: string;
+  authorImageUrl?: string;
   publishedAt?: string;
+  views?: string;
+  category?: string;
+  description?: string;
+  tags?: string;
   imageUrls: string[];
   articleId: string | null;
   bodyBlocks?: any[];
@@ -56,6 +64,10 @@ interface ChatMessage {
   timestamp: Date;
   highlightRef?: { markId: string; text: string };
   isStreaming?: boolean;
+  revertContent?: string;
+  revertHtmlContent?: string;
+  revertPlatform?: Platform;
+  reverted?: boolean;
   /** Q&A mode: which question this AI message belongs to */
   questionId?: string;
   /** Q&A mode: options shown below this message */
@@ -277,11 +289,24 @@ interface QAPlatformTogglesProps {
   disabled?: boolean;
   selectedOption?: string;
   vi: boolean;
+  connectedPlatforms: string[];
+  onWarning: (msg: string) => void;
 }
 
-function QAPlatformToggles({ selectedPlatforms, onChange, onSubmit, disabled, selectedOption, vi }: QAPlatformTogglesProps) {
+function QAPlatformToggles({ 
+  selectedPlatforms, onChange, onSubmit, disabled, selectedOption, vi, 
+  connectedPlatforms, onWarning 
+}: QAPlatformTogglesProps) {
   const togglePlatform = (p: Platform) => {
     if (disabled) return;
+    if (!connectedPlatforms.includes(p)) {
+      const label = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
+      onWarning(vi
+        ? `Nền tảng ${label} chưa được kết nối. Vui lòng liên kết tài khoản trong mục Cài đặt trước.`
+        : `Platform ${label} is not connected. Please connect your account in Settings first.`
+      );
+      return;
+    }
     if (selectedPlatforms.includes(p)) {
       onChange(selectedPlatforms.filter(x => x !== p));
     } else {
@@ -291,8 +316,10 @@ function QAPlatformToggles({ selectedPlatforms, onChange, onSubmit, disabled, se
 
   const handleConfirm = () => {
     if (selectedPlatforms.length === 0) return;
-    const answerText = selectedPlatforms.length === 3
-      ? (vi ? 'Đa nền tảng (Facebook, Threads, Instagram)' : 'Multi-platform (Facebook, Threads, Instagram)')
+    const answerText = selectedPlatforms.length > 1
+      ? (vi 
+        ? `Đa nền tảng (${selectedPlatforms.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ')})`
+        : `Multi-platform (${selectedPlatforms.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ')})`)
       : selectedPlatforms.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ');
     onSubmit(answerText);
   };
@@ -311,6 +338,7 @@ function QAPlatformToggles({ selectedPlatforms, onChange, onSubmit, disabled, se
             {(['facebook', 'threads', 'instagram'] as Platform[]).map((p) => {
               const isSelected = selectedPlatforms.includes(p);
               const name = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
+              const isConnected = connectedPlatforms.includes(p);
               return (
                 <button
                   key={p}
@@ -318,17 +346,24 @@ function QAPlatformToggles({ selectedPlatforms, onChange, onSubmit, disabled, se
                   onClick={() => togglePlatform(p)}
                   disabled={disabled}
                   className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 border transition-all cursor-pointer select-none
-                    ${isSelected
-                      ? p === 'facebook'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : p === 'threads'
-                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
-                          : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white border-transparent shadow-sm'
-                      : 'bg-white dark:bg-zinc-900 text-text-muted border-slate-200 dark:border-zinc-800 hover:border-slate-300 hover:text-text'
+                    ${!isConnected
+                      ? 'bg-slate-50 dark:bg-zinc-900/50 text-slate-350 dark:text-zinc-650 border-slate-200 dark:border-zinc-800 opacity-50'
+                      : isSelected
+                        ? p === 'facebook'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : p === 'threads'
+                            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
+                            : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white border-transparent shadow-sm'
+                        : 'bg-white dark:bg-zinc-900 text-text-muted border-slate-200 dark:border-zinc-800 hover:border-slate-300 hover:text-text'
                     }`}
                 >
                   {getPlatformIcon(p, 13)}
                   {name}
+                  {!isConnected && (
+                    <span className="text-[8px] font-black text-red-500 bg-red-50 dark:bg-red-950/40 border border-red-105 dark:border-red-900/30 px-1 py-0.5 rounded uppercase tracking-wider scale-90">
+                      {vi ? 'Chưa kết nối' : 'Not Connected'}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -385,12 +420,17 @@ const toDateInputValue = (date: Date) => {
 };
 
 export default function AICreatorPreviewView() {
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
   const vi = language === 'vi';
+
+  // ── Popup Dialog ──────────────────────────────────────────────────────────
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupType, setPopupType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
+  const [popupTitle, setPopupTitle] = useState("");
 
   // ── Phase ─────────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('drop');
-  const [processError, setProcessError] = useState<string | null>(null);
 
   // ── Source ────────────────────────────────────────────────────────────────
   const [source, setSource] = useState<SourceDocument>({
@@ -412,7 +452,7 @@ export default function AICreatorPreviewView() {
   // ── Q&A state ─────────────────────────────────────────────────────────────
   const [qaQuestions, setQaQuestions] = useState<QAQuestion[]>([]);
   const [qaAnswers, setQaAnswers] = useState<QAAnswer[]>([]);
-  const [qaSelectedPlatforms, setQaSelectedPlatforms] = useState<Platform[]>(['facebook', 'threads', 'instagram']);
+  const [qaSelectedPlatforms, setQaSelectedPlatforms] = useState<Platform[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0); // which question is active
   const [isLoadingQA, setIsLoadingQA] = useState(false);
   const [qaComplete, setQaComplete] = useState(false);
@@ -433,9 +473,37 @@ export default function AICreatorPreviewView() {
 
   // ── Highlights ────────────────────────────────────────────────────────────
   const [highlights, setHighlights] = useState<HighlightMark[]>([]);
-  const [pendingHighlight, setPendingHighlight] = useState<HighlightMark | null>(null);
+  const [activeHighlight, setActiveHighlight] = useState<HighlightMark | null>(null);
   const [hoverMarkId, setHoverMarkId] = useState<string | null>(null);
   const [hoverPos, setHoverPos] = useState<{x: number, y: number} | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
+  const [globalContext, setGlobalContext] = useState<string>('');
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch('/api/linked-accounts');
+        if (res.ok) {
+          const json = await res.json();
+          const platforms = (json.data || []).map((acc: any) => 
+            acc.platform === 'thread' ? 'threads' : acc.platform
+          );
+          setConnectedPlatforms(platforms);
+          if (platforms.length > 0 && !platforms.includes('facebook')) {
+            setQaSelectedPlatforms([platforms[0] as Platform]);
+          } else if (platforms.length === 0) {
+            setQaSelectedPlatforms([]);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking platform integrations:', err);
+      }
+    };
+    fetchConnections();
+  }, []);
+  const [isGeneratingContext, setIsGeneratingContext] = useState<boolean>(false);
+  const [showContextModal, setShowContextModal] = useState<boolean>(false);
   const contentRef = useRef<Record<Platform, HTMLDivElement | null>>({
     facebook: null, threads: null, instagram: null,
   });
@@ -444,6 +512,7 @@ export default function AICreatorPreviewView() {
   // ── Free chat (editing phase) ─────────────────────────────────────────────
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [streamingPlatform, setStreamingPlatform] = useState<Platform | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -588,7 +657,6 @@ export default function AICreatorPreviewView() {
   };
 
   const startRecording = async () => {
-    setProcessError(null);
     audioChunksRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -682,7 +750,10 @@ export default function AICreatorPreviewView() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       if (recordDuration < 2) {
-        alert(vi ? 'Đoạn ghi âm quá ngắn (dưới 2 giây). Vui lòng nói dài hơn!' : 'Recording is too short (under 2 seconds). Please speak longer!');
+        setPopupType('warning');
+        setPopupTitle(vi ? 'Ghi âm ngắn' : 'Recording too short');
+        setPopupMessage(vi ? 'Đoạn ghi âm quá ngắn (dưới 2 giây). Vui lòng nói dài hơn!' : 'Recording is too short (under 2 seconds). Please speak longer!');
+        setPopupOpen(true);
         cancelRecording();
         return;
       }
@@ -840,8 +911,8 @@ export default function AICreatorPreviewView() {
         const doneMsg: ChatMessage = {
           id: genId(), role: 'assistant', timestamp: new Date(),
           content: vi
-            ? `Cảm ơn bạn! Tôi đã có đủ thông tin. Hãy nhấn "Tạo nội dung" để AI sinh bài đăng cho cả 3 nền tảng nhé 🚀`
-            : `Thank you! I have all the information I need. Click "Generate Content" to create posts for all platforms 🚀`,
+            ? `Cảm ơn bạn! Tôi đã có đủ thông tin. Hãy nhấn "Tạo nội dung" để AI sinh bài đăng ${qaSelectedPlatforms.length > 0 ? `cho ${qaSelectedPlatforms.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ')}` : 'cho các nền tảng đã chọn'} nhé 🚀`
+            : `Thank you! I have all the information I need. Click "Generate Content" to create posts for ${qaSelectedPlatforms.length > 0 ? qaSelectedPlatforms.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ') : 'your selected platforms'} 🚀`,
         };
         setChatMessages(prev => [...prev, doneMsg]);
       }, 400);
@@ -852,7 +923,6 @@ export default function AICreatorPreviewView() {
 
   const handleTranscribeAndRewrite = async () => {
     if (!voiceFile) return;
-    setProcessError(null);
     setPhase('processing');
     setIsTranscribing(true);
     try {
@@ -878,7 +948,11 @@ export default function AICreatorPreviewView() {
       setIsDraftEditing(true);
       setVoiceFile(null); // Clear after successful transcription
     } catch (err: any) {
-      setProcessError(err.message || 'Lỗi dịch giọng nói');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopupType('error');
+      setPopupTitle(t('errors.title'));
+      setPopupMessage(friendlyMsg);
+      setPopupOpen(true);
     } finally {
       setPhase('drop');
       setIsTranscribing(false);
@@ -889,7 +963,6 @@ export default function AICreatorPreviewView() {
 
   const processFiles = async (files: File[]) => {
     if (!files.length) return;
-    setProcessError(null);
     setPhase('processing');
 
     const file = files[0];
@@ -932,13 +1005,16 @@ export default function AICreatorPreviewView() {
       setSource(newSource);
       await startQAFlow(newSource);
     } catch (err: any) {
-      setProcessError(err.message || 'Lỗi xử lý tài liệu');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopupType('error');
+      setPopupTitle(t('errors.title'));
+      setPopupMessage(friendlyMsg);
+      setPopupOpen(true);
       setPhase('drop');
     }
   };
 
   const processLink = async (url: string) => {
-    setProcessError(null);
     setPhase('processing');
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
@@ -950,7 +1026,12 @@ export default function AICreatorPreviewView() {
         extractedText: data.full_text || data.description || '',
         title: data.title || url,
         author: data.author || '',
+        authorImageUrl: data.author_image_url || '',
         publishedAt: data.published_at || '',
+        views: data.views || '',
+        category: data.category || '',
+        description: data.description || '',
+        tags: data.tags || '',
         imageUrls: data.imageUrl ? data.imageUrl.split('\n').filter(Boolean) : [],
         articleId: data.id || null,
         bodyBlocks: data.body || [],
@@ -958,7 +1039,11 @@ export default function AICreatorPreviewView() {
       setSource(newSource);
       await startQAFlow(newSource);
     } catch (err: any) {
-      setProcessError(err.message || 'Lỗi crawl URL');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopupType('error');
+      setPopupTitle(t('errors.title'));
+      setPopupMessage(friendlyMsg);
+      setPopupOpen(true);
       setPhase('drop');
     }
   };
@@ -1003,26 +1088,42 @@ export default function AICreatorPreviewView() {
 
   // ─── Generate content after Q&A ──────────────────────────────────────────
 
-  const generateContent = async () => {
-    setPhase('generating');
-    abortRef.current = new AbortController();
-    
-    // Filter out the platform selection answer from the context prompt to avoid confusing the AI
+  const startGeneratingContext = async () => {
+    setIsGeneratingContext(true);
+    setGlobalContext('');
+    const contentAnswers = qaAnswers.filter(a => a.questionId !== 'q_platform');
+    try {
+      const res = await fetch('/api/ai-creator-preview/generate-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceTitle: source.title,
+          sourceText: source.extractedText,
+          qaAnswers: contentAnswers.map(a => ({ question: a.question, answer: a.answer })),
+          language: language
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.context) {
+          setGlobalContext(json.context);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate global context:', err);
+    } finally {
+      setIsGeneratingContext(false);
+    }
+  };
+
+  const regeneratePlatform = async (p: Platform) => {
+    setIsGenerating(prev => ({ ...prev, [p]: true }));
     const contentAnswers = qaAnswers.filter(a => a.questionId !== 'q_platform');
     const answersText = contentAnswers.map(a => `${a.question}\n→ ${a.answer}`).join('\n\n');
     const contextPrompt = `Dựa trên tài liệu nguồn và thông tin người dùng cung cấp:\n\n${answersText}`;
-    
     const presetRules = selectedPreset?.rules || '';
-
-    let platformsToGen: Platform[] = qaSelectedPlatforms.length > 0 ? [...qaSelectedPlatforms] : [...PLATFORMS];
-
-    if (platformsToGen.length > 0) setActivePlatform(platformsToGen[0]);
-    setActivePlatforms(platformsToGen);
-
-    const streamPlatform = async (p: Platform) => {
-      setIsGenerating(prev => ({ ...prev, [p]: true }));
-      const platformLabel = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
-      const bodyPrompt = `Tạo bài đăng ${platformLabel} chuyên nghiệp từ nội dung sau.
+    const platformLabel = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
+    const bodyPrompt = `Tạo bài đăng ${platformLabel} chuyên nghiệp từ nội dung sau.
 
 TÀI LIỆU NGUỒN:
 Tiêu đề: ${source.title}
@@ -1035,74 +1136,97 @@ ${presetRules ? `QUY CHUẨN NỀN TẢNG:\n${presetRules}\n` : ''}
 
 Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về nội dung bài đăng, không có lời dẫn.`;
 
-      try {
-        const res = await fetch('/api/captions/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            articleId: source.articleId || undefined,
-            customPrompt: bodyPrompt,
-            platform: p,
-            platformPresetId: selectedPreset?.id,
-          }),
-          signal: abortRef.current?.signal,
-        });
-        if (!res.ok) return;
-
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let acc = '';
-        if (!reader) return;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split('\n')) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.text) {
-                acc += parsed.text;
-                setSegments(prev => ({
-                  ...prev,
-                  [p]: { 
-                    ...prev[p], 
-                    content: acc, 
-                    htmlContent: acc,
-                    originalContent: prev[p].originalContent || acc,
-                    updateCounter: (prev[p].updateCounter || 0) + 1
-                  },
-                }));
-              }
-              if (parsed.done && parsed.captionId) {
-                setSegments(prev => ({ ...prev, [p]: { ...prev[p], captionId: parsed.captionId } }));
-              }
-              if (parsed.done && parsed.articleId && !source.articleId) {
-                setSource(prev => ({ ...prev, articleId: parsed.articleId }));
-              }
-            } catch { }
-          }
-        }
-        setSegments(prev => ({ ...prev, [p]: { ...prev[p], originalContent: acc || prev[p].originalContent } }));
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
-      } finally {
-        setIsGenerating(prev => ({ ...prev, [p]: false }));
+    try {
+      const res = await fetch('/api/captions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleId: source.articleId || undefined,
+          customPrompt: bodyPrompt,
+          platform: p,
+          platformPresetId: selectedPreset?.id,
+        }),
+        signal: abortRef.current?.signal,
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${res.status}`);
       }
-    };
 
-    await Promise.all(platformsToGen.map(p => streamPlatform(p)));
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let acc = '';
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              acc += parsed.text;
+              setSegments(prev => ({
+                ...prev,
+                [p]: { 
+                  ...prev[p], 
+                  content: acc, 
+                  htmlContent: acc,
+                  originalContent: prev[p].originalContent || acc,
+                  updateCounter: (prev[p].updateCounter || 0) + 1
+                },
+              }));
+            }
+            if (parsed.done && parsed.captionId) {
+              setSegments(prev => ({ ...prev, [p]: { ...prev[p], captionId: parsed.captionId } }));
+            }
+            if (parsed.done && parsed.articleId && !source.articleId) {
+              setSource(prev => ({ ...prev, articleId: parsed.articleId }));
+            }
+          } catch { }
+        }
+      }
+      setSegments(prev => ({ ...prev, [p]: { ...prev[p], originalContent: acc || prev[p].originalContent } }));
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopupType('error');
+      setPopupTitle(t('errors.title'));
+      setPopupMessage(friendlyMsg);
+      setPopupOpen(true);
+    } finally {
+      setIsGenerating(prev => ({ ...prev, [p]: false }));
+    }
+  };
+
+  const generateContent = async () => {
+    setPhase('generating');
+    startGeneratingContext(); // Run context generation concurrently
+    abortRef.current = new AbortController();
+    
+    // Use selected platforms; fallback to only connected platforms (not all PLATFORMS)
+    const connectedPlatformsList = PLATFORMS.filter(p => connectedPlatforms.includes(p));
+    let platformsToGen: Platform[] = qaSelectedPlatforms.length > 0 
+      ? qaSelectedPlatforms.filter(p => connectedPlatforms.includes(p))  // only keep connected ones
+      : connectedPlatformsList.length > 0 ? connectedPlatformsList : [...PLATFORMS];
+
+    if (platformsToGen.length > 0) setActivePlatform(platformsToGen[0]);
+    setActivePlatforms(platformsToGen);
+
+    await Promise.all(platformsToGen.map(p => regeneratePlatform(p)));
     setPhase('editing');
 
-    // Add system message in chat
+    // Add system message in chat with actual platform names
+    const platformNames = platformsToGen.map(p => p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram').join(', ');
     setChatMessages(prev => [...prev, {
       id: genId(), role: 'assistant', timestamp: new Date(),
       content: vi
-        ? '✨ Nội dung đã được tạo cho cả 3 nền tảng! Bạn có thể bôi đen bất kỳ đoạn nào để nhờ tôi chỉnh sửa.'
-        : '✨ Content created for all 3 platforms! Highlight any text to ask me to edit it.',
+        ? `✨ Nội dung đã được tạo cho ${platformsToGen.length === 1 ? `nền tảng ${platformNames}` : `${platformsToGen.length} nền tảng (${platformNames})`}! Bạn có thể bôi đen bất kỳ đoạn nào để nhờ tôi chỉnh sửa.`
+        : `✨ Content created for ${platformsToGen.length === 1 ? `platform ${platformNames}` : `${platformsToGen.length} platforms (${platformNames})`}! Highlight any text to ask me to edit it.`,
     }]);
   };
 
@@ -1168,14 +1292,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
     }
   };
 
-  const applyHighlightToChat = (mark: HighlightMark) => {
-    setHighlights(prev => [...prev, mark]);
-    setPendingHighlight(null);
-    setChatMessages(prev => [...prev, {
-      id: genId(), role: 'system', timestamp: new Date(),
-      content: mark.text, highlightRef: { markId: mark.id, text: mark.text },
-    }]);
-  };
+
 
   // ─── Free chat (editing phase) ────────────────────────────────────────────
 
@@ -1185,19 +1302,25 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
     setChatInput('');
     setIsChatLoading(true);
 
-    const activeHighlight = pendingHighlight;
+    const activeHighlightToSend = activeHighlight;
+    setActiveHighlight(null);
 
-    if (pendingHighlight) applyHighlightToChat(pendingHighlight);
+    const currentPlatformContentText = segments[activePlatform]?.content || '';
+    const currentPlatformContentHtml = segments[activePlatform]?.htmlContent || '';
 
     const userMsg: ChatMessage = {
       id: genId(), role: 'user', timestamp: new Date(), content: msg,
-      highlightRef: pendingHighlight ? { markId: pendingHighlight.id, text: pendingHighlight.text } : undefined,
+      highlightRef: activeHighlightToSend ? { markId: activeHighlightToSend.id, text: activeHighlightToSend.text } : undefined,
     };
     setChatMessages(prev => [...prev, userMsg]);
 
     const astId = genId();
     setChatMessages(prev => [...prev, {
       id: astId, role: 'assistant', timestamp: new Date(), content: '', isStreaming: true,
+      revertContent: currentPlatformContentText,
+      revertHtmlContent: currentPlatformContentHtml,
+      revertPlatform: activePlatform,
+      reverted: false,
     }]);
 
     chatAbortRef.current = new AbortController();
@@ -1214,10 +1337,11 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             sourceTitle: source.title,
             sourceText: source.extractedText.substring(0, 2000),
             currentPlatformContent: segments[activePlatform]?.content || '',
-            highlightedPortion: activeHighlight?.text || '',
+            highlightedPortion: activeHighlightToSend?.text || '',
             platform: activePlatform,
             presetRules: selectedPreset?.rules || '',
             conversationHistory: history,
+            globalContext: globalContext,
           },
           userMessage: msg,
         }),
@@ -1253,9 +1377,9 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             acc += parsed.text;
             setChatMessages(prev => prev.map(m => m.id === astId ? { ...m, content: acc } : m));
 
-            // Stream directly into the mark element
-            if (activeHighlight) {
-              const mark = document.getElementById(activeHighlight.id);
+            if (activeHighlightToSend) {
+              // Stream directly into the highlighted mark element
+              const mark = document.getElementById(activeHighlightToSend.id);
               if (mark) {
                 if (isFirstChunk) {
                   mark.innerText = '';
@@ -1263,9 +1387,21 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 }
                 mark.innerText = acc;
               }
+            } else {
+              // Stream full-content edit directly into the editor div chunk by chunk
+              const div = contentRef.current[activePlatform];
+              if (div) {
+                if (isFirstChunk) {
+                  div.innerText = '';
+                  setStreamingPlatform(activePlatform);
+                  isFirstChunk = false;
+                }
+                div.innerText = acc;
+              }
             }
           }
           if (parsed.done) {
+            setStreamingPlatform(null);
             const div = contentRef.current[activePlatform];
             const updatedHtml = div ? div.innerHTML : '';
             const updatedText = div ? div.innerText : '';
@@ -1274,8 +1410,8 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
               ...prev,
               [activePlatform]: { 
                 ...prev[activePlatform], 
-                content: activeHighlight ? updatedText : (parsed.updatedContent || updatedText || prev[activePlatform].content), 
-                htmlContent: activeHighlight ? updatedHtml : (parsed.updatedContent || updatedHtml || prev[activePlatform].htmlContent), 
+                content: activeHighlightToSend ? updatedText : (parsed.updatedContent || updatedText || prev[activePlatform].content), 
+                htmlContent: activeHighlightToSend ? updatedHtml : (parsed.updatedContent || updatedHtml || prev[activePlatform].htmlContent), 
                 status: 'edited',
                 updateCounter: (prev[activePlatform].updateCounter || 0) + 1
               },
@@ -1283,6 +1419,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           }
         }
       }
+      setStreamingPlatform(null);
       setChatMessages(prev => prev.map(m => m.id === astId ? { ...m, isStreaming: false } : m));
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
@@ -1292,6 +1429,32 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  const handleRevert = (msgId: string) => {
+    setChatMessages(prev => prev.map(m => {
+      if (m.id === msgId) {
+        if (m.revertPlatform) {
+          setSegments(segPrev => ({
+            ...segPrev,
+            [m.revertPlatform!]: {
+              ...segPrev[m.revertPlatform!],
+              content: m.revertContent || '',
+              htmlContent: m.revertHtmlContent || '',
+              status: 'draft',
+              updateCounter: (segPrev[m.revertPlatform!].updateCounter || 0) + 1
+            }
+          }));
+        }
+        return { ...m, reverted: true };
+      }
+      return m;
+    }));
+
+    setPopupType('success');
+    setPopupTitle(vi ? 'Đã thu hồi' : 'Reverted');
+    setPopupMessage(vi ? 'Đã khôi phục lại nội dung trước chỉnh sửa!' : 'Reverted content to previous state!');
+    setPopupOpen(true);
   };
 
   // ─── Schedule ─────────────────────────────────────────────────────────────
@@ -1324,15 +1487,33 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
         }
       }
       setScheduleSuccess(true);
-      setPhase('drop');
-      setSource({ type: null, extractedText: '', title: '', author: '', imageUrls: [], articleId: null });
-      setSegments({ facebook: { platform: 'facebook', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, threads: { platform: 'threads', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, instagram: { platform: 'instagram', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 } });
-      setChatMessages([]);
-      setQaAnswers([]);
-      setQaComplete(false);
-      setCurrentQIndex(0);
-      setTimeout(() => setScheduleSuccess(false), 4000);
-    } catch (err: any) { console.error(err); } finally { setIsScheduling(false); }
+    } catch (err: any) {
+      console.error(err);
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopupType('error');
+      setPopupTitle(t('errors.title'));
+      setPopupMessage(friendlyMsg);
+      setPopupOpen(true);
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  const resetAfterSchedule = () => {
+    setScheduleSuccess(false);
+    setPhase('drop');
+    setSource({ type: null, extractedText: '', title: '', author: '', imageUrls: [], articleId: null });
+    setSegments({ 
+      facebook: { platform: 'facebook', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, 
+      threads: { platform: 'threads', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, 
+      instagram: { platform: 'instagram', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 } 
+    });
+    setChatMessages([]);
+    setQaAnswers([]);
+    setQaComplete(false);
+    setCurrentQIndex(0);
+    setGlobalContext('');
+    setIsGeneratingContext(false);
   };
 
   // ─── Render: Drop zone ────────────────────────────────────────────────────
@@ -1351,13 +1532,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           </p>
         </div>
 
-        {processError && (
-          <div className="mb-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-rose-800 dark:text-rose-450 leading-relaxed font-semibold text-left">
-            <span>❌</span>
-            <div className="flex-1">{processError}</div>
-            <button onClick={() => setProcessError(null)} className="text-rose-500 hover:text-rose-700 font-bold border-0 bg-transparent cursor-pointer">×</button>
-          </div>
-        )}
+
 
         {isDraftEditing ? (
           /* Draft Editor Card */
@@ -1417,7 +1592,10 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 <button
                   onClick={async () => {
                     if (!draftTitle.trim() || !draftContent.trim()) {
-                      alert(vi ? 'Vui lòng nhập đầy đủ cả tiêu đề và nội dung bài viết!' : 'Please enter both the title and content!');
+                      setPopupType('warning');
+                      setPopupTitle(vi ? 'Thiếu thông tin' : 'Missing Information');
+                      setPopupMessage(vi ? 'Vui lòng nhập đầy đủ cả tiêu đề và nội dung bài viết!' : 'Please enter both the title and content!');
+                      setPopupOpen(true);
                       return;
                     }
                     const updatedSource = {
@@ -1611,6 +1789,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           </div>
         </div>
         )}
+        <PopupDialog
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          title={popupTitle}
+          message={popupMessage}
+          type={popupType}
+        />
       </div>
     );
   }
@@ -1627,6 +1812,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           <p className="text-text font-bold text-lg">{vi ? 'Đang xử lý tài liệu...' : 'Processing document...'}</p>
           <p className="text-sm text-text-muted mt-1">{vi ? 'AI đang đọc và phân tích nội dung' : 'AI is reading and analyzing your content'}</p>
         </div>
+        <PopupDialog
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          title={popupTitle}
+          message={popupMessage}
+          type={popupType}
+        />
       </div>
     );
   }
@@ -1664,6 +1856,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             }
           </p>
         </div>
+        <PopupDialog
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          title={popupTitle}
+          message={popupMessage}
+          type={popupType}
+        />
       </div>
     );
   }
@@ -1864,6 +2063,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             </div>
           </div>
         </div>
+        <PopupDialog
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          title={popupTitle}
+          message={popupMessage}
+          type={popupType}
+        />
       </div>
     );
   }
@@ -1871,6 +2077,49 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
   // ─── Render: Source Review + Editing (shared layout) ─────────────────────
 
   const isSourceReview = phase === 'source-review';
+
+  // ─── Newspaper Logo helper (mirrors AiCreatorView) ────────────────────────
+  const renderNewspaperLogo = (size: 'sm' | 'lg' = 'sm') => {
+    const srcUrl = source.url || '';
+    const isDanTri = srcUrl.includes('dantri.com.vn');
+    const isTuoiTre = srcUrl.includes('tuoitre.vn');
+    let logoText = 'GócNhìnMới';
+    let subText = vi ? 'Mạng xã hội' : 'Social Network';
+    let colorClass = 'text-red-650';
+    if (isDanTri) { logoText = 'DÂN TRÍ'; subText = vi ? 'Báo điện tử' : 'E-Newspaper'; colorClass = 'text-[#007f3f]'; }
+    else if (isTuoiTre) { logoText = 'TuổiTrẻ'; subText = vi ? 'Tin nóng mỗi ngày' : 'Daily News'; colorClass = 'text-[#E43A45]'; }
+    if (size === 'lg') return (
+      <div className="flex flex-col gap-0.5 select-none">
+        <span className={`${colorClass} font-black text-lg tracking-tighter uppercase font-sans`}>{logoText}</span>
+        <span className="text-[8px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">{subText}</span>
+      </div>
+    );
+    return (
+      <div className="flex flex-col gap-0.5 select-none">
+        <span className={`${colorClass} font-black text-base tracking-tighter uppercase font-sans`}>{logoText}</span>
+        <span className="text-[7px] text-slate-450 dark:text-zinc-500 font-black tracking-widest uppercase -mt-1">{subText}</span>
+      </div>
+    );
+  };
+
+  // ─── Avatar Props helper (mirrors AiCreatorView) ──────────────────────────
+  const getSourceAvatarProps = () => {
+    const srcUrl = source.url || '';
+    const isDanTri = srcUrl.includes('dantri.com.vn');
+    const isTuoiTre = srcUrl.includes('tuoitre.vn');
+    let bgClass = 'bg-red-100 dark:bg-red-955/40';
+    let textClass = 'text-red-650 dark:text-red-400';
+    let defaultInit = 'CD';
+    if (isDanTri) { bgClass = 'bg-[#E6F4EA] dark:bg-emerald-955/40'; textClass = 'text-[#007f3f] dark:text-emerald-450'; defaultInit = 'DT'; }
+    else if (isTuoiTre) { bgClass = 'bg-[#FCE8E6] dark:bg-rose-955/40'; textClass = 'text-[#E43A45] dark:text-rose-450'; defaultInit = 'TT'; }
+    let initials = defaultInit;
+    if (source.author) {
+      const parts = source.author.trim().split(/\s+/);
+      if (parts.length >= 2) initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      else if (parts.length === 1 && parts[0]) initials = parts[0].slice(0, 2).toUpperCase();
+    }
+    return { bgClass, textClass, initials, imageUrl: source.authorImageUrl || '' };
+  };
   const currentContent = segments[activePlatform]?.content || '';
   const charLimit = PLATFORM_LIMITS[activePlatform];
   const isURLSource = source.type === 'link';
@@ -1884,7 +2133,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 shrink-0 gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => { setPhase('drop'); setSource({ type: null, extractedText: '', title: '', author: '', imageUrls: [], articleId: null }); setSegments({ facebook: { platform: 'facebook', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, threads: { platform: 'threads', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, instagram: { platform: 'instagram', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 } }); setChatMessages([]); setQaAnswers([]); setQaComplete(false); setCurrentQIndex(0); }}
+              onClick={() => { setPhase('drop'); setSource({ type: null, extractedText: '', title: '', author: '', imageUrls: [], articleId: null }); setSegments({ facebook: { platform: 'facebook', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, threads: { platform: 'threads', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 }, instagram: { platform: 'instagram', content: '', originalContent: '', captionId: null, status: 'draft', htmlContent: '', updateCounter: 0 } }); setChatMessages([]); setQaAnswers([]); setQaComplete(false); setCurrentQIndex(0); setGlobalContext(''); setIsGeneratingContext(false); }}
               className="flex items-center gap-1.5 text-xs font-semibold text-text-muted hover:text-text transition-colors cursor-pointer border-0 bg-transparent p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 shrink-0"
             >
               <ChevronLeft size={14} /> {vi ? 'Tài liệu mới' : 'New'}
@@ -1909,11 +2158,11 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             {!isSourceReview && (
               <>
                 <button
-                  onClick={() => { generateContent(); setChatMessages(prev => [...prev]); }}
-                  disabled={Object.values(isGenerating).some(Boolean)}
+                  onClick={() => regeneratePlatform(activePlatform)}
+                  disabled={isGenerating[activePlatform]}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-text-muted hover:text-primary hover:border-primary/30 transition-all cursor-pointer bg-transparent disabled:opacity-40"
                 >
-                  <RefreshCw size={12} className={Object.values(isGenerating).some(Boolean) ? 'animate-spin' : ''} />
+                  <RefreshCw size={12} className={isGenerating[activePlatform] ? 'animate-spin' : ''} />
                   {vi ? 'Tạo lại' : 'Regenerate'}
                 </button>
                 <button
@@ -1948,12 +2197,8 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
               </div>
 
               <div className="border border-slate-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-[#ffffff] dark:bg-zinc-950 flex flex-col shadow-sm">
-                {/* Mock Newspaper Header */}
                 <div className="bg-white/95 dark:bg-zinc-950/95 border-b border-slate-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Newspaper size={18} className="text-slate-800 dark:text-zinc-200" />
-                    <span className="font-black text-slate-800 dark:text-zinc-200 text-sm tracking-tighter">THE NEWS</span>
-                  </div>
+                  {renderNewspaperLogo('sm')}
                   <div className="flex items-center gap-1.5 bg-[#F8F9FA] dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 px-3 py-1.5 rounded-full w-48 select-none">
                     <Search size={10} className="text-slate-400" />
                     <span className="text-[9px] font-bold text-slate-450 dark:text-zinc-500">Tìm kiếm...</span>
@@ -1961,7 +2206,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 </div>
 
                 <div className="px-5 py-6 md:px-8 flex gap-6 w-full max-h-[60vh] overflow-y-auto">
-                  {/* Left Column Sticky Mock Actions */}
                   <div className="hidden sm:flex flex-col items-center gap-4 pt-1 select-none">
                     <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 cursor-default">
                       <Facebook size={13} />
@@ -1969,24 +2213,54 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                     <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 cursor-default">
                       <Link2 size={13} />
                     </button>
-                    <div className="w-px h-5 bg-slate-200 dark:bg-zinc-800 my-0.5" />
+                    <div className="w-px h-5 bg-slate-200 dark:border-zinc-800 my-0.5" />
                     <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 cursor-default">
-                      <Heart size={13} />
+                      <ThumbsUp size={13} />
                     </button>
                     <button className="w-8 h-8 rounded-full bg-slate-50 dark:bg-zinc-900 text-slate-400 flex items-center justify-center border border-slate-200/70 dark:border-zinc-800 shadow-sm transition-all duration-200 cursor-default">
-                      <MessageCircle size={13} />
+                      <MessageSquare size={13} />
                     </button>
                   </div>
 
-                  {/* Right Main Content */}
                   <div className="flex-1 flex flex-col min-w-0 pb-10">
-                    <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2.5 block select-none">
-                      #ARTICLE
-                    </span>
+                    {/* Category */}
+                    {source.category && (
+                      <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2.5 block select-none">
+                        {source.category.startsWith('#') ? source.category : `#${source.category}`}
+                      </span>
+                    )}
+                    {!source.category && (
+                      <span className="text-red-500 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2.5 block select-none">
+                        #ARTICLE
+                      </span>
+                    )}
 
+                    {/* Title */}
                     <h1 className="text-lg md:text-2xl font-black text-slate-900 dark:text-zinc-100 leading-tight mb-4 tracking-tight font-sans">
                       {source.title}
                     </h1>
+
+                    {/* Description / Sapo */}
+                    {source.description && (
+                      <div className="bg-slate-50 dark:bg-zinc-900/40 p-3.5 border-l-4 border-red-550 rounded-r-xl text-xs md:text-sm text-slate-650 dark:text-slate-300 font-bold mb-5 leading-relaxed">
+                        {source.description}
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {source.tags && (
+                      <div className="flex flex-wrap gap-1.5 mb-4 select-none">
+                        {source.tags.split(',').map((tag, idx) => {
+                          const trimmed = tag.trim();
+                          if (!trimmed) return null;
+                          return (
+                            <span key={idx} className="bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-zinc-350 border border-slate-200/80 dark:border-zinc-800 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                              {trimmed.startsWith('#') ? trimmed : `#${trimmed}`}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {source.url && (
                       <a href={source.url} target="_blank" rel="noopener noreferrer"
@@ -1995,17 +2269,26 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                       </a>
                     )}
 
-                    {(source.author || source.publishedAt) && (
+                    {(source.author || source.publishedAt || source.views) && (
                       <div className="flex items-center gap-2.5 mb-6 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5 select-none">
-                        {source.author && (
-                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black uppercase tracking-wider shrink-0 overflow-hidden">
-                            {source.author.charAt(0)}
-                          </div>
-                        )}
+                        {source.author && (() => {
+                          const { bgClass, textClass, initials, imageUrl } = getSourceAvatarProps();
+                          return (
+                            <div className={`w-8 h-8 rounded-full ${bgClass} ${textClass} flex items-center justify-center text-[9px] font-black uppercase tracking-wider select-none shrink-0 overflow-hidden`}>
+                              {imageUrl ? (
+                                <img referrerPolicy="no-referrer" src={imageUrl} alt={source.author} className="w-full h-full object-cover" />
+                              ) : (
+                                initials
+                              )}
+                            </div>
+                          );
+                        })()}
                         <div className="flex flex-col gap-0.5">
                           {source.author && <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">{source.author}</span>}
                           <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
                             {source.publishedAt && <span>{source.publishedAt}</span>}
+                            {source.publishedAt && source.views && <span>•</span>}
+                            {source.views && <span>{source.views} {vi ? 'lượt xem' : 'views'}</span>}
                           </div>
                         </div>
                       </div>
@@ -2013,7 +2296,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
 
                     {source.imageUrls.length > 0 && (
                       <div className="mb-6 rounded-xl overflow-hidden border border-slate-100 dark:border-zinc-800">
-                        <img src={source.imageUrls[0]} alt="" className="w-full object-cover max-h-72" />
+                        <img src={source.imageUrls[0]} alt="" className="w-full h-auto" />
                       </div>
                     )}
 
@@ -2023,7 +2306,6 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                       </div>
                     )}
 
-                    {/* Image drop zone for non-URL sources */}
                     {!isURLSource && (
                       <div
                         ref={imageDropRef}
@@ -2081,7 +2363,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                                   <img referrerPolicy="no-referrer" 
                                     src={block.url}
                                     alt={block.caption || 'Article Image'}
-                                    className="w-full max-h-[300px] object-cover rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
+                                    className="w-full h-auto rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm"
                                   />
                                   {block.caption && (
                                     <span className="text-[9px] md:text-xs text-slate-450 dark:text-zinc-400 font-bold italic mt-1.5 text-center bg-slate-50 dark:bg-zinc-900/30 px-3 py-0.5 rounded">
@@ -2150,29 +2432,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
 
             {/* Content area */}
             <div className="flex-1 overflow-y-auto p-5">
-              {/* Pending highlight banner */}
-              <AnimatePresence>
-                {pendingHighlight && (
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                    className="mb-4 flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl">
-                    <Highlighter size={13} className="text-amber-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 mb-0.5">{vi ? 'Đoạn đã chọn:' : 'Selected:'}</p>
-                      <p className="text-xs text-amber-600 dark:text-amber-500 truncate">"{pendingHighlight.text.substring(0, 80)}{pendingHighlight.text.length > 80 ? '...' : ''}"</p>
-                    </div>
-                    <div className="flex gap-1.5 shrink-0">
-                      <button
-                        onClick={() => { applyHighlightToChat(pendingHighlight); setChatInput(vi ? 'Hãy chỉnh sửa đoạn này...' : 'Please edit this text...'); document.getElementById('acp-chat-input')?.focus(); }}
-                        className="px-3 py-1.5 bg-amber-500 text-white text-[11px] font-bold rounded-lg border-0 cursor-pointer hover:bg-amber-600 transition-colors">
-                        💬 {vi ? 'Gửi chat' : 'To chat'}
-                      </button>
-                      <button onClick={() => setPendingHighlight(null)} className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 cursor-pointer border-0 bg-transparent">
-                        <X size={12} />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
 
               {/* Social card */}
               <div className="max-w-2xl mx-auto bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
@@ -2208,7 +2468,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 )}
 
                 {/* Editable text */}
-                <div className="p-4">
+                <div className={`p-4 relative transition-all duration-300 ${streamingPlatform === activePlatform ? 'ai-streaming-editor' : ''}`}>
                   {isGenerating[activePlatform] ? (
                     <div className="space-y-2 py-2">
                       {[1, 0.85, 0.7, 1, 0.6].map((w, i) => (
@@ -2216,6 +2476,56 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                       ))}
                       <div className="flex items-center gap-1.5 mt-3 text-xs text-primary font-semibold">
                         <Loader2 size={12} className="animate-spin" /> {vi ? 'AI đang viết...' : 'AI writing...'}
+                      </div>
+                    </div>
+                  ) : streamingPlatform === activePlatform ? (
+                    // Streaming skeleton blocks overlay
+                    <div className="relative min-h-[80px] py-1">
+                      {/* Hidden editor still receives streamed text */}
+                      <div className="sr-only">
+                        <EditorDiv
+                          key={activePlatform}
+                          innerRef={(el: HTMLDivElement | null) => { contentRef.current[activePlatform] = el; }}
+                          html={segments[activePlatform]?.htmlContent || ''}
+                          updateCounter={segments[activePlatform]?.updateCounter || 0}
+                          onInput={() => {}}
+                          onMouseUp={() => {}}
+                          onMouseOver={() => {}}
+                          onMouseOut={() => {}}
+                          onClick={() => {}}
+                          className=""
+                        />
+                      </div>
+                      {/* Animated skeleton blocks */}
+                      <div className="flex flex-col gap-2">
+                        {[
+                          { w: '92%', h: 'h-3', shade: 'bg-slate-200 dark:bg-zinc-700', delay: '0ms' },
+                          { w: '78%', h: 'h-3', shade: 'bg-slate-150 dark:bg-zinc-750', delay: '60ms' },
+                          { w: '85%', h: 'h-3', shade: 'bg-slate-200 dark:bg-zinc-700', delay: '120ms' },
+                          { w: '60%', h: 'h-3', shade: 'bg-slate-100 dark:bg-zinc-800', delay: '180ms' },
+                          { w: '90%', h: 'h-3', shade: 'bg-slate-200 dark:bg-zinc-700', delay: '240ms' },
+                          { w: '70%', h: 'h-3', shade: 'bg-slate-150 dark:bg-zinc-750', delay: '300ms' },
+                          { w: '82%', h: 'h-3', shade: 'bg-slate-100 dark:bg-zinc-800', delay: '360ms' },
+                        ].map((block, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: [0, 0.7, 0.5, 0.8, 0.6], x: 0 }}
+                            transition={{
+                              delay: i * 0.07,
+                              duration: 1.2,
+                              repeat: Infinity,
+                              repeatType: 'mirror',
+                              ease: 'easeInOut',
+                            }}
+                            className={`${block.h} ${block.shade} rounded-full`}
+                            style={{ width: block.w }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-3 text-[10px] text-primary font-bold uppercase tracking-wider">
+                        <Loader2 size={10} className="animate-spin" />
+                        {vi ? 'AI đang chỉnh sửa...' : 'AI editing...'}
                       </div>
                     </div>
                   ) : (
@@ -2301,6 +2611,7 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
           )}
           {/* Context Viewer Button */}
           <button 
+            onClick={() => setShowContextModal(true)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-wider text-text-muted hover:text-text hover:border-primary/30 transition-all cursor-pointer bg-transparent">
             <FileSearch size={12} className="text-primary" />
             {vi ? 'Context tổng' : 'Context'}
@@ -2335,7 +2646,10 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
               <button
                 onClick={() => {
                   if (!source.extractedText.trim()) {
-                    alert(vi ? 'Vui lòng nhập nội dung bài viết gốc trước!' : 'Please enter the original content first!');
+                    setPopupType('warning');
+                    setPopupTitle(vi ? 'Yêu cầu nội dung' : 'Content Required');
+                    setPopupMessage(vi ? 'Vui lòng nhập nội dung bài viết gốc trước!' : 'Please enter the original content first!');
+                    setPopupOpen(true);
                     return;
                   }
                   startQAFlow(source);
@@ -2367,26 +2681,48 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             if (msg.role === 'assistant') {
               const isActiveQ = msg.questionId === qaQuestions[currentQIndex]?.id && !qaComplete && isSourceReview;
               const isAnsweredQ = msg.selectedOption !== undefined;
+              const isReverted = msg.reverted;
               return (
                 <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }} className="flex gap-2.5 items-start">
+                  transition={{ delay: 0.05 }} className={`flex gap-2.5 items-start ${isReverted ? 'opacity-40 select-none' : ''}`}>
                   <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles size={13} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed ${msg.questionId ? 'bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800' : 'bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800'}`}>
-                      {msg.content || (msg.isStreaming && (
-                        <span className="flex items-center gap-1.5 text-text-muted">
-                          <span className="flex gap-1">
-                            {[0, 0.15, 0.3].map(d => (
-                              <motion.span key={d} className="w-1.5 h-1.5 bg-primary/40 rounded-full inline-block"
-                                animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: d }} />
-                            ))}
+                    <div className={`rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed transition-all ${isReverted ? 'bg-slate-100 dark:bg-zinc-800 text-slate-450 dark:text-zinc-500 line-through border border-slate-200 dark:border-zinc-800' : 'bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800'}`}>
+                      {isReverted ? (
+                        <div className="flex items-center gap-1.5 font-bold italic text-text-muted">
+                          <RotateCcw size={12} className="text-slate-400" />
+                          {vi ? 'Đã thu hồi' : 'Reverted'}
+                        </div>
+                      ) : (
+                        msg.content || (msg.isStreaming && (
+                          <span className="flex items-center gap-1.5 text-text-muted">
+                            <span className="flex gap-1">
+                              {[0, 0.15, 0.3].map(d => (
+                                <motion.span key={d} className="w-1.5 h-1.5 bg-primary/40 rounded-full inline-block"
+                                  animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: d }} />
+                              ))}
+                            </span>
+                            {vi ? 'Đang trả lời...' : 'Thinking...'}
                           </span>
-                          {vi ? 'Đang trả lời...' : 'Thinking...'}
-                        </span>
-                      ))}
+                        ))
+                      )}
                     </div>
+
+                    {/* Revert Button */}
+                    {!isReverted && !msg.isStreaming && msg.revertContent !== undefined && (
+                      <div className="flex justify-end mt-1.5">
+                        <button
+                          onClick={() => handleRevert(msg.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-wider text-text-muted hover:text-red-500 hover:border-red-200 dark:hover:border-red-950 transition-all cursor-pointer bg-white dark:bg-zinc-900"
+                        >
+                          <RotateCcw size={10} />
+                          {vi ? 'Thu hồi sửa đổi' : 'Revert Edit'}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Q&A options */}
                     {msg.options && (isActiveQ || isAnsweredQ) && (
                       msg.questionId === 'q_platform' ? (
@@ -2397,6 +2733,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                           disabled={isAnsweredQ || !isActiveQ}
                           selectedOption={msg.selectedOption}
                           vi={vi}
+                          connectedPlatforms={connectedPlatforms}
+                          onWarning={(msg) => {
+                            setPopupType('warning');
+                            setPopupTitle(vi ? 'Chưa kết nối nền tảng' : 'Platform Not Connected');
+                            setPopupMessage(msg);
+                            setPopupOpen(true);
+                          }}
                         />
                       ) : (
                         <QAOptions
@@ -2420,12 +2763,24 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
             }
 
             // User message
+            const isReverted = msg.reverted || (chatMessages[idx + 1]?.role === 'assistant' && chatMessages[idx + 1]?.reverted);
             return (
               <motion.div key={msg.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                className="flex justify-end">
-                <div className="max-w-[80%] bg-primary text-white text-[13px] rounded-2xl rounded-tr-sm px-4 py-2.5 leading-relaxed shadow-sm shadow-primary/15">
-                  {msg.highlightRef && <div className="text-[10px] text-white/60 mb-1">↑ {vi ? 're: đoạn bôi' : 're: highlight'}</div>}
-                  {msg.content}
+                className={`flex justify-end ${isReverted ? 'opacity-40 select-none' : ''}`}>
+                <div className={`max-w-[80%] text-[13px] rounded-2xl rounded-tr-sm px-4 py-2.5 leading-relaxed shadow-sm flex flex-col gap-1 ${isReverted ? 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 line-through border border-slate-300 dark:border-zinc-700/50' : 'bg-primary text-white shadow-primary/15'}`}>
+                  {msg.highlightRef && (() => {
+                    const isExpanded = expandedReplies[msg.id];
+                    return (
+                      <div 
+                        onClick={() => setExpandedReplies(prev => ({ ...prev, [msg.id]: !isExpanded }))}
+                        className={`text-[11px] italic border-l-2 pl-2 py-0.5 mb-0.5 cursor-pointer transition-all ${isReverted ? 'text-slate-450 dark:text-zinc-500 border-slate-350 dark:border-zinc-700 hover:text-slate-300' : 'text-white/70 border-white/30 hover:text-white'} ${isExpanded ? '' : 'line-clamp-2'}`}
+                        title={vi ? 'Bấm để xem đầy đủ' : 'Click to see full text'}
+                      >
+                        "{msg.highlightRef.text}"
+                      </div>
+                    );
+                  })()}
+                  <div>{msg.content}</div>
                 </div>
               </motion.div>
             );
@@ -2461,14 +2816,14 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend(); }
                 }}
                 placeholder={
-                  pendingHighlight
+                  activeHighlight
                     ? (vi ? 'Hướng dẫn chỉnh đoạn đã bôi...' : 'How to edit highlighted text...')
                     : (vi ? 'Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)' : 'Message AI... (Enter to send)')
                 }
                 rows={3}
                 disabled={isChatLoading}
                 className={`w-full px-4 py-3 pr-12 text-sm rounded-2xl border resize-none outline-none leading-relaxed transition-all
-                  ${pendingHighlight
+                  ${activeHighlight
                     ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/10 focus:border-amber-400 dark:text-text'
                     : 'border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-text focus:border-primary/50 focus:ring-1 focus:ring-primary/10'
                   } ${isChatLoading ? 'opacity-50' : ''}`}
@@ -2481,11 +2836,11 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
                 {isChatLoading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
               </button>
             </div>
-            {pendingHighlight && (
+            {activeHighlight && (
               <p className="text-[11px] text-amber-500 font-semibold mt-1.5 flex items-center gap-1">
                 <Highlighter size={9} />
-                {vi ? `Re: "${pendingHighlight.text.substring(0, 35)}..."` : `Re: "${pendingHighlight.text.substring(0, 35)}..."`}
-                <button onClick={() => setPendingHighlight(null)} className="ml-1 text-amber-400 hover:text-amber-600 cursor-pointer border-0 bg-transparent">×</button>
+                {vi ? `Re: "${activeHighlight.text.substring(0, 35)}..."` : `Re: "${activeHighlight.text.substring(0, 35)}..."`}
+                <button onClick={() => setActiveHighlight(null)} className="ml-1 text-amber-400 hover:text-amber-600 cursor-pointer border-0 bg-transparent">×</button>
               </p>
             )}
           </div>
@@ -2504,8 +2859,13 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
               onClick={() => {
                 const mark = document.getElementById(hoverMarkId);
                 if (mark) {
-                  setPendingHighlight({ id: hoverMarkId, text: mark.innerText, platform: activePlatform, color: 'bg-amber-200' });
-                  document.getElementById('acp-chat-input')?.focus();
+                  const newHighlight = { id: hoverMarkId, text: mark.innerText, platform: activePlatform, color: 'bg-amber-200' };
+                  setHighlights(prev => [...prev, newHighlight]);
+                  setActiveHighlight(newHighlight);
+                  setChatInput(vi ? 'Hãy chỉnh sửa đoạn này...' : 'Please edit this text...');
+                  setTimeout(() => {
+                    document.getElementById('acp-chat-input')?.focus();
+                  }, 50);
                 }
                 setHoverMarkId(null);
               }}
@@ -2542,8 +2902,195 @@ Hãy viết bài đăng hoàn chỉnh cho ${platformLabel}. Chỉ trả về n�
         </div>
       )}
 
+      {/* Context Viewer Modal */}
+      <AnimatePresence>
+        {showContextModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowContextModal(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] font-sans"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <FileSearch size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-text uppercase tracking-wider">
+                      {vi ? 'Context tổng quan bài viết' : 'Global Context Summary'}
+                    </h3>
+                    <p className="text-[10px] text-text-muted">
+                      {vi ? 'Ý chính và định hướng bài viết dùng để tham chiếu' : 'Core context and arguments used for AI reference'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowContextModal(false)}
+                  className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer border-0 bg-transparent"
+                >
+                  <X size={16} />
+                </button>
+              </div>
 
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-6 min-h-[200px]">
+                {isGeneratingContext ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <Loader2 size={28} className="animate-spin text-primary" />
+                    <p className="text-xs font-bold text-text-muted animate-pulse">
+                      {vi ? 'Đang trích xuất và khởi tạo Context tổng...' : 'Analyzing and extracting global context...'}
+                    </p>
+                  </div>
+                ) : !globalContext ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-zinc-950 flex items-center justify-center text-slate-300 dark:text-zinc-700">
+                      <FileSearch size={24} />
+                    </div>
+                    <div className="max-w-md">
+                      <p className="text-xs font-bold text-text">
+                        {vi ? 'Chưa có Context tổng' : 'No Global Context available'}
+                      </p>
+                      <p className="text-[11px] text-text-muted mt-1 leading-relaxed">
+                        {vi 
+                          ? 'Bối cảnh tổng quan sẽ tự động được tạo sau khi hoàn thành thiết lập và bấm "Tạo bài viết".'
+                          : 'Global context will automatically generate once you complete the setup and click "Generate".'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prose dark:prose-invert max-w-none">
+                    {/* Render simple markdown converter */}
+                    <div 
+                      className="flex flex-col gap-4 text-xs text-text leading-relaxed font-sans"
+                      dangerouslySetInnerHTML={{
+                        __html: globalContext
+                          .replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;')
+                          .replace(/^### (.*$)/gim, '<h3 class="text-xs font-black text-slate-805 dark:text-zinc-100 mt-4 mb-1.5 border-l-4 border-primary pl-2 flex items-center gap-1.5">$1</h3>')
+                          .replace(/^## (.*$)/gim, '<h2 class="text-sm font-black text-slate-900 dark:text-zinc-50 mt-5 mb-2">$1</h2>')
+                          .replace(/^# (.*$)/gim, '<h1 class="text-base font-black text-slate-905 dark:text-zinc-50 mt-6 mb-2.5">$1</h1>')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900 dark:text-zinc-50">$1</strong>')
+                          .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="text-[11px] text-slate-650 dark:text-slate-350 ml-4 list-disc mb-1 leading-relaxed">$1</li>')
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
 
+              {/* Modal Footer */}
+              <div className="px-6 py-3 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 flex justify-end gap-2 shrink-0">
+                {globalContext && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(globalContext);
+                      setPopupType('success');
+                      setPopupTitle(vi ? 'Thành công' : 'Success');
+                      setPopupMessage(vi ? 'Đã sao chép Context tổng vào clipboard!' : 'Copied global context to clipboard!');
+                      setPopupOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-text-muted hover:text-text transition-all cursor-pointer bg-white dark:bg-zinc-900"
+                  >
+                    {vi ? 'Sao chép' : 'Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowContextModal(false)}
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold border-0 cursor-pointer transition-all shadow-sm shadow-primary/10"
+                >
+                  {vi ? 'Đóng' : 'Close'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* SUCCESS CONFIRMATION DIALOG */}
+      <AnimatePresence>
+        {scheduleSuccess && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              role="dialog"
+              aria-modal="true"
+              className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-5 focus-visible:outline-none rounded-3xl"
+            >
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-450 flex items-center justify-center shadow-inner animate-bounce">
+                <CheckCircle2 size={36} />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-zinc-50">
+                  {vi ? 'Lên lịch đăng bài thành công' : 'Scheduled Successfully'}
+                </h3>
+                <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                  {vi
+                    ? `Bài đăng của bạn đã được lên lịch xuất bản thành công trên các kênh đã chọn.`
+                    : `Your posts have been successfully scheduled on the selected channels.`}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-150 dark:border-zinc-800 rounded-2xl p-4 w-full text-left flex flex-col gap-3 font-sans">
+                <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider font-sans">
+                  {vi ? 'Thông tin xuất bản' : 'Publication details'}
+                </div>
+
+                <div className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate border-b border-slate-100 dark:border-zinc-850 pb-2 font-sans">
+                  {source.title || (vi ? 'Bài viết gốc' : 'Original Article')}
+                </div>
+
+                <div className="flex flex-col gap-2.5 font-sans">
+                  {PLATFORMS.map(p => {
+                    const slot = scheduleSlots[p];
+                    const hasContent = segments[p]?.content;
+                    if (!hasContent || !slot.date) return null;
+                    const label = p === 'facebook' ? 'Facebook' : p === 'threads' ? 'Threads' : 'Instagram';
+                    const badgeBg = p === 'facebook' 
+                      ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' 
+                      : p === 'threads' 
+                        ? 'bg-slate-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200' 
+                        : 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400';
+                    return (
+                      <div key={p} className="flex items-center justify-between text-xs font-sans">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeBg}`}>{label}</span>
+                        <span className="font-semibold text-text-muted">{slot.date} @ {slot.time}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                onClick={resetAfterSchedule}
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-2xl font-bold shadow-md shadow-primary/20 transition-all text-xs cursor-pointer border-0 font-sans"
+              >
+                {vi ? 'Bắt đầu chiến dịch mới' : 'Start new campaign'}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <PopupDialog
+        isOpen={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        title={popupTitle}
+        message={popupMessage}
+        type={popupType}
+      />
     </div>
   );
 }

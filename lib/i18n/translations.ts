@@ -1055,6 +1055,20 @@ export const translations = {
       roleMarketerFull: "Nhà tiếp thị (Toàn quyền)",
       roleMarketerContent: "Nhà sáng tạo nội dung"
     },
+    errors: {
+      title: "Thông báo lỗi",
+      close: "Đóng",
+      quotaExceeded: "Đã vượt quá giới hạn lượt yêu cầu (API Quota Exceeded). Vui lòng thử lại sau vài phút hoặc kiểm tra lại hạn mức tài khoản.",
+      apiKeyInvalid: "API Key Gemini không hợp lệ hoặc đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+      allKeysFailed: "Tất cả các API Key trong hệ thống xoay vòng đều hết hạn mức hoặc bị lỗi. Vui lòng kiểm tra lại.",
+      noKeysAvailable: "Không có API Key Gemini nào khả dụng trong hệ thống.",
+      crawlFailed: "Không thể lấy nội dung từ đường dẫn này. Website nguồn có thể đang chặn hoặc cấu hình tường lửa ngăn cản.",
+      sttFailed: "Lỗi nhận diện và xử lý giọng nói. Vui lòng thử lại với âm thanh rõ ràng hơn.",
+      parseFailed: "Lỗi trích xuất tài liệu (PDF/DOCX). File có thể bị hỏng hoặc chứa định dạng không hỗ trợ.",
+      networkError: "Không thể kết nối mạng hoặc lỗi máy chủ. Vui lòng kiểm tra đường truyền và thử lại.",
+      invalidUrl: "Định dạng URL không hợp lệ. Vui lòng nhập đầy đủ địa chỉ link (ví dụ: https://example.com/)",
+      unknownError: "Đã xảy ra lỗi không xác định: {message}"
+    },
     notifications: {
       infoTitle: "Thông báo",
       markAllRead: "Đánh dấu tất cả đã đọc",
@@ -2123,6 +2137,20 @@ export const translations = {
       roleAdmin: "Administrator",
       roleMarketerFull: "Full Marketer",
       roleMarketerContent: "Content Marketer"
+    },
+    errors: {
+      title: "Error Notification",
+      close: "Close",
+      quotaExceeded: "API Quota exceeded. Please wait a few minutes or check your account quota limits.",
+      apiKeyInvalid: "Gemini API Key is invalid or has been disabled. Please contact your system administrator.",
+      allKeysFailed: "All backup API Keys in the rotation pool have failed or exhausted their quotas. Please try again later.",
+      noKeysAvailable: "No active Gemini API Keys found in the system.",
+      crawlFailed: "Failed to fetch content from this link. The source website might be blocking requests or behind a firewall.",
+      sttFailed: "Voice recognition and processing failed. Please try again with a clearer audio file.",
+      parseFailed: "Document parsing (PDF/DOCX) failed. The file might be corrupted or in an unsupported format.",
+      networkError: "Network connection or server error. Please check your connection and try again.",
+      invalidUrl: "Invalid URL format. Please enter a complete link address (e.g., https://example.com/)",
+      unknownError: "An unknown error occurred: {message}"
     },
     notifications: {
       infoTitle: "Notifications",

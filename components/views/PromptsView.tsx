@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
+import PopupDialog, { PopupType } from "@/components/PopupDialog";
+import { mapErrorToHumanFriendly } from "@/lib/utils/errorMapper";
 import {
   Plus,
   Search,
@@ -93,6 +95,7 @@ function parseTagsText(tagsText: string): string[] {
 
 export default function PromptsView() {
   const { t, language } = useLanguage();
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const searchParams = useSearchParams();
   const promptIdParam = searchParams?.get("promptId");
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]);
@@ -168,10 +171,12 @@ export default function PromptsView() {
         fetchConfigs();
       } else {
         const json = await res.json();
-        alert(json.error || 'Lỗi khi xóa cấu hình');
+        const friendlyMsg = mapErrorToHumanFriendly(json.error || 'Lỗi khi xóa cấu hình', t);
+        setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
       }
     } catch (err: any) {
-      alert(err.message || 'Lỗi hệ thống');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
     }
   };
 
@@ -191,10 +196,12 @@ export default function PromptsView() {
         fetchConfigs();
       } else {
         const json = await res.json();
-        alert(json.error || 'Lỗi khi đặt cấu hình mặc định');
+        const friendlyMsg = mapErrorToHumanFriendly(json.error || 'Lỗi khi đặt cấu hình mặc định', t);
+        setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
       }
     } catch (err: any) {
-      alert(err.message || 'Lỗi hệ thống');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
     }
   };
 
@@ -261,10 +268,12 @@ export default function PromptsView() {
         fetchConfigs();
       } else {
         const json = await res.json();
-        alert(json.error || 'Lỗi khi lưu cấu hình');
+        const friendlyMsg = mapErrorToHumanFriendly(json.error || 'Lỗi khi lưu cấu hình', t);
+        setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
       }
     } catch (err: any) {
-      alert(err.message || 'Lỗi hệ thống');
+      const friendlyMsg = mapErrorToHumanFriendly(err, t);
+      setPopup({ isOpen: true, type: 'error', message: friendlyMsg });
     } finally {
       setIsSavingConfig(false);
     }
@@ -1299,6 +1308,13 @@ export default function PromptsView() {
           </div>
         </div>
       )}
+
+      <PopupDialog
+        isOpen={!!popup?.isOpen}
+        onClose={() => setPopup(null)}
+        message={popup?.message || ''}
+        type={popup?.type || 'info'}
+      />
     </div>
   );
 }

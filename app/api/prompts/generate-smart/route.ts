@@ -61,7 +61,9 @@ Yêu cầu đối với Prompt bạn tạo ra:
         const genAI = new GoogleGenerativeAI(key);
         const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
         return model.generateContent(instruction);
-      }
+      },
+      undefined,
+      platform
     );
 
     const response = await result.response;

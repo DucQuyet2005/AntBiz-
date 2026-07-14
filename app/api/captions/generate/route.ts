@@ -382,6 +382,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
     const temperature = resolvedVariantIndex >= 1 ? 1.0 : 0.7;
 
+    const seed = `${platform}_${resolvedVariantIndex}`;
+
     const response = await executeWithRotation(
       { title: article.title || '', content: fullText },
       async (key, modelName) => {
@@ -416,7 +418,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         }
 
         return res;
-      }
+      },
+      undefined,
+      seed
     );
 
     // 5. Stream response and save to DB on complete
