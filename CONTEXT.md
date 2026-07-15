@@ -95,3 +95,9 @@ Facebook and Threads OAuth protocols, signed state, provider discovery calls, to
 Landing Configuration owns the administrator-managed content and presentation values used to render AntBiz's public landing page. Configuration entries are identified by a unique Section and Key, while the public projection groups their JSON values by Section and Key for landing-page consumers.
 
 Saved configuration is live immediately under the current product behavior. Publishing creates a History Checkpoint when the live configuration differs from the latest checkpoint, refreshes the landing-page cache, and notifies administrators; it is not a separate draft-to-live transition. Rollback atomically replaces the live configuration with one History Checkpoint. Translation assistance in the editor is a separate supporting workflow.
+
+## Gemini Capacity
+
+Gemini Capacity owns the shared pool of Gemini credentials and model tiers used by rotation-enabled AI workflows. It selects a model from workload complexity, claims an eligible Capacity Key, respects rate-limit cooldowns, classifies provider failures, records key health, and uses the configured environment credential as a final availability fallback.
+
+A Capacity Key is a server-side secret. Administrators may add, inspect a masked projection of, activate, disable, and delete Capacity Keys, but callers and browsers never receive their raw values. Keys marked Invalid require explicit administrator reactivation. Document Parsing and Prompt Configuration Assistance retain their separately designed single-key policies and are not consumers of Gemini Capacity.
