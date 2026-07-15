@@ -1,8 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { requireUserWithRole } from '@/lib/api/auth';
+import {
+  beginSocialConnectionResponse,
+  buildSocialAccountConnectionsModule,
+  SOCIAL_CONNECTION_ROLES,
+} from '../_social-connection-adapter';
 
 export async function GET(request: NextRequest) {
-  // Vì Instagram Business kết nối thông qua Facebook Page Login, 
-  // chuyển hướng người dùng tới API Facebook Auth kèm theo state=instagram để nhận biết luồng.
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
-  return NextResponse.redirect(`${origin}/api/auth/facebook?state=instagram`);
+  const { user, supabase, unauthorized } = await requireUserWithRole(SOCIAL_CONNECTION_ROLES);
+  if (unauthorized) return unauthorized;
+  return beginSocialConnectionResponse(
+    buildSocialAccountConnectionsModule(supabase, request.nextUrl.origin),
+    'instagram',
+    user.id
+  );
 }

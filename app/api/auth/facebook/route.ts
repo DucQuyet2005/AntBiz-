@@ -1,21 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { requireUserWithRole } from '@/lib/api/auth';
+import {
+  beginSocialConnectionResponse,
+  buildSocialAccountConnectionsModule,
+  SOCIAL_CONNECTION_ROLES,
+} from '../_social-connection-adapter';
 
 export async function GET(request: NextRequest) {
-  const appId = process.env.FB_APP_ID || '';
-  const redirectUri = process.env.FB_REDIRECT_URI || `${request.nextUrl.origin}/api/auth/facebook/callback`;
-  const state = request.nextUrl.searchParams.get('state') || 'facebook';
-  
-  // Các quyền của Facebook Page và Instagram Business
-  const scope = [
-    'pages_show_list',
-    'pages_read_engagement',
-    'pages_manage_posts',
-    'instagram_basic',
-    'instagram_content_publish',
-    'business_management',
-    'public_profile'
-  ].join(',');
-
-  const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${state}`;
-  return NextResponse.redirect(authUrl);
+  const { user, supabase, unauthorized } = await requireUserWithRole(SOCIAL_CONNECTION_ROLES);
+  if (unauthorized) return unauthorized;
+  return beginSocialConnectionResponse(
+    buildSocialAccountConnectionsModule(supabase, request.nextUrl.origin),
+    'facebook',
+    user.id
+  );
 }

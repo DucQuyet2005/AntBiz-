@@ -11,12 +11,14 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - Tách luồng xuất Caption CSV, tải lại file và lịch sử export thành module backend độc lập; giữ nguyên thao tác tải trực tiếp và dữ liệu lịch sử hiện có, đồng thời tách quyền đọc Caption theo RLS khỏi quyền ghi compatibility job trong Audit Logs.
 - Tách xử lý giọng nói thành module backend độc lập cho kiểm tra file, Groq Whisper và hai bước Gemini; giữ nguyên kết quả transcript/correction/metadata và cho phép nhập ý chính hoạt động khi không cấu hình Groq.
 - Tách trích xuất tài liệu thành module backend độc lập cho kiểm tra file, Mammoth DOCX và Gemini PDF; giữ nguyên endpoint/kết quả hiện có, đồng thời xác định rõ chỉ hỗ trợ `.pdf` và `.docx` thay vì nhận nhầm định dạng `.doc` cũ.
+- Tách vòng đời liên kết Facebook Page, Instagram Business và Threads thành module backend độc lập; giữ nguyên cơ chế tự động lưu nhiều tài khoản và partial success, đồng thời tách OAuth Threads khỏi các hàm đăng bài của Scheduled Publishing.
 
 ### Security
 - Chuẩn hóa và giới hạn từ khóa tìm kiếm, đồng thời escape các ký tự wildcard và cú pháp PostgREST để dữ liệu nhập chỉ được xử lý như nội dung tìm kiếm; tiếp tục giới hạn prompt theo đúng chủ sở hữu.
 - Bổ sung kiểm tra filter, ngày, UUID và quyền sở hữu export job; ngăn Audit Log không liên quan bị dùng như job tải file, loại bỏ host-header khỏi download URL và vô hiệu hóa công thức nguy hiểm trong CSV khi mở bằng Excel/Sheets.
 - Chuẩn hóa MIME và kích thước file giọng nói, đồng thời không trả hoặc ghi log raw lỗi provider, API key, prompt hay transcript nhạy cảm.
 - Chuẩn hóa lỗi trích xuất tài liệu để không trả hoặc ghi log nội dung file, tên file đầy đủ, Gemini API key, prompt hay raw response của provider.
+- Bổ sung OAuth state ký HMAC, hết hạn sau 10 phút, gắn với user và nonce cookie cho các luồng liên kết mạng xã hội; loại bỏ raw token/provider/account data khỏi redirect và log, đồng thời chỉ trả projection tài khoản không chứa credential.
 
 
 ## [1.7.6] - 2026-07-10

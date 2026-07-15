@@ -20,6 +20,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { createClient } from '@/utils/supabase/client';
+import { getSocialConnectionErrorMessage } from '@/lib/socialConnectionMessages';
 import { useFont, fonts } from '@/contexts/FontContext';
 import PlatformPresetsTab from './PlatformPresetsTab';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
@@ -142,11 +143,7 @@ export default function SettingsView() {
       } else {
         setPopupType('error');
         setPopupTitle(language === 'vi' ? 'Liên kết thất bại' : 'Connection Failed');
-        setPopupMessage(
-          language === 'vi'
-            ? `Không thể liên kết ${platformLabel}. Chi tiết: ${decodeURIComponent(errorMsg || 'Lỗi không xác định')}`
-            : `Failed to link ${platformLabel}. Detail: ${decodeURIComponent(errorMsg || 'Unknown error')}`
-        );
+        setPopupMessage(getSocialConnectionErrorMessage(errorMsg, language, platformLabel));
       }
       setPopupOpen(true);
 
