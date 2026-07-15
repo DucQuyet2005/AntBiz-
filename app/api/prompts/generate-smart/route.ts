@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { executeWithRotation } from '@/lib/services/geminiRotationManager';
+import { executeWithGeminiCapacity } from '@/backend/modules/gemini-capacity';
+import { GeminiCapacityError } from '@/backend/modules/gemini-capacity/errors';
 
 const smartPromptSchema = z.object({
   title: z.string(),
@@ -55,7 +56,7 @@ Yêu cầu đối với Prompt bạn tạo ra:
 5. Prompt được tạo ra phải quy định nghiêm ngặt yêu cầu AI viết bài: TUYỆT ĐỐI KHÔNG có lời dẫn giải, không chào hỏi, không có câu chuyển tiếp hay lời dẫn, không có bất kỳ ký tự nào ngoài nội dung bài viết hoàn chỉnh.
 6. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là prompt", không có bất kỳ ký tự nào ngoài nội dung prompt. Trả về TRỰC TIẼP nội dung prompt.`;
 
-    const result = await executeWithRotation(
+    const result = await executeWithGeminiCapacity(
       { title, content },
       async (key, modelName) => {
         const genAI = new GoogleGenerativeAI(key);
@@ -68,8 +69,14 @@ Yêu cầu đối với Prompt bạn tạo ra:
     const smartPromptText = response.text();
 
     return NextResponse.json({ smartPrompt: smartPromptText });
-  } catch (error: any) {
-    console.error('[Generate Smart Prompt Error]:', error);
-    return NextResponse.json({ error: error.message || 'Lỗi khi tạo Smart Prompt' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[Smart Prompt Generation]', {
+      code: error instanceof GeminiCapacityError ? error.code : 'REQUEST_FAILED',
+    });
+    return NextResponse.json({
+      error: error instanceof GeminiCapacityError
+        ? error.clientMessage
+        : 'Lỗi khi tạo Smart Prompt',
+    }, { status: 500 });
   }
 }

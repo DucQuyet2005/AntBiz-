@@ -4,6 +4,18 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased] - 2026-07-16
+
+### Changed
+- Tách cơ chế chọn model, xoay vòng Gemini API Key, quản lý sức khỏe key và cấu hình dự phòng thành module Gemini Capacity dùng chung cho các workflow AI hiện hữu; bổ sung claim nguyên tử để phân phối key an toàn hơn khi có nhiều request đồng thời.
+
+### Fixed
+- Không còn tự thử lại key đã bị vô hiệu hóa hoặc key vẫn trong thời gian cooldown; lỗi model dừng ngay mà không phạt key, còn lỗi mạng/provider không còn tự động làm key chuyển sang trạng thái `invalid`.
+
+### Security
+- Thu hồi quyền đọc Gemini API Key thô của client đã đăng nhập, chỉ trả projection đã che cho trang quản trị, giới hạn claim secret cho service role và loại raw provider error/key khỏi response cùng log vận hành.
+
+
 ## [Unreleased] - 2026-07-15
 
 ### Changed

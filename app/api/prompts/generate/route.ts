@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { executeWithRotation } from '@/lib/services/geminiRotationManager';
+import { executeWithGeminiCapacity } from '@/backend/modules/gemini-capacity';
+import { GeminiCapacityError } from '@/backend/modules/gemini-capacity/errors';
 
 const generatePromptSchema = z.object({
   title: z.string(),
@@ -37,7 +38,7 @@ Yêu cầu bài viết:
 4. Thêm 3-5 hashtag liên quan.
 5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
 
-    const result = await executeWithRotation(
+    const result = await executeWithGeminiCapacity(
       { title, content },
       async (key, modelName) => {
         const genAI = new GoogleGenerativeAI(key);
@@ -54,8 +55,14 @@ Yêu cầu bài viết:
       name: `AI Draft: ${title.substring(0, 30)}...`,
       tags: ['AI Generated', platform]
     });
-  } catch (error: any) {
-    console.error('[Gemini API Error]:', error);
-    return NextResponse.json({ error: error.message || 'Lỗi khi gọi Gemini API' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[Prompt Generation]', {
+      code: error instanceof GeminiCapacityError ? error.code : 'REQUEST_FAILED',
+    });
+    return NextResponse.json({
+      error: error instanceof GeminiCapacityError
+        ? error.clientMessage
+        : 'Lỗi khi gọi Gemini API',
+    }, { status: 500 });
   }
 }

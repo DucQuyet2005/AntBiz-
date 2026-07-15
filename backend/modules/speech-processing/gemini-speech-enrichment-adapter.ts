@@ -1,18 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { executeWithRotation } from '@/lib/services/geminiRotationManager';
+import {
+  executeWithGeminiCapacity,
+  type GeminiCapacityExecutor,
+} from '@/backend/modules/gemini-capacity';
 import { CORRECTION_PROMPT, METADATA_PROMPT } from './speech-prompts';
 import type { SpeechEnricher, SpeechMetadata } from './speech-processing-types';
-
-type RotationExecutor = <T>(
-  metrics: { title: string; content: string },
-  runner: (apiKey: string, modelName: string) => Promise<T>
-) => Promise<T>;
 
 const EMPTY_METADATA: SpeechMetadata = { title: '', category: '', tags: '' };
 
 export class GeminiSpeechEnrichmentAdapter implements SpeechEnricher {
   constructor(
-    private readonly rotationExecutor: RotationExecutor = executeWithRotation
+    private readonly capacityExecutor: GeminiCapacityExecutor = executeWithGeminiCapacity
   ) {}
 
   correct(transcript: string) {
@@ -40,7 +38,7 @@ export class GeminiSpeechEnrichmentAdapter implements SpeechEnricher {
     temperature: number,
     title: string
   ) {
-    const result = await this.rotationExecutor(
+    const result = await this.capacityExecutor(
       { title, content: inputText },
       async (apiKey, modelName) => {
         const client = new GoogleGenerativeAI(apiKey);

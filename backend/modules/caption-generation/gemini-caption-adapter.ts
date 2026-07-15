@@ -1,4 +1,7 @@
-import { executeWithRotation } from '@/lib/services/geminiRotationManager';
+import {
+  executeWithGeminiCapacity,
+  type GeminiCapacityExecutor,
+} from '@/backend/modules/gemini-capacity';
 import type { GeminiCaptionGateway } from './caption-generation-types';
 
 type Sleep = (milliseconds: number) => Promise<void>;
@@ -9,7 +12,8 @@ const defaultSleep: Sleep = (milliseconds) =>
 export class GeminiCaptionAdapter implements GeminiCaptionGateway {
   constructor(
     private readonly fetchImplementation: typeof fetch = fetch,
-    private readonly sleep: Sleep = defaultSleep
+    private readonly sleep: Sleep = defaultSleep,
+    private readonly capacityExecutor: GeminiCapacityExecutor = executeWithGeminiCapacity
   ) {}
 
   async start(input: {
@@ -18,7 +22,7 @@ export class GeminiCaptionAdapter implements GeminiCaptionGateway {
     prompt: string;
     temperature: number;
   }): Promise<AsyncIterable<string>> {
-    const response = await executeWithRotation(
+    const response = await this.capacityExecutor(
       { title: input.title, content: input.content },
       async (key, modelName) => {
         const modelPath = modelName.startsWith('tunedModels/') ? modelName : `models/${modelName}`;
@@ -47,12 +51,14 @@ export class GeminiCaptionAdapter implements GeminiCaptionGateway {
     let delay = 1000;
     for (let attempt = 0; attempt < retries; attempt += 1) {
       try {
-        const response = await this.fetchImplementation(url, options);
-        if (response.status !== 429) return response;
-        console.warn(`[Gemini API] Rate limited (429). Retrying in ${delay}ms... (Attempt ${attempt + 1}/${retries})`);
+        return await this.fetchImplementation(url, options);
       } catch (error) {
         if (attempt === retries - 1) throw error;
-        console.warn(`[Gemini API] Fetch error: ${error}. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${retries})`);
+        console.warn('[Gemini Caption] Transient fetch failure; retrying request', {
+          attempt: attempt + 1,
+          retries,
+          delay,
+        });
       }
       await this.sleep(delay);
       delay *= 2;

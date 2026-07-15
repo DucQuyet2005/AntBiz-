@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { executeWithRotation } from '@/lib/services/geminiRotationManager';
+import { executeWithGeminiCapacity } from '@/backend/modules/gemini-capacity';
+import { GeminiCapacityError } from '@/backend/modules/gemini-capacity/errors';
 
 export const maxDuration = 60; // 60s timeout
 
@@ -57,7 +58,7 @@ Lưu ý quan trọng: Chỉ trả về chuỗi JSON thô, không có ký tự ba
 `;
 
     // 4. Execute with key rotation
-    const result = await executeWithRotation(
+    const result = await executeWithGeminiCapacity(
       { title, content: full_text },
       async (key, modelName) => {
         const genAI = new GoogleGenerativeAI(key);
@@ -85,10 +86,16 @@ Lưu ý quan trọng: Chỉ trả về chuỗi JSON thô, không có ký tự ba
         tags: parsedData.tags || tags,
       }
     });
-  } catch (error: any) {
-    console.error('[Generate Missing API Error]:', error);
+  } catch (error: unknown) {
+    console.error('[Generate Missing]', {
+      code: error instanceof GeminiCapacityError ? error.code : 'REQUEST_FAILED',
+    });
     return NextResponse.json(
-      { error: error.message || 'Lỗi hệ thống khi tự động điền thông tin' },
+      {
+        error: error instanceof GeminiCapacityError
+          ? error.clientMessage
+          : 'Lỗi hệ thống khi tự động điền thông tin',
+      },
       { status: 500 }
     );
   }

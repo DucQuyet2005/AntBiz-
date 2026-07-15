@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Key, Plus, Trash2, ShieldAlert, Eye, EyeOff, CheckCircle2, AlertTriangle, RefreshCcw, Loader2 } from 'lucide-react';
+import { Key, Plus, Trash2, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCcw, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,7 +10,7 @@ import AdminAccessDenied from '@/app/(dashboard)/admin/AdminAccessDenied';
 
 type GeminiKey = {
   id: string;
-  key_value: string;
+  masked_value: string;
   label: string;
   status: 'active' | 'rate_limited' | 'invalid';
   rate_limited_until: string | null;
@@ -20,7 +20,7 @@ type GeminiKey = {
 };
 
 export default function AdminGeminiKeysPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const supabase = createClient();
   
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -63,7 +63,7 @@ export default function AdminGeminiKeysPage() {
       if (!res.ok) throw new Error('Failed to fetch Gemini API Keys');
       const json = await res.json();
       setKeys(json.data || []);
-    } catch (err: any) {
+    } catch {
       setToast({
         isOpen: true,
         message: language === 'vi' ? 'Không thể tải danh sách API Key' : 'Failed to fetch API Keys',
@@ -76,7 +76,7 @@ export default function AdminGeminiKeysPage() {
 
   useEffect(() => {
     if (isAdmin === true) {
-      fetchKeys();
+      void Promise.resolve().then(fetchKeys);
     }
   }, [isAdmin, fetchKeys]);
 
@@ -103,8 +103,12 @@ export default function AdminGeminiKeysPage() {
       setAddModalOpen(false);
       setNewKey({ key_value: '', label: '' });
       fetchKeys();
-    } catch (err: any) {
-      setToast({ isOpen: true, message: err.message, type: 'error' });
+    } catch (error: unknown) {
+      setToast({
+        isOpen: true,
+        message: errorMessage(error, 'Failed to add key'),
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -128,8 +132,12 @@ export default function AdminGeminiKeysPage() {
       });
       setDeleteModal({ isOpen: false, keyId: '', keyLabel: '' });
       fetchKeys();
-    } catch (err: any) {
-      setToast({ isOpen: true, message: err.message, type: 'error' });
+    } catch (error: unknown) {
+      setToast({
+        isOpen: true,
+        message: errorMessage(error, 'Failed to delete key'),
+        type: 'error',
+      });
     }
   };
 
@@ -137,7 +145,9 @@ export default function AdminGeminiKeysPage() {
     const nextStatus = key.status === 'active' ? 'invalid' : 'active';
     
     // Optimistic UI update
-    setKeys(prev => prev.map(k => k.id === key.id ? { ...k, status: nextStatus, error_count: 0 } : k));
+    setKeys(prev => prev.map(k => k.id === key.id
+      ? { ...k, status: nextStatus, error_count: nextStatus === 'active' ? 0 : k.error_count }
+      : k));
 
     try {
       const res = await fetch(`/api/admin/gemini-keys/${key.id}`, {
@@ -149,15 +159,14 @@ export default function AdminGeminiKeysPage() {
 
       if (!res.ok) throw new Error(data.error || 'Failed to update key');
       fetchKeys();
-    } catch (err: any) {
-      setToast({ isOpen: true, message: err.message, type: 'error' });
+    } catch (error: unknown) {
+      setToast({
+        isOpen: true,
+        message: errorMessage(error, 'Failed to update key'),
+        type: 'error',
+      });
       fetchKeys();
     }
-  };
-
-  const maskKey = (keyVal: string) => {
-    if (keyVal.length <= 12) return '•'.repeat(keyVal.length);
-    return `${keyVal.substring(0, 6)}...${keyVal.substring(keyVal.length - 6)}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -239,7 +248,7 @@ export default function AdminGeminiKeysPage() {
                       {key.label}
                     </td>
                     <td className="p-5 font-mono text-sm text-slate-600">
-                      <span>{maskKey(key.key_value)}</span>
+                      <span>{key.masked_value}</span>
                     </td>
                     <td className="p-5">
                       {getStatusBadge(key.status)}
@@ -406,4 +415,8 @@ export default function AdminGeminiKeysPage() {
       />
     </div>
   );
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
