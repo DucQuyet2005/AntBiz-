@@ -1,5 +1,7 @@
 import React from 'react';
 import LandingView from '@/components/views/LandingView';
+import { createLandingConfigurationModule } from '@/backend/modules/landing-configuration/landing-configuration-factory';
+import type { LandingConfigurationSnapshot } from '@/backend/modules/landing-configuration/landing-configuration-types';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 
@@ -20,16 +22,13 @@ export default async function RootHome({
     redirect('/overview');
   }
 
-  // Fetch live config
-  const { data: configData } = await supabase
-    .from('landing_page_config')
-    .select('key, value, section');
-
-  const config: Record<string, Record<string, any>> = {};
-  if (configData) {
-    configData.forEach(item => {
-      if (!config[item.section]) config[item.section] = {};
-      config[item.section][item.key] = item.value;
+  let config: LandingConfigurationSnapshot = {};
+  try {
+    config = await createLandingConfigurationModule(supabase).readPublicConfiguration();
+  } catch {
+    console.error('[Landing Configuration]', {
+      operation: 'render public page',
+      code: 'PUBLIC_READ_FAILED',
     });
   }
 

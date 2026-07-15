@@ -7,11 +7,15 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [Unreleased] - 2026-07-15
 
 ### Changed
+- Tách vòng đời Cấu hình Landing Page thành module backend độc lập; dùng chung một projection cho API công khai và trang chủ, đồng thời giữ nguyên cơ chế lưu trực tiếp, tạo checkpoint khi xuất bản và thông báo quản trị viên.
 - Tách API Tìm kiếm toàn cục thành module backend độc lập theo vai trò, giữ nguyên kết quả dành cho quản trị viên và marketer nhưng giúp luồng truy vấn, FAQ và xử lý lỗi dễ kiểm thử, bảo trì hơn.
 - Tách luồng xuất Caption CSV, tải lại file và lịch sử export thành module backend độc lập; giữ nguyên thao tác tải trực tiếp và dữ liệu lịch sử hiện có, đồng thời tách quyền đọc Caption theo RLS khỏi quyền ghi compatibility job trong Audit Logs.
 - Tách xử lý giọng nói thành module backend độc lập cho kiểm tra file, Groq Whisper và hai bước Gemini; giữ nguyên kết quả transcript/correction/metadata và cho phép nhập ý chính hoạt động khi không cấu hình Groq.
 - Tách trích xuất tài liệu thành module backend độc lập cho kiểm tra file, Mammoth DOCX và Gemini PDF; giữ nguyên endpoint/kết quả hiện có, đồng thời xác định rõ chỉ hỗ trợ `.pdf` và `.docx` thay vì nhận nhầm định dạng `.doc` cũ.
 - Tách vòng đời liên kết Facebook Page, Instagram Business và Threads thành module backend độc lập; giữ nguyên cơ chế tự động lưu nhiều tài khoản và partial success, đồng thời tách OAuth Threads khỏi các hàm đăng bài của Scheduled Publishing.
+
+### Fixed
+- Bảo đảm rollback Landing Page thay thế toàn bộ cấu hình trong một transaction và giữ nguyên dữ liệu cũ nếu khôi phục thất bại; đồng thời loại bản ghi trùng hiện hữu và áp dụng ràng buộc duy nhất cho từng cặp `section`/`key`.
 
 ### Security
 - Chuẩn hóa và giới hạn từ khóa tìm kiếm, đồng thời escape các ký tự wildcard và cú pháp PostgREST để dữ liệu nhập chỉ được xử lý như nội dung tìm kiếm; tiếp tục giới hạn prompt theo đúng chủ sở hữu.
