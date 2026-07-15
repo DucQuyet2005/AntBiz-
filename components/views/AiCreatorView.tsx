@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Link2,
@@ -57,6 +57,11 @@ import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
 import { createClient } from '@/utils/supabase/client';
+import {
+  QuickPublishingError,
+  useQuickPublishing,
+  type QuickPublishingEvent,
+} from '@/frontend/modules/quick-publishing';
 
 
 // Threads Custom SVG Logo
@@ -725,6 +730,12 @@ const parseStyleString = (styleStr: string): React.CSSProperties => {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const router = useRouter();
+  const {
+    loadPresets: loadQuickPublishingPresets,
+    generate: executeQuickPublishingGeneration,
+    regenerate: executeQuickPublishingRegeneration,
+    schedule: executeQuickPublishingSchedule,
+  } = useQuickPublishing();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
@@ -1154,159 +1165,77 @@ export default function AiCreatorView() {
 
     abortControllerRef.current = new AbortController();
 
-    // T-1.18: Build prompt for each variant index to maximize diversity
-    const buildVariantPrompt = (index: number, basePrompt: string): string => {
-      if (index === 0) return basePrompt; // Variant A: prompt gốc
-      if (index === 1) {
-        // Variant B: Thân thiện, có emoji, câu hỏi gợi mở
-        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác. Mở đầu bằng một câu ấn tượng tạo sự tò mò. CTA rõ ràng ở cuối.`;
+    const projectGenerationEvent = (event: QuickPublishingEvent) => {
+      if (event.type === 'text-fragment') {
+        setVariants((prev) => prev.map((variant) => (
+          variant.id === event.variantId
+            ? { ...variant, [event.platform]: event.accumulated }
+            : variant
+        )));
+        return;
       }
-      // Variant C: Ngắn gọn, facts-driven, không emoji
-      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, tập trung vào dữ liệu và sự kiện quan trọng. Không sử dụng emoji. Phong cách báo chí chuyên nghiệp, đúng trọng tâm. Hashtag ngắn gọn, hiệu quả.`;
-    };
-
-    const streamVariant = async (variantId: string, variantIndex: number, groupId: string, platform: 'facebook' | 'threads' | 'instagram') => {
-      const abortSignal = abortControllerRef.current?.signal;
-
-      const platformConfig = platformConfigMap[platform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
-      let finalCustomText = platformConfig.customText.trim();
-      const requirementsList = [
-        { id: 'cta', name: 'Thêm kêu gọi hành động' },
-        { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
-        { id: 'emoji', name: 'Sử dụng nhiều emoji' },
-        { id: 'stats', name: 'Tập trung vào số liệu' },
-        { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
-      ];
-      if (platformConfig.quickPicks.length > 0) {
-        const picksText = platformConfig.quickPicks.map(id => requirementsList.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-        finalCustomText = finalCustomText
-          ? `${finalCustomText} (Yêu cầu nhanh: ${picksText})`
-          : `Yêu cầu nhanh: ${picksText}`;
+      if (event.type === 'caption-resolved') {
+        const captionKey = event.platform === 'facebook'
+          ? 'facebookCaptionId'
+          : event.platform === 'threads'
+            ? 'threadsCaptionId'
+            : 'instagramCaptionId';
+        setVariants((prev) => prev.map((variant) => (
+          variant.id === event.variantId
+            ? { ...variant, captionId: event.captionId, [captionKey]: event.captionId }
+            : variant
+        )));
+        return;
       }
-
-      const basePrompt = finalCustomText || resolvedActivePrompt || '';
-      const customPromptPayload = buildVariantPrompt(variantIndex, basePrompt);
-      try {
-        const res = await fetch('/api/captions/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: url.trim() || undefined,
-            articleId: resolvedArticleId || undefined,
-            customPrompt: customPromptPayload,
-            platform: platform,
-            variantGroupId: groupId,
-            variantIndex,
-            model: selectedModel,
-            stylePresetId: platformConfig.configId || 'none',
-            platformPresetId: platformConfig.presetId || undefined,
-            ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
-              ? { promptId: selectedPrompt.id }
-              : {}),
-          }),
-          signal: abortSignal,
-        });
-
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(errJson?.error || `HTTP ${res.status}`);
-        }
-
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = '';
-
-        if (!reader) throw new Error('No response body');
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') {
-                continue;
-              }
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.text) {
-                  accumulated += parsed.text;
-                  setVariants((prev) =>
-                    prev.map((v) =>
-                      v.id === variantId
-                        ? {
-                          ...v,
-                          [platform]: accumulated,
-                        }
-                        : v
-                    )
-                  );
-                }
-                if (parsed.done && parsed.captionId) {
-                  const platKey = platform === 'facebook' ? 'facebookCaptionId' :
-                    platform === 'threads' ? 'threadsCaptionId' :
-                      'instagramCaptionId';
-                  setVariants((prev) =>
-                    prev.map((v) =>
-                      v.id === variantId ? { ...v, captionId: parsed.captionId, [platKey]: parsed.captionId } : v
-                    )
-                  );
-                }
-                if (parsed.done && parsed.articleId && !articleId) {
-                  setArticleId(parsed.articleId);
-                }
-              } catch (e) {
-                // Ignore partial line JSON errors
-              }
+      if (event.type === 'article-resolved' && !articleId) {
+        setArticleId(event.articleId);
+        return;
+      }
+      if (event.type === 'generation-completed') {
+        const originalKey = event.platform === 'facebook'
+          ? 'originalFacebook'
+          : event.platform === 'threads'
+            ? 'originalThreads'
+            : 'originalInstagram';
+        setVariants((prev) => prev.map((variant) => (
+          variant.id === event.variantId
+            ? { ...variant, [originalKey]: event.content }
+            : variant
+        )));
+        return;
+      }
+      if (event.type === 'generation-failed') {
+        setVariants((prev) => prev.map((variant) => (
+          variant.id === event.variantId
+            ? {
+              ...variant,
+              [event.platform]: language === 'vi'
+                ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
+                : 'Error generating AI content for this variant.',
             }
-          }
-        }
-
-        // Stream finished successfully, save the original text
-        setVariants((prev) =>
-          prev.map((v) => {
-            if (v.id === variantId) {
-              const originalField = platform === 'facebook' ? 'originalFacebook' :
-                platform === 'threads' ? 'originalThreads' :
-                  'originalInstagram';
-              return {
-                ...v,
-                [originalField]: accumulated,
-              };
-            }
-            return v;
-          })
-        );
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
-        console.error(`Error streaming variant ${variantId} on platform ${platform}:`, err);
-        setVariants((prev) =>
-          prev.map((v) =>
-            v.id === variantId
-              ? {
-                ...v,
-                [platform]:
-                  language === 'vi'
-                    ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
-                    : 'Error generating AI content for this variant.',
-              }
-              : v
-          )
-        );
+            : variant
+        )));
       }
     };
 
     try {
-      // T-1.18: Stream all N variants in parallel for all selected platforms
-      await Promise.all(
-        selectedPlatforms.flatMap((platform) =>
-          variantIds.map((id, index) => streamVariant(id, index, newGroupId, platform))
-        )
-      );
-    } catch (error) {
-      console.error('Error generating variants:', error);
+      await executeQuickPublishingGeneration({
+        url: url.trim() || undefined,
+        articleId: resolvedArticleId || undefined,
+        platforms: selectedPlatforms,
+        variantIds,
+        variantGroupId: newGroupId,
+        basePrompt: resolvedActivePrompt,
+        model: selectedModel,
+        platformConfigs: {
+          facebook: platformConfigMap.facebook,
+          threads: platformConfigMap.threads,
+          instagram: platformConfigMap.instagram,
+        },
+        ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+          ? { promptId: selectedPrompt.id }
+          : {}),
+      }, projectGenerationEvent, abortControllerRef.current.signal);
     } finally {
       setIsGeneratingAB(false);
     }
@@ -1318,129 +1247,84 @@ export default function AiCreatorView() {
     const variantIndex = ['A', 'B', 'C'].indexOf(variantId);
     if (variantIndex === -1) return;
 
-    // Lấy captionId cũ trước khi clear state
-    const oldCaptionId = variants.find((v) => v.id === variantId)?.captionId;
-
-    setRegeneratingVariantId(variantId);
-
-    const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-      selectedPlatform === 'threads' ? 'threadsCaptionId' :
-        'instagramCaptionId';
-
-    // Clear the current content for this variant
-    setVariants((prev) =>
-      prev.map((v) => (v.id === variantId ? { ...v, [selectedPlatform]: '', captionId: undefined, [platKey]: undefined } : v))
-    );
-
-    const buildVariantPrompt = (index: number, basePrompt: string): string => {
-      if (index === 0) return basePrompt;
-      if (index === 1) {
-        return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết theo phong cách cực kỳ thân thiện, sử dụng emoji phù hợp, đặt câu hỏi gợi mở ở cuối bài để kích thích thảo luận và tương tác.`;
-      }
-      return `${basePrompt}\n\nLưu ý cho biến thể này: Hãy viết ngắn gọn, súc tích, facts-driven, không emoji, phong cách báo chí chuyên nghiệp.`;
-    };
-
+    const oldCaptionId = variants.find((variant) => variant.id === variantId)?.captionId;
     const groupId = variantGroupId || crypto.randomUUID();
     if (!variantGroupId) setVariantGroupId(groupId);
 
-    const platformConfig = platformConfigMap[selectedPlatform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
-    let finalCustomText = platformConfig.customText.trim();
-    const requirementsList = [
-      { id: 'cta', name: 'Thêm kêu gọi hành động' },
-      { id: 'quote', name: 'Bắt đầu bằng câu trích dẫn' },
-      { id: 'emoji', name: 'Sử dụng nhiều emoji' },
-      { id: 'stats', name: 'Tập trung vào số liệu' },
-      { id: 'hashtag', name: 'Tập trung hashtag độc quyền' },
-    ];
-    if (platformConfig.quickPicks.length > 0) {
-      const picksText = platformConfig.quickPicks.map(id => requirementsList.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-      finalCustomText = finalCustomText
-        ? `${finalCustomText} (Yêu cầu nhanh: ${picksText})`
-        : `Yêu cầu nhanh: ${picksText}`;
-    }
-
-    const basePrompt = finalCustomText || activePrompt || '';
-    const customPromptText = buildVariantPrompt(variantIndex, basePrompt);
+    setRegeneratingVariantId(variantId);
+    const captionKey = selectedPlatform === 'facebook'
+      ? 'facebookCaptionId'
+      : selectedPlatform === 'threads'
+        ? 'threadsCaptionId'
+        : 'instagramCaptionId';
+    setVariants((prev) => prev.map((variant) => (
+      variant.id === variantId
+        ? { ...variant, [selectedPlatform]: '', captionId: undefined, [captionKey]: undefined }
+        : variant
+    )));
 
     try {
-      const res = await fetch('/api/captions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: url.trim() || undefined,
-          articleId: articleId || undefined,
-          customPrompt: customPromptText,
-          platform: selectedPlatform,
-          variantGroupId: groupId,
-          variantIndex,
-          oldCaptionId,
-          model: selectedModel,
-          stylePresetId: platformConfig.configId || 'none',
-          platformPresetId: platformConfig.presetId || undefined,
-          ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
-            ? { promptId: selectedPrompt.id }
-            : {}),
-        }),
-      });
-
-      if (!res.ok) return;
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      if (!reader) return;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.text) {
-              accumulated += parsed.text;
-              setVariants((prev) =>
-                prev.map((v) =>
-                  v.id === variantId ? { ...v, [selectedPlatform]: accumulated } : v
-                )
-              );
-            }
-            if (parsed.done && parsed.captionId) {
-              const platKey = selectedPlatform === 'facebook' ? 'facebookCaptionId' :
-                selectedPlatform === 'threads' ? 'threadsCaptionId' :
-                  'instagramCaptionId';
-              setVariants((prev) =>
-                prev.map((v) =>
-                  v.id === variantId ? { ...v, captionId: parsed.captionId, [platKey]: parsed.captionId } : v
-                )
-              );
-            }
-          } catch {
-            // ignore
-          }
+      await executeQuickPublishingRegeneration({
+        url: url.trim() || undefined,
+        articleId: articleId || undefined,
+        platforms: [selectedPlatform],
+        variantIds: [variantId],
+        variantIndexes: [variantIndex],
+        variantGroupId: groupId,
+        basePrompt: activePrompt,
+        model: selectedModel,
+        oldCaptionId,
+        platformConfigs: {
+          facebook: platformConfigMap.facebook,
+          threads: platformConfigMap.threads,
+          instagram: platformConfigMap.instagram,
+        },
+        ...(variantIndex === 0 && selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+          ? { promptId: selectedPrompt.id }
+          : {}),
+      }, variantId, (event) => {
+        if (event.type === 'text-fragment') {
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === variantId
+              ? { ...variant, [selectedPlatform]: event.accumulated }
+              : variant
+          )));
+          return;
         }
-      }
-
-      // Stream finished successfully, save the original text
-      setVariants((prev) =>
-        prev.map((v) => {
-          if (v.id === variantId) {
-            const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
-              selectedPlatform === 'threads' ? 'originalThreads' :
-                'originalInstagram';
-            return {
-              ...v,
-              [originalField]: accumulated,
-            };
-          }
-          return v;
-        })
-      );
-    } catch (err) {
-      console.error('Error regenerating variant:', err);
+        if (event.type === 'caption-resolved') {
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === variantId
+              ? { ...variant, captionId: event.captionId, [captionKey]: event.captionId }
+              : variant
+          )));
+          return;
+        }
+        if (event.type === 'generation-completed') {
+          const originalKey = selectedPlatform === 'facebook'
+            ? 'originalFacebook'
+            : selectedPlatform === 'threads'
+              ? 'originalThreads'
+              : 'originalInstagram';
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === variantId
+              ? { ...variant, [originalKey]: event.content }
+              : variant
+          )));
+          return;
+        }
+        if (event.type === 'generation-failed') {
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === variantId
+              ? {
+                ...variant,
+                [selectedPlatform]: language === 'vi'
+                  ? 'Lỗi khi sinh nội dung AI cho phiên bản này.'
+                  : 'Error generating AI content for this variant.',
+              }
+              : variant
+          )));
+        }
+      });
     } finally {
       setRegeneratingVariantId(null);
     }
@@ -2224,40 +2108,25 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   };
 
   // Fetch platform presets
-  const fetchPlatformPresets = async (platform: string) => {
+  const fetchPlatformPresets = useCallback(async (platform: SocialPlatform) => {
     setIsLoadingPlatformPresets(true);
     try {
-      const res = await fetch(`/api/platform-presets?platform=${platform}`);
-      if (res.ok) {
-        const json = await res.json();
-        const presets = json.data || [];
-        setPlatformPresets(presets);
-
-        const currentSaved = platformConfigMapRef.current[platform]?.presetId;
-        if (currentSaved) {
-          setSelectedPlatformPresetId(currentSaved);
-        } else if (presets.length > 0) {
-          const defaultPreset = presets.find((p: any) => p.is_default && p.user_id)
-            || presets.find((p: any) => p.user_id)
-            || presets.find((p: any) => p.is_default && !p.user_id)
-            || presets[0];
-          setSelectedPlatformPresetId(defaultPreset?.id || '');
-        } else {
-          setSelectedPlatformPresetId('');
-        }
-      }
+      const currentSaved = platformConfigMapRef.current[platform]?.presetId;
+      const { presets, selectedPresetId } = await loadQuickPublishingPresets(platform, currentSaved);
+      setPlatformPresets(presets);
+      setSelectedPlatformPresetId(selectedPresetId);
     } catch (err) {
       console.error('Lỗi fetchPlatformPresets:', err);
     } finally {
       setIsLoadingPlatformPresets(false);
     }
-  };
+  }, [loadQuickPublishingPresets]);
 
   useEffect(() => {
     if (selectedPlatform) {
       fetchPlatformPresets(selectedPlatform);
     }
-  }, [selectedPlatform]);
+  }, [selectedPlatform, fetchPlatformPresets]);
 
   // Fetch default config
   const fetchDefaultConfig = async () => {
@@ -2605,73 +2474,59 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     abortControllerRef.current = new AbortController();
 
     try {
-      const res = await fetch('/api/captions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, promptId: selectedPromptId, model: selectedModel, stylePresetId: selectedConfigId || 'none', platformPresetId: selectedPlatformPresetId || undefined }),
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errJson?.error || `HTTP ${res.status}`);
-      }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-
-      if (!reader) throw new Error('No response body');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') {
-              setGenerateDone(true);
-              // Auto-fill Variant A facebook field with the generated caption
-              setVariants((prev) =>
-                prev.map((v) =>
-                  v.id === 'A' ? { ...v, facebook: accumulated, threads: accumulated } : v
-                )
-              );
-              continue;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.text) {
-                accumulated += parsed.text;
-                setStreamedCaption(accumulated);
-              }
-              if (parsed.done && parsed.captionId) {
-                const newCaptionId = parsed.captionId;
-                setCaptionId(newCaptionId);
-                setVariants((prev) =>
-                  prev.map((v) =>
-                    v.id === 'A' ? { ...v, captionId: newCaptionId } : v
-                  )
-                );
-              }
-              if (parsed.done && parsed.articleId) {
-                setArticleId(parsed.articleId);
-              }
-              if (parsed.error) throw new Error(parsed.error);
-            } catch (e: any) {
-              if (e?.name !== 'SyntaxError') throw e;
-            }
-          }
+      let failed = false;
+      await executeQuickPublishingGeneration({
+        url,
+        platforms: [selectedPlatform],
+        variantIds: ['A'],
+        variantGroupId: crypto.randomUUID(),
+        basePrompt: '',
+        promptId: selectedPromptId,
+        model: selectedModel,
+        platformConfigs: {
+          facebook: { presetId: '', customText: '', quickPicks: [], configId: 'none' },
+          threads: { presetId: '', customText: '', quickPicks: [], configId: 'none' },
+          instagram: { presetId: '', customText: '', quickPicks: [], configId: 'none' },
+          [selectedPlatform]: {
+            presetId: selectedPlatformPresetId,
+            customText: '',
+            quickPicks: [],
+            configId: selectedConfigId || 'none',
+          },
+        },
+      }, (event) => {
+        if (event.type === 'text-fragment') {
+          setStreamedCaption(event.accumulated);
+          return;
         }
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return; // user cancelled
-      setGenerateError(
-        err?.message ||
-        (language === 'vi' ? 'Đã xảy ra lỗi khi sinh caption. Thử lại.' : 'An error occurred while generating. Please retry.')
-      );
+        if (event.type === 'caption-resolved') {
+          setCaptionId(event.captionId);
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === 'A' ? { ...variant, captionId: event.captionId } : variant
+          )));
+          return;
+        }
+        if (event.type === 'article-resolved') {
+          setArticleId(event.articleId);
+          return;
+        }
+        if (event.type === 'generation-completed') {
+          setGenerateDone(true);
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === 'A'
+              ? { ...variant, facebook: event.content, threads: event.content }
+              : variant
+          )));
+          return;
+        }
+        if (event.type === 'generation-failed') failed = true;
+      }, abortControllerRef.current.signal);
+      if (failed) throw new QuickPublishingError('GENERATION_FAILED');
+    } catch (err: unknown) {
+      if (err instanceof QuickPublishingError && err.code === 'GENERATION_ABORTED') return;
+      setGenerateError(language === 'vi'
+        ? 'Đã xảy ra lỗi khi sinh caption. Thử lại.'
+        : 'An error occurred while generating. Please retry.');
     } finally {
       setIsGenerating(false);
     }
@@ -3626,144 +3481,30 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
     return parts.join('\n\n');
   };
 
-  const ensureCaptionDraft = async (platform: SocialPlatform) => {
-    const activeId = selectedVariantId || (variants.length > 0 ? variants[0].id : 'A');
-    const selectedVariant = variants.find((v) => v.id === activeId) || variants[0];
-
-    if (!selectedVariant) {
-      throw new Error(
-        language === 'vi'
-          ? 'Vui lòng tạo nội dung trước khi lên lịch.'
-          : 'Please generate content before scheduling.'
-      );
-    }
-
-    const finalCompiledContent = compileFinalMessage(selectedVariant, platform);
-
-    const platKey = platform === 'facebook' ? 'facebookCaptionId' :
-      platform === 'threads' ? 'threadsCaptionId' :
-        'instagramCaptionId';
-
-    // Platform-specific caption ID - do not fallback to generic captionId to prevent cross-platform scheduling conflicts
-    const activeCaptionId = selectedVariant[platKey];
-
-    if (activeCaptionId) {
-      // Cập nhật nội dung hoàn chỉnh của caption đã sinh trước đó để phản ánh tùy chỉnh hiển thị
-      const res = await fetch(`/api/captions/${activeCaptionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          edited_content: finalCompiledContent,
-          status: 'draft',
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || 'Không thể cập nhật caption nháp.');
-      }
-
-      // Đảm bảo lưu captionId vào variant nếu nó chưa có
-      if (!selectedVariant.captionId || !selectedVariant[platKey]) {
-        setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariant.id ? { ...v, captionId: activeCaptionId, [platKey]: activeCaptionId } : v))
-        );
-      }
-      return activeCaptionId;
-    }
-
-    const getSelectedVariantCaption = () => {
-      if (platform === 'facebook') return selectedVariant.facebook;
-      if (platform === 'threads') return selectedVariant.threads;
-      if (platform === 'instagram') return selectedVariant.instagram;
-      return '';
-    };
-
-    const selectedContent = getSelectedVariantCaption();
-    if (!selectedContent) {
-      throw new Error(
-        language === 'vi'
-          ? 'Vui lòng chọn biến thể có nội dung trước khi lên lịch.'
-          : 'Please select a variant with content before scheduling.'
-      );
-    }
-
-    const resolvedArticleId = await ensureArticleForCaption();
-    const originalField = platform === 'facebook' ? 'originalFacebook' :
-      platform === 'threads' ? 'originalThreads' :
-        'originalInstagram';
-    const originalAiText = selectedVariant[originalField] || selectedContent;
-
-    // Check if the user has edited the caption compared to the original AI content
-    const isEdited = selectedVariant[platform] !== originalAiText;
-    const editedContentPayload = isEdited ? finalCompiledContent : null;
-
-    const res = await fetch('/api/captions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        article_id: resolvedArticleId,
-        platform: toDatabasePlatform(platform),
-        ai_content: originalAiText,
-        edited_content: editedContentPayload,
-        ...(selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
-          ? { prompt_id: selectedPrompt.id }
-          : {}),
-      }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.data?.id) {
-      throw new Error(
-        data?.error ||
-        (language === 'vi'
-          ? 'Không thể lưu caption nháp trước khi lên lịch.'
-          : 'Could not save a draft caption before scheduling.')
-      );
-    }
-
-    const newCaptionId = data.data.id;
-    const newStatus = data.data.status || 'draft';
-    const statusKey = platform === 'facebook' ? 'facebookStatus' :
-      platform === 'threads' ? 'threadsStatus' :
-        'instagramStatus';
-
-    setCaptionId(newCaptionId);
-    setVariants((prev) =>
-      prev.map((v) => (v.id === selectedVariant.id ? {
-        ...v,
-        captionId: newCaptionId,
-        [platKey]: newCaptionId,
-        [statusKey]: newStatus
-      } : v))
-    );
-    return newCaptionId as string;
-  };
-
   const handleConfirmSchedule = async () => {
-    // Lọc ra các platform được chọn từ step 1 mà chưa bị loại trừ
-    const activePlatforms = selectedPlatforms.filter((plat) => !excludedPlatforms.includes(plat));
-
-    // Check if active platforms are connected
-    const unconnected = activePlatforms.filter(p => !connectedPlatforms.includes(p));
+    const activePlatforms = selectedPlatforms.filter((platform) => !excludedPlatforms.includes(platform));
+    const unconnected = activePlatforms.filter((platform) => !connectedPlatforms.includes(platform));
     if (unconnected.length > 0) {
-      const platformLabels = unconnected.map(p => p === 'threads' ? 'Meta Threads' : p === 'instagram' ? 'Instagram Business' : 'Facebook Page').join(', ');
+      const platformLabels = unconnected.map((platform) => (
+        platform === 'threads' ? 'Meta Threads' : platform === 'instagram' ? 'Instagram Business' : 'Facebook Page'
+      )).join(', ');
       setPopup({
         isOpen: true,
         type: 'warning',
-        message: language === 'vi' 
+        message: language === 'vi'
           ? `Bạn chưa liên kết tài khoản cho: ${platformLabels}. Vui lòng liên kết tài khoản trong trang Cài đặt trước khi lên lịch đăng bài.`
-          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before scheduling posts.`
+          : `You have not linked accounts for: ${platformLabels}. Please link them in Settings before scheduling posts.`,
       });
       return;
     }
+    if (facebookError || threadsError || instagramError || isSchedulingLoading) return;
 
-    // Không thực hiện lên lịch nếu có lỗi xảy ra hoặc đang xử lý yêu cầu trước đó
-    if (facebookError || threadsError || instagramError) return;
-    if (isSchedulingLoading) return;
-
-    if (activePlatforms.length === 0) {
-      setSchedulingError(language === 'vi' ? 'Vui lòng chọn ít nhất một nền tảng.' : 'Please select at least one platform.');
+    const activeId = selectedVariantId || variants[0]?.id || 'A';
+    const selectedVariant = variants.find((variant) => variant.id === activeId) || variants[0];
+    if (!selectedVariant) {
+      setSchedulingError(language === 'vi'
+        ? 'Vui lòng tạo nội dung trước khi lên lịch.'
+        : 'Please generate content before scheduling.');
       return;
     }
 
@@ -3772,66 +3513,105 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       threads: { date: threadsDate, time: threadsTime },
       instagram: { date: instagramDate, time: instagramTime },
     };
-
-    // Kiểm tra thời gian tương lai cho tất cả các platform hoạt động
-    for (const platform of activePlatforms) {
-      const schedule = scheduleByPlatform[platform];
-      const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
-      if (scheduledAt.getTime() <= Date.now()) {
-        const errorMsg = language === 'vi'
-          ? `Thời gian lên lịch của ${platform === 'facebook' ? 'Facebook' : platform === 'threads' ? 'Threads' : 'Instagram'} phải ở tương lai.`
-          : `Schedule time for ${platform} must be in the future.`;
-
-        setSchedulingError(errorMsg);
-        return;
-      }
-    }
+    const captionKeyFor = (platform: SocialPlatform) => (
+      platform === 'facebook'
+        ? 'facebookCaptionId'
+        : platform === 'threads'
+          ? 'threadsCaptionId'
+          : 'instagramCaptionId'
+    ) as 'facebookCaptionId' | 'threadsCaptionId' | 'instagramCaptionId';
+    const originalKeyFor = (platform: SocialPlatform) => (
+      platform === 'facebook'
+        ? 'originalFacebook'
+        : platform === 'threads'
+          ? 'originalThreads'
+          : 'originalInstagram'
+    ) as 'originalFacebook' | 'originalThreads' | 'originalInstagram';
+    const statusKeyFor = (platform: SocialPlatform) => (
+      platform === 'facebook'
+        ? 'facebookStatus'
+        : platform === 'threads'
+          ? 'threadsStatus'
+          : 'instagramStatus'
+    ) as 'facebookStatus' | 'threadsStatus' | 'instagramStatus';
 
     setIsSchedulingLoading(true);
     setSchedulingError(null);
-
-    // Tách các đường dẫn hình ảnh theo từng dòng nếu bật hiển thị hình ảnh
-    const imageUrls = toggles.showImage && postData.imageUrl
-      ? postData.imageUrl.split('\n').map(line => line.trim()).filter(Boolean)
-      : [];
-
     try {
-      // Lên lịch cho từng platform được chọn song song
-      await Promise.all(activePlatforms.map(async (platform) => {
-        const schedule = scheduleByPlatform[platform];
-        const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
+      const needsArticle = activePlatforms.some((platform) => !selectedVariant[captionKeyFor(platform)]);
+      const resolvedArticleId = needsArticle ? await ensureArticleForCaption() : (articleId || undefined);
+      const imageUrls = toggles.showImage && postData.imageUrl
+        ? postData.imageUrl.split('\n').map((line) => line.trim()).filter(Boolean)
+        : [];
+      const connected = connectedPlatforms.filter((platform): platform is SocialPlatform => (
+        platform === 'facebook' || platform === 'threads' || platform === 'instagram'
+      ));
 
-        const draftCaptionId = await ensureCaptionDraft(platform);
-
-        // Gửi yêu cầu lên lịch bài viết đến hệ thống backend
-        const res = await fetch('/api/scheduled-posts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            captionId: draftCaptionId,
-            scheduledAt: scheduledAt.toISOString(),
-            imageUrls,
-          }),
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(errData.error || `Lỗi lên lịch ${platform}: HTTP ${res.status}`);
+      await executeQuickPublishingSchedule({
+        connectedPlatforms: connected,
+        imageUrls,
+        platforms: activePlatforms.map((platform) => {
+          const currentContent = selectedVariant[platform] || '';
+          const originalContent = selectedVariant[originalKeyFor(platform)] || currentContent;
+          const selectedPromptId = selectedPrompt?.id && !String(selectedPrompt.id).startsWith('custom-')
+            ? selectedPrompt.id as string
+            : undefined;
+          return {
+            platform,
+            scheduledAt: new Date(
+              `${scheduleByPlatform[platform].date}T${scheduleByPlatform[platform].time}`
+            ).toISOString(),
+            draft: {
+              variantId: selectedVariant.id,
+              platform,
+              articleId: resolvedArticleId,
+              captionId: selectedVariant[captionKeyFor(platform)] || undefined,
+              promptId: selectedPromptId,
+              originalContent,
+              currentContent,
+              compiledContent: compileFinalMessage(selectedVariant, platform),
+            },
+          };
+        }),
+      }, (event) => {
+        if (event.type === 'draft-resolved') {
+          const captionKey = captionKeyFor(event.platform);
+          const statusKey = statusKeyFor(event.platform);
+          setCaptionId(event.captionId);
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === event.variantId
+              ? {
+                ...variant,
+                captionId: event.captionId,
+                [captionKey]: event.captionId,
+                [statusKey]: event.status,
+              }
+              : variant
+          )));
+          return;
         }
-
-        const statusKey = platform === 'facebook' ? 'facebookStatus' :
-          platform === 'threads' ? 'threadsStatus' :
-            'instagramStatus';
-
-        setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariantId ? { ...v, [statusKey]: 'scheduled' } : v))
-        );
-      }));
-
-      setIsScheduled(true);
-      setHasUnsavedChanges(false);
-    } catch (err: any) {
-      setSchedulingError(err.message || 'Lỗi xảy ra trong quá trình lên lịch bài đăng');
+        if (event.type === 'platform-scheduled') {
+          const statusKey = statusKeyFor(event.platform);
+          setVariants((prev) => prev.map((variant) => (
+            variant.id === selectedVariant.id ? { ...variant, [statusKey]: 'scheduled' } : variant
+          )));
+          return;
+        }
+        if (event.type === 'schedule-completed' && event.failed.length === 0) {
+          setIsScheduled(true);
+          setHasUnsavedChanges(false);
+        }
+      });
+    } catch (error) {
+      if (error instanceof QuickPublishingError && error.code === 'SCHEDULE_INVALID') {
+        setSchedulingError(language === 'vi'
+          ? 'Vui lòng chọn ít nhất một nền tảng và thời gian hợp lệ trong tương lai.'
+          : 'Please select at least one platform and a valid future time.');
+      } else {
+        setSchedulingError(language === 'vi'
+          ? 'Lỗi xảy ra trong quá trình lên lịch bài đăng.'
+          : 'An error occurred while scheduling posts.');
+      }
     } finally {
       setIsSchedulingLoading(false);
     }

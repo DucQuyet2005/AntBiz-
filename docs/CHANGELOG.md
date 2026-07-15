@@ -7,6 +7,7 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [Unreleased] - 2026-07-16
 
 ### Changed
+- Tách luồng Đăng nhanh hiện hữu thành module Quick Publishing dùng chung cho tải Preset, sinh và tạo lại nội dung đa kênh, lưu bản nháp và lên lịch; giữ nguyên giao diện cùng API hiện tại để chuẩn bị triển khai nhóm yêu cầu T-3 theo từng bước mà không nhân đôi logic nghiệp vụ.
 - Tách cơ chế chọn model, xoay vòng Gemini API Key, quản lý sức khỏe key và cấu hình dự phòng thành module Gemini Capacity dùng chung cho các workflow AI hiện hữu; bổ sung claim nguyên tử để phân phối key an toàn hơn khi có nhiều request đồng thời.
 
 ### Fixed
