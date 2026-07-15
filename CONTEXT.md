@@ -47,3 +47,9 @@ Notifications may be created by an internal system producer, an administrator, o
 User Access Administration is the administrator workflow for finding users, assigning application roles, and controlling account access through lock and restore actions. Role Assignment changes a user's application authority. Account Lock records who made the access decision, when it was made, and why; restoring access clears that lock metadata.
 
 User updates are the primary result. Audit records, administrator Notifications, account email, and Realtime broadcasts are supporting effects that communicate a completed change and do not determine whether that change succeeds.
+
+## Audit Reporting
+
+Audit Reporting is the administrator-only read model for reviewing historical Audit Logs emitted by other workflows. An Audit Log records an action, optional actor and target users, optional before and after values, and when the event occurred.
+
+Audit Reporting owns filtering, ordering, pagination, and display-oriented actor and target projections. It does not own record creation; each source workflow remains responsible for emitting its own audit event.
