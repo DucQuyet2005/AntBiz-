@@ -53,3 +53,9 @@ User updates are the primary result. Audit records, administrator Notifications,
 Audit Reporting is the administrator-only read model for reviewing historical Audit Logs emitted by other workflows. An Audit Log records an action, optional actor and target users, optional before and after values, and when the event occurred.
 
 Audit Reporting owns filtering, ordering, pagination, and display-oriented actor and target projections. It does not own record creation; each source workflow remains responsible for emitting its own audit event.
+
+## Account Security
+
+Account Security owns authenticated workflows that protect a user's credentials and sessions. A Password Change verifies the current credential before replacing it with a policy-compliant new credential, then attempts to revoke existing sessions and notify the account owner.
+
+Passwords are transient secrets and never become application data, log content, Notification metadata, or email content. Password recovery, MFA, and user-visible session management are separate Account Security workflows.
