@@ -62,8 +62,9 @@ The module:
 - Trim bullets and treat empty strings as absent.
 - Treat a zero-byte file as absent.
 - Require at least one usable input.
-- Accept `audio/mpeg`, `audio/mp4`, `audio/wav`, `audio/webm`, `audio/ogg`,
-  `audio/x-m4a`, `video/mp4`, `video/webm`, and `video/quicktime`. MIME values
+- Accept `audio/mpeg`, `audio/mp3`, `audio/mp4`, `audio/m4a`, `audio/wav`,
+  `audio/webm`, `audio/ogg`, `audio/x-m4a`, `video/mp4`, `video/webm`, and
+  `video/quicktime`. MIME values
   beginning with the existing audio variants remain compatible when they carry
   codec parameters.
 - Reject files larger than 25 MB.

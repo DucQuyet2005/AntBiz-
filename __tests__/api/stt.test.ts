@@ -1,145 +1,111 @@
-/**
- * Unit + Integration tests for /api/stt (Groq Whisper STT + Gemini Rewrite)
- */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// ---------- Mocks ----------
-
-vi.mock('@/lib/api/auth', () => ({
-  requireUserWithRole: vi.fn().mockResolvedValue({
-    user: { id: 'user-001', email: 'test@antbiz.com' },
-    supabase: {},
-    unauthorized: null,
-  }),
+const mocks = vi.hoisted(() => ({
+  process: vi.fn(),
+  requireUserWithRole: vi.fn(),
 }));
 
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.mock('@/lib/api/auth', () => ({
+  requireUserWithRole: mocks.requireUserWithRole,
+}));
 
-// ---------- Helpers ----------
+vi.mock('@/backend/modules/speech-processing', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/backend/modules/speech-processing')>();
+  return {
+    ...actual,
+    createSpeechProcessingModule: () => ({ process: mocks.process }),
+  };
+});
 
-function makeFormData(opts: { file?: File; bullets?: string }): FormData {
-  const fd = new FormData();
-  if (opts.file) fd.append('file', opts.file);
-  if (opts.bullets) fd.append('bullets', opts.bullets);
-  return fd;
+function requestWithFormData(values: { file?: File; bullets?: string }) {
+  const body = new FormData();
+  if (values.file) body.append('file', values.file);
+  if (values.bullets !== undefined) body.append('bullets', values.bullets);
+  return new Request('http://localhost/api/stt', { method: 'POST', body });
 }
 
-function makeRequest(fd: FormData): Request {
-  return new Request('http://localhost/api/stt', { method: 'POST', body: fd });
-}
-
-// ---------- Tests ----------
-
-describe('POST /api/stt (Groq Whisper + Gemini Rewrite)', () => {
+describe('POST /api/stt', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.GROQ_API_KEY = 'test-groq-key';
-    process.env.GEMINI_API_KEY = 'test-gemini-key';
-  });
-
-  it('returns 400 when neither file nor bullets are provided', async () => {
-    const { POST } = await import('@/app/api/stt/route');
-    const res = await POST(makeRequest(new FormData()) as any);
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/upload file/i);
-  });
-
-  it('returns 400 when file type is not audio/video (PDF)', async () => {
-    const { POST } = await import('@/app/api/stt/route');
-    const pdfFile = new File(['%PDF-1.4'], 'doc.pdf', { type: 'application/pdf' });
-    const res = await POST(makeRequest(makeFormData({ file: pdfFile })) as any);
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/Định dạng file/i);
-  });
-
-  it('returns 400 when file is too large (>25MB)', async () => {
-    const { POST } = await import('@/app/api/stt/route');
-    const bigFile = new File([new Uint8Array(26 * 1024 * 1024)], 'big.mp3', { type: 'audio/mpeg' });
-    const res = await POST(makeRequest(makeFormData({ file: bigFile })) as any);
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/quá lớn/i);
-  });
-
-  it('returns 500 when GROQ_API_KEY is missing', async () => {
-    delete process.env.GROQ_API_KEY;
-    const { POST } = await import('@/app/api/stt/route');
-    const res = await POST(makeRequest(makeFormData({ bullets: 'some points' })) as any);
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toMatch(/GROQ_API_KEY/i);
-  });
-
-  it('processes bullets-only (no file) → rewrite without calling Groq', async () => {
-    // Mock 1: Gemini rewrite
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: 'Bài đăng hoàn chỉnh từ ý chính.' }] } }],
-      }),
+    mocks.requireUserWithRole.mockResolvedValue({
+      user: { id: 'user-001' },
+      supabase: {},
+      unauthorized: null,
     });
-    // Mock 2: Gemini title gen
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: 'Tiêu đề gợi ý' }] } }],
-      }),
+    mocks.process.mockResolvedValue({
+      transcript: 'Raw',
+      rewrittenPost: 'Corrected',
+      metadata: { title: 'Title', category: 'Category', tags: '#one' },
     });
+  });
 
+  it('returns the authorization response before parsing the body', async () => {
+    const unauthorized = new Response('Unauthorized', { status: 401 });
+    mocks.requireUserWithRole.mockResolvedValue({ unauthorized });
     const { POST } = await import('@/app/api/stt/route');
-    const res = await POST(makeRequest(makeFormData({ bullets: 'Hành trình khởi nghiệp 3 năm' })) as any);
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.transcript).toBe('Hành trình khởi nghiệp 3 năm');
-    expect(body.rewritten_post).toBe('Bài đăng hoàn chỉnh từ ý chính.');
-    // Exactly 2 fetch calls: Gemini rewrite + Gemini title gen
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('googleapis.com'),
-      expect.any(Object)
+    await expect(POST(new Request('http://localhost/api/stt', { method: 'POST' }) as never))
+      .resolves.toBe(unauthorized);
+    expect(mocks.process).not.toHaveBeenCalled();
+  });
+
+  it('maps multipart fields and preserves the response contract', async () => {
+    const file = new File(['audio'], 'voice.mp3', { type: 'audio/mpeg' });
+    const { POST } = await import('@/app/api/stt/route');
+    const response = await POST(requestWithFormData({ file, bullets: 'Notes' }) as never);
+
+    expect(response.status).toBe(200);
+    expect(mocks.process).toHaveBeenCalledWith({
+      file: expect.objectContaining({ name: 'voice.mp3', type: 'audio/mpeg' }),
+      bullets: 'Notes',
+    });
+    await expect(response.json()).resolves.toEqual({
+      transcript: 'Raw',
+      rewritten_post: 'Corrected',
+      generated_title: 'Title',
+      generated_category: 'Category',
+      generated_tags: '#one',
+    });
+  });
+
+  it('returns 400 for malformed multipart data', async () => {
+    const request = new Request('http://localhost/api/stt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/form-data' },
+      body: 'invalid',
+    });
+    const { POST } = await import('@/app/api/stt/route');
+    const response = await POST(request as never);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Request phải là multipart/form-data',
+    });
+  });
+
+  it('maps typed module errors without leaking their cause', async () => {
+    const { SpeechProcessingError } = await import('@/backend/modules/speech-processing');
+    mocks.process.mockRejectedValue(new SpeechProcessingError(
+      'TRANSCRIPTION_FAILED',
+      500,
+      'Không thể xử lý tệp âm thanh lúc này',
+      { cause: new Error('secret provider body') }
+    ));
+    const { POST } = await import('@/app/api/stt/route');
+    const response = await POST(requestWithFormData({ bullets: 'Notes' }) as never);
+
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(await response.json())).toBe(
+      JSON.stringify({ error: 'Không thể xử lý tệp âm thanh lúc này' })
     );
   });
 
-  it('returns { transcript, rewritten_post } for valid audio file via Groq', async () => {
-    // Mock 1: Groq Whisper → plain text response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      text: async () => 'Xin chào, hôm nay tôi muốn chia sẻ về hành trình của mình.',
-      json: async () => ({}),
-    });
-    // Mock 2: Gemini rewrite → polished post
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: 'Hook mạnh. Nội dung hay. #hashtag' }] } }],
-      }),
-    });
-    // Mock 3: Gemini title gen
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: 'Tiêu đề gợi ý' }] } }],
-      }),
-    });
-
+  it('returns a generic message for unexpected errors', async () => {
+    mocks.process.mockRejectedValue(new Error('secret unexpected error'));
     const { POST } = await import('@/app/api/stt/route');
-    const audioFile = new File([new Uint8Array(100)], 'voice.mp3', { type: 'audio/mpeg' });
-    const res = await POST(makeRequest(makeFormData({ file: audioFile })) as any);
+    const response = await POST(requestWithFormData({ bullets: 'Notes' }) as never);
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.transcript).toContain('Xin chào');
-    expect(body.rewritten_post).toContain('Hook mạnh');
-    // Exactly 3 fetch calls: Groq STT + Gemini rewrite + Gemini title gen
-    expect(mockFetch).toHaveBeenCalledTimes(3);
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      1,
-      'https://api.groq.com/openai/v1/audio/transcriptions',
-      expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer test-groq-key' } })
-    );
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: 'Lỗi hệ thống khi xử lý giọng nói' });
   });
 });

@@ -71,3 +71,9 @@ Global Search owns input normalization, literal filter construction, role-based 
 Caption Export is the synchronous read workflow that turns the Captions visible to an authenticated user into a downloadable CSV file and records a reusable export request. A regenerated download applies the stored filters and row count to current Caption data; it is not a stored snapshot.
 
 Caption reads remain governed by the request-scoped Supabase client and RLS. Export request state is temporarily stored as `export_csv_job` Audit Logs through a privileged compatibility adapter; moving that state to the dedicated `export_jobs` table is a separate data migration.
+
+## Speech Processing
+
+Speech Processing turns an uploaded audio/video file or manually entered bullet points into a transcript, a lightly corrected text, and suggested title, category, and tags. Audio transcription is provided by Groq Whisper; correction and metadata enrichment are independent Gemini operations.
+
+A usable transcript is the primary result. Correction or metadata failure degrades gracefully without discarding that transcript. Provider SDKs, key rotation, multipart parsing, and HTTP response formatting are adapters around the workflow rather than domain behavior.
