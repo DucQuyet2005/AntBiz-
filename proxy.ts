@@ -96,6 +96,10 @@ export async function proxy(request: NextRequest) {
 
   // 1. Nếu người dùng ĐÃ ĐĂNG NHẬP và hợp lệ (có profile và không khóa) mà cố tình truy cập trang login/register
   if (user && profileExists && !isLocked && (url.pathname === '/login' || url.pathname === '/register')) {
+    const nextParam = url.searchParams.get('next')
+    if (nextParam) {
+      return NextResponse.redirect(new URL(nextParam, request.url))
+    }
     url.pathname = '/overview'
     return NextResponse.redirect(url)
   }

@@ -18,8 +18,11 @@ function getSupabaseSession() {
 
       console.log('Quét tìm thấy các cookie:', cookies.map(c => `${c.domain}: ${c.name}`));
 
-      // Lọc các cookie chứa token xác thực của Supabase
-      const sbCookies = cookies.filter(c => c.name.includes('-auth-token'));
+      // Lọc các cookie chứa token xác thực của Supabase (khớp cụ thể với dự án AntBiz nttnyvgprhbthsqmvyjp hoặc local)
+      const sbCookies = cookies.filter(c => 
+        c.name.includes('nttnyvgprhbthsqmvyjp-auth-token') || 
+        c.name.includes('sb-local-auth-token')
+      );
       if (sbCookies.length === 0) {
         console.log('Không tìm thấy cookie Supabase nào khớp.');
         return resolve(null);
