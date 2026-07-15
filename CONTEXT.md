@@ -17,3 +17,9 @@ These workflows use Gemini today, but model SDK details and HTTP response format
 Caption Management owns the lifecycle of an existing caption: creation outside the generation stream, listing and retrieval, human editing, status transitions, restoring edited content as the new original, favorite-template state, and version history.
 
 Caption version history is supporting audit data. Version-write failures do not invalidate an otherwise successful caption create or update.
+
+## Article Ingestion
+
+Article Ingestion brings source material into AntBiz either by crawling a safe public URL or by accepting manually written content. It classifies crawled pages as an Article or Listing, normalizes article metadata, and attempts to persist reusable Article records.
+
+Crawled content remains usable when persistence fails; manual content is considered successfully ingested only after it is stored.
