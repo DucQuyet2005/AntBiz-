@@ -29,3 +29,9 @@ Crawled content remains usable when persistence fails; manual content is conside
 An Author Profile represents a user's reusable writing-style reference. It has an owner, a unique name within that owner's profiles, an optional public source URL, collected style samples, and a collection status.
 
 Style Sample Collection safely crawls the Author Profile's source and stores up to five distinct article texts for few-shot prompting. It does not train or create a model. The existing `train` transport name and `tuning_*` database fields remain compatibility terms only.
+
+## Scheduled Publishing
+
+Scheduled Publishing owns the lifecycle that turns an approved Caption into a timed social publication. A Scheduled Post has a creator, platform, future publication time, optional media, and a status that moves from pending to posted, failed, or cancelled.
+
+The Publication Runner claims due Scheduled Posts, resolves the creator's linked social account, publishes through the platform adapter, records the external result, and synchronizes the Caption status. Calendar views, CSV export, and iCalendar export are read projections of Scheduled Publishing data. Notifications, email, and audit logging are supporting side effects and do not determine whether scheduling or publication succeeds.
