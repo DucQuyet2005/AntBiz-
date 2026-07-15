@@ -77,3 +77,9 @@ Caption reads remain governed by the request-scoped Supabase client and RLS. Exp
 Speech Processing turns an uploaded audio/video file or manually entered bullet points into a transcript, a lightly corrected text, and suggested title, category, and tags. Audio transcription is provided by Groq Whisper; correction and metadata enrichment are independent Gemini operations.
 
 A usable transcript is the primary result. Correction or metadata failure degrades gracefully without discarding that transcript. Provider SDKs, key rotation, multipart parsing, and HTTP response formatting are adapters around the workflow rather than domain behavior.
+
+## Document Parsing
+
+Document Parsing turns an authenticated user's PDF or DOCX upload into plain source text for content creation. It validates the supported filename extension, routes DOCX extraction through Mammoth, and routes PDF extraction through Gemini with model fallback for quota and rate-limit failures.
+
+Meaningful extracted text is the primary result. Provider requests, file decoding, multipart parsing, authentication, and HTTP response formatting are adapters around the workflow rather than domain behavior. Legacy binary `.doc` files and document persistence are outside this workflow.
