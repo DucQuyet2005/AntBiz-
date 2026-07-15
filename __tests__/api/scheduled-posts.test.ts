@@ -75,6 +75,7 @@ const hoisted = vi.hoisted(() => {
     }
 
     maybeSingle() {
+      this.applyPendingUpdate();
       if (mockError) {
         return Promise.resolve({ data: null, error: new Error('Database error') });
       }
@@ -86,13 +87,14 @@ const hoisted = vi.hoisted(() => {
         return Promise.resolve({ data: caption || null, error: null });
       }
       if (this.table === 'scheduled_posts') {
-        const filtered = this.getFilteredPosts();
+        const filtered = this.updatedData || this.getFilteredPosts();
         return Promise.resolve({ data: filtered[0] || null, error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }
 
     single() {
+      this.applyPendingUpdate();
       if (mockError) {
         return Promise.resolve({ data: null, error: new Error('Database error') });
       }
@@ -100,7 +102,7 @@ const hoisted = vi.hoisted(() => {
         return Promise.resolve({ data: { role: currentRole, email: 'user@test.com' }, error: null });
       }
       if (this.table === 'scheduled_posts') {
-        const filtered = this.getFilteredPosts();
+        const filtered = this.updatedData || this.getFilteredPosts();
         return Promise.resolve({ data: filtered[0] || null, error: null });
       }
       return Promise.resolve({ data: null, error: null });
@@ -120,30 +122,38 @@ const hoisted = vi.hoisted(() => {
     }
 
     private updatedData: any = null;
+    private pendingUpdate: any = null;
 
     update(data: any) {
       if (mockError || (mockCancelError && this.table === 'scheduled_posts')) {
         return this;
       }
+      this.pendingUpdate = data;
+      return this;
+    }
+
+    private applyPendingUpdate() {
+      if (this.pendingUpdate === null) return;
       if (this.table === 'scheduled_posts') {
         const matchingIds = this.getFilteredPosts().map(p => p.id);
         this.updatedData = mockScheduledPostsDb
           .filter(p => matchingIds.includes(p.id))
-          .map(p => ({ ...p, ...data }));
+          .map(p => ({ ...p, ...this.pendingUpdate }));
 
         mockScheduledPostsDb = mockScheduledPostsDb.map((p: any) => {
           if (matchingIds.includes(p.id)) {
-            return { ...p, ...data };
+            return { ...p, ...this.pendingUpdate };
           }
           return p;
         });
       } else if (this.table === 'captions') {
-        mockCaptionsDb = mockCaptionsDb.map((c: any) => ({ ...c, ...data }));
+        mockCaptionsDb = mockCaptionsDb.map((c: any) => ({ ...c, ...this.pendingUpdate }));
       }
-      return this;
+      this.pendingUpdate = null;
     }
 
     then(onfulfilled: any) {
+      this.applyPendingUpdate();
       let result: any = { data: null, error: null };
       if (mockError) {
         result = { data: null, error: new Error('Database error') };
@@ -390,7 +400,7 @@ describe('Scheduled Posts API Endpoint & Scheduler', () => {
       method: 'POST',
     });
     const res = await cancelScheduledPost(req, { params: Promise.resolve({ id: 'sp1' }) });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     const json = await res.json();
     expect(json.error).toContain('Không thể hủy lịch đăng bài ở trạng thái: posted');
   });

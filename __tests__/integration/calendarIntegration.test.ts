@@ -56,6 +56,10 @@ const hoisted = vi.hoisted(() => {
       return Promise.resolve({ data: null, error: null });
     }
 
+    maybeSingle() {
+      return this.single();
+    }
+
     then(onfulfilled: any) {
       this.executeUpdate();
       let result: any = { data: null, error: null };
@@ -122,6 +126,7 @@ describe('Calendar Integration Flow', () => {
     state.mockScheduledPostsDb = [
       { 
         id: 'sp-drag-1', 
+        created_by: 'u1',
         platform: 'facebook', 
         scheduled_at: '2026-07-01T10:00:00Z', 
         status: 'pending', 
@@ -133,7 +138,7 @@ describe('Calendar Integration Flow', () => {
   });
 
   it('updates rescheduled time correctly when event is dropped on a new slot', async () => {
-    const newSlotTime = '2026-07-01T15:30:00Z';
+    const newSlotTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const req = new NextRequest('http://localhost/api/scheduled-posts/sp-drag-1', {
       method: 'PUT',
       body: JSON.stringify({ scheduledAt: newSlotTime }),
