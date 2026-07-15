@@ -4,6 +4,15 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased] - 2026-07-15
+
+### Changed
+- Tách API Tìm kiếm toàn cục thành module backend độc lập theo vai trò, giữ nguyên kết quả dành cho quản trị viên và marketer nhưng giúp luồng truy vấn, FAQ và xử lý lỗi dễ kiểm thử, bảo trì hơn.
+
+### Security
+- Chuẩn hóa và giới hạn từ khóa tìm kiếm, đồng thời escape các ký tự wildcard và cú pháp PostgREST để dữ liệu nhập chỉ được xử lý như nội dung tìm kiếm; tiếp tục giới hạn prompt theo đúng chủ sở hữu.
+
+
 ## [1.7.6] - 2026-07-10
 
 ### Fixed

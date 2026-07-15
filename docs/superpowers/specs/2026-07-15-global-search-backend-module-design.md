@@ -68,11 +68,12 @@ Input rules:
 The repository owns a helper that converts the normalized query into a literal contains pattern for PostgREST filters.
 
 - User-supplied `%` and `_` are escaped so they are literal characters rather than caller-controlled SQL LIKE wildcards.
-- Backslashes and double quotes are escaped.
+- Backslashes are escaped before a value is embedded in logical-filter syntax.
 - Values embedded in `.or(...)` are quoted so commas and parentheses cannot add or restructure PostgREST filters.
+- Because a literal double quote cannot be represented reliably inside PostgREST logical-filter grammar, a query containing one never enters `.or(...)`. The repository instead runs parameterized `.ilike()` reads for the affected columns concurrently, merges records by ID, restores newest-first ordering, caps the projection at 20, and removes the internal ordering field before returning the existing response shape.
 - The repository, rather than the Route Handler, adds the surrounding contains wildcard.
 
-The helper is tested directly with `%`, `_`, comma, parentheses, double quote, and backslash inputs.
+The helper and direct-filter fallback are tested with `%`, `_`, comma, parentheses, double quote, and backslash inputs.
 
 ## Role-Aware Data Flow
 

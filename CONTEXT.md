@@ -59,3 +59,9 @@ Audit Reporting owns filtering, ordering, pagination, and display-oriented actor
 Account Security owns workflows that protect a user's credentials and sessions. A Password Change verifies the current credential before replacing it with a policy-compliant new credential, then attempts to revoke existing sessions and notify the account owner. Password Recovery exchanges a one-time Recovery Token for a Recovery Session that can set a new password.
 
 Passwords and Recovery Tokens are transient secrets and never become application data, log content, Notification metadata, or audit values. Supabase Auth owns password storage, Recovery Token generation, expiry, verification, and Recovery Session creation. MFA and user-visible session management remain separate Account Security workflows.
+
+## Global Search
+
+Global Search is a role-aware read model that projects several existing domains into one keyword search. Administrators search Users and Audit Logs; marketers search Articles, Captions, and their own non-deleted Prompts. Both projections include matching packaged FAQ content.
+
+Global Search owns input normalization, literal filter construction, role-based projection selection, result caps, and response composition. It does not own or mutate any of the source records, and request-scoped Supabase RLS remains the final data-access boundary.
