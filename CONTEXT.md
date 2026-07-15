@@ -11,3 +11,9 @@ The public HTTP transport for Caption Generation is currently Server-Sent Events
 Prompt Configuration Assistance helps a marketer configure content generation before creating a caption. It contains two workflows: Article Configuration Analysis proposes Tone, Length, and Emphasis from article content; Wizard Prompt Generation turns explicit platform and style choices into a reusable prompt template.
 
 These workflows use Gemini today, but model SDK details and HTTP response formatting are not part of the domain concept.
+
+## Caption Management
+
+Caption Management owns the lifecycle of an existing caption: creation outside the generation stream, listing and retrieval, human editing, status transitions, restoring edited content as the new original, favorite-template state, and version history.
+
+Caption version history is supporting audit data. Version-write failures do not invalidate an otherwise successful caption create or update.
