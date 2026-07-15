@@ -12,6 +12,22 @@ function sseResponse(chunks: string[]) {
 }
 
 describe('BrowserQuickPublishingClient', () => {
+  it('does not bind the client instance as the fetch receiver', async () => {
+    const request = function (this: unknown) {
+      if (this instanceof BrowserQuickPublishingClient) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }));
+    } as typeof fetch;
+
+    const client = new BrowserQuickPublishingClient(request);
+
+    await expect(client.listPresets('facebook')).resolves.toEqual([]);
+  });
+
   it('preserves generation JSON and parses SSE split across chunks', async () => {
     const request = vi.fn().mockResolvedValue(sseResponse([
       'data: {"text":"Hel',

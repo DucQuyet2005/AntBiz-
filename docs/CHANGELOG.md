@@ -11,6 +11,7 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 - Tách cơ chế chọn model, xoay vòng Gemini API Key, quản lý sức khỏe key và cấu hình dự phòng thành module Gemini Capacity dùng chung cho các workflow AI hiện hữu; bổ sung claim nguyên tử để phân phối key an toàn hơn khi có nhiều request đồng thời.
 
 ### Fixed
+- Sửa lỗi `Illegal invocation` khiến màn hình AI Creator không thể tải danh sách Preset sau khi tách Quick Publishing, bằng cách bảo đảm trình duyệt gọi `fetch` với đúng global receiver.
 - Không còn tự thử lại key đã bị vô hiệu hóa hoặc key vẫn trong thời gian cooldown; lỗi model dừng ngay mà không phạt key, còn lỗi mạng/provider không còn tự động làm key chuyển sang trạng thái `invalid`.
 
 ### Security

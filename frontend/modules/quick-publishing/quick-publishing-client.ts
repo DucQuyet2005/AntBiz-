@@ -9,7 +9,11 @@ import type {
 } from './quick-publishing-types';
 
 export class BrowserQuickPublishingClient implements QuickPublishingClient {
-  constructor(private readonly request: typeof fetch = fetch) {}
+  private readonly request: typeof fetch;
+
+  constructor(request: typeof fetch = globalThis.fetch) {
+    this.request = (input, init) => request.call(globalThis, input, init);
+  }
 
   async listPresets(platform: QuickPublishingPlatform): Promise<QuickPublishingPreset[]> {
     const response = await this.request(`/api/platform-presets?platform=${platform}`);
