@@ -83,3 +83,9 @@ A usable transcript is the primary result. Correction or metadata failure degrad
 Document Parsing turns an authenticated user's PDF or DOCX upload into plain source text for content creation. It validates the supported filename extension, routes DOCX extraction through Mammoth, and routes PDF extraction through Gemini with model fallback for quota and rate-limit failures.
 
 Meaningful extracted text is the primary result. Provider requests, file decoding, multipart parsing, authentication, and HTTP response formatting are adapters around the workflow rather than domain behavior. Legacy binary `.doc` files and document persistence are outside this workflow.
+
+## Social Account Connections
+
+Social Account Connections owns the authenticated lifecycle that links a user's Facebook Pages, Instagram Business accounts, and Threads profile to AntBiz, lists those connections, and disconnects them. A connection stores the provider account identity and credential needed by Scheduled Publishing, while public projections never expose that credential.
+
+Facebook and Threads OAuth protocols, signed state, provider discovery calls, token exchange, Supabase persistence, cookies, redirects, and Settings messages are adapters around the workflow. Publishing, deleting, and checking the status of social posts remain part of Scheduled Publishing rather than Social Account Connections.
