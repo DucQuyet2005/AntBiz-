@@ -8,9 +8,11 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 
 ### Changed
 - Tách API Tìm kiếm toàn cục thành module backend độc lập theo vai trò, giữ nguyên kết quả dành cho quản trị viên và marketer nhưng giúp luồng truy vấn, FAQ và xử lý lỗi dễ kiểm thử, bảo trì hơn.
+- Tách luồng xuất Caption CSV, tải lại file và lịch sử export thành module backend độc lập; giữ nguyên thao tác tải trực tiếp và dữ liệu lịch sử hiện có, đồng thời tách quyền đọc Caption theo RLS khỏi quyền ghi compatibility job trong Audit Logs.
 
 ### Security
 - Chuẩn hóa và giới hạn từ khóa tìm kiếm, đồng thời escape các ký tự wildcard và cú pháp PostgREST để dữ liệu nhập chỉ được xử lý như nội dung tìm kiếm; tiếp tục giới hạn prompt theo đúng chủ sở hữu.
+- Bổ sung kiểm tra filter, ngày, UUID và quyền sở hữu export job; ngăn Audit Log không liên quan bị dùng như job tải file, loại bỏ host-header khỏi download URL và vô hiệu hóa công thức nguy hiểm trong CSV khi mở bằng Excel/Sheets.
 
 
 ## [1.7.6] - 2026-07-10

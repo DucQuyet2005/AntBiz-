@@ -65,3 +65,9 @@ Passwords and Recovery Tokens are transient secrets and never become application
 Global Search is a role-aware read model that projects several existing domains into one keyword search. Administrators search Users and Audit Logs; marketers search Articles, Captions, and their own non-deleted Prompts. Both projections include matching packaged FAQ content.
 
 Global Search owns input normalization, literal filter construction, role-based projection selection, result caps, and response composition. It does not own or mutate any of the source records, and request-scoped Supabase RLS remains the final data-access boundary.
+
+## Caption Export
+
+Caption Export is the synchronous read workflow that turns the Captions visible to an authenticated user into a downloadable CSV file and records a reusable export request. A regenerated download applies the stored filters and row count to current Caption data; it is not a stored snapshot.
+
+Caption reads remain governed by the request-scoped Supabase client and RLS. Export request state is temporarily stored as `export_csv_job` Audit Logs through a privileged compatibility adapter; moving that state to the dedicated `export_jobs` table is a separate data migration.
