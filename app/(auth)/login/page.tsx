@@ -197,6 +197,14 @@ export default function LoginPage() {
     formData.append("email", data.email);
     formData.append("password", data.password);
 
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const nextParam = params.get("next");
+      if (nextParam) {
+        formData.append("next", nextParam);
+      }
+    }
+
     const result = await login(formData);
 
     if (result?.error) {
@@ -230,7 +238,12 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     if (isLockedOut) return;
     hideToast();
-    const result = await signInWithGoogle();
+    let nextParam = "/overview";
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      nextParam = params.get("next") || "/overview";
+    }
+    const result = await signInWithGoogle(nextParam);
     if (result?.error) {
       showToast(getAuthErrorMessage(result.error), "error");
     }
