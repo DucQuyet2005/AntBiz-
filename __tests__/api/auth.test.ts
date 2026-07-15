@@ -1,178 +1,143 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
+import {
+  PasswordRecoveryError,
+  PasswordRecoveryGatewayError,
+} from '@/backend/modules/account-security/password-recovery-errors';
+
+const mocks = vi.hoisted(() => ({
+  requireUser: vi.fn(),
+  createClient: vi.fn(() => ({ kind: 'session' })),
+  recoveryModule: {
+    requestRecovery: vi.fn(), confirmRecovery: vi.fn(), resetPassword: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/api/auth', () => ({ requireUser: mocks.requireUser }));
+vi.mock('@/utils/supabase/server', () => ({ createClient: mocks.createClient }));
+vi.mock('@/backend/modules/account-security/password-recovery-factory', () => ({
+  createPasswordRecoveryModule: vi.fn(() => mocks.recoveryModule),
+}));
+
 import { POST as forgotPassword } from '@/app/api/auth/forgot-password/route';
-import { POST as resetPassword } from '@/app/api/auth/reset-password/route';
 import { GET as confirmAuth } from '@/app/api/auth/confirm/route';
+import { POST as resetPassword } from '@/app/api/auth/reset-password/route';
 
-// Mock Supabase Admin
-const mockGenerateLink = vi.fn();
-const mockSupabaseAdmin = {
-  auth: {
-    admin: {
-      generateLink: mockGenerateLink,
-    },
-  },
-};
-
-vi.mock('@/utils/supabase/admin', () => ({
-  createAdminClient: () => mockSupabaseAdmin,
-}));
-
-// Mock Supabase Server
-const mockGetUser = vi.fn();
-const mockUpdateUser = vi.fn();
-const mockSignOut = vi.fn();
-const mockVerifyOtp = vi.fn();
-const mockSupabaseServer = {
-  auth: {
-    getUser: mockGetUser,
-    updateUser: mockUpdateUser,
-    signOut: mockSignOut,
-    verifyOtp: mockVerifyOtp,
-  },
-};
-
-vi.mock('@/utils/supabase/server', () => ({
-  createClient: () => mockSupabaseServer,
-}));
-
-// Mock Nodemailer
-const mockSendMail = vi.fn();
-vi.mock('nodemailer', () => ({
-  createTransport: () => ({
-    sendMail: mockSendMail,
-  }),
-  default: {
-    createTransport: () => ({
-      sendMail: mockSendMail,
-    }),
-  },
-}));
-
-describe('Auth API - Forgot, Confirm & Reset Password', () => {
+describe('Password Recovery route contracts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.SMTP_HOST = 'smtp.gmail.com';
-    process.env.SMTP_USER = 'test@example.com';
-    process.env.SMTP_PASS = 'password';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://app.antbiz.vn';
+    mocks.requireUser.mockResolvedValue({
+      supabase: { kind: 'session' }, user: { id: 'u1', email: 'user@example.com' },
+      unauthorized: null,
+    });
+    mocks.recoveryModule.requestRecovery.mockResolvedValue(undefined);
+    mocks.recoveryModule.confirmRecovery.mockResolvedValue(true);
+    mocks.recoveryModule.resetPassword.mockResolvedValue(undefined);
   });
 
   describe('POST /api/auth/forgot-password', () => {
-    it('returns 400 for invalid email', async () => {
-      const req = new Request('http://localhost/api/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'invalid-email' }),
-      });
-      const res = await forgotPassword(req);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error).toBe('Email không hợp lệ.');
+    it('returns 400 for malformed JSON', async () => {
+      expect((await forgotPassword(post('/api/auth/forgot-password', '{'))).status).toBe(400);
+      expect(mocks.recoveryModule.requestRecovery).not.toHaveBeenCalled();
     });
 
-    it('returns 200 even if generateLink fails (security)', async () => {
-      mockGenerateLink.mockResolvedValue({ data: null, error: { message: 'User not found' } });
-      const req = new Request('http://localhost/api/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'test@example.com' }),
-      });
-      const res = await forgotPassword(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.message).toContain('Nếu tài khoản tồn tại');
-      expect(mockSendMail).not.toHaveBeenCalled();
+    it('maps email validation to 400', async () => {
+      mocks.recoveryModule.requestRecovery.mockRejectedValue(
+        new PasswordRecoveryError('VALIDATION', 400, 'Email không hợp lệ.')
+      );
+      const response = await forgotPassword(post(
+        '/api/auth/forgot-password', JSON.stringify({ email: 'invalid' })
+      ));
+      expect(response.status).toBe(400);
     });
 
-    it('returns 200 and sends email on success', async () => {
-      mockGenerateLink.mockResolvedValue({
-        data: { properties: { hashed_token: 'fake-token' } },
-        error: null,
-      });
-      mockSendMail.mockResolvedValue({});
-
-      const req = new Request('http://localhost/api/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'test@example.com' }),
-      });
-      const res = await forgotPassword(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.message).toContain('Nếu tài khoản tồn tại');
-      expect(mockSendMail).toHaveBeenCalled();
+    it('passes a trusted origin and returns the generic accepted response', async () => {
+      const body = { email: ' User@Example.com ' };
+      const response = await forgotPassword(post(
+        '/api/auth/forgot-password', JSON.stringify(body),
+        { host: 'attacker.example', 'x-forwarded-host': 'attacker.example' }
+      ));
+      expect(response.status).toBe(200);
+      expect(mocks.recoveryModule.requestRecovery).toHaveBeenCalledWith(
+        body, 'https://app.antbiz.vn'
+      );
+      expect((await response.json()).message).toContain('Nếu tài khoản tồn tại');
     });
   });
 
   describe('GET /api/auth/confirm', () => {
-    it('redirects to reset-password on successful recovery verification', async () => {
-      mockVerifyOtp.mockResolvedValue({ error: null });
-      const url = 'http://localhost/api/auth/confirm?token_hash=token&type=recovery&next=/reset-password';
-      
-      // Mock NextRequest since the route uses it
-      const req = {
-        url,
-        nextUrl: new URL(url),
-      };
-      // URL objects in Node don't have clone(), so we add it
-      (req.nextUrl as any).clone = () => new URL(url);
-
-      const res = await confirmAuth(req as any);
-      expect(res.status).toBe(307); 
-      expect(res.headers.get('location')).toContain('/reset-password');
-      expect(mockVerifyOtp).toHaveBeenCalledWith({ type: 'recovery', token_hash: 'token' });
+    it('redirects a verified recovery token to the fixed reset page', async () => {
+      const response = await confirmAuth(new NextRequest(
+        'http://localhost/api/auth/confirm?token_hash=token&type=recovery&next=https://evil.example'
+      ));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe('https://app.antbiz.vn/reset-password');
+      expect(mocks.recoveryModule.confirmRecovery).toHaveBeenCalledWith('token', 'recovery');
     });
 
-    it('redirects to login with error if verification fails', async () => {
-      mockVerifyOtp.mockResolvedValue({ error: { message: 'Invalid token' } });
-      const url = 'http://localhost/api/auth/confirm?token_hash=wrong&type=recovery';
-      
-      const req = {
-        url,
-        nextUrl: new URL(url),
-      };
-      (req.nextUrl as any).clone = () => new URL(url);
-
-      const res = await confirmAuth(req as any);
-      expect(res.status).toBe(307);
-      expect(res.headers.get('location')).toContain('/login');
-      expect(res.headers.get('location')).toContain('error=');
+    it('redirects failed confirmation to login with a generic error', async () => {
+      mocks.recoveryModule.confirmRecovery.mockResolvedValue(false);
+      const response = await confirmAuth(new NextRequest(
+        'http://localhost/api/auth/confirm?token_hash=wrong&type=recovery'
+      ));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('https://app.antbiz.vn/login?error=');
     });
   });
 
   describe('POST /api/auth/reset-password', () => {
-    it('returns 400 for password mismatch', async () => {
-      const req = new Request('http://localhost/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ password: 'Password123!', confirmPassword: 'DifferentPassword123!' }),
+    it('authenticates before reading reset credentials', async () => {
+      mocks.requireUser.mockResolvedValue({
+        supabase: {}, user: null,
+        unauthorized: Response.json({ error: 'Unauthorized' }, { status: 401 }),
       });
-      const res = await resetPassword(req);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error).toBe('Mật khẩu xác nhận không trùng khớp');
+      const response = await resetPassword(post('/api/auth/reset-password', '{'));
+      expect(response.status).toBe(401);
+      expect(mocks.recoveryModule.resetPassword).not.toHaveBeenCalled();
     });
 
-    it('returns 401 if no user session found', async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-      const req = new Request('http://localhost/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ password: 'Password123!', confirmPassword: 'Password123!' }),
-      });
-      const res = await resetPassword(req);
-      expect(res.status).toBe(401);
+    it('returns 400 for malformed JSON and typed validation', async () => {
+      expect((await resetPassword(post('/api/auth/reset-password', '{'))).status).toBe(400);
+      mocks.recoveryModule.resetPassword.mockRejectedValue(
+        new PasswordRecoveryError('VALIDATION', 400, 'Mật khẩu xác nhận không trùng khớp')
+      );
+      expect((await resetPassword(post(
+        '/api/auth/reset-password', JSON.stringify(resetInput())
+      ))).status).toBe(400);
     });
 
-    it('returns 200 on successful password update', async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-      mockUpdateUser.mockResolvedValue({ data: {}, error: null });
-      mockSignOut.mockResolvedValue({ error: null });
+    it('preserves the reset success response', async () => {
+      const input = resetInput();
+      const response = await resetPassword(post(
+        '/api/auth/reset-password', JSON.stringify(input)
+      ));
+      expect(mocks.recoveryModule.resetPassword).toHaveBeenCalledWith(input);
+      expect(response.status).toBe(200);
+      expect((await response.json()).success).toBe(true);
+    });
 
-      const req = new Request('http://localhost/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ password: 'Password123!', confirmPassword: 'Password123!' }),
-      });
-      const res = await resetPassword(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'Password123!' });
-      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
+    it('does not expose password update provider errors', async () => {
+      mocks.recoveryModule.resetPassword.mockRejectedValue(
+        new PasswordRecoveryGatewayError('updateRecoveredPassword', new Error('provider secret'))
+      );
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const response = await resetPassword(post(
+        '/api/auth/reset-password', JSON.stringify(resetInput())
+      ));
+      expect(response.status).toBe(500);
+      expect((await response.json()).error).toBe(
+        'Không thể đặt lại mật khẩu. Vui lòng thử lại sau.'
+      );
+      consoleSpy.mockRestore();
     });
   });
 });
+
+function post(path: string, body: string, headers?: HeadersInit) {
+  return new Request(`http://localhost${path}`, { method: 'POST', body, headers });
+}
+
+function resetInput() {
+  return { password: 'Password123!', confirmPassword: 'Password123!' };
+}

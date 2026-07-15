@@ -1,60 +1,43 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { resetPasswordSchema } from '@/lib/validations/auth';
+import { createPasswordRecoveryModule } from '@/backend/modules/account-security/password-recovery-factory';
+import {
+  PasswordRecoveryError,
+  PasswordRecoveryGatewayError,
+} from '@/backend/modules/account-security/password-recovery-errors';
+import { requireUser } from '@/lib/api/auth';
 
 export async function POST(request: Request) {
+  const { supabase, user, unauthorized } = await requireUser();
+  if (unauthorized) return unauthorized;
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  let body: unknown;
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Dữ liệu không hợp lệ.' }, { status: 400 });
+  }
 
-    // 1. Validate password inputs
-    const validated = resetPasswordSchema.safeParse(body);
-    if (!validated.success) {
-      return NextResponse.json(
-        { error: validated.error.issues[0]?.message || 'Dữ liệu không hợp lệ.' },
-        { status: 400 }
-      );
-    }
-
-    const { password } = validated.data;
-
-    // 2. Lấy client Supabase với session hiện tại
-    const supabase = createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Bạn không có quyền thực hiện hành động này hoặc phiên làm việc đã hết hạn.' },
-        { status: 401 }
-      );
-    }
-
-    // 3. Cập nhật mật khẩu mới
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: password,
-    });
-
-    if (updateError) {
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 400 }
-      );
-    }
-
-    // 4. Đăng xuất tất cả thiết bị trên toàn hệ thống
-    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' });
-    if (signOutError) {
-      console.warn('Lỗi khi thực hiện đăng xuất global:', signOutError.message);
-    }
-
+  try {
+    await createPasswordRecoveryModule(supabase).resetPassword(body);
     return NextResponse.json({
       success: true,
       message: 'Đặt lại mật khẩu thành công. Tất cả các phiên đăng nhập khác đã được thu hồi.',
     });
-  } catch (error: any) {
-    console.error('Lỗi khi xử lý reset-password:', error);
-    return NextResponse.json(
-      { error: 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.' },
-      { status: 500 }
-    );
+  } catch (error) {
+    if (error instanceof PasswordRecoveryError) {
+      return NextResponse.json({ error: error.clientMessage }, { status: error.status });
+    }
+    if (error instanceof PasswordRecoveryGatewayError) {
+      console.error('[PasswordRecovery] Provider operation failed', {
+        operation: error.operation,
+        userId: user.id,
+      });
+    } else {
+      console.error('[PasswordRecovery] Unexpected reset failure', { userId: user.id });
+    }
+    return NextResponse.json({ error: 'Không thể đặt lại mật khẩu. Vui lòng thử lại sau.' }, {
+      status: 500,
+    });
   }
 }
