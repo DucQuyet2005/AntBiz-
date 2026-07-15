@@ -23,3 +23,9 @@ Caption version history is supporting audit data. Version-write failures do not 
 Article Ingestion brings source material into AntBiz either by crawling a safe public URL or by accepting manually written content. It classifies crawled pages as an Article or Listing, normalizes article metadata, and attempts to persist reusable Article records.
 
 Crawled content remains usable when persistence fails; manual content is considered successfully ingested only after it is stored.
+
+## Author Profile
+
+An Author Profile represents a user's reusable writing-style reference. It has an owner, a unique name within that owner's profiles, an optional public source URL, collected style samples, and a collection status.
+
+Style Sample Collection safely crawls the Author Profile's source and stores up to five distinct article texts for few-shot prompting. It does not train or create a model. The existing `train` transport name and `tuning_*` database fields remain compatibility terms only.
