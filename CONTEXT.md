@@ -89,3 +89,9 @@ Meaningful extracted text is the primary result. Provider requests, file decodin
 Social Account Connections owns the authenticated lifecycle that links a user's Facebook Pages, Instagram Business accounts, and Threads profile to AntBiz, lists those connections, and disconnects them. A connection stores the provider account identity and credential needed by Scheduled Publishing, while public projections never expose that credential.
 
 Facebook and Threads OAuth protocols, signed state, provider discovery calls, token exchange, Supabase persistence, cookies, redirects, and Settings messages are adapters around the workflow. Publishing, deleting, and checking the status of social posts remain part of Scheduled Publishing rather than Social Account Connections.
+
+## Landing Configuration
+
+Landing Configuration owns the administrator-managed content and presentation values used to render AntBiz's public landing page. Configuration entries are identified by a unique Section and Key, while the public projection groups their JSON values by Section and Key for landing-page consumers.
+
+Saved configuration is live immediately under the current product behavior. Publishing creates a History Checkpoint when the live configuration differs from the latest checkpoint, refreshes the landing-page cache, and notifies administrators; it is not a separate draft-to-live transition. Rollback atomically replaces the live configuration with one History Checkpoint. Translation assistance in the editor is a separate supporting workflow.
