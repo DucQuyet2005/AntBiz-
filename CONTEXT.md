@@ -41,3 +41,9 @@ The Publication Runner claims due Scheduled Posts, resolves the creator's linked
 Notification Management owns a user's persistent in-app inbox. It creates individual or bulk Notifications, lists them through role-aware category projections, and records whether one or all Notifications have been read.
 
 Notifications may be created by an internal system producer, an administrator, or a user notifying themselves. Database-backed Realtime delivery is a presentation concern that observes Notification records; it does not own creation, authorization, filtering, or read state.
+
+## User Access Administration
+
+User Access Administration is the administrator workflow for finding users, assigning application roles, and controlling account access through lock and restore actions. Role Assignment changes a user's application authority. Account Lock records who made the access decision, when it was made, and why; restoring access clears that lock metadata.
+
+User updates are the primary result. Audit records, administrator Notifications, account email, and Realtime broadcasts are supporting effects that communicate a completed change and do not determine whether that change succeeds.
