@@ -35,3 +35,9 @@ Style Sample Collection safely crawls the Author Profile's source and stores up 
 Scheduled Publishing owns the lifecycle that turns an approved Caption into a timed social publication. A Scheduled Post has a creator, platform, future publication time, optional media, and a status that moves from pending to posted, failed, or cancelled.
 
 The Publication Runner claims due Scheduled Posts, resolves the creator's linked social account, publishes through the platform adapter, records the external result, and synchronizes the Caption status. Calendar views, CSV export, and iCalendar export are read projections of Scheduled Publishing data. Notifications, email, and audit logging are supporting side effects and do not determine whether scheduling or publication succeeds.
+
+## Notification Management
+
+Notification Management owns a user's persistent in-app inbox. It creates individual or bulk Notifications, lists them through role-aware category projections, and records whether one or all Notifications have been read.
+
+Notifications may be created by an internal system producer, an administrator, or a user notifying themselves. Database-backed Realtime delivery is a presentation concern that observes Notification records; it does not own creation, authorization, filtering, or read state.
