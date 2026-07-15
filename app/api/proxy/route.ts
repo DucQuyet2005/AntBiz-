@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 
-const ALLOWED_HOSTNAME = 'gocnhinmoi.com.vn';
+// Danh sách domain được phép truy cập qua proxy
+const ALLOWED_HOSTNAMES = [
+  'gocnhinmoi.com.vn',
+  'tuoitre.vn',
+  'dantri.com.vn',
+];
 
 function isAllowedUrl(url: string): boolean {
   try {
@@ -10,12 +15,24 @@ function isAllowedUrl(url: string): boolean {
     if (parsed.username || parsed.password) {
       return false;
     }
-    return (
-      parsed.hostname === ALLOWED_HOSTNAME ||
-      parsed.hostname.endsWith('.' + ALLOWED_HOSTNAME)
+    return ALLOWED_HOSTNAMES.some(
+      (hostname) =>
+        parsed.hostname === hostname ||
+        parsed.hostname.endsWith('.' + hostname)
     );
   } catch {
     return false;
+  }
+}
+
+function getAllowedHostname(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_HOSTNAMES.find(
+      (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
+    ) ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -55,9 +72,11 @@ export async function GET(request: NextRequest) {
     }
 
     let html = await res.text();
-    const targetOrigin = new URL(targetUrl).origin; // https://gocnhinmoi.com.vn
+    const targetOrigin = new URL(targetUrl).origin;
+    const allowedHostname = getAllowedHostname(targetUrl) || ALLOWED_HOSTNAMES[0];
 
     // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
+    // Match src="/..." attributes and make them absolute
     html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
@@ -100,12 +119,12 @@ export async function GET(request: NextRequest) {
       const isStatic = staticExts.some((ext) => absolute.split('?')[0].endsWith(ext));
       if (isStatic) return `${attr}${q}${absolute}${q}`;
 
-      // Only proxy gocnhinmoi page URLs
+      // Only proxy allowed domain page URLs
       const parsed = new URL(absolute);
-      if (
-        parsed.hostname === ALLOWED_HOSTNAME ||
-        parsed.hostname.endsWith('.' + ALLOWED_HOSTNAME)
-      ) {
+      const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
+        (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
+      );
+      if (isSameAllowedDomain) {
         return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
       }
 
@@ -117,13 +136,17 @@ export async function GET(request: NextRequest) {
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
+    // ── 4. Strip Next.js client-side hydration scripts ───────────────────────
+    // This is the most robust way to prevent RSC fetch requests and client-side
+    // navigation from leaking to the AntBiz server. We only need the SSR HTML.
+    // Keep /_next/static/css/ stylesheets (needed for rendering), strip JS chunks.
+    html = html.replace(/<script\b[^>]*\bsrc=["'][^"']*\/_next\/[^"']*\.js[^"']*["'][^>]*><\/script>/gi, '');
+    // Strip inline Next.js data scripts
+    html = html.replace(/<script\b[^>]*\bid=["']__NEXT_DATA__["'][^>]*>[\s\S]*?<\/script>/gi, '');
+    // Strip Next.js router self-calls (prevents router.__rsc__ or similar init)
+    html = html.replace(/<script\b[^>]*>(\s*self\.__next[\s\S]*?)<\/script>/gi, '');
+
     // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
-    //
-    //  Strategy:
-    //   • Override history.pushState → redirect through /api/proxy (client-side nav)
-    //   • Do NOT override replaceState → Next.js uses this safely during hydration
-    //   • Capture-phase click listener → catches <Link> clicks before React handler
-    //   • Both together ensure no navigation ever escapes the proxy iframe
     const forwardedHost = request.headers ? request.headers.get('x-forwarded-host') : null;
     const forwardedProto = (request.headers ? request.headers.get('x-forwarded-proto') : null) || 'http';
     const host = request.headers ? request.headers.get('host') : null;
@@ -131,28 +154,82 @@ export async function GET(request: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (externalHost ? `${forwardedProto}://${externalHost}` : request.nextUrl.origin);
     const parentOrigin = new URL(siteUrl).origin;
 
-    const interceptorScript = `<script>
+    const interceptorScript = `<style>
+  /* ── Ad/banner slots that cause whitespace (tuoitre, dantri, gocnhinmoi) ── */
+  #LeaderBoardTop, .leaderboard, [id*="LeaderBoard"], [class*="leaderboard"],
+  #divAdRight, #divAdLeft, .banner-top, #banner-top,
+  .ad-container, .adv-container,
+  /* Dân trí specific */
+  .dt-ads, .dt-ads-holder, .dt-ads-middle, .dt-ads-right,
+  [id*="cate_top_ads"], [id*="article_top_ads"], [id*="ads_"],
+  .box-ads, .box-banner, .banner-ads, .ads-banner,
+  [class*="ads-top"], [class*="top-ads"], [class*="dfp-"],
+  /* Tuổi Trẻ specific */
+  .box-adv, #ads300x250_sticky, #ads300x600,
+  /* Generic */
+  [data-testid*="ad"], [aria-label*="advertisement"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+</style>
+<script>
 (function () {
   var PROXY = '/api/proxy?url=';
   var TARGET = ${JSON.stringify(targetUrl)};
+  var TARGET_ORIGIN = ${JSON.stringify(targetOrigin)};
   var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
+  var ALLOWED_HOSTNAMES = ${JSON.stringify(ALLOWED_HOSTNAMES)};
+
+  function isAllowedHost(url) {
+    try {
+      var h = new URL(url).hostname;
+      return ALLOWED_HOSTNAMES.some(function(a) { return h === a || h.endsWith('.' + a); });
+    } catch(_) { return false; }
+  }
 
   /* ── Report current page URL to parent AntBiz window ── */
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: TARGET }, PARENT_ORIGIN); } catch (_) {}
+    try { window.parent.postMessage({ type: 'URL_CHANGE', url: TARGET }, '*'); } catch (_) {}
   }
   report();
   setInterval(report, 800);
 
-  /* ── Override pushState to redirect client-side navigations through proxy ── */
+  function getAbsoluteUrl(urlStr) {
+    try {
+      var s = String(urlStr);
+      /* Already a proxied URL — unwrap it */
+      var idx = s.indexOf('/api/proxy?url=');
+      if (idx !== -1) {
+        var params = new URLSearchParams(s.substring(idx).split('?')[1]);
+        var original = params.get('url');
+        if (original) return original;
+      }
+      /* Resolve relative to the TARGET ORIGIN (not the specific article URL) */
+      return new URL(s, TARGET_ORIGIN).href;
+    } catch(_) { return urlStr; }
+  }
+
+  /* ── Utility: navigate iframe to proxied URL ── */
+  function navigateViaProxy(absUrl) {
+    try {
+      window.location.replace(PROXY + encodeURIComponent(absUrl));
+    } catch(_) {}
+  }
+
+  /* ── Override history.pushState / replaceState ── */
   var _origPush = history.pushState.bind(history);
   history.pushState = function (state, title, url) {
     if (url) {
       try {
-        var abs = new URL(String(url), TARGET).href;
-        // Only intercept same-site navigations
-        if (abs.indexOf('gocnhinmoi.com.vn') !== -1) {
-          window.location.replace(PROXY + encodeURIComponent(abs));
+        var abs = getAbsoluteUrl(String(url));
+        if (isAllowedHost(abs)) {
+          navigateViaProxy(abs);
           return;
         }
       } catch (_) {}
@@ -160,47 +237,116 @@ export async function GET(request: NextRequest) {
     return _origPush(state, title, url);
   };
 
-  /* ── Capture-phase click interceptor (belt-and-suspenders) ── */
+  var _origReplace = history.replaceState.bind(history);
+  history.replaceState = function (state, title, url) {
+    if (url) {
+      try {
+        var abs = getAbsoluteUrl(String(url));
+        if (isAllowedHost(abs)) {
+          navigateViaProxy(abs);
+          return;
+        }
+      } catch (_) {}
+    }
+    return _origReplace(state, title, url);
+  };
+
+  /* ── Override window.fetch ── */
+  var _origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init) {
+    try {
+      var urlStr = (typeof input === 'string') ? input
+                 : (input instanceof Request ? input.url : String(input));
+      var abs = getAbsoluteUrl(urlStr);
+
+      if (isAllowedHost(abs)) {
+        var parsedUrl = new URL(abs);
+        var pathname = parsedUrl.pathname;
+
+        /* Allow Next.js static chunk files to load directly */
+        if (pathname.startsWith('/_next/static/')) {
+          return _origFetch(input, init);
+        }
+
+        /* Detect RSC / data navigation requests */
+        var isRscRequest = false;
+        try {
+          var headers = (init && init.headers) ? init.headers
+                      : (input instanceof Request ? input.headers : null);
+          if (headers) {
+            var get = function(name) {
+              try {
+                if (headers instanceof Headers) return !!headers.get(name);
+                if (typeof headers === 'object') return !!(headers[name] || headers[name.toLowerCase()]);
+              } catch(_) {}
+              return false;
+            };
+            isRscRequest = get('Next-Router-State-Tree') || get('RSC') || get('Next-Url');
+          }
+        } catch(_) {}
+
+        if (!isRscRequest) {
+          isRscRequest = parsedUrl.searchParams.has('_rsc') || pathname.startsWith('/_next/data/');
+        }
+
+        if (isRscRequest) {
+          navigateViaProxy(TARGET_ORIGIN + pathname + parsedUrl.search);
+          return new Promise(function() {});
+        }
+      }
+    } catch(_) {}
+    return _origFetch(input, init);
+  };
+
+  /* ── Override XMLHttpRequest (belt-and-suspenders for RSC/data requests) ── */
+  var _origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    try {
+      var abs = getAbsoluteUrl(String(url));
+      if (isAllowedHost(abs)) {
+        var parsedXhr = new URL(abs);
+        var xhrPath = parsedXhr.pathname;
+        /* Only intercept Next.js RSC data fetch paths, not all XHR */
+        var isXhrRsc = parsedXhr.searchParams.has('_rsc') || xhrPath.startsWith('/_next/data/');
+        if (isXhrRsc) {
+          navigateViaProxy(TARGET_ORIGIN + xhrPath + parsedXhr.search);
+          return;
+        }
+      }
+    } catch(_) {}
+    return _origOpen.apply(this, arguments);
+  };
+
+  /* ── Capture-phase click interceptor ── */
   document.addEventListener('click', function (e) {
-    /* Walk up from the clicked element to find an <a> */
     var el = e.target;
     while (el && el.tagName !== 'A') el = el.parentElement;
     if (!el) return;
-
     var href = el.getAttribute('href');
     if (!href) return;
-
-    /* Leave special links alone */
-    if (
-      href.charAt(0) === '#' ||
-      href.indexOf('javascript:') === 0 ||
-      href.indexOf('mailto:') === 0 ||
-      href.indexOf('tel:') === 0
-    ) return;
-
+    if (href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-
     try {
-      /* Already a proxied URL */
       if (href.indexOf('/api/proxy?') !== -1) {
         window.location.href = new URL(href, window.location.origin).href;
         return;
       }
-      var abs = new URL(href, TARGET).href;
+      var abs = new URL(href, TARGET_ORIGIN).href;
       window.location.href = PROXY + encodeURIComponent(abs);
-    } catch (err) {
-      console.error('[AntBiz Proxy] nav error', err);
-    }
-  }, true /* capture phase */);
+    } catch (err) { console.error(err); }
+  }, true);
 })();
 </script>`;
 
+    const baseTag = `<base href="${targetOrigin}/">`;
+    const fullHeaderInjection = baseTag + interceptorScript;
+
     // Insert into <head> — before any other scripts
     if (/<head[\s>]/i.test(html)) {
-      html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + interceptorScript);
+      html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + fullHeaderInjection);
     } else {
-      html = interceptorScript + html;
+      html = fullHeaderInjection + html;
     }
 
     return new NextResponse(html, {

@@ -725,9 +725,12 @@ const parseStyleString = (styleStr: string): React.CSSProperties => {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: PopupType } | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [publishMethod, setPublishMethod] = useState<'now' | 'later'>('later');
+  const [presetSearchQuery, setPresetSearchQuery] = useState('');
+  const [presetTab, setPresetTab] = useState<'system' | 'user'>('system');
 
   // --- States moved from lower levels to avoid Temporal Dead Zone (Cannot access before initialization) ---
   const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>('facebook');
@@ -988,7 +991,7 @@ export default function AiCreatorView() {
 
   const [customPromptTitle, setCustomPromptTitle] = useState('');
 
-  const changeStep = (newStep: 1 | 2 | 3) => setStep(newStep);
+  const changeStep = (newStep: 1 | 2 | 3 | 4 | 5) => setStep(newStep);
 
   useEffect(() => {
     const onGoStep1 = () => { setStep(1); setSelectedVariantId(''); };
@@ -1018,8 +1021,91 @@ export default function AiCreatorView() {
     facebook: 'formal', threads: 'snappy', instagram: 'visual'
   });
 
+  const handleProceedManualToPreset = async () => {
+    let resolvedArticleId = articleId;
+    let currentFullText = postData.full_text;
+    let currentTitle = postData.title;
 
-  // ... (existing code)
+    // 1. STT Auto-transcription if voiceFile is present but full_text is empty
+    if (voiceFile && !currentFullText.trim()) {
+      setIsAutoGenerating(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', voiceFile);
+        const sttRes = await fetch('/api/stt', {
+          method: 'POST',
+          body: fd
+        });
+        if (sttRes.ok) {
+          const sttData = await sttRes.json();
+          currentFullText = sttData.rewritten_post || sttData.transcript || '';
+
+          const finalTitle = sttData.generated_title || voiceFile.name.replace(/\.[^/.]+$/, '');
+          const finalCategory = sttData.generated_category || '';
+          const finalTags = sttData.generated_tags || '';
+
+          setPostData(prev => ({
+            ...prev,
+            full_text: currentFullText,
+            description: currentFullText,
+            title: finalTitle,
+            category: finalCategory,
+            tags: finalTags
+          }));
+          currentTitle = finalTitle;
+        } else {
+          const sttErr = await sttRes.json().catch(() => ({ error: 'Lỗi dịch giọng nói tự động' }));
+          throw new Error(sttErr.error || 'STT transcription failed');
+        }
+      } catch (err: any) {
+        alert(language === 'vi' ? `Lỗi dịch giọng nói tự động: ${err.message}` : `Auto-transcription error: ${err.message}`);
+        setIsAutoGenerating(false);
+        return;
+      } finally {
+        setIsAutoGenerating(false);
+      }
+    }
+
+    // 2. Reject if both Title and Content are still empty
+    if (!currentTitle.trim() && !currentFullText.trim()) {
+      alert(language === 'vi' ? 'Vui lòng nhập tiêu đề, nội dung bài viết hoặc tải lên ghi âm giọng nói.' : 'Please enter the title, detailed content, or upload a voice recording.');
+      return;
+    }
+
+    // 3. Save manual article draft
+    if (!resolvedArticleId) {
+      setIsFetching(true);
+      try {
+        const saveRes = await fetch('/api/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: currentTitle,
+            full_text: currentFullText,
+            category: postData.category,
+            author: postData.author,
+            imageUrl: postData.imageUrl
+          })
+        });
+        const savedData = await saveRes.json().catch(() => ({ error: 'Lỗi lưu bài viết' }));
+        if (!saveRes.ok || savedData.error || !savedData.id) {
+          throw new Error(savedData.error || 'Failed to save');
+        }
+        resolvedArticleId = savedData.id;
+        setArticleId(savedData.id);
+      } catch (err: any) {
+        console.error('[Manual Save Error]:', err);
+        alert(language === 'vi' ? `Không thể lưu bài viết tự soạn: ${err.message}` : `Cannot save manual article: ${err.message}`);
+        setIsFetching(false);
+        return;
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
+    // Go to Step 3 (Choose Preset)
+    setStep(3);
+  };
 
   const handleProceedToABTest = async () => {
     let resolvedActivePrompt = activePrompt;
@@ -1113,6 +1199,8 @@ export default function AiCreatorView() {
           alert(language === 'vi' ? `Không thể lưu bài viết tự soạn: ${err.message}` : `Cannot save manual article: ${err.message}`);
           setIsGeneratingAB(false);
           return;
+        } finally {
+          setIsGeneratingAB(false);
         }
       }
     } else {
@@ -1125,6 +1213,16 @@ export default function AiCreatorView() {
     setSelectedVariantId('');
     setExcludedPlatforms([]);
     setIsGeneratingAB(true);
+
+    // Sync Step 3 preset selection into platform config for generation
+    const resolvedConfigMap = { ...platformConfigMap };
+    if (selectedPlatformPresetId) {
+      for (const plat of selectedPlatforms) {
+        resolvedConfigMap[plat] = { ...resolvedConfigMap[plat], presetId: selectedPlatformPresetId };
+      }
+      setPlatformConfigMap(resolvedConfigMap);
+    }
+
     // Sync activePrompt with compiled preview so API receives the same prompt the user sees
     const compiledPrompt = compilePromptPreview();
     setActivePrompt(compiledPrompt);
@@ -1146,7 +1244,7 @@ export default function AiCreatorView() {
     }));
 
     setVariants(newVariants);
-    setStep(2);
+    setStep(4);
 
     // T-1.18: Generate a new variantGroupId for this batch
     const newGroupId = crypto.randomUUID();
@@ -1168,7 +1266,7 @@ export default function AiCreatorView() {
     const streamVariant = async (variantId: string, variantIndex: number, groupId: string, platform: 'facebook' | 'threads' | 'instagram') => {
       const abortSignal = abortControllerRef.current?.signal;
 
-      const platformConfig = platformConfigMap[platform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
+      const platformConfig = resolvedConfigMap[platform] || { presetId: '', customText: '', quickPicks: [], configId: '' };
       let finalCustomText = platformConfig.customText.trim();
       const requirementsList = [
         { id: 'cta', name: 'Thêm kêu gọi hành động' },
@@ -2807,6 +2905,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  const categoryClean = (postData?.category || '').replace('#', '').trim();
+  const showCategory = categoryClean && categoryClean.toLowerCase() !== 'manual';
+
+  const filteredPresets = platformPresets.filter((preset: any) => {
+    const matchesSearch = preset.name.toLowerCase().includes(presetSearchQuery.toLowerCase()) ||
+      (preset.rules || preset.content || '').toLowerCase().includes(presetSearchQuery.toLowerCase());
+    if (presetTab === 'system') {
+      return matchesSearch && !preset.user_id;
+    } else {
+      return matchesSearch && !!preset.user_id;
+    }
+  });
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingFile(true);
@@ -3431,6 +3542,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           generateVariants(updatedPostData, selectedPrompt);
           setIsFetching(false);
           setHasUnsavedChanges(true);
+          setStep(3);
           return;
         }
       }
@@ -3481,10 +3593,27 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
   const handleImportFromExplorer = async () => {
     setIsScraping(true);
     setIsFetching(true);
-    setUrl(explorerUrl);
+
+    // Read target URL directly from same-origin iframe to avoid postMessage delivery issues
+    let liveUrl = explorerUrl;
+    try {
+      if (iframeRef.current?.contentWindow) {
+        const currentHref = iframeRef.current.contentWindow.location.href;
+        const urlObj = new URL(currentHref);
+        const targetUrl = urlObj.searchParams.get('url');
+        if (targetUrl) {
+          liveUrl = targetUrl;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to read iframe URL directly:', e);
+    }
+
+    setUrl(liveUrl);
+    setExplorerUrl(liveUrl);
     setIsExplorerOpen(false);
     try {
-      const res = await fetch(`/api/scrape?url=${encodeURIComponent(explorerUrl)}`);
+      const res = await fetch(`/api/scrape?url=${encodeURIComponent(liveUrl)}`);
       if (res.ok) {
         const data = await res.json();
         if (!data.error) {
@@ -3536,6 +3665,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
           generateVariants(updatedPostData, selectedPrompt);
           setHasUnsavedChanges(true);
+          setStep(3);
         }
       }
     } catch (e) {
@@ -3773,17 +3903,19 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       instagram: { date: instagramDate, time: instagramTime },
     };
 
-    // Kiểm tra thời gian tương lai cho tất cả các platform hoạt động
-    for (const platform of activePlatforms) {
-      const schedule = scheduleByPlatform[platform];
-      const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
-      if (scheduledAt.getTime() <= Date.now()) {
-        const errorMsg = language === 'vi'
-          ? `Thời gian lên lịch của ${platform === 'facebook' ? 'Facebook' : platform === 'threads' ? 'Threads' : 'Instagram'} phải ở tương lai.`
-          : `Schedule time for ${platform} must be in the future.`;
+    // Kiểm tra thời gian tương lai cho tất cả các platform hoạt động (chỉ khi là Lên lịch sau)
+    if (publishMethod === 'later') {
+      for (const platform of activePlatforms) {
+        const schedule = scheduleByPlatform[platform];
+        const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
+        if (scheduledAt.getTime() <= Date.now()) {
+          const errorMsg = language === 'vi'
+            ? `Thời gian lên lịch của ${platform === 'facebook' ? 'Facebook' : platform === 'threads' ? 'Threads' : 'Instagram'} phải ở tương lai.`
+            : `Schedule time for ${platform} must be in the future.`;
 
-        setSchedulingError(errorMsg);
-        return;
+          setSchedulingError(errorMsg);
+          return;
+        }
       }
     }
 
@@ -3799,7 +3931,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
       // Lên lịch cho từng platform được chọn song song
       await Promise.all(activePlatforms.map(async (platform) => {
         const schedule = scheduleByPlatform[platform];
-        const scheduledAt = new Date(`${schedule.date}T${schedule.time}`);
+        const scheduledAt = publishMethod === 'now' ? new Date() : new Date(`${schedule.date}T${schedule.time}`);
 
         const draftCaptionId = await ensureCaptionDraft(platform);
 
@@ -3811,6 +3943,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             captionId: draftCaptionId,
             scheduledAt: scheduledAt.toISOString(),
             imageUrls,
+            publishNow: publishMethod === 'now'
           }),
         });
 
@@ -3823,8 +3956,9 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           platform === 'threads' ? 'threadsStatus' :
             'instagramStatus';
 
+        const newStatus = publishMethod === 'now' ? 'posted' : 'scheduled';
         setVariants((prev) =>
-          prev.map((v) => (v.id === selectedVariantId ? { ...v, [statusKey]: 'scheduled' } : v))
+          prev.map((v) => (v.id === selectedVariantId ? { ...v, [statusKey]: newStatus } : v))
         );
       }));
 
@@ -4169,33 +4303,23 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             <div className="h-1 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden w-full relative">
               <motion.div
                 className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-[#22D3EE]"
-                initial={{ width: '33.3%' }}
+                initial={{ width: '20%' }}
                 animate={{
-                  width: step === 1 ? '33.3%' : step === 2 ? '66.6%' : '100%'
+                  width: step === 1 ? '20%' : step === 2 ? '40%' : step === 3 ? '60%' : step === 4 ? '80%' : '100%'
                 }}
                 transition={{ type: 'spring', stiffness: 180, damping: 22 }}
               />
             </div>
 
-            <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-black/60 rounded-2xl p-1.5 border border-slate-200/70 dark:border-white/5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-1 bg-slate-100/90 dark:bg-black/60 rounded-2xl p-1.5 border border-slate-200/70 dark:border-white/5 shadow-sm">
               <button
                 type="button"
                 onClick={() => changeStep(1)}
                 aria-current={step === 1 ? "step" : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 1 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'}`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 1
-                  ? 'bg-white/20 text-white'
-                  : (articleId || postData.title)
-                    ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
-                    : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                  }`}>
-                  {(articleId || postData.title) && step !== 1 ? (
-                    <Check size={10} strokeWidth={3.5} />
-                  ) : (
-                    '1'
-                  )}
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${step === 1 ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'}`}>
+                  {step > 1 ? <Check size={8} strokeWidth={4} /> : '1'}
                 </span>
                 {t('aiCreator.step1')}
               </button>
@@ -4203,46 +4327,53 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
               <button
                 type="button"
                 onClick={() => changeStep(2)}
+                disabled={selectedPlatforms.length === 0}
                 aria-current={step === 2 ? "step" : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${step === 2 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' : selectedPlatforms.length > 0 ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' : 'text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 2
-                  ? 'bg-white/20 text-white'
-                  : selectedVariantId
-                    ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
-                    : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                  }`}>
-                  {selectedVariantId && step !== 2 ? (
-                    <Check size={10} strokeWidth={3.5} />
-                  ) : (
-                    '2'
-                  )}
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${step === 2 ? 'bg-white/20 text-white' : (articleId || postData.title) && step > 2 ? 'bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'}`}>
+                  {step > 2 && (articleId || postData.title) ? <Check size={8} strokeWidth={4} /> : '2'}
                 </span>
                 {t('aiCreator.step2')}
               </button>
 
               <button
                 type="button"
-                onClick={() => { if (selectedVariantId) changeStep(3); }}
-                disabled={!selectedVariantId}
+                onClick={() => changeStep(3)}
+                disabled={!articleId && !postData.title}
                 aria-current={step === 3 ? "step" : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' :
-                  selectedVariantId ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' :
-                    'text-slate-500 dark:text-slate-500 cursor-not-allowed'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${step === 3 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' : (articleId || postData.title) ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' : 'text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
               >
-                <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] font-black ${step === 3
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'
-                  }`}>
-                  {step === 3 && (typeof isScheduled !== 'undefined' && isScheduled) ? (
-                    <Check size={10} strokeWidth={3.5} />
-                  ) : (
-                    '3'
-                  )}
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${step === 3 ? 'bg-white/20 text-white' : step > 3 ? 'bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'}`}>
+                  {step > 3 ? <Check size={8} strokeWidth={4} /> : '3'}
                 </span>
                 {t('aiCreator.step3')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => changeStep(4)}
+                disabled={!variants[0]?.facebook && !variants[0]?.threads && !variants[0]?.instagram}
+                aria-current={step === 4 ? "step" : undefined}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${step === 4 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' : (variants[0]?.facebook || variants[0]?.threads || variants[0]?.instagram) ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' : 'text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
+              >
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${step === 4 ? 'bg-white/20 text-white' : step > 4 ? 'bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'}`}>
+                  {step > 4 ? <Check size={8} strokeWidth={4} /> : '4'}
+                </span>
+                {t('aiCreator.step4')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => changeStep(5)}
+                disabled={!variants[0]?.facebook && !variants[0]?.threads && !variants[0]?.instagram}
+                aria-current={step === 5 ? "step" : undefined}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${step === 5 ? 'bg-primary text-white shadow-md shadow-primary/25 cursor-pointer' : (variants[0]?.facebook || variants[0]?.threads || variants[0]?.instagram) ? 'text-black dark:text-white hover:text-slate-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/5 cursor-pointer' : 'text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
+              >
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${step === 5 ? 'bg-white/20 text-white' : isScheduled ? 'bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30' : 'bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-slate-300 border dark:border-white/10'}`}>
+                  {isScheduled ? <Check size={8} strokeWidth={4} /> : '5'}
+                </span>
+                {t('aiCreator.step5')}
               </button>
             </div>
           </div>
@@ -4251,11 +4382,129 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         {/* Unified layout grid allowing shared layout morphing */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
 
-          {/* STEP 1: Left column inputs form */}
+          {/* STEP 1: Chọn nền tảng (Select Platforms) */}
           {step === 1 && (
+            <motion.div
+              key="step1-platforms"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+              className="lg:col-span-12 max-w-2xl mx-auto w-full flex flex-col gap-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-3xl p-6 sm:p-8 shadow-sm select-none"
+            >
+              <div className="border-b border-gray-100 dark:border-zinc-800 pb-5">
+                <h2 className="text-xl font-extrabold text-text tracking-tight flex items-center gap-2">
+                  📣 {language === 'vi' ? 'Chọn nền tảng đăng bài' : 'Select Social Platforms'}
+                </h2>
+                <p className="text-xs text-text-muted mt-1">
+                  {language === 'vi' ? 'Chọn các mạng xã hội bạn muốn tạo nội dung và xuất bản chiến dịch.' : 'Choose the channels you want to publish this campaign to.'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3.5">
+                {[
+                  {
+                    id: 'facebook',
+                    label: 'Facebook Page',
+                    bgColor: 'bg-blue-600',
+                    borderActive: 'border-blue-500',
+                    ringActive: 'ring-blue-500/15',
+                    hint: 'Tối ưu độ dài 80-180 ký tự, dùng CTA rõ ràng, gắn hashtag cuối bài.',
+                    hintEn: 'Optimal 80-180 chars, use explicit CTA, append hashtags at end.',
+                    emoji: '🔵'
+                  },
+                  {
+                    id: 'threads',
+                    label: 'Meta Threads',
+                    bgColor: 'bg-zinc-900 dark:bg-zinc-700',
+                    borderActive: 'border-zinc-800 dark:border-white',
+                    ringActive: 'ring-zinc-400/15',
+                    hint: 'Tối đa 500 ký tự, giọng văn nhẹ nhàng, casual. Không nên dùng hashtag nhiều.',
+                    hintEn: 'Max 500 chars, casual & conversational tone. Minimal hashtags recommended.',
+                    emoji: '💬'
+                  },
+                  {
+                    id: 'instagram',
+                    label: 'Instagram Business',
+                    bgColor: 'bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600',
+                    borderActive: 'border-pink-500',
+                    ringActive: 'ring-pink-500/15',
+                    hint: 'Caption ngắn gọn + 5-10 hashtag liên quan. Nhấn mạnh hình ảnh và cảm xúc.',
+                    hintEn: 'Short caption + 5-10 relevant hashtags. Emphasize visuals and emotions.',
+                    emoji: '📷'
+                  }
+                ].map(pm => {
+                  const isSel = selectedPlatforms.includes(pm.id as any);
+                  const isConn = connectedPlatforms.includes(pm.id);
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlatforms(prev => {
+                          const newPlatforms = prev.includes(pm.id as any)
+                            ? prev.filter(p => p !== pm.id)
+                            : [...prev, pm.id as any];
+                          if (newPlatforms.length > 0 && !newPlatforms.includes(selectedPlatform)) {
+                            setSelectedPlatform(newPlatforms[0]);
+                          }
+                          return newPlatforms;
+                        });
+                      }}
+                      className={`w-full py-4.5 px-5 rounded-2xl border-2 text-left transition-all cursor-pointer bg-white dark:bg-slate-900 flex items-center justify-between gap-4 ${isSel
+                        ? `${pm.borderActive} ring-4 ${pm.ringActive} bg-primary/[0.02] dark:bg-primary/[0.04]`
+                        : 'border-slate-200 dark:border-zinc-800 hover:border-slate-350 dark:hover:border-zinc-700'
+                        }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white shrink-0 shadow-sm ${pm.bgColor}`}>
+                          {pm.id === 'facebook' && <Facebook size={18} className="fill-white text-white" />}
+                          {pm.id === 'threads' && <ThreadsIcon size={18} className="text-white" />}
+                          {pm.id === 'instagram' && <Instagram size={18} className="text-white" />}
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-extrabold text-text uppercase tracking-wider">
+                              {pm.label}
+                            </span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${isConn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-955/40 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-955/40 dark:text-amber-400'}`}>
+                              {isConn ? t('aiCreator.platformConnected') : t('aiCreator.platformNotConnected')}
+                            </span>
+                          </div>
+                          <span className="text-[10.5px] text-text-muted font-medium leading-relaxed max-w-md">
+                            {language === 'vi' ? pm.hint : pm.hintEn}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isSel ? 'bg-primary border-primary' : 'border-slate-300 dark:border-zinc-650 bg-transparent'}`}>
+                        {isSel && <Check size={11} className="text-white" strokeWidth={3.5} />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end border-t border-gray-100 dark:border-zinc-800 pt-6 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedPlatform) fetchPlatformPresets(selectedPlatform);
+                    setStep(2);
+                  }}
+                  disabled={selectedPlatforms.length === 0}
+                  className="bg-primary hover:bg-primary-hover disabled:opacity-40 text-white px-8 py-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-md shadow-primary/10 active:scale-95"
+                >
+                  {t('aiCreator.platformNext')} <ArrowRight size={13} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 2: Left column inputs form */}
+          {step === 2 && (
             <div
-              key="step1-inputs"
-              className="lg:col-span-8 flex flex-col gap-6 order-1"
+              key="step2-inputs"
+              className="lg:col-span-12 max-w-4xl mx-auto w-full flex flex-col gap-6 order-1"
             >
               {/* Segmented Mode Selector for input ingestion (crawl vs manual) */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 flex items-center justify-between shadow-sm shrink-0">
@@ -5304,12 +5553,12 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
           )}
 
           {/* SHARED PREVIEW COLUMN (Physically slides right-to-left between Step 1 and Step 2) */}
-          {(step === 1 || step === 2) && (
+          {step === 4 && (
             <div
-              className={`lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 ${step === 1 ? 'order-2' : 'order-1'}`}
+              className="lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 order-1"
             >
               {/* 1. Toggles Customizer (Tùy chỉnh mục hiển thị) - Only in Step 2 */}
-              {step === 2 && (
+              {step === 4 && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -5351,7 +5600,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                 </motion.div>
               )}
 
-              {step === 2 && (
+              {step === 4 && (
                 <div
                   onClick={() => setIsConfigModalOpen(true)}
                   className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-2xl p-5 shadow-sm flex flex-col gap-3 font-sans cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group"
@@ -5929,13 +6178,13 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                       )}
 
                       {/* Proceed Button */}
-                      <motion.button layout onClick={handleProceedToABTest} disabled={isGeneratingAB || isFetching}
+                      <motion.button layout onClick={inputMode === 'manual' ? handleProceedManualToPreset : () => setStep(3)} disabled={isFetching || isScraping || (!articleId && inputMode === 'crawl')}
                         className="w-full bg-primary hover:bg-primary-hover disabled:opacity-70 text-white py-3.5 px-4 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs sm:text-sm cursor-pointer border-0 whitespace-nowrap"
                       >
-                        {isGeneratingAB ? (
-                          <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? 'Đang sinh bài viết...' : 'Generating posts...'}</>
+                        {isFetching || isScraping ? (
+                          <><Loader2 size={16} className="animate-spin" />{language === 'vi' ? 'Đang xử lý...' : 'Processing...'}</>
                         ) : (
-                          <>{language === 'vi' ? 'Tạo nội dung AI cho tất cả nền tảng' : 'Generate AI content for all platforms'}<ArrowRight size={16} /></>
+                          <>{language === 'vi' ? 'Tiếp theo: Chọn Preset' : 'Next: Choose Preset'}<ArrowRight size={16} /></>
                         )}
                       </motion.button>
                     </div>
@@ -5945,8 +6194,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             </div>
           )}
 
-          {/* STEP 2: Right column Mockup Feed Workspace */}
-          {step === 2 && (() => {
+          {/* STEP 4: Right column Mockup Feed Workspace */}
+          {step === 4 && (() => {
             const activeVariant = variants.find(v => v.id === (selectedVariantId || 'A')) || variants[0];
             const previewTimestamp = postData.published_at || toDateInputValue(new Date());
             const originalField = selectedPlatform === 'facebook' ? 'originalFacebook' :
@@ -6406,8 +6655,8 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     const isDisabled = isGeneratingAB || activeChannelsCount === 0;
 
                     let buttonText = language === 'vi'
-                      ? `Lên lịch đăng ${activeChannelsCount} kênh`
-                      : `Schedule ${activeChannelsCount} channels`;
+                      ? `Tiếp theo: Lên lịch (${activeChannelsCount} kênh)`
+                      : `Next: Schedule (${activeChannelsCount} channels)`;
 
                     if (isGeneratingAB) {
                       buttonText = language === 'vi' ? 'Đang chuẩn bị nội dung...' : 'Preparing content...';
@@ -6417,7 +6666,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                     return (
                       <button
-                        onClick={() => { if (!isDisabled) changeStep(3); }}
+                        onClick={() => { if (!isDisabled) changeStep(5); }}
                         disabled={isDisabled}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold transition-all border-0 whitespace-nowrap active:scale-95 shadow-md ${isDisabled
                           ? 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed shadow-none'
@@ -6439,11 +6688,149 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
             );
           })()}
 
-          {/* STEP 3: Lên lịch đăng bài (2D Calendar Scheduler) */}
+          {/* STEP 3: Chọn Preset (Choose Preset) */}
           {step === 3 && (
             <motion.div
+              key="step3-preset"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+              className="lg:col-span-12 max-w-4xl mx-auto w-full flex flex-col gap-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-3xl p-6 sm:p-8 shadow-sm select-none"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 dark:border-zinc-800 pb-5">
+                <div>
+                  <h2 className="text-xl font-extrabold text-text tracking-tight flex items-center gap-2">
+                    🎯 {language === 'vi' ? 'Chọn Preset nội dung' : 'Choose a Content Preset'}
+                  </h2>
+                  <p className="text-xs text-text-muted mt-1">
+                    {language === 'vi' ? 'Preset sẽ định hướng phong cách AI viết bài viết cho bạn.' : 'Presets guide how AI writes content for your campaigns.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={presetSearchQuery}
+                    onChange={(e) => setPresetSearchQuery(e.target.value)}
+                    placeholder={language === 'vi' ? 'Tìm kiếm preset...' : 'Search presets...'}
+                    className="bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary/20 w-48 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Tabs for System and User Presets */}
+              <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl border border-slate-200/60 dark:border-zinc-800/60 gap-2 self-start mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPresetTab('system')}
+                  className={`text-xs font-bold py-1.5 px-4 rounded-xl transition-all border-0 cursor-pointer ${presetTab === 'system' ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' : 'text-slate-500 hover:text-text'}`}
+                >
+                  🏢 {language === 'vi' ? 'Hệ thống' : 'System'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPresetTab('user')}
+                  className={`text-xs font-bold py-1.5 px-4 rounded-xl transition-all border-0 cursor-pointer ${presetTab === 'user' ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' : 'text-slate-500 hover:text-text'}`}
+                >
+                  👤 {language === 'vi' ? 'Của tôi' : 'Personal'}
+                </button>
+              </div>
+
+              {/* Presets Grid */}
+              {filteredPresets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+                  <span className="text-2xl mb-2">📭</span>
+                  <span className="text-xs font-bold text-text-muted">
+                    {language === 'vi' ? 'Không tìm thấy preset nào' : 'No presets found'}
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Default Card */}
+                  <div
+                    onClick={() => setSelectedPlatformPresetId('')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 ${!selectedPlatformPresetId
+                      ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20'
+                      : 'border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50/55'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-text">
+                        🚀 {language === 'vi' ? 'Mặc định (Không dùng Preset)' : 'Default (No Preset)'}
+                      </span>
+                      {!selectedPlatformPresetId && <Check size={14} className="text-primary font-bold" />}
+                    </div>
+                    <p className="text-[10px] text-text-muted leading-relaxed line-clamp-3">
+                      {language === 'vi' ? 'Sử dụng cấu hình prompt mặc định của hệ thống để sinh bài đăng.' : 'Use system default prompt settings to generate posts.'}
+                    </p>
+                  </div>
+
+                  {filteredPresets.map((preset: any) => {
+                    const isSel = selectedPlatformPresetId === preset.id;
+                    return (
+                      <div
+                        key={preset.id}
+                        onClick={() => setSelectedPlatformPresetId(preset.id)}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 ${isSel
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20'
+                          : 'border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50/55'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-text truncate pr-2">
+                            {preset.name}
+                          </span>
+                          {isSel && <Check size={14} className="text-primary font-bold" />}
+                        </div>
+                        <p className="text-[10px] text-text-muted leading-relaxed line-clamp-3 font-medium">
+                          {preset.rules || preset.content}
+                        </p>
+                        {preset.platform && preset.platform !== 'all' && (
+                          <span className="text-[8.5px] font-black uppercase text-primary tracking-wider mt-auto self-start bg-primary/10 px-2 py-0.5 rounded-md">
+                            {preset.platform}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="bg-slate-100 hover:bg-slate-200/80 text-text px-6 py-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                >
+                  ← {language === 'vi' ? 'Quay lại' : 'Back'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProceedToABTest}
+                  disabled={isGeneratingAB}
+                  className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white px-8 py-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-md shadow-primary/10"
+                >
+                  {isGeneratingAB ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      {language === 'vi' ? 'Đang sinh bài...' : 'Generating...'}
+                    </>
+                  ) : (
+                    <>
+                      {language === 'vi' ? 'Tiếp theo: Tạo nội dung AI' : 'Next: Generate Content'} <ArrowRight size={13} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 5: Lên lịch đăng bài (2D Calendar Scheduler) */}
+          {step === 5 && (
+            <motion.div
               id="tour-creator-scheduler"
-              key="step3-scheduler"
+              key="step5-scheduler"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 30 }}
@@ -6691,60 +7078,99 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                     <Calendar size={18} className="text-primary" />
                     <h3 className="text-xs font-extrabold text-text uppercase tracking-wider">
-                      {t('aiCreator.scheduleTitle')}
+                      {language === 'vi' ? 'Phương thức xuất bản' : 'Publication Method'}
                     </h3>
                   </div>
 
-                  {/* Schedulers Inputs for platforms */}
-                  <div className="flex flex-col gap-4">
-                    {selectedPlatforms.includes('facebook') && !excludedPlatforms.includes('facebook') && (
-                      <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
-                          <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
-                            <Facebook size={10} className="fill-white" />
-                          </div>
-                          <span>Facebook</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        </div>
-                        {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
-                      </div>
-                    )}
-
-                    {selectedPlatforms.includes('threads') && !excludedPlatforms.includes('threads') && (
-                      <div className="border border-gray-200 dark:border-white/5 bg-gray-50/10 dark:bg-white/3 rounded-2xl p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-bold text-xs text-black dark:text-white">
-                          <div className="w-5 h-5 rounded-full bg-black dark:bg-zinc-900 flex items-center justify-center text-white">
-                            <ThreadsIcon size={10} />
-                          </div>
-                          <span>Threads</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        </div>
-                        {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
-                      </div>
-                    )}
-
-                    {selectedPlatforms.includes('instagram') && !excludedPlatforms.includes('instagram') && (
-                      <div className="border border-pink-100 dark:border-pink-900/30 bg-pink-50/10 dark:bg-pink-950/10 rounded-2xl p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-bold text-xs text-pink-600 dark:text-pink-400">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
-                            <Instagram size={10} />
-                          </div>
-                          <span>Instagram</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                        </div>
-                        {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
-                      </div>
-                    )}
+                  {/* Segmented Control: Publish Now vs Schedule */}
+                  <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1.5 rounded-xl border border-slate-200/60 dark:border-zinc-800/60 gap-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setPublishMethod('now')}
+                      className={`flex-1 text-[11px] font-black py-2 rounded-lg transition-all border-0 cursor-pointer ${publishMethod === 'now' ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' : 'text-slate-500 hover:text-text bg-transparent'}`}
+                    >
+                      ⚡ {language === 'vi' ? 'Đăng ngay' : 'Publish Now'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPublishMethod('later')}
+                      className={`flex-1 text-[11px] font-black py-2 rounded-lg transition-all border-0 cursor-pointer ${publishMethod === 'later' ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm' : 'text-slate-500 hover:text-text bg-transparent'}`}
+                    >
+                      📅 {language === 'vi' ? 'Lên lịch đăng' : 'Schedule'}
+                    </button>
                   </div>
+
+                  {publishMethod === 'now' && (
+                    <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-xl px-4 py-3">
+                      <span className="text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">⚡</span>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold leading-relaxed">
+                        {language === 'vi'
+                          ? 'Bài viết sẽ được đăng ngay lập tức lên tất cả các kênh đã chọn sau khi bạn xác nhận.'
+                          : 'Posts will be published immediately to all selected channels once you confirm.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {publishMethod === 'later' && (
+                    <>
+                      <div className="flex items-center gap-2 border-b border-gray-100 pb-1 mt-1">
+                        <h4 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                          {t('aiCreator.scheduleTitle')}
+                        </h4>
+                      </div>
+
+                      {/* Schedulers Inputs for platforms */}
+                      <div className="flex flex-col gap-4">
+                        {selectedPlatforms.includes('facebook') && !excludedPlatforms.includes('facebook') && (
+                          <div className="border border-blue-100 bg-blue-50/10 rounded-2xl p-4 flex flex-col gap-4">
+                            <div className="flex items-center gap-2 font-bold text-xs text-[#1877F2]">
+                              <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px]">
+                                <Facebook size={10} className="fill-white" />
+                              </div>
+                              <span>Facebook</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <input type="date" value={facebookDate} onChange={(e) => handleFacebookDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input type="time" value={facebookTime} onChange={(e) => handleFacebookTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            </div>
+                            {facebookError && <div className="text-[10px] text-red-500 font-bold">⚠️ {facebookError}</div>}
+                          </div>
+                        )}
+
+                        {selectedPlatforms.includes('threads') && !excludedPlatforms.includes('threads') && (
+                          <div className="border border-gray-200 dark:border-white/5 bg-gray-50/10 dark:bg-white/3 rounded-2xl p-4 flex flex-col gap-4">
+                            <div className="flex items-center gap-2 font-bold text-xs text-black dark:text-white">
+                              <div className="w-5 h-5 rounded-full bg-black dark:bg-zinc-900 flex items-center justify-center text-white">
+                                <ThreadsIcon size={10} />
+                              </div>
+                              <span>Threads</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <input type="date" value={threadsDate} onChange={(e) => handleThreadsDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input type="time" value={threadsTime} onChange={(e) => handleThreadsTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            </div>
+                            {threadsError && <div className="text-[10px] text-red-500 font-bold">⚠️ {threadsError}</div>}
+                          </div>
+                        )}
+
+                        {selectedPlatforms.includes('instagram') && !excludedPlatforms.includes('instagram') && (
+                          <div className="border border-pink-100 dark:border-pink-900/30 bg-pink-50/10 dark:bg-pink-950/10 rounded-2xl p-4 flex flex-col gap-4">
+                            <div className="flex items-center gap-2 font-bold text-xs text-pink-600 dark:text-pink-400">
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white">
+                                <Instagram size={10} />
+                              </div>
+                              <span>Instagram</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <input type="date" value={instagramDate} onChange={(e) => handleInstagramDateChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input type="time" value={instagramTime} onChange={(e) => handleInstagramTimeChange(e.target.value)} className="w-full bg-white dark:bg-[#1A1D27] border border-[#E4E6F8] dark:border-white/5 rounded-xl px-3 py-2 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            </div>
+                            {instagramError && <div className="text-[10px] text-red-500 font-bold">⚠️ {instagramError}</div>}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -6943,12 +7369,18 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                   </div>
                 )}
                 <div className="flex items-center justify-between border-t border-gray-150 pt-6 mt-6">
-                  <button onClick={() => changeStep(2)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
+                  <button onClick={() => changeStep(4)} className="flex items-center gap-2 bg-white border border-gray-200 text-text px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors cursor-pointer">
                     <ArrowLeft size={16} /> {t('aiCreator.backToAb')}
                   </button>
-                  <button id="confirm-schedule-btn" onClick={handleConfirmSchedule} disabled={isSchedulingLoading || (selectedPlatforms.includes('facebook') && !excludedPlatforms.includes('facebook') && !!facebookError) || (selectedPlatforms.includes('threads') && !excludedPlatforms.includes('threads') && !!threadsError) || (selectedPlatforms.includes('instagram') && !excludedPlatforms.includes('instagram') && !!instagramError)} className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer ${isSchedulingLoading ? 'bg-gray-200 text-gray-400 shadow-none' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/20'}`}>
+                  <button id="confirm-schedule-btn" onClick={handleConfirmSchedule} disabled={isSchedulingLoading || (publishMethod === 'later' && ((selectedPlatforms.includes('facebook') && !excludedPlatforms.includes('facebook') && !!facebookError) || (selectedPlatforms.includes('threads') && !excludedPlatforms.includes('threads') && !!threadsError) || (selectedPlatforms.includes('instagram') && !excludedPlatforms.includes('instagram') && !!instagramError)))} className={`py-3.5 px-8 rounded-2xl font-extrabold shadow-lg flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-95 text-xs cursor-pointer ${isSchedulingLoading ? 'bg-gray-200 text-gray-400 shadow-none' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/20'}`}>
                     {isSchedulingLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                    {isSchedulingLoading ? (language === 'vi' ? 'Đang lên lịch...' : 'Scheduling...') : t('aiCreator.confirmSchedule')}
+                    {isSchedulingLoading ? (
+                      language === 'vi' ? 'Đang thực hiện...' : 'Processing...'
+                    ) : (
+                      publishMethod === 'now'
+                        ? (language === 'vi' ? 'Đăng bài ngay' : 'Publish Now')
+                        : t('aiCreator.confirmSchedule')
+                    )}
                   </button>
                 </div>
               </div>

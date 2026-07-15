@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { createNotification } from '@/lib/services/notificationService';
+import { runSchedulerCycle } from '@/lib/scheduler/scheduler';
 
 // GET /api/scheduled-posts - Lấy danh sách bài đăng đã lên lịch
 export async function GET(request: NextRequest) {
@@ -33,19 +34,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Body không phải JSON hợp lệ' }, { status: 400 });
   }
 
-  const { captionId, scheduledAt, imageUrls, mediaUrl } = body;
+  const { captionId, scheduledAt, imageUrls, mediaUrl, publishNow } = body;
 
-  if (!captionId || !scheduledAt) {
+  if (!captionId || (!publishNow && !scheduledAt)) {
     return NextResponse.json({ error: 'Thiếu thông tin captionId hoặc scheduledAt' }, { status: 400 });
   }
 
-  const scheduledTime = new Date(scheduledAt);
-  if (isNaN(scheduledTime.getTime())) {
-    return NextResponse.json({ error: 'Thời gian lên lịch không hợp lệ' }, { status: 400 });
-  }
-
-  if (scheduledTime.getTime() <= Date.now()) {
-    return NextResponse.json({ error: 'Chỉ được phép lên lịch đăng bài cho thời gian trong tương lai' }, { status: 400 });
+  let scheduledTime: Date;
+  if (publishNow) {
+    scheduledTime = new Date();
+  } else {
+    scheduledTime = new Date(scheduledAt);
+    if (isNaN(scheduledTime.getTime())) {
+      return NextResponse.json({ error: 'Thời gian lên lịch không hợp lệ' }, { status: 400 });
+    }
+    if (scheduledTime.getTime() <= Date.now()) {
+      return NextResponse.json({ error: 'Chỉ được phép lên lịch đăng bài cho thời gian trong tương lai' }, { status: 400 });
+    }
   }
 
   // Xác minh caption tồn tại và lấy nền tảng
@@ -155,12 +160,14 @@ export async function POST(request: NextRequest) {
   // Gửi thông báo in-app (Không ảnh hưởng main flow)
   try {
     const articleTitle = (caption as any).articles?.title || 'Bài viết không tên';
-    const timeLabel = new Date(scheduledAt).toLocaleString('vi-VN');
+    const timeLabel = scheduledTime.toLocaleString('vi-VN');
     await createNotification({
       userId: user.id,
       type: 'info',
-      title: 'Đã lên lịch bài đăng',
-      message: `Bài viết "${articleTitle}" đã được lên lịch đăng tải thành công vào lúc ${timeLabel}.`,
+      title: publishNow ? 'Bắt đầu đăng bài viết' : 'Đã lên lịch bài đăng',
+      message: publishNow
+        ? `Bài viết "${articleTitle}" đang được tự động đăng tải ngay lập tức.`
+        : `Bài viết "${articleTitle}" đã được lên lịch đăng tải thành công vào lúc ${timeLabel}.`,
       metadata: {
         post_id: scheduledPost.id,
         scheduled_at: scheduledPost.scheduled_at,
@@ -169,6 +176,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: any) {
     console.error('[POST /api/scheduled-posts] Lỗi khi tạo thông báo in-app:', err.message);
+  }
+
+  // Kích hoạt ngay chu kỳ gửi scheduler ở chế độ bất đồng bộ nếu chọn đăng ngay
+  if (publishNow) {
+    runSchedulerCycle().catch((err) => {
+      console.error('[POST /api/scheduled-posts] Lỗi chạy ngầm scheduler đăng ngay:', err.message);
+    });
   }
 
   return NextResponse.json({ data: scheduledPost }, { status: responseStatus });
