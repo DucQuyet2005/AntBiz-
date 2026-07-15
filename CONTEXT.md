@@ -56,6 +56,6 @@ Audit Reporting owns filtering, ordering, pagination, and display-oriented actor
 
 ## Account Security
 
-Account Security owns authenticated workflows that protect a user's credentials and sessions. A Password Change verifies the current credential before replacing it with a policy-compliant new credential, then attempts to revoke existing sessions and notify the account owner.
+Account Security owns workflows that protect a user's credentials and sessions. A Password Change verifies the current credential before replacing it with a policy-compliant new credential, then attempts to revoke existing sessions and notify the account owner. Password Recovery exchanges a one-time Recovery Token for a Recovery Session that can set a new password.
 
-Passwords are transient secrets and never become application data, log content, Notification metadata, or email content. Password recovery, MFA, and user-visible session management are separate Account Security workflows.
+Passwords and Recovery Tokens are transient secrets and never become application data, log content, Notification metadata, or audit values. Supabase Auth owns password storage, Recovery Token generation, expiry, verification, and Recovery Session creation. MFA and user-visible session management remain separate Account Security workflows.
