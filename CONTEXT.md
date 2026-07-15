@@ -101,3 +101,9 @@ Saved configuration is live immediately under the current product behavior. Publ
 Gemini Capacity owns the shared pool of Gemini credentials and model tiers used by rotation-enabled AI workflows. It selects a model from workload complexity, claims an eligible Capacity Key, respects rate-limit cooldowns, classifies provider failures, records key health, and uses the configured environment credential as a final availability fallback.
 
 A Capacity Key is a server-side secret. Administrators may add, inspect a masked projection of, activate, disable, and delete Capacity Keys, but callers and browsers never receive their raw values. Keys marked Invalid require explicit administrator reactivation. Document Parsing and Prompt Configuration Assistance retain their separately designed single-key policies and are not consumers of Gemini Capacity.
+
+## Quick Publishing
+
+Quick Publishing coordinates the existing marketer workflow from source material and selected social channels through Preset-backed Caption Generation, Caption editing, draft persistence, and Scheduled Publishing. It presents those capabilities independently from the number and layout of steps used by the current or future interface.
+
+Quick Publishing does not own article extraction, Preset lifecycle, Caption Generation, Caption Management, social-account connections, or Scheduled Publishing rules. Those domains remain behind their existing interfaces. Quick Publishing owns the client-side ordering, concurrent generation sessions, streamed result projection, per-platform draft association, and handoff between those capabilities.
