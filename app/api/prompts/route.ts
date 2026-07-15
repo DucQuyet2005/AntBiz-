@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createPromptSchema, promptListQuerySchema } from '@/backend/modules/prompts/prompt-schemas';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { formatZodError } from '@/lib/api/zod-error';
-import { createPromptSchema, promptListQuerySchema } from '@/lib/validations/prompt';
-import { createNotification } from '@/lib/services/notificationService';
+import { buildPromptModule, promptActor, promptErrorResponse } from './_adapter';
 
-// GET /api/prompts?platform=facebook&tag=ban-hang&search=tet&page=1&pageSize=20
-// Theo SPEC.md: tìm theo tên, lọc theo Nền tảng và Thẻ phân loại
+const PROMPT_ROLES = ['admin', 'marketer_full', 'marketer_content'] as const;
+
 export async function GET(request: NextRequest) {
-  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole([...PROMPT_ROLES]);
   if (unauthorized) return unauthorized;
 
   const searchParams = request.nextUrl.searchParams;
@@ -26,47 +26,23 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { platform, tags, search, page, pageSize } = parsed.data;
-
-  let query = supabase
-    .from('prompts')
-    .select('*', { count: 'exact' })
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false });
-
-  if (role !== 'admin' && user) {
-    query = query.eq('created_by', user.id);
+  try {
+    const result = await buildPromptModule(supabase).list(promptActor(user.id, role), parsed.data);
+    return NextResponse.json({
+      data: result.data,
+      pagination: {
+        page: parsed.data.page,
+        pageSize: parsed.data.pageSize,
+        total: result.total,
+      },
+    });
+  } catch (error) {
+    return promptErrorResponse(error, '[GET /api/prompts] error:');
   }
-
-  if (platform) query = query.eq('platform', platform);
-  if (tags) {
-    const tagList = tags.split(',').map((t) => t.trim()).filter(Boolean);
-    if (tagList.length > 0) {
-      query = query.contains('tags', tagList);
-    }
-  }
-  if (search) query = query.ilike('name', `%${search}%`);
-
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    console.error('[GET /api/prompts] supabase error:', error);
-    return NextResponse.json({ error: 'Không thể tải danh sách prompt' }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    data,
-    pagination: { page, pageSize, total: count ?? 0 },
-  });
 }
 
-// POST /api/prompts — tạo Prompt mới, owner = user đang đăng nhập
 export async function POST(request: NextRequest) {
-  const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole([...PROMPT_ROLES]);
   if (unauthorized) return unauthorized;
 
   let body: unknown;
@@ -85,41 +61,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Nếu đánh dấu là mặc định, reset các prompt khác cùng platform về false
-  if (parsed.data.is_default === true) {
-    await supabase
-      .from('prompts')
-      .update({ is_default: false })
-      .eq('created_by', user.id)
-      .eq('platform', parsed.data.platform)
-      .eq('is_deleted', false);
-  }
-
-  const { data, error } = await supabase
-    .from('prompts')
-    .insert({ ...parsed.data, created_by: user.id })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[POST /api/prompts] supabase error:', error);
-    return NextResponse.json({ error: 'Không thể tạo prompt' }, { status: 500 });
-  }
-
-  // Gửi thông báo in-app
   try {
-    await createNotification({
-      userId: user.id,
-      type: 'info',
-      title: 'Thêm Prompt thành công',
-      message: `Prompt "${data.name}" đã được tạo thành công cho nền tảng ${data.platform}.`,
-      metadata: {
-        prompt_id: data.id,
-      }
-    });
-  } catch (err: any) {
-    console.error('[POST /api/prompts] Lỗi khi tạo thông báo thêm prompt:', err.message);
+    const data = await buildPromptModule(supabase).create(promptActor(user.id, role), parsed.data);
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    return promptErrorResponse(error, '[POST /api/prompts] error:');
   }
-
-  return NextResponse.json({ data }, { status: 201 });
 }
