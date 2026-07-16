@@ -142,6 +142,24 @@ async function transcribeAudioViaServer(base64Data, fileName, fileType, token, r
   }
 }
 
+// Hàm đăng nhập trực tiếp từ Extension
+async function loginDirectViaServer(email, password) {
+  const response = await fetch('http://localhost:3000/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!response.ok) {
+    const errJson = await response.json().catch(() => ({}));
+    throw new Error(errJson.error || `Đăng nhập thất bại: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 // Hàm gửi tệp tài liệu PDF/Word để trích xuất văn bản
 async function parseDocumentViaServer(base64Data, fileName, fileType, token, requestId) {
   const controller = new AbortController();
@@ -255,6 +273,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'generate_content') {
     generateAiContentViaServer(message.title, message.content, message.platform, message.token, message.requestId)
       .then(data => sendResponse({ success: true, data }))
+      .catch(error => sendResponse({ success: false, error: error.message || error }));
+    return true;
+  }
+
+  if (message.action === 'login_direct') {
+    loginDirectViaServer(message.email, message.password)
+      .then(data => sendResponse({ success: true, session: data.session }))
       .catch(error => sendResponse({ success: false, error: error.message || error }));
     return true;
   }

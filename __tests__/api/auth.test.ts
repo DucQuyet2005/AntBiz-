@@ -5,13 +5,20 @@ import {
   PasswordRecoveryGatewayError,
 } from '@/backend/modules/account-security/password-recovery-errors';
 
-const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
-  createClient: vi.fn(() => ({ kind: 'session' })),
-  recoveryModule: {
-    requestRecovery: vi.fn(), confirmRecovery: vi.fn(), resetPassword: vi.fn(),
-  },
-}));
+const mocks = vi.hoisted(() => {
+  const signInMock = vi.fn();
+  return {
+    requireUser: vi.fn(),
+    createClient: vi.fn(() => ({
+      auth: {
+        signInWithPassword: signInMock,
+      }
+    })),
+    recoveryModule: {
+      requestRecovery: vi.fn(), confirmRecovery: vi.fn(), resetPassword: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@/lib/api/auth', () => ({ requireUser: mocks.requireUser }));
 vi.mock('@/utils/supabase/server', () => ({ createClient: mocks.createClient }));
@@ -22,6 +29,7 @@ vi.mock('@/backend/modules/account-security/password-recovery-factory', () => ({
 import { POST as forgotPassword } from '@/app/api/auth/forgot-password/route';
 import { GET as confirmAuth } from '@/app/api/auth/confirm/route';
 import { POST as resetPassword } from '@/app/api/auth/reset-password/route';
+import { POST as loginDirect } from '@/app/api/auth/login/route';
 
 describe('Password Recovery route contracts', () => {
   beforeEach(() => {
@@ -34,6 +42,13 @@ describe('Password Recovery route contracts', () => {
     mocks.recoveryModule.requestRecovery.mockResolvedValue(undefined);
     mocks.recoveryModule.confirmRecovery.mockResolvedValue(true);
     mocks.recoveryModule.resetPassword.mockResolvedValue(undefined);
+    
+    // Set default mock cho direct login
+    const client = mocks.createClient();
+    vi.mocked(client.auth.signInWithPassword).mockResolvedValue({
+      data: { session: { access_token: 'token123', user: { id: 'u1' } } } as any,
+      error: null,
+    });
   });
 
   describe('POST /api/auth/forgot-password', () => {
@@ -130,6 +145,46 @@ describe('Password Recovery route contracts', () => {
         'Không thể đặt lại mật khẩu. Vui lòng thử lại sau.'
       );
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('POST /api/auth/login', () => {
+    it('returns 400 when email or password is missing', async () => {
+      const response1 = await loginDirect(post('/api/auth/login', JSON.stringify({ email: '' })));
+      expect(response1.status).toBe(400);
+
+      const response2 = await loginDirect(post('/api/auth/login', JSON.stringify({ email: 'test@example.com', password: '' })));
+      expect(response2.status).toBe(400);
+    });
+
+    it('returns 401 when Supabase returns credentials error', async () => {
+      const client = mocks.createClient();
+      vi.mocked(client.auth.signInWithPassword).mockResolvedValue({
+        data: { session: null } as any,
+        error: { message: 'Invalid credentials' } as any,
+      });
+
+      const response = await loginDirect(post(
+        '/api/auth/login', JSON.stringify({ email: 'test@example.com', password: 'wrong' })
+      ));
+      expect(response.status).toBe(401);
+      expect((await response.json()).error).toBe('Invalid credentials');
+    });
+
+    it('returns 200 and session data on success', async () => {
+      const client = mocks.createClient();
+      vi.mocked(client.auth.signInWithPassword).mockResolvedValue({
+        data: { session: { access_token: 'success-token' } } as any,
+        error: null,
+      });
+
+      const response = await loginDirect(post(
+        '/api/auth/login', JSON.stringify({ email: 'user@example.com', password: 'correct' })
+      ));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.session.access_token).toBe('success-token');
     });
   });
 });

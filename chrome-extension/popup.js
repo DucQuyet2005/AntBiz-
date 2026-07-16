@@ -21,6 +21,10 @@ const btnVoiceCancel = document.getElementById('btn-voice-cancel');
 const btnVoiceConfirm = document.getElementById('btn-voice-confirm');
 const textareaManualContent = document.getElementById('textarea-manual-content');
 const btnManualWrite = document.getElementById('btn-manual-write');
+const inputLoginEmail = document.getElementById('input-login-email');
+const inputLoginPassword = document.getElementById('input-login-password');
+const btnLoginSubmit = document.getElementById('btn-login-submit');
+const loginErrorMessage = document.getElementById('login-error-message');
 
 const userProfile = document.getElementById('user-profile');
 const userNameEl = document.getElementById('user-name');
@@ -297,6 +301,58 @@ function initEventListeners() {
       el.addEventListener('change', saveCurrentState);
     }
   });
+
+  // Đăng nhập trực tiếp từ Extension
+  if (btnLoginSubmit) {
+    btnLoginSubmit.addEventListener('click', () => {
+      const email = inputLoginEmail.value.trim();
+      const password = inputLoginPassword.value.trim();
+
+      if (!email || !password) {
+        if (loginErrorMessage) {
+          loginErrorMessage.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.';
+          loginErrorMessage.style.display = 'block';
+        }
+        return;
+      }
+
+      if (loginErrorMessage) {
+        loginErrorMessage.style.display = 'none';
+      }
+
+      btnLoginSubmit.disabled = true;
+      btnLoginSubmit.textContent = 'Đang đăng nhập...';
+
+      chrome.runtime.sendMessage({ action: 'login_direct', email, password }, (response) => {
+        btnLoginSubmit.disabled = false;
+        btnLoginSubmit.textContent = 'Đăng nhập';
+
+        if (chrome.runtime.lastError) {
+          if (loginErrorMessage) {
+            loginErrorMessage.textContent = 'Lỗi kết nối đến máy chủ xác thực.';
+            loginErrorMessage.style.display = 'block';
+          }
+          return;
+        }
+
+        if (response && response.success) {
+          authToken = response.session.access_token;
+          
+          // Reset form
+          inputLoginEmail.value = '';
+          inputLoginPassword.value = '';
+          
+          // Khởi chạy lại kiểm tra session để load dữ liệu
+          checkAuthAndInitialize();
+        } else {
+          if (loginErrorMessage) {
+            loginErrorMessage.textContent = response?.error || 'Tài khoản hoặc mật khẩu không đúng.';
+            loginErrorMessage.style.display = 'block';
+          }
+        }
+      });
+    });
+  }
 
   btnLogin.addEventListener('click', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
