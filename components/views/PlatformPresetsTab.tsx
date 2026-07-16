@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { createClient } from '@/utils/supabase/client';
 import { Plus, Pencil, Trash2, X, Loader2, Save, FileText, CheckCircle2 } from 'lucide-react';
 import { getDefaultTemplateForPlatform } from '@/lib/utils/presetParser';
+
+interface PlatformPreset {
+  id: string;
+  user_id?: string | null;
+  platform: 'facebook' | 'instagram' | 'thread';
+  name: string;
+  rules: string;
+  is_default: boolean;
+}
 
 const platforms = [
   { id: 'facebook', label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'thread', label: 'Threads' }
-];
+] as const;
 
 export default function PlatformPresetsTab() {
-  const { t, language } = useLanguage();
-  const [activePlatform, setActivePlatform] = useState('facebook');
-  const [presets, setPresets] = useState<any[]>([]);
+  const { language } = useLanguage();
+  const [activePlatform, setActivePlatform] = useState<'facebook' | 'instagram' | 'thread'>('facebook');
+  const [presets, setPresets] = useState<PlatformPreset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<PlatformPreset | null>(null);
   
   // Form states
   const [name, setName] = useState('');
@@ -24,13 +32,18 @@ export default function PlatformPresetsTab() {
   const [isDefault, setIsDefault] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchPresets = async (platform: string) => {
+  const fetchPresets = async (platform: 'facebook' | 'instagram' | 'thread') => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/platform-presets?platform=${platform}`);
+      const res = await fetch(`/api/platform-presets?platform=${platform}`, {
+        credentials: 'same-origin',
+      });
       if (res.ok) {
         const json = await res.json();
         setPresets(json.data || []);
+      } else {
+        const errorJson = await res.json().catch(() => null);
+        console.error('[PlatformPresetsTab] fetch presets error', res.status, errorJson);
       }
     } catch (err) {
       console.error('Failed to fetch presets:', err);
@@ -40,10 +53,12 @@ export default function PlatformPresetsTab() {
   };
 
   useEffect(() => {
-    fetchPresets(activePlatform);
+    void (async () => {
+      await fetchPresets(activePlatform);
+    })();
   }, [activePlatform]);
 
-  const handleOpenEdit = (preset?: any) => {
+  const handleOpenEdit = (preset?: PlatformPreset) => {
     if (preset) {
       if (!preset.user_id) {
         alert(language === 'vi' ? 'Không thể chỉnh sửa quy chuẩn gốc của hệ thống.' : 'Cannot edit system preset.');
@@ -85,24 +100,27 @@ export default function PlatformPresetsTab() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to save');
+        const err = await res.json().catch(() => null);
+        console.error('[PlatformPresetsTab] save preset error', res.status, err);
+        throw new Error(err?.error || 'Failed to save');
       }
 
       await fetchPresets(activePlatform);
       handleCloseEdit();
-    } catch (err: any) {
-      alert(err.message || 'Error saving preset');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error saving preset';
+      alert(message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (preset: any) => {
+  const handleDelete = async (preset: PlatformPreset) => {
     if (!preset.user_id) {
       alert(language === 'vi' ? 'Không thể xóa quy chuẩn hệ thống.' : 'Cannot delete system preset.');
       return;
@@ -114,7 +132,8 @@ export default function PlatformPresetsTab() {
 
     try {
       const res = await fetch(`/api/platform-presets/${preset.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'same-origin',
       });
 
       if (!res.ok) {
@@ -122,8 +141,9 @@ export default function PlatformPresetsTab() {
       }
 
       await fetchPresets(activePlatform);
-    } catch (err: any) {
-      alert(err.message || 'Error deleting preset');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error deleting preset';
+      alert(message);
     }
   };
 
