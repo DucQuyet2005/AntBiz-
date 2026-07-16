@@ -70,3 +70,6 @@ next-env.d.ts
 
 # tài liệu của toản
 docs/docstoan/
+ 
+# Superpowers folder
+.superpowers/

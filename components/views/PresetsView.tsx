@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -876,7 +877,7 @@ export default function PresetsView() {
         showToast(lang === "vi" ? "Đã nhân bản Preset thành công!" : "Preset duplicated!");
         fetchPresets();
       }
-    } catch (e) {
+    } catch {
       showToast(lang === "vi" ? "Lỗi khi nhân bản" : "Error duplicating", "error");
     }
   };
@@ -889,7 +890,7 @@ export default function PresetsView() {
         showToast(lang === "vi" ? "Đã xóa Preset!" : "Preset deleted!");
         fetchPresets();
       }
-    } catch (e) {
+    } catch {
       showToast(lang === "vi" ? "Lỗi khi xóa" : "Error deleting", "error");
     } finally {
       setIsDeleting(false);

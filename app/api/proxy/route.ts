@@ -25,17 +25,6 @@ function isAllowedUrl(url: string): boolean {
   }
 }
 
-function getAllowedHostname(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    return ALLOWED_HOSTNAMES.find(
-      (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-    ) ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request: NextRequest) {
   const { unauthorized } = await requireUserWithRole([
     'admin',
@@ -73,7 +62,6 @@ export async function GET(request: NextRequest) {
 
     let html = await res.text();
     const targetOrigin = new URL(targetUrl).origin;
-    const allowedHostname = getAllowedHostname(targetUrl) || ALLOWED_HOSTNAMES[0];
 
     // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
     // Match src="/..." attributes and make them absolute
@@ -136,15 +124,12 @@ export async function GET(request: NextRequest) {
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // ── 4. Strip Next.js client-side hydration scripts ───────────────────────
-    // This is the most robust way to prevent RSC fetch requests and client-side
-    // navigation from leaking to the AntBiz server. We only need the SSR HTML.
-    // Keep /_next/static/css/ stylesheets (needed for rendering), strip JS chunks.
-    html = html.replace(/<script\b[^>]*\bsrc=["'][^"']*\/_next\/[^"']*\.js[^"']*["'][^>]*><\/script>/gi, '');
-    // Strip inline Next.js data scripts
+    // ── 4. Strip only the internal Next.js inline hydration/data scripts ──────
+    // Keep external or CDN-served /_next/ JS bundles so the target site can hydrate.
     html = html.replace(/<script\b[^>]*\bid=["']__NEXT_DATA__["'][^>]*>[\s\S]*?<\/script>/gi, '');
-    // Strip Next.js router self-calls (prevents router.__rsc__ or similar init)
-    html = html.replace(/<script\b[^>]*>(\s*self\.__next[\s\S]*?)<\/script>/gi, '');
+    html = html.replace(/<script\b[^>]*>([\s\S]*?\bself\.__next[\s\S]*?)<\/script>/gi, '');
+    html = html.replace(/<script\b[^>]*\bdata-next-page[^>]*>[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script\b[^>]*\b__NEXT_LOADED_PAGES__\b[^>]*>[\s\S]*?<\/script>/gi, '');
 
     // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
     const forwardedHost = request.headers ? request.headers.get('x-forwarded-host') : null;

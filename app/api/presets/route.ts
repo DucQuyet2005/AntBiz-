@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(data, { status: 201 });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[POST /api/presets] Error parsing body:', err);
     return NextResponse.json({ error: 'Body JSON không hợp lệ' }, { status: 400 });
   }

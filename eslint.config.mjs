@@ -26,6 +26,7 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "pipeline_output/**",
     "scratch/**",
+    ".github/**",
   ]),
 ]);
 

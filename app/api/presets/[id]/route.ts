@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       } catch {}
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (platform !== undefined) updateData.platform = platform;
     if (finalContent !== undefined) updateData.content = finalContent;
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json(data);
-  } catch (err: any) {
+  } catch (err) {
     console.error(`[PUT /api/presets/${id}] Error parsing body:`, err);
     return NextResponse.json({ error: 'Body JSON không hợp lệ' }, { status: 400 });
   }
