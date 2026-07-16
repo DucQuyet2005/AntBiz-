@@ -373,6 +373,7 @@ export default function DashboardLayout({
 
       <main 
         ref={mainRef}
+        id="main-scroll"
         className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}
         style={{ scrollBehavior: 'smooth' }}
       >

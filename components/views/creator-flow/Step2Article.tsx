@@ -142,6 +142,7 @@ export default function Step2Article({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSectionRef = useRef<HTMLDivElement>(null);
 
   // Floating presets drawer states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
@@ -283,7 +284,9 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
       </div>
 
       {/* Floating Style Presets Trigger Button */}
-      <div className="fixed bottom-28 right-6 z-40 select-none">
+      <div 
+        className="fixed right-6 bottom-24 z-40 select-none"
+      >
         <button
           onClick={() => setIsPresetsOpen(true)}
           className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
@@ -317,7 +320,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
           <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
+            <div className="px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
                 <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
@@ -331,7 +334,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
             </div>
 
             {/* Sub-header: Search and System/Personal tabs */}
-            <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 border-b border-gray-150 dark:border-zinc-850 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
+            <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
               {/* Search bar */}
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -373,7 +376,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
 
             {/* Presets List */}
             <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
-              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl divide-y divide-gray-150 dark:divide-zinc-850">
+              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
                 {state.presets
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
@@ -388,8 +391,8 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                       <div
                         key={preset.id}
                         onClick={() => {
-                          dispatch({ type: 'SET_SELECTED_PRESET', payload: preset.id });
-                          setIsPresetsOpen(false);
+                          const newId = isSelected ? null : preset.id;
+                          dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
                         }}
                         className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
                           isSelected
@@ -449,22 +452,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-gray-55 dark:bg-zinc-950 border-t border-gray-150 dark:border-zinc-850 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  dispatch({ type: 'SET_SELECTED_PRESET', payload: null });
-                  setIsPresetsOpen(false);
-                }}
-                className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
-                  state.selectedPresetId === null 
-                    ? 'border-primary bg-primary/5 text-primary' 
-                    : 'border-gray-250 dark:border-zinc-800 text-text hover:bg-gray-100 dark:hover:bg-zinc-850'
-                }`}
-              >
-                Không dùng Preset
-              </button>
-
+            <div className="p-4 bg-gray-55 dark:bg-zinc-950 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setIsPresetsOpen(false)}
@@ -572,7 +560,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
       </div>
 
       {/* File Upload Area */}
-      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 border border-gray-250 dark:border-zinc-800 shadow-md font-sans">
+      <div ref={uploadSectionRef} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 border border-gray-250 dark:border-zinc-800 shadow-md font-sans">
         <h2 className="text-sm font-bold text-text mb-4">Hoặc tải lên tệp tin của bạn</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch min-h-[380px]">

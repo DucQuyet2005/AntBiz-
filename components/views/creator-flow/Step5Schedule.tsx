@@ -238,95 +238,35 @@ export default function Step5Schedule() {
           </div>
 
           <div className="space-y-6">
-            {/* Mode Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Chế độ đăng</label>
-              <div className="grid grid-cols-1 gap-3">
-                {/* Choice 1: Publish Now */}
-                <label 
-                  className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
-                    state.scheduleMode === 'now'
-                      ? 'border-2 border-primary bg-primary/5'
-                      : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900/60'
-                  }`}
-                >
+            <div className="space-y-4">
+              {/* Date Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Ngày đăng</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                   <input 
-                    type="radio" 
-                    name="scheduleMode"
-                    value="now"
-                    checked={state.scheduleMode === 'now'}
-                    onChange={() => dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' })}
-                    className="w-4 h-4 text-primary focus:ring-primary/20 border-gray-300"
+                    type="date"
+                    value={datePart || ''}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
                   />
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-text">Đăng ngay lập tức</span>
-                    <span className="text-[11px] text-text-muted">Nội dung sẽ được xuất bản ngay</span>
-                  </div>
-                  <Zap className="ml-auto w-4.5 h-4.5 text-primary opacity-0 group-has-[:checked]:opacity-100" />
-                </label>
+                </div>
+              </div>
 
-                {/* Choice 2: Schedule Publication */}
-                <label 
-                  className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
-                    state.scheduleMode === 'scheduled'
-                      ? 'border-2 border-primary bg-primary/5'
-                      : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900/60'
-                  }`}
-                >
+              {/* Time Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Giờ đăng</label>
+                <div className="relative">
+                  <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                   <input 
-                    type="radio" 
-                    name="scheduleMode"
-                    value="scheduled"
-                    checked={state.scheduleMode === 'scheduled'}
-                    onChange={() => dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' })}
-                    className="w-4 h-4 text-primary focus:ring-primary/20 border-gray-300"
+                    type="time"
+                    value={timePart || ''}
+                    onChange={(e) => handleTimeChange(e.target.value)}
+                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
                   />
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-text">Lên lịch đăng bài</span>
-                    <span className="text-[11px] text-text-muted">Chọn thời gian cụ thể trong tương lai</span>
-                  </div>
-                  <Calendar className="ml-auto w-4.5 h-4.5 text-primary" />
-                </label>
+                </div>
               </div>
             </div>
-
-            {/* Platform Config settings panel */}
-            {state.scheduleMode === 'now' ? (
-              <div className="bg-gray-55 dark:bg-zinc-950/20 p-4 rounded-xl text-xs text-text-muted flex items-start gap-2">
-                <Info className="w-4.5 h-4.5 text-primary flex-shrink-0 mt-0.5" />
-                <span>{t('creator.step5.publishNowConfirm')}</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Date Input */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Ngày đăng</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                    <input 
-                      type="date"
-                      value={datePart || ''}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
-                    />
-                  </div>
-                </div>
-
-                {/* Time Input */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Giờ đăng</label>
-                  <div className="relative">
-                    <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                    <input 
-                      type="time"
-                      value={timePart || ''}
-                      onChange={(e) => handleTimeChange(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Extra Toggle Panel */}
             <div className="pt-4 border-t border-gray-150 dark:border-zinc-800/80">
@@ -354,13 +294,9 @@ export default function Step5Schedule() {
                   <span className="capitalize">{state.selectedPlatform || 'Facebook'}</span>
                 </div>
                 <div className="text-right">
-                  {state.scheduleMode === 'now' ? (
-                    <span className="text-primary font-black">Xuất bản ngay lập tức</span>
-                  ) : (
-                    <span className="text-text font-black">
-                      {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}
-                    </span>
-                  )}
+                  <span className="text-text font-black">
+                    {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}
+                  </span>
                 </div>
               </div>
             </div>

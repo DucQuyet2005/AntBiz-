@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Send } from 'lucide-react';
 
 interface NavigationFooterProps {
   currentStep: number;
@@ -10,6 +10,7 @@ interface NavigationFooterProps {
   isLoading?: boolean;
   onBack: () => void;
   onContinue: () => void;
+  onPublishNow?: () => void;
 }
 
 export default function NavigationFooter({
@@ -18,6 +19,7 @@ export default function NavigationFooter({
   isLoading = false,
   onBack,
   onContinue,
+  onPublishNow,
 }: NavigationFooterProps) {
   const { t } = useLanguage();
 
@@ -42,7 +44,36 @@ export default function NavigationFooter({
 
       {/* Right Continue/Submit button */}
       <div>
-        {isLastStep ? (
+        {currentStep === 3 ? (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={!isValid || isLoading}
+              onClick={onPublishNow}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold transition-all active:scale-95 duration-150 shadow-md ${
+                isValid && !isLoading
+                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                  : 'bg-gray-300 dark:bg-zinc-800 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              Đăng nhanh
+            </button>
+            <button
+              type="button"
+              disabled={!isValid || isLoading}
+              onClick={onContinue}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold transition-all active:scale-95 duration-150 shadow-md ${
+                isValid && !isLoading
+                  ? 'bg-primary hover:bg-primary-hover shadow-primary/20'
+                  : 'bg-gray-300 dark:bg-zinc-800 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Lên lịch
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        ) : isLastStep ? (
           <button
             type="button"
             disabled={!isValid || isLoading}

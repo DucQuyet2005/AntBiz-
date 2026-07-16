@@ -183,7 +183,7 @@ export default function Step4Editor() {
 
       {/* LEFT COLUMN: CANVAS POST PREVIEW (63% width) */}
       <section 
-        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800 transition-all ${
+        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800 transition-all relative ${
           mobileMode === 'canvas' ? 'flex' : 'hidden md:flex'
         }`}
       >
@@ -469,27 +469,7 @@ export default function Step4Editor() {
 
 
 
-      {/* Floating Style Presets Trigger Button */}
-      <div className="fixed bottom-28 right-6 z-40 select-none">
-        <button
-          onClick={() => setIsPresetsOpen(true)}
-          className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
-          title="Chọn phong cách AI (Style Presets)"
-        >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Bookmark className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6" />
-            <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto text-[10px] font-black tracking-wider transition-all duration-300 whitespace-nowrap uppercase">
-              Presets
-            </span>
-          </div>
-          {/* Badge indicator if a preset is selected */}
-          {state.selectedPresetId !== null && (
-            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-emerald-500 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-white shadow-md z-10">
-              ✓
-            </span>
-          )}
-        </button>
-      </div>
+
 
       {/* Style Presets Modal Portal */}
       {isPresetsOpen && typeof window !== 'undefined' && createPortal(
@@ -504,7 +484,7 @@ export default function Step4Editor() {
           <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
+            <div className="px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
                 <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
@@ -518,7 +498,7 @@ export default function Step4Editor() {
             </div>
 
             {/* Sub-header: Search and System/Personal tabs */}
-            <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 border-b border-gray-150 dark:border-zinc-850 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
+            <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
               {/* Search bar */}
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -560,7 +540,7 @@ export default function Step4Editor() {
 
             {/* Presets List */}
             <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
-              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl divide-y divide-gray-150 dark:divide-zinc-850">
+              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
                 {state.presets
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
@@ -575,8 +555,8 @@ export default function Step4Editor() {
                       <div
                         key={preset.id}
                         onClick={() => {
-                          dispatch({ type: 'SET_SELECTED_PRESET', payload: preset.id });
-                          setIsPresetsOpen(false);
+                          const newId = isSelected ? null : preset.id;
+                          dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
                           regeneratePostContent(); // Regenerate AI content mid-way
                         }}
                         className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
@@ -637,23 +617,7 @@ export default function Step4Editor() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-gray-55 dark:bg-zinc-950 border-t border-gray-150 dark:border-zinc-850 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  dispatch({ type: 'SET_SELECTED_PRESET', payload: null });
-                  setIsPresetsOpen(false);
-                  regeneratePostContent(); // Regenerate AI content mid-way without preset
-                }}
-                className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
-                  state.selectedPresetId === null 
-                    ? 'border-primary bg-primary/5 text-primary' 
-                    : 'border-gray-250 dark:border-zinc-800 text-text hover:bg-gray-100 dark:hover:bg-zinc-850'
-                }`}
-              >
-                Không dùng Preset
-              </button>
-
+            <div className="p-4 bg-gray-55 dark:bg-zinc-950 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setIsPresetsOpen(false)}
@@ -667,6 +631,30 @@ export default function Step4Editor() {
         </div>,
         document.body
       )}
+
+      {/* Floating Style Presets Trigger Button */}
+      <div 
+        className="fixed right-6 bottom-24 z-40 select-none"
+      >
+        <button
+          onClick={() => setIsPresetsOpen(true)}
+          className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
+          title="Chọn phong cách AI (Style Presets)"
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Bookmark className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6" />
+            <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto text-[10px] font-black tracking-wider transition-all duration-300 whitespace-nowrap uppercase">
+              Presets
+            </span>
+          </div>
+          {/* Badge indicator if a preset is selected */}
+          {state.selectedPresetId !== null && (
+            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-emerald-500 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-white shadow-md z-10">
+              ✓
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
