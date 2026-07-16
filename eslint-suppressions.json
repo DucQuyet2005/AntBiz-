@@ -573,17 +573,6 @@
       "count": 3
     }
   },
-  "components/views/PlatformPresetsTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 6
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/views/ProfileView.tsx": {
     "@next/next/no-img-element": {
       "count": 2

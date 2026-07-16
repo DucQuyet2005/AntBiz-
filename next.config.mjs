@@ -49,3 +49,5 @@ const nextConfig = {
 };
 
 export default nextConfig;
+// Force dev server config reload after middleware removal
+
