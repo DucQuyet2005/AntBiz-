@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: {
+    appIsrStatus: false,
+  },
   // ─── VPS Production Hardening ─────────────────────────────────────────────
 
   // Tắt X-Powered-By header để tránh lộ stack

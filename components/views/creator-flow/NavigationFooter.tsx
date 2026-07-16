@@ -22,7 +22,7 @@ export default function NavigationFooter({
   const { t } = useLanguage();
 
   const isFirstStep = currentStep === 1;
-  const isLastStep = currentStep === 5;
+  const isLastStep = currentStep === 4;
 
   return (
     <footer className="mt-8 border-t border-gray-200 dark:border-zinc-800/80 py-6 flex items-center justify-between w-full bg-transparent">

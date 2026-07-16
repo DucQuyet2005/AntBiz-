@@ -62,6 +62,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
       { href: "/admin/audit-logs", label: t("admin.auditLogs"), icon: History },
       { href: "/admin/landing-editor", label: t("sidebar.landingEditor"), icon: Globe },
       { href: "/admin/gemini-keys", label: t("admin.geminiKeys"), icon: Key },
+      { href: "/admin/platform-presets", label: language === 'vi' ? 'Quy chuẩn nền tảng' : 'Platform Presets', icon: FileText },
     ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },

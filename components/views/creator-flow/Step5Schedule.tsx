@@ -22,21 +22,28 @@ export default function Step5Schedule() {
   // Local state for week pagination
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
 
+  const today = new Date();
+  const currentDayOfWeek = today.getDay(); // 0 is Sun, 1 is Mon...
+  // Align Monday to index 0, Sunday to index 6
+  const mondayOffset = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+  const weekShift = activeWeekTab === 'w1' ? 0 : activeWeekTab === 'w2' ? 7 : 14;
 
+  const days = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + mondayOffset + weekShift + idx);
+    const dayLabels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const isToday = d.toDateString() === today.toDateString();
+    return {
+      label: dayLabels[d.getDay()],
+      date: d.getDate().toString(),
+      index: idx,
+      isToday,
+      fullDateStr: d.toISOString().split('T')[0]
+    };
+  });
 
-  // Days mapping for header. MOCK: Thursday is dayIndex 3 (active day)
-  const days = [
-    { label: 'MON', date: '13', index: 0 },
-    { label: 'TUE', date: '14', index: 1 },
-    { label: 'WED', date: '15', index: 2 },
-    { label: 'THU', date: '16', index: 3, isToday: true },
-    { label: 'FRI', date: '17', index: 4 },
-    { label: 'SAT', date: '18', index: 5 },
-    { label: 'SUN', date: '19', index: 6 },
-  ];
-
-  // Hours mapping for vertical list: 0:00 to 23:00
-  const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+  // Hours mapping for vertical list: 7:00 to 22:00
+  const hours = Array.from({ length: 16 }, (_, i) => `${i + 7}:00`);
 
   // Parse state scheduled date and time to separate inputs
   const [datePart, timePart] = state.scheduledDateTime.split('T');
@@ -63,21 +70,11 @@ export default function Step5Schedule() {
 
   // Helper when user clicks on an empty slot in the timeline grid
   const handleCellClick = (dayIndex: number, hourStr: string) => {
-    // Map dayIndex to corresponding date of this mock week
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
-    // Build tomorrow or specific date offset. Let's make it resolve to a real date string
-    const today = new Date();
-    const currentDayOfWeek = today.getDay(); // 0 for Sun, 1 for Mon ...
-    const offset = (dayIndex + 1) - currentDayOfWeek; // alignment
-    
-    const targetDate = new Date();
-    targetDate.setDate(today.getDate() + offset);
-    const dateStr = targetDate.toISOString().split('T')[0];
-
-    const hourPad = hourStr.padStart(5, '0'); // ensure e.g. "09:00"
-    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${hourPad}` });
+    const hourPad = hourStr.split(':')[0].padStart(2, '0') + ':00';
+    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${hourPad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   };
 
@@ -89,9 +86,9 @@ export default function Step5Schedule() {
   };
 
   const getChipColorClass = (platform: string) => {
-    if (platform === 'facebook') return 'bg-[#E8F0FE] dark:bg-[#1877F2]/10 border border-[#1877F2] text-[#1877F2]';
-    if (platform === 'instagram') return 'bg-[#FDF0F5] dark:bg-[#E1306C]/10 border border-[#E1306C] text-[#E1306C]';
-    return 'bg-gray-50 dark:bg-zinc-800 border border-black dark:border-white text-black dark:text-white';
+    if (platform === 'facebook') return 'bg-[#E8F0FE] hover:bg-[#D2E3FC] text-[#1877F2] border border-[#ADC1FA] dark:bg-[#1877F2]/10 dark:text-[#1877F2] dark:border-[#1877F2]/20';
+    if (platform === 'instagram') return 'bg-[#FDF0F5] hover:bg-[#FCE1EC] text-[#E1306C] border border-[#F7B6D2] dark:bg-[#E1306C]/10 dark:text-[#E1306C] dark:border-[#E1306C]/20';
+    return 'bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700';
   };
 
   return (
@@ -104,130 +101,125 @@ export default function Step5Schedule() {
           
           {/* Timeline header controls */}
           <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
-            <h2 className="text-sm font-bold text-[#F95A19] tracking-wider flex items-center gap-2 select-none">
-              <Calendar className="w-5 h-5 text-[#F95A19]" />
+            <h2 className="text-sm font-bold text-primary tracking-wider flex items-center gap-2 select-none">
+              <Calendar className="w-5 h-5 text-primary" />
               <span className="uppercase">TIMELINE TUẦN</span>
             </h2>
-            <div className="bg-[#F4F5F9] dark:bg-zinc-950 p-1 rounded-2xl flex gap-1 select-none">
-              {(['w1', 'w2', 'w3'] as const).map((w) => (
-                <button
-                  key={w}
-                  onClick={() => setActiveWeekTab(w)}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    activeWeekTab === w
-                      ? 'bg-white dark:bg-zinc-900 text-[#F95A19] shadow-sm'
-                      : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  {w === 'w1' ? 'Tuần 1' : w === 'w2' ? 'Tuần 2' : 'Tuần 3'}
-                </button>
-              ))}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="bg-[#F4F5F9] dark:bg-zinc-950 p-1 rounded-2xl flex gap-1 select-none">
+                {(['w1', 'w2', 'w3'] as const).map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => setActiveWeekTab(w)}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      activeWeekTab === w
+                        ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm'
+                        : 'text-text-muted hover:text-text'
+                    }`}
+                  >
+                    {w === 'w1' ? 'Tuần 1' : w === 'w2' ? 'Tuần 2' : 'Tuần 3'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Calendar Grid wrapper */}
-          <div className="border border-gray-150 dark:border-zinc-800/80 rounded-2xl overflow-hidden bg-card">
+          <div className="border border-slate-100 dark:border-zinc-800/80 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-inner">
             
             {/* Days Header Row */}
-            <div className="grid grid-cols-8 border-b border-gray-150 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center select-none">
-              <div className="p-3 text-[10px] font-bold text-text-muted border-r border-gray-150 dark:border-zinc-800 flex items-center justify-center">
+            <div 
+              style={{ scrollbarGutter: 'stable' }}
+              className="grid grid-cols-8 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50 text-center select-none"
+            >
+              <div className="p-3.5 text-[10px] font-bold text-text-muted border-r border-slate-100 dark:border-zinc-800 flex items-center justify-center">
                 Giờ
               </div>
               {days.map((day) => {
-                const isHighlighted = day.index === 4; // Highlight Friday 17 as in the screenshot
+                const isHighlighted = day.index === currentPostDayIndex;
                 return (
                   <div 
                     key={day.index} 
-                    className={`p-3 border-r border-gray-150 dark:border-zinc-800 last:border-r-0 ${
-                      isHighlighted ? 'bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19]' : 'text-text'
+                    className={`p-3.5 border-r border-slate-100 dark:border-zinc-800 last:border-r-0 transition-all ${
+                      isHighlighted ? 'bg-primary/5 text-primary border-b-2 border-b-primary' : 'text-text'
                     }`}
                   >
-                    <div className={`text-[10px] font-bold ${isHighlighted ? 'text-[#F95A19]' : 'text-text-muted'}`}>{day.label}</div>
-                    <div className={`text-base font-extrabold mt-0.5 ${isHighlighted ? 'text-[#F95A19]' : 'text-text'}`}>{day.date}</div>
+                    <div className={`text-[9px] font-bold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
+                    <div className={`text-sm font-black mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
                   </div>
                 );
               })}
             </div>
 
             {/* Scrollable hourly rows */}
-            <div className="h-[480px] overflow-y-auto bg-card relative no-scrollbar">
-              
-              {/* Background grid lines */}
-              <div className="absolute inset-0 pointer-events-none z-0">
-                <div className="grid grid-cols-8 h-full">
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full bg-[#FFF5F1]/30 dark:bg-[#F95A19]/5"></div>
-                  <div className="border-r border-gray-100 dark:border-zinc-800/60 h-full"></div>
-                  <div className="h-full"></div>
-                </div>
-              </div>
-
+            <div 
+              style={{ scrollbarGutter: 'stable' }}
+              className="h-[350px] overflow-y-auto bg-white dark:bg-zinc-900 relative scrollbar-thin scrollbar-thumb-gray-250 dark:scrollbar-thumb-zinc-800"
+            >
               {/* Rows */}
-              <div className="relative z-10 select-none">
+              <div className="relative select-none">
                 {hours.map((hour) => {
                   const hourVal = parseInt(hour);
                   return (
-                    <div key={hour} className="flex border-b border-gray-150/20 dark:border-zinc-850/20 h-14 group">
+                    <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 h-14 group">
                       {/* Hour column */}
-                      <div className="w-[12.5%] flex-shrink-0 flex items-start justify-center pt-2 text-[10px] font-bold text-text-muted border-r border-gray-150/30 dark:border-zinc-850/30 bg-gray-50/20">
+                      <div className="flex items-start justify-center pt-2 font-mono text-[9px] font-bold text-text-muted/80 border-r border-slate-100/50 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/10">
                         {hour}
                       </div>
                       
-                      {/* Days grid cell slots */}
-                      <div className="flex-1 grid grid-cols-7">
-                        {Array.from({ length: 7 }).map((_, dayIdx) => {
-                          // Check if there's any scheduled posts in this slot
-                          const cellPosts = state.timelinePosts.filter(
-                            (p) => p.dayIndex === dayIdx && parseInt(p.time.split(':')[0]) === hourVal
-                          );
+                      {/* Days grid cell slots (7 sibling cells to Hour column) */}
+                      {Array.from({ length: 7 }).map((_, dayIdx) => {
+                        // Check if there's any scheduled posts in this slot
+                        const cellPosts = state.timelinePosts.filter(
+                          (p) => p.dayIndex === dayIdx && parseInt(p.time.split(':')[0]) === hourVal
+                        );
 
-                          // Check if the current post we are scheduling belongs to this cell
-                          const isCurrentPostInCell = 
-                            state.scheduleMode === 'scheduled' &&
-                            currentPostDayIndex === dayIdx && 
-                            currentPostHourVal === hourVal;
+                        // Check if the current post we are scheduling belongs to this cell
+                        const isCurrentPostInCell = 
+                          state.scheduleMode === 'scheduled' &&
+                          currentPostDayIndex === dayIdx && 
+                          currentPostHourVal === hourVal;
 
-                          return (
-                            <div
-                              key={dayIdx}
-                              onClick={() => handleCellClick(dayIdx, hour)}
-                              className="border-r border-gray-150/20 dark:border-zinc-850/20 last:border-r-0 h-full p-1 relative hover:bg-primary/2 dark:hover:bg-primary/2 cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden"
-                            >
-                              {isCurrentPostInCell && (
-                                <div
-                                  className="rounded-lg py-1 px-2 text-[9px] font-extrabold flex items-center gap-1.5 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] animate-pulse shadow-sm"
-                                >
-                                  <div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
-                                    {getPlatformIcon(state.selectedPlatform || 'facebook')}
-                                  </div>
-                                  <span className="truncate">
-                                    Bản thảo ({state.selectedPlatform === 'facebook' ? 'FA' : state.selectedPlatform === 'instagram' ? 'IG' : 'TH'})
-                                  </span>
+                        const isHighlighted = dayIdx === currentPostDayIndex;
+
+                        return (
+                          <div
+                            key={dayIdx}
+                            onClick={() => handleCellClick(dayIdx, hour)}
+                            className={`border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative hover:bg-primary/4 dark:hover:bg-primary/8 transition-colors cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden ${
+                              isHighlighted ? 'bg-primary/[0.01]' : ''
+                            }`}
+                          >
+                            {isCurrentPostInCell && (
+                              <div
+                                className="rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-primary bg-primary/5 dark:bg-primary/10 text-primary animate-pulse shadow-sm"
+                              >
+                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-primary/35">
+                                  {getPlatformIcon(state.selectedPlatform || 'facebook')}
                                 </div>
-                              )}
-                              {cellPosts.map((post) => (
-                                <div
-                                  key={post.id}
-                                  className={`rounded-lg py-1 px-2 text-[9px] font-bold flex items-center gap-1.5 truncate shadow-sm transition-all ${getChipColorClass(
-                                    post.platform
-                                  )}`}
-                                >
-                                  <div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                    {getPlatformIcon(post.platform)}
-                                  </div>
-                                  <span>
-                                    {post.platform === 'facebook' ? 'FA' : post.platform === 'instagram' ? 'IG' : 'TH'} {post.time}
-                                  </span>
+                                <span className="truncate">
+                                  Bản thảo
+                                </span>
+                              </div>
+                            )}
+                            {cellPosts.map((post) => (
+                              <div
+                                key={post.id}
+                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate shadow-sm border transition-all hover:scale-102 hover:shadow-md cursor-pointer ${getChipColorClass(
+                                  post.platform
+                                )}`}
+                              >
+                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                  {getPlatformIcon(post.platform)}
                                 </div>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
+                                <span>
+                                  {post.time}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -237,9 +229,9 @@ export default function Step5Schedule() {
         </div>
 
         {/* RIGHT COLUMN: PUBLISHING CONFIGS (30% width -> 4 cols) */}
-        <div className="lg:col-span-4 bg-card border border-gray-150 dark:border-zinc-800 rounded-3xl p-6 shadow-xl sticky top-28 border-[#F95A19]/20 ring-1 ring-[#F95A19]/5">
+        <div className="lg:col-span-4 bg-card border border-gray-150 dark:border-zinc-800 rounded-3xl p-6 shadow-xl sticky top-28 border-primary/20 ring-1 ring-primary/5">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-[#F95A19] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
               <Settings className="w-4.5 h-4.5 text-white" />
             </div>
             <h3 className="text-base font-bold text-text uppercase tracking-wide">Cài đặt đăng bài</h3>
@@ -254,7 +246,7 @@ export default function Step5Schedule() {
                 <label 
                   className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
                     state.scheduleMode === 'now'
-                      ? 'border-2 border-[#F95A19] bg-[#F95A19]/5'
+                      ? 'border-2 border-primary bg-primary/5'
                       : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900/60'
                   }`}
                 >
@@ -264,20 +256,20 @@ export default function Step5Schedule() {
                     value="now"
                     checked={state.scheduleMode === 'now'}
                     onChange={() => dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' })}
-                    className="w-4 h-4 text-[#F95A19] focus:ring-[#F95A19]/20 border-gray-300"
+                    className="w-4 h-4 text-primary focus:ring-primary/20 border-gray-300"
                   />
                   <div className="flex flex-col">
                     <span className="font-bold text-sm text-text">Đăng ngay lập tức</span>
                     <span className="text-[11px] text-text-muted">Nội dung sẽ được xuất bản ngay</span>
                   </div>
-                  <Zap className="ml-auto w-4.5 h-4.5 text-[#F95A19] opacity-0 group-has-[:checked]:opacity-100" />
+                  <Zap className="ml-auto w-4.5 h-4.5 text-primary opacity-0 group-has-[:checked]:opacity-100" />
                 </label>
 
                 {/* Choice 2: Schedule Publication */}
                 <label 
                   className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
                     state.scheduleMode === 'scheduled'
-                      ? 'border-2 border-[#F95A19] bg-[#F95A19]/5'
+                      ? 'border-2 border-primary bg-primary/5'
                       : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-900/60'
                   }`}
                 >
@@ -287,13 +279,13 @@ export default function Step5Schedule() {
                     value="scheduled"
                     checked={state.scheduleMode === 'scheduled'}
                     onChange={() => dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' })}
-                    className="w-4 h-4 text-[#F95A19] focus:ring-[#F95A19]/20 border-gray-300"
+                    className="w-4 h-4 text-primary focus:ring-primary/20 border-gray-300"
                   />
                   <div className="flex flex-col">
                     <span className="font-bold text-sm text-text">Lên lịch đăng bài</span>
                     <span className="text-[11px] text-text-muted">Chọn thời gian cụ thể trong tương lai</span>
                   </div>
-                  <Calendar className="ml-auto w-4.5 h-4.5 text-[#F95A19]" />
+                  <Calendar className="ml-auto w-4.5 h-4.5 text-primary" />
                 </label>
               </div>
             </div>
@@ -301,7 +293,7 @@ export default function Step5Schedule() {
             {/* Platform Config settings panel */}
             {state.scheduleMode === 'now' ? (
               <div className="bg-gray-55 dark:bg-zinc-950/20 p-4 rounded-xl text-xs text-text-muted flex items-start gap-2">
-                <Info className="w-4.5 h-4.5 text-[#F95A19] flex-shrink-0 mt-0.5" />
+                <Info className="w-4.5 h-4.5 text-primary flex-shrink-0 mt-0.5" />
                 <span>{t('creator.step5.publishNowConfirm')}</span>
               </div>
             ) : (
@@ -315,7 +307,7 @@ export default function Step5Schedule() {
                       type="date"
                       value={datePart || ''}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#F95A19]/20 focus:border-[#F95A19] outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
+                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
                     />
                   </div>
                 </div>
@@ -329,7 +321,7 @@ export default function Step5Schedule() {
                       type="time"
                       value={timePart || ''}
                       onChange={(e) => handleTimeChange(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#F95A19]/20 focus:border-[#F95A19] outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
+                      className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
                     />
                   </div>
                 </div>
@@ -346,7 +338,7 @@ export default function Step5Schedule() {
                     defaultChecked 
                     className="sr-only peer" 
                   />
-                  <div className="w-11 h-6 bg-gray-250 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#F95A19]"></div>
+                  <div className="w-11 h-6 bg-gray-250 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                 </label>
               </div>
             </div>
@@ -354,7 +346,7 @@ export default function Step5Schedule() {
             {/* Compact Publishing Schedule Info Card */}
             <div className="pt-4 border-t border-gray-150 dark:border-zinc-800/80 space-y-2">
               <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Lịch xuất bản của bạn</label>
-              <div className="bg-[#FFF5F1] dark:bg-[#F95A19]/5 border border-[#F95A19]/25 rounded-xl p-3.5 flex items-center justify-between text-xs text-text font-bold">
+              <div className="bg-primary/5 dark:bg-primary/10 border border-primary/25 rounded-xl p-3.5 flex items-center justify-between text-xs text-text font-bold">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm">
                     {getPlatformIcon(state.selectedPlatform || 'facebook')}
@@ -363,7 +355,7 @@ export default function Step5Schedule() {
                 </div>
                 <div className="text-right">
                   {state.scheduleMode === 'now' ? (
-                    <span className="text-[#a04100] font-black">Xuất bản ngay lập tức</span>
+                    <span className="text-primary font-black">Xuất bản ngay lập tức</span>
                   ) : (
                     <span className="text-text font-black">
                       {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}

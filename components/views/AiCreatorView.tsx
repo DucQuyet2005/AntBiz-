@@ -10,7 +10,6 @@ import StepperHeader from './creator-flow/StepperHeader';
 import NavigationFooter from './creator-flow/NavigationFooter';
 import Step1Platform from './creator-flow/Step1Platform';
 import Step2Article from './creator-flow/Step2Article';
-import Step3Presets from './creator-flow/Step3Presets';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -40,16 +39,14 @@ function AiCreatorContent() {
   const isStepValid = (): boolean => {
     switch (state.currentStep) {
       case 1:
-        return state.selectedPlatform !== null;
+        return state.selectedPlatforms.length > 0;
       case 2:
         // Valid if user has chosen a source url or written custom content
         return state.articleUrl.trim().length > 0 || 
                (state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
       case 3:
-        return true; // Presets step is always next-able (skip option)
-      case 4:
         return state.postContent.trim().length > 0;
-      case 5:
+      case 4:
         return true; // Date & Time settings default values are populated
       default:
         return false;
@@ -62,7 +59,7 @@ function AiCreatorContent() {
     } else {
       // Validate intermediate steps
       let valid = true;
-      if (state.currentStep === 1 && !state.selectedPlatform) valid = false;
+      if (state.currentStep === 1 && state.selectedPlatforms.length === 0) valid = false;
       if (state.currentStep === 2 && !state.articleUrl && (!state.manualTitle || !state.manualContent)) valid = false;
       
       if (valid) {
@@ -73,7 +70,7 @@ function AiCreatorContent() {
 
   // Action handlers
   const handleContinue = async () => {
-    if (state.currentStep === 5) {
+    if (state.currentStep === 4) {
       // Submit and publish/schedule
       const success = await confirmPostSchedule();
       if (success) {
@@ -96,8 +93,8 @@ function AiCreatorContent() {
       case 1:
         return (
           <Step1Platform 
-            selectedPlatform={state.selectedPlatform} 
-            onSelect={(plat) => dispatch({ type: 'SET_PLATFORM', payload: plat })} 
+            selectedPlatforms={state.selectedPlatforms} 
+            onSelect={(plats) => dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: plats })} 
           />
         );
       case 2:
@@ -112,7 +109,6 @@ function AiCreatorContent() {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: src });
               dispatch({ type: 'SET_ARTICLE_URL', payload: url });
               dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId, status: 'crawling' } });
-              goToStep(3);
             }}
             submitManual={async (title, content) => {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
@@ -124,12 +120,12 @@ function AiCreatorContent() {
                 dispatch({
                   type: 'SET_ARTICLE_CONTEXT',
                   payload: {
-                    title,
-                    content,
-                    sourceUrl: 'manual',
-                    summary: content.substring(0, 150) + '...',
-                    keywords: ['Bài viết thủ công', 'Nhập tay'],
-                    entities: ['AntBiz AI'],
+                     title,
+                     content,
+                     sourceUrl: 'manual',
+                     summary: content.substring(0, 150) + '...',
+                     keywords: ['Bài viết thủ công', 'Nhập tay'],
+                     entities: ['AntBiz AI'],
                   }
                 });
                 dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
@@ -138,18 +134,8 @@ function AiCreatorContent() {
           />
         );
       case 3:
-        return (
-          <Step3Presets 
-            presets={state.presets}
-            selectedPresetId={state.selectedPresetId}
-            searchQuery={state.searchPresetQuery}
-            onSelect={(id) => dispatch({ type: 'SET_SELECTED_PRESET', payload: id })}
-            onSearch={(q) => dispatch({ type: 'SET_SEARCH_PRESET', payload: q })}
-          />
-        );
-      case 4:
         return <Step4Editor />;
-      case 5:
+      case 4:
         return <Step5Schedule />;
       default:
         return null;
@@ -180,7 +166,7 @@ function AiCreatorContent() {
     })
   };
 
-  const isStep4 = state.currentStep === 4;
+  const isStep4 = state.currentStep === 3;
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden bg-bg">
@@ -218,16 +204,14 @@ function AiCreatorContent() {
         </div>
       </main>
 
-      {/* Double actions footer - Step 4 manages its own internal header transition controls */}
-      {!isStep4 && (
-        <NavigationFooter 
-          currentStep={state.currentStep}
-          isValid={isStepValid()}
-          isLoading={state.isScheduling}
-          onBack={prevStep}
-          onContinue={handleContinue}
-        />
-      )}
+      {/* Double actions footer */}
+      <NavigationFooter 
+        currentStep={state.currentStep}
+        isValid={isStepValid()}
+        isLoading={state.isScheduling}
+        onBack={prevStep}
+        onContinue={handleContinue}
+      />
 
       {/* Floating high-fidelity Toast Alert Banner */}
       <AnimatePresence>
