@@ -7,10 +7,12 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [Unreleased] - 2026-07-16
 
 ### Changed
+- Chuyển quality gate của dự án sang ESLint CLI theo Next.js 16, bổ sung type-check độc lập có sinh route types và baseline có kiểm soát để lỗi legacy không che mất lỗi mới của Sprint 3.
 - Tách luồng Đăng nhanh hiện hữu thành module Quick Publishing dùng chung cho tải Preset, sinh và tạo lại nội dung đa kênh, lưu bản nháp và lên lịch; giữ nguyên giao diện cùng API hiện tại để chuẩn bị triển khai nhóm yêu cầu T-3 theo từng bước mà không nhân đôi logic nghiệp vụ.
 - Tách cơ chế chọn model, xoay vòng Gemini API Key, quản lý sức khỏe key và cấu hình dự phòng thành module Gemini Capacity dùng chung cho các workflow AI hiện hữu; bổ sung claim nguyên tử để phân phối key an toàn hơn khi có nhiều request đồng thời.
 
 ### Fixed
+- Sửa lỗi biến danh mục nằm ngoài phạm vi trong preview bước lên lịch và đồng bộ test Inline Edit với textarea editor hiện tại, giúp type-check cùng toàn bộ test chạy ổn định trước khi chia sẻ nhánh Sprint 3.
 - Sửa lỗi `Illegal invocation` khiến màn hình AI Creator không thể tải danh sách Preset sau khi tách Quick Publishing, bằng cách bảo đảm trình duyệt gọi `fetch` với đúng global receiver.
 - Không còn tự thử lại key đã bị vô hiệu hóa hoặc key vẫn trong thời gian cooldown; lỗi model dừng ngay mà không phạt key, còn lỗi mạng/provider không còn tự động làm key chuyển sang trạng thái `invalid`.
 

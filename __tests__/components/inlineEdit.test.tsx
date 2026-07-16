@@ -92,7 +92,7 @@ describe('EditableText Component Inline Edit Integration Tests', () => {
     expect(lockIndicator.props.children[1]).toContain('Đã lên lịch / Đã đăng - Khóa chỉnh sửa');
   });
 
-  it('renders rich-text toolbar and editing textarea when isEditing is true', () => {
+  it('renders the editing textarea when isEditing is true', () => {
     // Set editState to active
     mockContextValue.editState = { variantId: 'A', field: 'facebook' };
 
@@ -109,16 +109,8 @@ describe('EditableText Component Inline Edit Integration Tests', () => {
 
     const innerWrapper = element.props.children;
     
-    // Header formatting toolbar
-    const toolbar = innerWrapper.props.children[0];
-    expect(toolbar).toBeDefined();
-    expect(toolbar.props.className).toContain('absolute');
-    expect(toolbar.props.className).toContain('border');
-
-
-
     // Textarea input field
-    const textareaField = innerWrapper.props.children[1];
+    const textareaField = innerWrapper.props.children[0];
     expect(textareaField).toBeDefined();
     expect(textareaField.props.value).toBe('Bản nháp facebook');
     expect(textareaField.props.className).toContain('resize-none');
