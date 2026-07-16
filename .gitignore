@@ -67,3 +67,6 @@ next-env.d.ts
 .github/skills/
 .github/hooks/
 next-env.d.ts
+ 
+# Superpowers folder
+.superpowers/

@@ -5,6 +5,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { FontProvider } from "@/contexts/FontContext";
+import QueryProvider from "@/components/QueryProvider";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -68,9 +69,11 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col text-gray-800 bg-[#F4F5F9] font-sans">
         <ThemeProvider>
           <FontProvider>
-            <LanguageProvider defaultLanguage={lang}>
-              {children}
-            </LanguageProvider>
+            <QueryProvider>
+              <LanguageProvider defaultLanguage={lang}>
+                {children}
+              </LanguageProvider>
+            </QueryProvider>
           </FontProvider>
         </ThemeProvider>
       </body>
