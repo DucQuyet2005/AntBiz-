@@ -6,6 +6,7 @@ import type {
   CaptionMutationRecord,
   CaptionRecord,
   CaptionVersionRecord,
+  CaptionTextRegenerator,
 } from '@/backend/modules/caption-management/caption-management-types';
 
 class FakeRepository implements CaptionManagementRepository {
@@ -14,7 +15,9 @@ class FakeRepository implements CaptionManagementRepository {
     edited_content: null, created_by: 'user-1', status: 'draft',
   };
   mutation: CaptionMutationRecord | null = {
-    id: 'caption-1', created_by: 'user-1', ai_content: 'AI', edited_content: null, status: 'draft',
+    id: 'caption-1', article_id: 'article-1', platform: 'facebook', created_by: 'user-1',
+    ai_content: 'AI', edited_content: null, status: 'draft',
+    articles: { id: 'article-1', title: 'Article', full_text: 'Source content' },
   };
   listResult = { data: [] as CaptionRecord[], count: 0 };
   latestCaptionVersion: number | null = null;
@@ -43,6 +46,14 @@ class FakeRepository implements CaptionManagementRepository {
     this.updatedPayload = input;
     return { ...this.caption, ...input } as CaptionRecord;
   }
+  async updateCaptionIfCurrent(
+    _id: string,
+    _expected: { field: 'ai_content' | 'edited_content'; content: string },
+    input: Record<string, unknown>
+  ) {
+    this.updatedPayload = input;
+    return { ...this.caption, ...input } as CaptionRecord;
+  }
   async latestVersionForCaption() {
     if (this.historyReadError) throw this.historyReadError;
     return this.latestCaptionVersion;
@@ -52,6 +63,15 @@ class FakeRepository implements CaptionManagementRepository {
     if (this.versionInsertError) throw this.versionInsertError;
     this.versions.push(input);
     return { id: `version-${this.versions.length}`, ...input } as CaptionVersionRecord;
+  }
+}
+
+class FakeRegenerator implements CaptionTextRegenerator {
+  generatedText = 'Regenerated';
+  lastInput: Parameters<CaptionTextRegenerator['generate']>[0] | null = null;
+  async generate(input: Parameters<CaptionTextRegenerator['generate']>[0]) {
+    this.lastInput = input;
+    return this.generatedText;
   }
 }
 
@@ -164,5 +184,74 @@ describe('CaptionManagementModule', () => {
       article_id: 'article-1', platform: 'instagram', content: 'V3', source: 'human', caption_id: null,
     });
     expect(version).toMatchObject({ version_number: 3, content: 'V3', caption_id: null });
+  });
+
+  it('regenerates the full caption and records an AI version', async () => {
+    const repository = new FakeRepository();
+    const regenerator = new FakeRegenerator();
+    const result = await new CaptionManagementModule(repository, regenerator).regenerate(
+      actor,
+      'caption-1',
+      { mode: 'full', instruction: 'More concise', presetMode: 'none' }
+    );
+
+    expect(regenerator.lastInput).toMatchObject({
+      actorId: 'user-1', platform: 'facebook', currentContent: 'AI', mode: 'full',
+    });
+    expect(repository.updatedPayload).toMatchObject({
+      edited_content: 'Regenerated', status: 'edited',
+    });
+    expect(repository.versions.at(-1)).toMatchObject({ content: 'Regenerated', source: 'ai' });
+    expect(result).toMatchObject({ mode: 'full', generatedText: 'Regenerated' });
+  });
+
+  it('regenerates only the verified UTF-16 selection', async () => {
+    const repository = new FakeRepository();
+    repository.mutation = {
+      ...repository.mutation!, ai_content: 'Hello 😀 world',
+    };
+    const regenerator = new FakeRegenerator();
+    regenerator.generatedText = 'planet';
+    const result = await new CaptionManagementModule(repository, regenerator).regenerate(
+      actor,
+      'caption-1',
+      {
+        mode: 'partial', selectionStart: 9, selectionEnd: 14, selectedText: 'world',
+        instruction: 'Use a synonym', presetMode: 'auto',
+      }
+    );
+
+    expect(repository.updatedPayload).toMatchObject({ edited_content: 'Hello 😀 planet' });
+    expect(result).toMatchObject({
+      mode: 'partial', generatedText: 'planet', replacementRange: { start: 9, end: 14 },
+    });
+  });
+
+  it('rejects stale partial selections before calling AI', async () => {
+    const repository = new FakeRepository();
+    const regenerator = new FakeRegenerator();
+    await expect(new CaptionManagementModule(repository, regenerator).regenerate(
+      actor,
+      'caption-1',
+      {
+        mode: 'partial', selectionStart: 0, selectionEnd: 2, selectedText: 'stale',
+        instruction: 'Rewrite', presetMode: 'auto',
+      }
+    )).rejects.toMatchObject({ code: 'CAPTION_STALE', status: 409 });
+    expect(regenerator.lastInput).toBeNull();
+  });
+
+  it('applies ownership and lock rules to regeneration', async () => {
+    const repository = new FakeRepository();
+    const regenerator = new FakeRegenerator();
+    repository.mutation = { ...repository.mutation!, created_by: 'other' };
+    await expect(new CaptionManagementModule(repository, regenerator).regenerate(
+      actor, 'caption-1', { mode: 'full', presetMode: 'auto' }
+    )).rejects.toMatchObject({ code: 'CAPTION_ACCESS_DENIED', status: 403 });
+
+    repository.mutation = { ...repository.mutation!, created_by: 'user-1', status: 'scheduled' };
+    await expect(new CaptionManagementModule(repository, regenerator).regenerate(
+      actor, 'caption-1', { mode: 'full', presetMode: 'auto' }
+    )).rejects.toMatchObject({ code: 'CAPTION_LOCKED', status: 409 });
   });
 });
