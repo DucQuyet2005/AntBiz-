@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>AntBiz Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="extension-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <span class="logo-icon">⚡</span>
+        <h1 class="logo-text">AntBiz Assistant</h1>
+      </div>
+      <div id="user-profile" class="user-profile hidden">
+        <span id="user-name" class="user-name">...</span>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="main-content">
+      <!-- Loading State -->
+      <div id="state-loading" class="state-container">
+        <div class="loader"></div>
+        <p id="loading-text" class="state-text">Đang kiểm tra kết nối AntBiz...</p>
+      </div>
+
+      <!-- Unauthorized State -->
+      <div id="state-unauth" class="state-container hidden">
+        <div class="error-icon">🔒</div>
+        <h3>Chưa đăng nhập</h3>
+        <p class="state-description">Bạn cần đăng nhập vào hệ thống AntBiz để đồng bộ phiên làm việc.</p>
+        <button id="btn-login" class="btn btn-primary">Đăng nhập AntBiz</button>
+      </div>
+
+      <!-- Home State (Input Selector) -->
+      <div id="state-home" class="state-container hidden">
+        <h3 class="home-title">Chọn phương thức nhập</h3>
+        
+        <div class="input-grid">
+          <button id="btn-input-scrape" class="input-card">
+            <span class="card-icon">🌐</span>
+            <span class="card-title">Cào trang hiện tại</span>
+          </button>
+          
+          <button id="btn-input-select" class="input-card">
+            <span class="card-icon">📝</span>
+            <span class="card-title">Lấy phần bôi đen</span>
+          </button>
+          
+          <button id="btn-input-record" class="input-card">
+            <span class="card-icon">🎙️</span>
+            <span class="card-title">Ghi âm giọng nói</span>
+          </button>
+          
+          <button id="btn-input-upload" class="input-card">
+            <span class="card-icon">📁</span>
+            <span class="card-title">Tải tệp lên</span>
+          </button>
+        </div>
+
+        <!-- Cào url thủ công -->
+        <div class="manual-url-box">
+          <label for="input-manual-url">Hoặc cào URL thủ công:</label>
+          <div class="url-input-group">
+            <input type="text" id="input-manual-url" placeholder="Nhập link bài viết...">
+            <button id="btn-manual-scrape" class="btn btn-primary btn-sm">Cào</button>
+          </div>
+        </div>
+
+        <!-- Nhập tay ý tưởng trực tiếp -->
+        <div class="manual-input-box" style="margin-top: 14px; width: 100%; border-top: 1px solid #e5e7eb; padding-top: 14px; text-align: left;">
+          <label for="textarea-manual-content" style="display: block; font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: 6px;">Hoặc nhập ý tưởng/phác thảo nội dung:</label>
+          <textarea id="textarea-manual-content" rows="4" placeholder="Nhập ý chính, thông tin thô hoặc phác thảo nội dung bài đăng của bạn tại đây..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
+          <button id="btn-manual-write" class="btn btn-primary" style="margin-top: 8px; width: 100%; font-weight: 600;">Tạo bài viết AI</button>
+        </div>
+
+        <!-- Trình ghi âm trực quan (Đã chuyển sang màn hình chuyên dụng mới) -->
+        <div id="record-control-box" class="record-control-box hidden" style="display: none !important;">
+          <div class="record-status">
+            <span class="record-dot"></span>
+            <span id="record-timer">05:00</span>
+          </div>
+          <p class="record-hint">Nói để ghi âm (tối đa 5 phút)</p>
+          <button id="btn-stop-record" class="btn btn-danger">Dừng & Hoàn tất</button>
+        </div>
+
+        <input type="file" id="file-uploader" accept=".mp3,.wav,.m4a,.pdf,.docx" style="display: none;">
+      </div>
+
+      <!-- Error State -->
+      <div id="state-error" class="state-container hidden">
+        <div class="error-icon">⚠️</div>
+        <h3 id="error-title">Đã xảy ra lỗi</h3>
+        <p id="error-description" class="state-description">Chi tiết lỗi...</p>
+        <div class="action-buttons">
+          <button id="btn-error-retry" class="btn btn-primary">Thử lại</button>
+          <button id="btn-error-home" class="btn btn-secondary">Quay lại trang chủ</button>
+        </div>
+      </div>
+
+      <!-- Extraction Form State -->
+      <div id="state-extracted" class="state-container hidden">
+        
+        <!-- BƯỚC 1: Xem & Sửa nội dung bài viết gốc -->
+        <div id="step-article-info" class="wizard-step">
+          <h4 class="step-header">Bước 1: Nội dung bài viết</h4>
+          
+          <div class="form-group">
+            <label for="input-title">Tiêu đề bài viết</label>
+            <input type="text" id="input-title" placeholder="Nhập tiêu đề...">
+          </div>
+
+          <div class="form-group">
+            <label for="input-image">Hình ảnh bài viết (Mỗi liên kết một dòng)</label>
+            <textarea id="input-image" rows="2" placeholder="URL hình ảnh..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="input-desc">Mô tả ngắn (Sapo)</label>
+            <textarea id="input-desc" rows="2" placeholder="Nhập mô tả ngắn..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="input-content">Nội dung bài viết sạch</label>
+            <textarea id="input-content" rows="6" placeholder="Nội dung bài viết..."></textarea>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-cancel-to-home-1" class="btn btn-secondary">Quay lại trang chủ</button>
+            <button id="btn-next-to-social" class="btn btn-primary">Xác nhận</button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 2: Cấu hình Mạng xã hội & Preset -->
+        <div id="step-social-config" class="wizard-step hidden">
+          <h4 class="step-header">Bước 2: Cấu hình đăng bài</h4>
+
+          <div class="form-group">
+            <label for="select-platform">Nền tảng đăng bài</label>
+            <select id="select-platform">
+              <option value="facebook">Facebook Fanpage</option>
+              <option value="thread">Threads Account</option>
+              <option value="instagram">Instagram Account</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="select-preset">Chọn cấu hình bài đăng (Preset)</label>
+            <select id="select-preset">
+              <option value="">-- Mặc định (Preset mới nhất) --</option>
+              <option value="short-summary">Tóm tắt ngắn gọn, thu hút</option>
+              <option value="funny-style">Phong cách hài hước, dí dỏm</option>
+              <option value="deep-analysis">Phân tích sâu sắc, chuyên nghiệp</option>
+              <option value="bullet-points">Dạng gạch đầu dòng liệt kê</option>
+            </select>
+            <span class="field-hint" style="font-size: 10px; color: #6b7280; font-style: italic; margin-top: 2px;">
+              * Tính năng Preset đang được hoàn thiện bởi thành viên khác.
+            </span>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-back-to-article" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-create-post" class="btn btn-primary">Tạo bài viết</button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 3: Xem bài viết tạo ra & Hành động đăng/lên lịch -->
+        <div id="step-post-preview" class="wizard-step hidden">
+          <h4 class="step-header">Bước 3: Xem trước bài đăng</h4>
+
+          <div class="form-group hidden">
+            <label for="input-caption">Nội dung đăng (Caption)</label>
+            <textarea id="input-caption" rows="8" placeholder="Nhập caption đăng bài..."></textarea>
+          </div>
+
+          <!-- Xem trước bài đăng thật kiểu Facebook -->
+          <div class="form-group">
+            <label>Nội dung bài viết (Chỉnh sửa trực tiếp trên Preview)</label>
+            <div id="fb-preview-card" class="fb-preview-card">
+              <div class="fb-preview-header">
+                <img class="fb-preview-avatar" src="icon.svg" alt="Avatar">
+                <div class="fb-preview-user-info">
+                  <span class="fb-preview-page-name">AntBiz Page</span>
+                  <div class="fb-preview-time-row">
+                    <span class="fb-preview-time">Vừa xong</span>
+                    <span class="fb-preview-bullet">·</span>
+                    <span class="fb-preview-globe">🌐</span>
+                  </div>
+                </div>
+              </div>
+              <div id="fb-preview-text" class="fb-preview-text" contenteditable="true" placeholder="Nhập nội dung bài đăng tại đây..."></div>
+              <div id="fb-preview-image-container" class="fb-preview-image-container hidden"></div>
+              <div class="fb-preview-footer">
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">👍</span> Thích
+                </div>
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">💬</span> Bình luận
+                </div>
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">🔄</span> Chia sẻ
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chọn ngày giờ lên lịch -->
+          <div id="schedule-picker-box" class="schedule-picker-box hidden">
+            <label for="input-schedule-time">Chọn Ngày & Giờ đăng bài</label>
+            <input type="datetime-local" id="input-schedule-time">
+            <button id="btn-confirm-schedule" class="btn btn-emerald">Xác nhận lên lịch đăng bài</button>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-publish-now" class="btn btn-primary">Đăng ngay</button>
+          </div>
+          <div class="action-buttons horizontal">
+            <button id="btn-back-to-social" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-schedule-post" class="btn btn-emerald">Lên lịch đăng bài</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div id="state-success" class="state-container hidden">
+        <div class="success-icon">✓</div>
+        <h3>Đã lưu thành công!</h3>
+        <p class="state-description">Bài viết của bạn đã được đẩy về mục Nháp lưu trữ trên AntBiz thành công.</p>
+        <div class="action-buttons">
+          <button id="btn-view-archive" class="btn btn-primary">Xem kho lưu trữ</button>
+          <button id="btn-success-home" class="btn btn-secondary">Tạo bài đăng mới</button>
+        </div>
+      </div>
+
+      <!-- Recording State (Giao diện đang ghi âm chuyên dụng) -->
+      <div id="state-recording" class="state-container hidden">
+        <div class="recording-animation-container">
+          <div class="recording-ring ripple-1"></div>
+          <div class="recording-ring ripple-2"></div>
+          <div class="recording-icon-circle">🎙️</div>
+        </div>
+        <h3 class="recording-title">Đang ghi âm giọng nói...</h3>
+        <div id="record-timer-large" class="record-timer-large">05:00</div>
+        <p class="record-warning-text">Hãy nói rõ ràng, hạn chế tạp âm xung quanh (tối đa 5 phút)</p>
+        <div class="action-buttons horizontal">
+          <button id="btn-cancel-record" class="btn btn-secondary">Hủy bỏ</button>
+          <button id="btn-stop-record-large" class="btn btn-danger">Hoàn tất & Dịch chữ</button>
+        </div>
+      </div>
+
+      <!-- Voice Confirmation State (Giao diện xác nhận văn bản nhận diện được) -->
+      <div id="state-voice-confirm" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+        <h3 class="step-header" style="border-left: 3px solid #10b981; padding-left: 8px;">Kết quả dịch giọng nói</h3>
+        <p class="state-description" style="margin-bottom: 12px;">Dưới đây là văn bản trích xuất từ giọng nói của bạn. Bạn có thể chỉnh sửa lại cho chính xác trước khi tạo bài viết:</p>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+          <textarea id="voice-transcript-text" rows="8" placeholder="Nội dung giọng nói..."></textarea>
+        </div>
+
+        <div class="action-buttons horizontal">
+          <button id="btn-voice-cancel" class="btn btn-secondary">Làm lại</button>
+          <button id="btn-voice-confirm" class="btn btn-primary">Xác nhận & Viết bài</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>© 2026 AntBiz Studio</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
