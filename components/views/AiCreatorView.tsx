@@ -112,6 +112,7 @@ function AiCreatorContent() {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: src });
               dispatch({ type: 'SET_ARTICLE_URL', payload: url });
               dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId, status: 'crawling' } });
+              goToStep(3);
             }}
             submitManual={async (title, content) => {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });

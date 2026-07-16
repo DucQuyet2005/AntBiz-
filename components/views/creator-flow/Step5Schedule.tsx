@@ -41,6 +41,18 @@ export default function Step5Schedule() {
   // Parse state scheduled date and time to separate inputs
   const [datePart, timePart] = state.scheduledDateTime.split('T');
 
+  let currentPostDayIndex: number | null = null;
+  let currentPostHourVal: number | null = null;
+
+  if (datePart) {
+    const selectedDate = new Date(datePart);
+    const dayOfWeek = selectedDate.getDay(); // 0 is Sunday, 1 is Monday...
+    currentPostDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  }
+  if (timePart) {
+    currentPostHourVal = parseInt(timePart.split(':')[0]);
+  }
+
   const handleDateChange = (val: string) => {
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${val}T${timePart || '09:00'}` });
   };
@@ -173,12 +185,30 @@ export default function Step5Schedule() {
                             (p) => p.dayIndex === dayIdx && parseInt(p.time.split(':')[0]) === hourVal
                           );
 
+                          // Check if the current post we are scheduling belongs to this cell
+                          const isCurrentPostInCell = 
+                            state.scheduleMode === 'scheduled' &&
+                            currentPostDayIndex === dayIdx && 
+                            currentPostHourVal === hourVal;
+
                           return (
                             <div
                               key={dayIdx}
                               onClick={() => handleCellClick(dayIdx, hour)}
                               className="border-r border-gray-150/20 dark:border-zinc-850/20 last:border-r-0 h-full p-1 relative hover:bg-primary/2 dark:hover:bg-primary/2 cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden"
                             >
+                              {isCurrentPostInCell && (
+                                <div
+                                  className="rounded-lg py-1 px-2 text-[9px] font-extrabold flex items-center gap-1.5 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] animate-pulse shadow-sm"
+                                >
+                                  <div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
+                                    {getPlatformIcon(state.selectedPlatform || 'facebook')}
+                                  </div>
+                                  <span className="truncate">
+                                    Bản thảo ({state.selectedPlatform === 'facebook' ? 'FA' : state.selectedPlatform === 'instagram' ? 'IG' : 'TH'})
+                                  </span>
+                                </div>
+                              )}
                               {cellPosts.map((post) => (
                                 <div
                                   key={post.id}
@@ -318,6 +348,28 @@ export default function Step5Schedule() {
                   />
                   <div className="w-11 h-6 bg-gray-250 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#F95A19]"></div>
                 </label>
+              </div>
+            </div>
+
+            {/* Compact Publishing Schedule Info Card */}
+            <div className="pt-4 border-t border-gray-150 dark:border-zinc-800/80 space-y-2">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Lịch xuất bản của bạn</label>
+              <div className="bg-[#FFF5F1] dark:bg-[#F95A19]/5 border border-[#F95A19]/25 rounded-xl p-3.5 flex items-center justify-between text-xs text-text font-bold">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm">
+                    {getPlatformIcon(state.selectedPlatform || 'facebook')}
+                  </div>
+                  <span className="capitalize">{state.selectedPlatform || 'Facebook'}</span>
+                </div>
+                <div className="text-right">
+                  {state.scheduleMode === 'now' ? (
+                    <span className="text-[#a04100] font-black">Xuất bản ngay lập tức</span>
+                  ) : (
+                    <span className="text-text font-black">
+                      {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
