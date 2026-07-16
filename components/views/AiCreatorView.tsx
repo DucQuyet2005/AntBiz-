@@ -46,7 +46,10 @@ import {
   Bold,
   Italic,
   Pencil,
-  ChevronDown
+  ChevronDown,
+  Star,
+  AlertTriangle,
+  CalendarPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -57,6 +60,8 @@ import CaptionEditor from '../CaptionEditor';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import DebouncedTextarea from '../DebouncedTextarea';
 import { createClient } from '@/utils/supabase/client';
+import { useDuplicateCheck } from '@/frontend/modules/caption-generation/use-duplicate-check';
+import { STATIC_GOLDEN_HOURS } from '@/frontend/modules/scheduled-publishing/golden-hour';
 import {
   QuickPublishingError,
   useQuickPublishing,
@@ -730,6 +735,8 @@ const parseStyleString = (styleStr: string): React.CSSProperties => {
 export default function AiCreatorView() {
   const { t, language } = useLanguage();
   const router = useRouter();
+  const { duplicateWarning, checkDuplicate, clearDuplicateWarning } = useDuplicateCheck();
+  const [ignoreDuplicateCheckForText, setIgnoreDuplicateCheckForText] = useState<string>('');
   const {
     loadPresets: loadQuickPublishingPresets,
     generate: executeQuickPublishingGeneration,
@@ -831,6 +838,58 @@ export default function AiCreatorView() {
   const [tone, setTone] = useState<string>('Chuyên nghiệp');
   const [length, setLength] = useState<string>('Vừa (200-500 từ)');
   const [emphasis, setEmphasis] = useState<string>('');
+
+  // Drag and drop states
+  const [dragOverTime, setDragOverTime] = useState<{ col: number; hr: number } | null>(null);
+  const [draggedPlatforms, setDraggedPlatforms] = useState<string[]>([]);
+  const [confirmDrop, setConfirmDrop] = useState<{
+    posts: any[];
+    selectedPostIds: string[];
+    targetDate: string;
+    targetHr: number;
+    commit: (ids: string[]) => void;
+    revert: () => void;
+  } | null>(null);
+
+  const handleGridDrop = (e: React.DragEvent, col: number, hr: number, dayDate: string) => {
+    e.preventDefault();
+    setDragOverTime(null);
+    setDraggedPlatforms([]);
+    try {
+      const dataStr = e.dataTransfer.getData('text/plain');
+      if (!dataStr) return;
+      const data = JSON.parse(dataStr);
+      
+      const newHr = hr.toString().padStart(2, '0') + ':00';
+      
+      if (data.isMultiple) {
+        setConfirmDrop({
+          posts: data.posts,
+          selectedPostIds: data.posts.map((p: any) => p.id),
+          targetDate: dayDate,
+          targetHr: hr,
+          commit: (selectedIds: string[]) => {
+            data.posts.forEach((p: any) => {
+              if (selectedIds.includes(p.id) && p.type === 'draft') {
+                if (p.platform === 'facebook') { setFacebookDate(dayDate); setFacebookTime(newHr); }
+                else if (p.platform === 'instagram') { setInstagramDate(dayDate); setInstagramTime(newHr); }
+                else if (p.platform === 'threads' || p.platform === 'thread') { setThreadsDate(dayDate); setThreadsTime(newHr); }
+              }
+            });
+          },
+          revert: () => {}
+        });
+      } else {
+        if (data.type === 'draft') {
+          if (data.platform === 'facebook') { setFacebookDate(dayDate); setFacebookTime(newHr); }
+          else if (data.platform === 'instagram') { setInstagramDate(dayDate); setInstagramTime(newHr); }
+          else if (data.platform === 'threads' || data.platform === 'thread') { setThreadsDate(dayDate); setThreadsTime(newHr); }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Onboarding Tour state for AI Creator
   const [showTour, setShowTour] = useState(false);
@@ -1050,6 +1109,11 @@ export default function AiCreatorView() {
       let currentFullText = postData.full_text;
       let currentTitle = postData.title;
 
+      // 0. Duplicate Check for Manual Input
+      if (currentFullText.trim() && currentFullText !== ignoreDuplicateCheckForText) {
+        const hasDuplicate = await checkDuplicate(currentFullText);
+        if (hasDuplicate) return;
+      }
 
       // 1. STT Auto-transcription if voiceFile is present but full_text is empty
       if (voiceFile && !currentFullText.trim()) {
@@ -6591,7 +6655,7 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                     </div>
 
                     {/* 2D Grid with 24 Hours */}
-                    <div className="flex relative w-full" style={{ height: '960px' }}>
+                    <div className="flex relative w-full" style={{ height: '1440px' }}>
                       {/* Hour Column */}
                       <div className="w-[60px] grid grid-rows-[repeat(24,minmax(0,1fr))] h-full pr-1 border-r border-gray-100 bg-gray-50/30">
                         {Array.from({ length: 24 }).map((_, hr) => (
@@ -6603,12 +6667,160 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
 
                       {/* Board Area */}
                       <div ref={boardRef} className="flex-1 relative h-full bg-white overflow-hidden">
-                        {/* Grid Lines */}
-                        <div className="absolute inset-0 grid grid-cols-7 grid-rows-[repeat(24,minmax(0,1fr))] pointer-events-none">
-                          {Array.from({ length: 7 * 24 }).map((_, idx) => (
-                            <div key={idx} className="border-r border-b border-gray-100/50" />
-                          ))}
+                        {/* Grid Lines & Drop Zones */}
+                        <div className="absolute inset-0 grid grid-cols-7 grid-rows-[repeat(24,minmax(0,1fr))] z-10">
+                          {Array.from({ length: 7 * 24 }).map((_, idx) => {
+                            const col = idx % 7;
+                            const hr = Math.floor(idx / 7);
+                            const dayDate = weekDays[activeWeek * 7 + col].date;
+                            return (
+                              <div 
+                                key={idx} 
+                                className="border-r border-b border-gray-100/50"
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setDragOverTime({ col, hr });
+                                }}
+                                onDragLeave={() => setDragOverTime(null)}
+                                onDrop={(e) => handleGridDrop(e, col, hr, dayDate)}
+                              />
+                            );
+                          })}
                         </div>
+                        {/* Golden Hours Background Layer */}
+                        {(() => {
+                          const bgElements = [];
+                          for (let col = 0; col < 7; col++) {
+                            const dayDate = weekDays[activeWeek * 7 + col].date;
+                            for (let hr = 0; hr < 24; hr++) {
+                              const cellPosts = getCellPosts(dayDate, hr);
+                              
+                              const goldenPlatforms: string[] = [];
+                              selectedPlatforms.forEach(p => {
+                                const platKey = (p as string) === 'thread' ? 'threads' : p;
+                                const pDate = platKey === 'facebook' ? facebookDate : platKey === 'instagram' ? instagramDate : threadsDate;
+                                if (pDate === dayDate && !excludedPlatforms.includes(p)) {
+                                  const staticHours = STATIC_GOLDEN_HOURS[platKey as keyof typeof STATIC_GOLDEN_HOURS] || [];
+                                  if (staticHours.some((h: any) => h.hour === hr)) goldenPlatforms.push(platKey);
+                                }
+                              });
+                              
+                              const isGolden = goldenPlatforms.length > 0;
+                              let isFuture = false;
+                              if (isGolden) {
+                                const cellDate = new Date(`${dayDate}T${hr.toString().padStart(2, '0')}:00:00`);
+                                isFuture = cellDate.getTime() > Date.now();
+                              }
+
+                              const isHovered = dragOverTime?.col === col && dragOverTime?.hr === hr;
+                              const draggedGoldenPlatforms = draggedPlatforms.filter(plat => {
+                                const platKey = (plat as string) === 'thread' ? 'threads' : plat;
+                                const staticHours = STATIC_GOLDEN_HOURS[platKey as keyof typeof STATIC_GOLDEN_HOURS] || [];
+                                return staticHours.some((h: any) => h.hour === hr);
+                              });
+
+                              const showDefaultGolden = isGolden && isFuture && cellPosts.length === 0 && draggedPlatforms.length === 0;
+                              const isDragColumn = dragOverTime?.col === col;
+                              const showDraggedHighlight = isDragColumn && draggedPlatforms.length > 0 && draggedGoldenPlatforms.length > 0;
+
+                              if (showDefaultGolden || showDraggedHighlight || isHovered) {
+                                let bgClass = '';
+                                let glowClass = '';
+                                if (showDefaultGolden) {
+                                  if (goldenPlatforms.length > 1) {
+                                    bgClass = 'bg-gradient-to-br from-blue-50/20 via-purple-50/20 to-pink-50/20';
+                                    glowClass = 'bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-pink-400/30 animate-pulse';
+                                  } else if (goldenPlatforms.includes('instagram')) {
+                                    bgClass = 'bg-pink-50/30';
+                                    glowClass = 'bg-pink-400/20';
+                                  } else if (goldenPlatforms.includes('facebook')) {
+                                    bgClass = 'bg-blue-50/20';
+                                    glowClass = 'bg-blue-400/20';
+                                  } else if (goldenPlatforms.includes('threads')) {
+                                    bgClass = 'bg-slate-100/40 dark:bg-slate-800/20';
+                                    glowClass = 'bg-slate-400/20';
+                                  }
+                                }
+
+                                bgElements.push(
+                                  <div
+                                    key={`bg-${col}-${hr}`}
+                                    className={`absolute pointer-events-none z-0 overflow-hidden transition-all duration-300 ${bgClass}`}
+                                    style={{ left: `calc(${(col * 100) / 7}%)`, top: `calc(${(hr * 100) / 24}%)`, width: `calc(100% / 7)`, height: `calc(100% / 24)` }}
+                                  >
+                                    {(showDraggedHighlight || isHovered) && (
+                                      <div className={`absolute inset-1 rounded-lg border pointer-events-none z-0 flex flex-col p-1.5 transition-all duration-300 ${isHovered ? 'opacity-100 border-solid scale-105 shadow-lg shadow-blue-500/10 z-10' : 'opacity-40 dark:opacity-20 border-dashed'}`}
+                                           style={{
+                                             backgroundColor: draggedGoldenPlatforms.length > 1 ? '#fffbeb' :
+                                                              draggedGoldenPlatforms[0] === 'facebook' ? '#eff6ff' :
+                                                              draggedGoldenPlatforms[0] === 'instagram' ? '#fdf2f8' :
+                                                              draggedGoldenPlatforms[0] === 'threads' ? '#f8fafc' :
+                                                              isHovered ? '#f1f5f9' : 'transparent',
+                                             borderColor: draggedGoldenPlatforms.length > 1 ? '#fcd34d' :
+                                                          draggedGoldenPlatforms[0] === 'facebook' ? '#93c5fd' :
+                                                          draggedGoldenPlatforms[0] === 'instagram' ? '#f9a8d4' :
+                                                          draggedGoldenPlatforms[0] === 'threads' ? '#cbd5e1' :
+                                                          isHovered ? '#94a3b8' : 'transparent'
+                                           }}>
+                                        <div className="flex gap-1 justify-end opacity-100">
+                                          {draggedGoldenPlatforms.includes('facebook') && <Facebook size={12} className="text-blue-600" />}
+                                          {draggedGoldenPlatforms.includes('instagram') && <Instagram size={12} className="text-pink-600" />}
+                                          {(draggedGoldenPlatforms.includes('threads') || draggedGoldenPlatforms.includes('thread')) && <ThreadsIcon size={12} className="text-slate-900 dark:text-white" />}
+                                        </div>
+                                        {showDraggedHighlight && (
+                                          <span className="text-[9px] font-bold text-right mt-0.5 opacity-100"
+                                                style={{
+                                                  color: draggedGoldenPlatforms.length > 1 ? '#b45309' :
+                                                         draggedGoldenPlatforms[0] === 'facebook' ? '#1d4ed8' :
+                                                         draggedGoldenPlatforms[0] === 'instagram' ? '#be185d' :
+                                                         '#334155'
+                                                }}>
+                                            Giờ vàng
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {showDefaultGolden && (
+                                      <>
+                                        {/* Ánh sáng glow trung tâm cực nhẹ */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                          <div className={`w-12 h-12 blur-xl rounded-full ${glowClass}`} />
+                                        </div>
+
+                                        {/* Ngôi sao bay lơ lửng xung quanh khi chưa có thẻ */}
+                                        <div className="absolute inset-0 pointer-events-none">
+                                          {/* Facebook Stars */}
+                                          {goldenPlatforms.includes('facebook') && (
+                                            <>
+                                              <div className="absolute top-1 left-2 text-[10px] animate-pulse text-blue-500/70" style={{ animationDuration: '2.5s' }}>✨</div>
+                                              <div className="absolute bottom-2 right-2 text-[8px] animate-bounce text-blue-400/60" style={{ animationDuration: '3.5s' }}>✨</div>
+                                            </>
+                                          )}
+                                          {/* Instagram Stars */}
+                                          {goldenPlatforms.includes('instagram') && (
+                                            <>
+                                              <div className="absolute bottom-1.5 left-1 text-[9px] animate-pulse text-pink-500/70" style={{ animationDuration: '2s' }}>✨</div>
+                                              <div className="absolute top-2 right-2 text-[7px] animate-bounce text-purple-400/60" style={{ animationDelay: '1s' }}>⭐</div>
+                                            </>
+                                          )}
+                                          {/* Threads Stars */}
+                                          {goldenPlatforms.includes('threads') && (
+                                            <>
+                                              <div className="absolute top-1/2 left-2 text-[8px] animate-pulse text-slate-500/70" style={{ animationDelay: '0.5s' }}>⭐</div>
+                                              <div className="absolute bottom-1 right-1.5 text-[9px] animate-bounce text-slate-400/60" style={{ animationDuration: '3s' }}>✨</div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              }
+                            }
+                          }
+                          return bgElements;
+                        })()}
 
                         {/* Unified Posts Layer */}
                         {(() => {
@@ -6618,78 +6830,209 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                             for (let hr = 0; hr < 24; hr++) {
                               const cellPosts = getCellPosts(dayDate, hr);
                               if (cellPosts.length > 0) {
-                                cellsWithPosts.push({ col, hr, dayDate, posts: cellPosts });
+                                // Calculate Golden Hour
+                                const goldenPlatforms: string[] = [];
+                                selectedPlatforms.forEach(p => {
+                                  const platKey = (p as string) === 'thread' ? 'threads' : p;
+                                  const pDate = platKey === 'facebook' ? facebookDate : platKey === 'instagram' ? instagramDate : threadsDate;
+                                  if (pDate === dayDate && !excludedPlatforms.includes(p)) {
+                                    const staticHours = STATIC_GOLDEN_HOURS[platKey as keyof typeof STATIC_GOLDEN_HOURS] || [];
+                                    if (staticHours.some((h: any) => h.hour === hr)) goldenPlatforms.push(platKey);
+                                  }
+                                });
+                                cellsWithPosts.push({ col, hr, dayDate, posts: cellPosts, isGolden: goldenPlatforms.length > 0, goldenPlatforms });
                               }
                             }
                           }
 
-                          return cellsWithPosts.flatMap(({ col, hr, dayDate, posts: cellPosts }, cellIdx) => {
+                          return cellsWithPosts.flatMap(({ col, hr, dayDate, posts: cellPosts, isGolden, goldenPlatforms }, cellIdx) => {
                             const count = cellPosts.length;
 
+                            if (count > 1) {
+                              const hasDraft = cellPosts.some((p: any) => p.type === 'draft');
+                              const uniquePlatforms = Array.from(new Set(cellPosts.map((p: any) => p.platform === 'thread' ? 'threads' : p.platform))) as string[];
+                              return [(
+                                <div
+                                  key={`group-${col}-${hr}`}
+                                  draggable={hasDraft}
+                                  onDragStart={(e) => {
+                                    if (!hasDraft) {
+                                      e.preventDefault();
+                                      return;
+                                    }
+                                    const dragData = {
+                                      isMultiple: true,
+                                      posts: cellPosts.filter((p: any) => p.type === 'draft').map((p: any) => ({
+                                        id: p.id || `draft-${p.platform}`,
+                                        platform: p.platform,
+                                        type: p.type
+                                      }))
+                                    };
+                                    e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                                    setDraggedPlatforms(uniquePlatforms);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDraggedPlatforms([]);
+                                    setDragOverTime(null);
+                                  }}
+                                  onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
+                                  className={`absolute p-0 bg-[#EDF3FF] dark:bg-blue-950/40 shadow-sm flex flex-col z-30 overflow-hidden rounded-xl border border-blue-100 dark:border-blue-900/30 ${hasDraft ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                                  style={{ left: `calc(${(col * 100) / 7}% + 2px)`, top: `calc(${(hr * 100) / 24}% + 2px)`, width: `calc(100% / 7 - 4px)`, minHeight: '36px', height: 'auto' }}
+                                >
+                                  <div className="flex items-center justify-between px-1.5 py-0.5 bg-[#E2EAFB] dark:bg-blue-900/40 border-b border-blue-200/50 dark:border-blue-900/50">
+                                    <div className="flex items-center gap-1 text-[#1E40AF] dark:text-blue-300 font-black min-w-0">
+                                      <Layers size={10} className="stroke-[2.5] shrink-0" />
+                                      <div className="flex items-baseline gap-0.5 shrink-0">
+                                        <span className="text-[10px] leading-none">{count}</span>
+                                        <span className="text-[8px] leading-none">bài</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      {uniquePlatforms.map((plat: string, idx: number) => {
+                                        if (plat === 'facebook') return <Facebook key={idx} size={8} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+                                        if (plat === 'instagram') return <Instagram key={idx} size={8} className="text-[#E4405F] shrink-0" />;
+                                        if (plat === 'threads') return <ThreadsIcon key={idx} size={8} className="text-black dark:text-white shrink-0" />;
+                                        return null;
+                                      })}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
+                                    {cellPosts.map((post: any, i: number) => {
+                                      const pPlat = post.platform === 'thread' ? 'threads' : post.platform;
+                                      const pTitle = post.type === 'draft' ? postData.title : post.title;
+                                      const isG = goldenPlatforms?.includes(pPlat);
+                                      let bCol = 'bg-emerald-500';
+                                      if (pPlat === 'facebook') bCol = 'bg-[#1877F2]';
+                                      else if (pPlat === 'instagram') bCol = 'bg-[#E4405F]';
+                                      else if (pPlat === 'threads') bCol = 'bg-black dark:bg-white';
+                                      return (
+                                        <div key={post.id || `draft-${pPlat}`} className="flex items-center gap-1 px-1.5 py-1 min-h-[14px] border-b border-blue-100/50 dark:border-blue-900/30 last:border-0 overflow-hidden w-full hover:bg-white/40 transition-colors">
+                                          <div className={`w-0.5 h-2.5 rounded-full shrink-0 ${bCol}`} />
+                                          {isG ? <Star size={6} className="text-amber-500 fill-amber-400 shrink-0" /> : <div className={`w-1 h-1 rounded-full ${bCol} shrink-0`} />}
+                                          <span className="text-[7.5px] font-bold text-slate-700 dark:text-slate-300 truncate flex-1 min-w-0 leading-none">{pTitle || (language === 'vi' ? 'Bài viết' : 'Post')}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )];
+                            }
+
                             return cellPosts.map((post: any, subIdx: number) => {
-                              const cardWidth = `calc((100% / 7) / ${count} - 4px)`;
-                              const cardLeft = `calc(${(col * 100) / 7}% + ${(subIdx * 100) / (7 * count)}% + 2px)`;
+                              const cardWidth = `calc(100% / 7 - 4px)`;
+                              const cardLeft = `calc(${(col * 100) / 7}% + 2px)`;
 
                               if (post.type === 'draft') {
                                 if (post.platform === 'facebook') {
                                   return (
-                                    <motion.div
+                                    <div
                                       key={`fb-${fbResetTrigger}-${facebookDate}-${facebookTime}`}
-                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleFbDragEnd}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        const dragData = {
+                                          isMultiple: false,
+                                          type: 'draft',
+                                          platform: 'facebook',
+                                          id: post.id || 'draft-facebook'
+                                        };
+                                        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                                        setDraggedPlatforms(['facebook']);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDraggedPlatforms([]);
+                                        setDragOverTime(null);
+                                      }}
                                       onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
                                       className="absolute p-1 border-2 border-[#1877F2] bg-white shadow-lg flex flex-col justify-center cursor-pointer cursor-grab active:cursor-grabbing hover:bg-blue-50/50 transition-colors z-20 overflow-hidden rounded-xl"
-                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, height: `calc(${(100) / 24}% - 4px)` }}
+                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, minHeight: '36px', height: 'auto' }}
                                     >
                                       <div className="flex flex-col gap-0.5 overflow-hidden">
                                         <div className="flex items-center gap-1 shrink-0">
                                           <Facebook size={9} className="fill-[#1877F2] stroke-none shrink-0" />
-                                          <span className="text-[7.5px] font-black text-[#1877F2] uppercase truncate">FB {facebookTime}</span>
+                                          <span className="text-[7.5px] font-black text-[#1877F2] uppercase truncate flex items-center gap-0.5">
+                                            FB {facebookTime}
+                                            {goldenPlatforms?.includes('facebook') && <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />}
+                                          </span>
                                         </div>
                                         {postData.title && count === 1 && (
                                           <span className="text-[7px] text-text-muted dark:text-slate-400 truncate leading-none">{postData.title}</span>
                                         )}
                                       </div>
-                                    </motion.div>
+                                    </div>
                                   );
                                 } else if (post.platform === 'threads') {
                                   return (
-                                    <motion.div
+                                    <div
                                       key={`threads-${threadsResetTrigger}-${threadsDate}-${threadsTime}`}
-                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleThreadsDragEnd}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        const dragData = {
+                                          isMultiple: false,
+                                          type: 'draft',
+                                          platform: 'threads',
+                                          id: post.id || 'draft-threads'
+                                        };
+                                        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                                        setDraggedPlatforms(['threads']);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDraggedPlatforms([]);
+                                        setDragOverTime(null);
+                                      }}
                                       onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
                                       className="absolute p-1 border-2 border-black dark:border-white bg-white dark:bg-black shadow-lg flex flex-col justify-center cursor-pointer cursor-grab active:cursor-grabbing hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors z-20 overflow-hidden rounded-xl"
-                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, height: `calc(${(100) / 24}% - 4px)` }}
+                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, minHeight: '36px', height: 'auto' }}
                                     >
                                       <div className="flex flex-col gap-0.5 overflow-hidden">
                                         <div className="flex items-center gap-1 shrink-0">
                                           <ThreadsIcon size={9} className="shrink-0 text-black dark:text-white" />
-                                          <span className="text-[7.5px] font-black text-black dark:text-white uppercase truncate">TR {threadsTime}</span>
+                                          <span className="text-[7.5px] font-black text-black dark:text-white uppercase truncate flex items-center gap-0.5">
+                                            TR {threadsTime}
+                                            {goldenPlatforms?.includes('threads') && <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />}
+                                          </span>
                                         </div>
                                         {postData.title && count === 1 && (
                                           <span className="text-[7px] text-text-muted dark:text-slate-400 truncate leading-none">{postData.title}</span>
                                         )}
                                       </div>
-                                    </motion.div>
+                                    </div>
                                   );
                                 } else if (post.platform === 'instagram') {
                                   return (
-                                    <motion.div
+                                    <div
                                       key={`insta-${instagramResetTrigger}-${instagramDate}-${instagramTime}`}
-                                      drag dragConstraints={boardRef} dragElastic={0} dragMomentum={false} onDragEnd={handleInstagramDragEnd}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        const dragData = {
+                                          isMultiple: false,
+                                          type: 'draft',
+                                          platform: 'instagram',
+                                          id: post.id || 'draft-instagram'
+                                        };
+                                        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                                        setDraggedPlatforms(['instagram']);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDraggedPlatforms([]);
+                                        setDragOverTime(null);
+                                      }}
                                       onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
                                       className="absolute p-1 border-2 border-pink-500 bg-white shadow-lg flex flex-col justify-center cursor-pointer cursor-grab active:cursor-grabbing hover:bg-pink-50/50 transition-colors z-20 overflow-hidden rounded-xl"
-                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, height: `calc(${(100) / 24}% - 4px)` }}
+                                      style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, minHeight: '36px', height: 'auto' }}
                                     >
                                       <div className="flex flex-col gap-0.5 overflow-hidden">
                                         <div className="flex items-center gap-1 shrink-0">
                                           <Instagram size={9} className="text-pink-600 shrink-0" />
-                                          <span className="text-[7.5px] font-black text-pink-600 uppercase truncate">IG {instagramTime}</span>
+                                          <span className="text-[7.5px] font-black text-pink-600 uppercase truncate flex items-center gap-0.5">
+                                            IG {instagramTime}
+                                            {goldenPlatforms?.includes('instagram') && <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />}
+                                          </span>
                                         </div>
                                         {postData.title && count === 1 && (
                                           <span className="text-[7px] text-text-muted dark:text-slate-400 truncate leading-none">{postData.title}</span>
                                         )}
                                       </div>
-                                    </motion.div>
+                                    </div>
                                   );
                                 }
                               } else {
@@ -6698,11 +7041,15 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
                                   <div
                                     key={`existing-${post.id}-${cellIdx}-${subIdx}`}
                                     className="absolute p-1.5 rounded-xl bg-gray-50 border border-gray-200 shadow-sm flex flex-col justify-center overflow-hidden z-10 cursor-pointer hover:bg-gray-100 transition-colors"
-                                    style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, height: `calc(${(100) / 24}% - 4px)` }}
+                                    style={{ left: cardLeft, top: `calc(${(hr * 100) / 24}% + 2px)`, width: cardWidth, minHeight: '28px', height: 'auto' }}
                                     onClick={() => setSelectedCell({ dateStr: dayDate, hour: hr, posts: cellPosts })}
                                   >
                                     <div className="flex items-center gap-1 truncate">
-                                      <span className="w-2.5 h-2.5 rounded bg-gray-400 text-[6px] text-white flex items-center justify-center font-bold">✓</span>
+                                      {isGolden ? (
+                                        <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />
+                                      ) : (
+                                        <span className="w-2.5 h-2.5 rounded bg-gray-400 text-[6px] text-white flex items-center justify-center font-bold">✓</span>
+                                      )}
                                       <span className="text-[7.5px] font-bold text-gray-650 truncate uppercase">{post.title}</span>
                                     </div>
                                   </div>
@@ -7731,6 +8078,154 @@ TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", kh�
         })()}
 
       </div>
+      {/* Floating Toast for Duplicate Warning */}
+      {mounted && typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {duplicateWarning && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="fixed bottom-24 right-6 z-[9999] w-80 bg-white border-l-4 border-l-amber-500 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-4 flex flex-col gap-3"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={16} className="text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-extrabold text-slate-800">
+                    {language === 'vi' ? 'Trùng lặp nội dung!' : 'Duplicate Content!'}
+                  </h4>
+                  <p className="text-[11.5px] font-medium text-slate-600 mt-1 leading-relaxed">
+                    {language === 'vi' 
+                      ? <>Nội dung hiện tại giống bài cũ đến <span className="font-bold text-amber-600">{Math.round(duplicateWarning.maxSimilarity * 100)}%</span>. Bạn nên sửa đổi để nội dung đa dạng hơn.</>
+                      : <>This content is <span className="font-bold text-amber-600">{Math.round(duplicateWarning.maxSimilarity * 100)}%</span> similar to an old post. You should edit it to keep it diverse.</>
+                    }
+                  </p>
+                </div>
+                <button 
+                  onClick={() => clearDuplicateWarning()} 
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer bg-transparent border-0"
+                  title={language === 'vi' ? 'Đóng' : 'Close'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex gap-2 justify-end mt-1">
+                <button
+                  onClick={() => {
+                    setIgnoreDuplicateCheckForText(postData.full_text);
+                    clearDuplicateWarning();
+                    handleProceedToABTest();
+                  }}
+                  className="bg-white hover:bg-gray-50 text-slate-700 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-gray-200 shadow-sm"
+                >
+                  {language === 'vi' ? 'Vẫn tiếp tục' : 'Continue'}
+                </button>
+                <button
+                  onClick={() => { 
+                    clearDuplicateWarning();
+                  }}
+                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm border-0"
+                >
+                  <RefreshCw size={11} />
+                  {language === 'vi' ? 'Tạo lại' : 'Regenerate'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Confirm Drop Modal */}
+      {confirmDrop && (
+        <div className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-[90vw] max-w-[400px] shadow-2xl flex flex-col overflow-hidden border border-slate-200/50 dark:border-slate-800">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <CalendarPlus size={20} className="text-primary" />
+                {language === 'vi' ? 'Di chuyển bài viết' : 'Move Posts'}
+              </h3>
+            </div>
+            
+            <div className="p-4 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {language === 'vi' ? 'Chọn các nền tảng bạn muốn di chuyển tới' : 'Select platforms to move to'} <strong className="text-primary">{confirmDrop.targetHr}:00 {confirmDrop.targetDate}</strong>:
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                {confirmDrop.posts.map((post: any) => {
+                  const isSelected = confirmDrop.selectedPostIds.includes(post.id);
+                  let platIcon = <Facebook size={14} className="fill-[#1877F2] text-[#1877F2]" />;
+                  let platLabel = 'Facebook';
+                  if (post.platform === 'threads' || post.platform === 'thread') {
+                    platIcon = <ThreadsIcon size={14} className="text-black dark:text-white" />;
+                    platLabel = 'Threads';
+                  } else if (post.platform === 'instagram') {
+                    platIcon = <Instagram size={14} className="text-pink-600" />;
+                    platLabel = 'Instagram';
+                  }
+
+                  return (
+                    <label key={post.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 hover:border-primary/30'}`}>
+                      <input 
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          setConfirmDrop((prev: any) => {
+                            if (!prev) return null;
+                            return {
+                              ...prev,
+                              selectedPostIds: e.target.checked
+                                ? [...prev.selectedPostIds, post.id]
+                                : prev.selectedPostIds.filter((id: string) => id !== post.id)
+                            };
+                          });
+                        }}
+                        className="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300 cursor-pointer"
+                      />
+                      <div className="flex-1 flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          {platIcon}
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{platLabel}</span>
+                        </div>
+                        {postData.title && (
+                          <span className="text-[10px] text-slate-500 line-clamp-1">{postData.title}</span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-3">
+              <button
+                onClick={() => {
+                  confirmDrop.revert();
+                  setConfirmDrop(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                {language === 'vi' ? 'Hủy' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => {
+                  confirmDrop.commit(confirmDrop.selectedPostIds);
+                  setConfirmDrop(null);
+                }}
+                disabled={confirmDrop.selectedPostIds.length === 0}
+                className="flex-1 py-2.5 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {language === 'vi' ? 'Di chuyển' : 'Move'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {popup && (
         <PopupDialog
           isOpen={popup.isOpen}
