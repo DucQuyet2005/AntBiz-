@@ -37,7 +37,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import dynamic from 'next/dynamic';
-import { STATIC_GOLDEN_HOURS } from '@/lib/post-helpers/goldenHour';
+import { STATIC_GOLDEN_HOURS } from '@/frontend/modules/scheduled-publishing/golden-hour';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string; key?: any }) => (

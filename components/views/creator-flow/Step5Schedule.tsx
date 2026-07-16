@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Calendar, Clock, Facebook, Instagram, 
-  Zap, Info, Settings 
+  Zap, Info, Settings, Star 
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
+import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
@@ -21,6 +23,24 @@ export default function Step5Schedule() {
   
   // Local state for week pagination
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
+
+  // Fetch dynamic golden hours for selected platform
+  const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(state.selectedPlatform);
+
+  // DnD + Golden Hour hook (logic lives in frontend/modules/schedule-dnd)
+  const handleScheduleChange = useCallback((dayIdx: number, hour: number) => {
+    const today = new Date();
+    const currentDayOfWeek = today.getDay();
+    const offset = (dayIdx + 1) - currentDayOfWeek;
+    const targetDate = new Date();
+    targetDate.setDate(today.getDate() + offset);
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const hourPad = `${hour.toString().padStart(2, '0')}:00`;
+    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${hourPad}` });
+    dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
+  }, [dispatch]);
+
+  const dnd = useScheduleDragDrop(handleScheduleChange, dynamicGoldenHours);
 
 
 
@@ -60,22 +80,23 @@ export default function Step5Schedule() {
   const handleTimeChange = (val: string) => {
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${datePart || ''}T${val}` });
   };
-
   // Helper when user clicks on an empty slot in the timeline grid
   const handleCellClick = (dayIndex: number, hourStr: string) => {
-    // Map dayIndex to corresponding date of this mock week
-    const targetDay = days.find(d => d.index === dayIndex);
-    if (!targetDay) return;
-
-    // Build tomorrow or specific date offset. Let's make it resolve to a real date string
     const today = new Date();
     const currentDayOfWeek = today.getDay(); // 0 for Sun, 1 for Mon ...
     const offset = (dayIndex + 1) - currentDayOfWeek; // alignment
     
     const targetDate = new Date();
     targetDate.setDate(today.getDate() + offset);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const hourVal = parseInt(hourStr.split(':')[0]);
+    targetDate.setHours(hourVal, 0, 0, 0);
 
+    if (targetDate.getTime() < today.getTime()) {
+      // In the past, block
+      return;
+    }
+
+    const dateStr = targetDate.toISOString().split('T')[0];
     const hourPad = hourStr.padStart(5, '0'); // ensure e.g. "09:00"
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${hourPad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
@@ -171,7 +192,7 @@ export default function Step5Schedule() {
                 {hours.map((hour) => {
                   const hourVal = parseInt(hour);
                   return (
-                    <div key={hour} className="flex border-b border-gray-150/20 dark:border-zinc-850/20 h-14 group">
+                    <div key={hour} className="flex border-b border-gray-150/20 dark:border-zinc-850/20 h-14">
                       {/* Hour column */}
                       <div className="w-[12.5%] flex-shrink-0 flex items-start justify-center pt-2 text-[10px] font-bold text-text-muted border-r border-gray-150/30 dark:border-zinc-850/30 bg-gray-50/20">
                         {hour}
@@ -191,15 +212,71 @@ export default function Step5Schedule() {
                             currentPostDayIndex === dayIdx && 
                             currentPostHourVal === hourVal;
 
+                          const today = new Date();
+                          const currentDayOfWeek = today.getDay();
+                          const offset = (dayIdx + 1) - currentDayOfWeek;
+                          const targetCellDate = new Date();
+                          targetCellDate.setDate(today.getDate() + offset);
+                          targetCellDate.setHours(hourVal, 0, 0, 0);
+                          const isPast = targetCellDate.getTime() < today.getTime();
+
+                          const isDefaultGolden = dnd.isDefaultGoldenHour(state.selectedPlatform, hourVal);
+                          const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
+                          const isCellHover = dnd.isCellHovered(dayIdx, hourVal);
+                          const showGolden = isDefaultGolden || isDragGolden;
+                          const goldenStyle = showGolden ? dnd.getGoldenHourStyle(state.selectedPlatform || 'facebook') : null;
+
+                          let tooltipAlignClass = "left-1/2 -translate-x-1/2";
+                          if (dayIdx === 0) {
+                            tooltipAlignClass = "left-0 translate-x-0";
+                          } else if (dayIdx === 6) {
+                            tooltipAlignClass = "right-0 left-auto translate-x-0";
+                          }
+
                           return (
                             <div
                               key={dayIdx}
-                              onClick={() => handleCellClick(dayIdx, hour)}
-                              className="border-r border-gray-150/20 dark:border-zinc-850/20 last:border-r-0 h-full p-1 relative hover:bg-primary/2 dark:hover:bg-primary/2 cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden"
+                              onClick={() => !isPast && handleCellClick(dayIdx, hour)}
+                              onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
+                              onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
+                              onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
+                              className={`group border-r border-gray-150/20 dark:border-zinc-850/20 last:border-r-0 h-full p-1 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
+                                isPast
+                                  ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
+                                  : 'cursor-crosshair hover:bg-primary/2 dark:hover:bg-primary/2'
+                              } ${
+                                isCellHover && !isPast
+                                  ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
+                                  : ''
+                              }`}
+                              style={showGolden && !isPast ? {
+                                backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
+                              } : undefined}
                             >
+                              {/* Golden Hour indicator — clean star with group-hover tooltip, only if not in the past */}
+                              {showGolden && !isPast && (
+                                <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1">
+                                  <div className="flex items-center gap-1 relative">
+                                    <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover:opacity-90'}`} />
+                                    <span className={`hidden group-hover:inline-block absolute bottom-6 bg-slate-900/90 dark:bg-zinc-800/90 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg backdrop-blur-sm whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                      Giờ vàng {state.selectedPlatform || 'Facebook'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               {isCurrentPostInCell && (
                                 <div
-                                  className="rounded-lg py-1 px-2 text-[9px] font-extrabold flex items-center gap-1.5 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] animate-pulse shadow-sm"
+                                  draggable
+                                  onDragStart={(e) => dnd.handleDragStart(e, {
+                                    type: 'draft',
+                                    platform: state.selectedPlatform || 'facebook',
+                                    label: `Bản thảo (${state.selectedPlatform === 'facebook' ? 'FA' : state.selectedPlatform === 'instagram' ? 'IG' : 'TH'})`,
+                                  })}
+                                  onDragEnd={dnd.handleDragEnd}
+                                  className={`rounded-lg py-1 px-2 text-[9px] font-extrabold flex items-center gap-1.5 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
+                                    dnd.isDragging ? 'opacity-40' : 'animate-pulse'
+                                  }`}
                                 >
                                   <div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
                                     {getPlatformIcon(state.selectedPlatform || 'facebook')}
