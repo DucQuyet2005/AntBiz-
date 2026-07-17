@@ -2,13 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
   Bell, 
-  MessageSquare, 
-  Image as ImageIcon,
   Globe,
-  FileText,
-  GitBranch,
   Check,
   Sliders, 
   Sparkles, 
@@ -22,7 +17,6 @@ import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { createClient } from '@/utils/supabase/client';
 import { getSocialConnectionErrorMessage } from '@/lib/socialConnectionMessages';
 import { useFont, fonts } from '@/contexts/FontContext';
-import PlatformPresetsTab from './PlatformPresetsTab';
 import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // API Plug / Connection icon custom SVG to match mockup
@@ -44,31 +38,8 @@ export default function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { font, setFont } = useFont();
 
-  const [activeTab, setActiveTab] = useState<'general' | 'platform-presets'>('general');
-
-  // State for interactive inputs
-  const [openaiConnected, setOpenaiConnected] = useState(true);
-  const [openaiLoading, setOpenaiLoading] = useState(false);
-  const [midjourneyConnected, setMidjourneyConnected] = useState(false);
-  const [midjourneyLoading, setMidjourneyLoading] = useState(false);
   const [aiGenNotify, setAiGenNotify] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
-
-  const handleToggleOpenai = () => {
-    setOpenaiLoading(true);
-    setTimeout(() => {
-      setOpenaiConnected(prev => !prev);
-      setOpenaiLoading(false);
-    }, 600);
-  };
-
-  const handleToggleMidjourney = () => {
-    setMidjourneyLoading(true);
-    setTimeout(() => {
-      setMidjourneyConnected(prev => !prev);
-      setMidjourneyLoading(false);
-    }, 600);
-  };
 
   const [userId, setUserId] = useState<string | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
@@ -119,8 +90,12 @@ export default function SettingsView() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
-    loadSocialAccounts();
+    setTimeout(() => {
+      loadSocialAccounts();
+    }, 0);
   }, []);
+
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -132,20 +107,22 @@ export default function SettingsView() {
       const platformLabel = platform === 'threads' || platform === 'thread' ? 'Meta Threads' : 
                             platform === 'instagram' ? 'Instagram Business' : 'Facebook Page';
       
-      if (connected === 'success') {
-        setPopupType('success');
-        setPopupTitle(language === 'vi' ? 'Liên kết thành công' : 'Connection Success');
-        setPopupMessage(
-          language === 'vi' 
-            ? `Tài khoản ${platformLabel} của bạn đã được kết nối thành công.` 
-            : `${platformLabel} account has been connected successfully.`
-        );
-      } else {
-        setPopupType('error');
-        setPopupTitle(language === 'vi' ? 'Liên kết thất bại' : 'Connection Failed');
-        setPopupMessage(getSocialConnectionErrorMessage(errorMsg, language, platformLabel));
-      }
-      setPopupOpen(true);
+      setTimeout(() => {
+        if (connected === 'success') {
+          setPopupType('success');
+          setPopupTitle(language === 'vi' ? 'Liên kết thành công' : 'Connection Success');
+          setPopupMessage(
+            language === 'vi' 
+              ? `Tài khoản ${platformLabel} của bạn đã được kết nối thành công.` 
+              : `${platformLabel} account has been connected successfully.`
+          );
+        } else {
+          setPopupType('error');
+          setPopupTitle(language === 'vi' ? 'Liên kết thất bại' : 'Connection Failed');
+          setPopupMessage(getSocialConnectionErrorMessage(errorMsg, language, platformLabel));
+        }
+        setPopupOpen(true);
+      }, 0);
 
       // Clean up URL parameters
       const newUrl = window.location.pathname;
@@ -187,34 +164,7 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* Tabs Header */}
-      <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-white/5 w-fit">
-        <button
-          onClick={() => setActiveTab('general')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
-            activeTab === 'general'
-              ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
-          }`}
-        >
-          <Settings size={16} />
-          {language === 'vi' ? 'Cài đặt chung' : 'General Settings'}
-        </button>
-        <button
-          onClick={() => setActiveTab('platform-presets')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
-            activeTab === 'platform-presets'
-              ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
-          }`}
-        >
-          <FileText size={16} />
-          {language === 'vi' ? 'Quy chuẩn nền tảng' : 'Platform Presets'}
-        </button>
-      </div>
-
       {/* Tab Content */}
-      {activeTab === 'general' ? (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column: API Integrations (Theme-Aware Color Card) */}
@@ -234,77 +184,7 @@ export default function SettingsView() {
             
             {/* Integration connections list */}
             <div className="flex flex-col gap-4 mt-6">
-                  {/* OpenAI GPT-4 connection */}
-              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#EDE9FE] dark:bg-indigo-950/40 text-[#6366F1] dark:text-indigo-400 flex items-center justify-center shrink-0">
-                    <MessageSquare size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">OpenAI GPT-4</h3>
-                    <span className="text-[10px] font-bold block mt-[2px]">
-                      {openaiLoading ? (
-                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" />
-                          {t('common.updating')}
-                        </span>
-                      ) : openaiConnected ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
-                      ) : (
-                        <span className="text-text-muted">{t('common.notConnected')}</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleToggleOpenai}
-                  disabled={openaiLoading}
-                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                    openaiConnected 
-                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
-                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
-                  }`}
-                >
-                  {openaiLoading && <Loader2 size={11} className="animate-spin" />}
-                  {openaiConnected ? t('settings.disconnect') : t('settings.connect')}
-                </button>
-              </div>
 
-              {/* Midjourney connection */}
-              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-black text-gray-400 dark:text-slate-400 flex items-center justify-center shrink-0 border dark:border-white/5">
-                    <ImageIcon size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">Midjourney API</h3>
-                    <span className="text-[10px] font-bold block mt-[2px]">
-                      {midjourneyLoading ? (
-                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" />
-                          {t('common.updating')}
-                        </span>
-                      ) : midjourneyConnected ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
-                      ) : (
-                        <span className="text-text-muted">{t('common.notConnected')}</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleToggleMidjourney}
-                  disabled={midjourneyLoading}
-                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                    midjourneyConnected 
-                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
-                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
-                  }`}
-                >
-                  {midjourneyLoading && <Loader2 size={11} className="animate-spin" />}
-                  {midjourneyConnected ? t('settings.disconnect') : t('settings.connect')}
-                </button>
-              </div>
 
               {/* Facebook Connection */}
               {(() => {
@@ -710,9 +590,6 @@ export default function SettingsView() {
         </div>
 
       </div>
-      ) : (
-        <PlatformPresetsTab />
-      )}
 
       <PopupDialog
         isOpen={popupOpen}

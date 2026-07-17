@@ -13,11 +13,11 @@ const ThreadsIcon = ({ className = '' }: { className?: string }) => (
 );
 
 interface Step1PlatformProps {
-  selectedPlatform: PlatformType | null;
-  onSelect: (platform: PlatformType | null) => void;
+  selectedPlatforms: PlatformType[];
+  onSelect: (platforms: PlatformType[]) => void;
 }
 
-export default function Step1Platform({ selectedPlatform, onSelect }: Step1PlatformProps) {
+export default function Step1Platform({ selectedPlatforms, onSelect }: Step1PlatformProps) {
   const { t } = useLanguage();
 
   const platforms = [
@@ -61,12 +61,14 @@ export default function Step1Platform({ selectedPlatform, onSelect }: Step1Platf
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {platforms.map((platform) => {
           const IconComponent = platform.icon;
-          const isSelected = selectedPlatform === platform.id;
+          const isSelected = selectedPlatforms.includes(platform.id);
 
           return (
             <div
               key={platform.id}
-              onClick={() => onSelect(isSelected ? null : platform.id)}
+              onClick={() => {
+                onSelect([platform.id]);
+              }}
               className={`group relative flex flex-col items-center text-center p-8 rounded-3xl cursor-pointer border-2 transition-all duration-300 transform select-none ${
                 isSelected
                   ? 'bg-white dark:bg-zinc-900 border-primary ring-2 ring-primary ring-offset-2 dark:ring-offset-black shadow-lg scale-105'

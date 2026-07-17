@@ -11,7 +11,7 @@ export default function StepperHeader({ currentStep, onStepClick }: StepperHeade
   return (
     <div className="w-full mb-6 select-none">
       <div className="flex gap-2">
-        {Array.from({ length: 5 }).map((_, idx) => {
+        {Array.from({ length: 4 }).map((_, idx) => {
           const stepNumber = idx + 1;
           const isFilled = stepNumber <= currentStep;
           return (
