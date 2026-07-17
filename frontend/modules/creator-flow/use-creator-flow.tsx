@@ -342,15 +342,15 @@ export function CreatorFlowProvider({
   const startCrawl = async (url: string, source: 'gocnhinmoi' | 'tuoitre' | 'dantri') => {
     dispatch({ type: 'SET_SOURCE_TYPE', payload: source });
     dispatch({ type: 'SET_ARTICLE_URL', payload: url });
+    beginSourceIngestion();
     dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId: url, status: 'crawling' } });
 
     try {
       const result = await creatorClient.ingestUrl(url);
-      dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
-      dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
-      dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
-    } catch {
+      completeSourceIngestion(result);
+    } catch (error) {
       dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
+      throw error;
     }
   };
 

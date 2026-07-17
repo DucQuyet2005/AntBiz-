@@ -4,13 +4,19 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Loader2, Music, FileSpreadsheet, 
-  UploadCloud, Trash2, ExternalLink, X,
+  UploadCloud, Trash2, X,
   Search, Check, Bookmark, Facebook, Instagram,
   ChevronLeft
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useCreatorFlow } from '@/frontend/modules/creator-flow';
-import type { CreatorUploadedSource } from '@/frontend/modules/creator-flow';
+import {
+  getCreatorSourceBaseUrl,
+  normalizeCreatorSourceUrl,
+  useCreatorFlow,
+  validateCreatorArticleUrl,
+  type CreatorNewsSource,
+  type CreatorUploadedSource,
+} from '@/frontend/modules/creator-flow';
 import { ArticleContext } from '@/lib/services/creator/article.service';
 
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
@@ -34,100 +40,6 @@ interface Step2ArticleProps {
   uploadSource: (file: File) => Promise<CreatorUploadedSource>;
 }
 
-// Mock articles data for simulation
-const MOCK_SITE_ARTICLES = {
-  gocnhinmoi: {
-    main: {
-      title: "Hội nghị thượng đỉnh COP28: Đạt thỏa thuận lịch sử chuyển đổi khỏi nhiên liệu hóa thạch",
-      excerpt: "Đại biểu từ gần 200 quốc gia tham gia COP28 đã nhất trí về một lộ trình chung nhằm cắt giảm phát thải và tăng tỷ lệ sử dụng năng lượng tái tạo lên gấp ba lần trong thập kỷ này.",
-      image: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&auto=format&fit=crop&q=60",
-      url: "https://gocnhinmoi.com.vn/tin-tuc/cop28-historic-agreement"
-    },
-    sides: [
-      {
-        title: "Các tập đoàn công nghệ toàn cầu công bố quy tắc quản lý AI mới tại Brussels",
-        image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60",
-        url: "https://gocnhinmoi.com.vn/tin-tuc/global-tech-ai-rules"
-      },
-      {
-        title: "Báo cáo mới nhất về biến đổi khí hậu toàn cầu năm 2026",
-        image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=150&auto=format&fit=crop&q=60",
-        url: "https://gocnhinmoi.com.vn/tin-tuc/climate-change-report"
-      },
-      {
-        title: "Thị trường chứng khoán châu Á tăng điểm mạnh mẽ nhờ hỗ trợ từ các ngân hàng lớn",
-        image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=150&auto=format&fit=crop&q=60",
-        url: "https://gocnhinmoi.com.vn/tin-tuc/asian-stock-market-rise"
-      },
-      {
-        title: "Phỏng vấn độc quyền về tầm nhìn phát triển kinh tế số năm 2026",
-        image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=60",
-        url: "https://gocnhinmoi.com.vn/tin-tuc/digital-economy-interview"
-      }
-    ]
-  },
-  tuoitre: {
-    main: {
-      title: "Học sinh Việt Nam xuất sắc giành giải cao tại Olympic Tin học quốc tế 2026",
-      excerpt: "Đoàn học sinh Việt Nam tham gia kỳ thi Olympic Tin học quốc tế năm nay đã xuất sắc mang về 3 Huy chương Vàng và 1 Huy chương Bạc, khẳng định chất lượng giáo dục đỉnh cao.",
-      image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=60",
-      url: "https://tuoitre.vn/giao-duc/vietnam-olympic-tin-hoc-2026"
-    },
-    sides: [
-      {
-        title: "Khởi động chiến dịch Mùa hè xanh hỗ trợ đồng bào vùng cao biên giới",
-        image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=150&auto=format&fit=crop&q=60",
-        url: "https://tuoitre.vn/xa-hoi/mua-he-xanh-vung-cao"
-      },
-      {
-        title: "TP.HCM chính thức ra mắt tuyến xe buýt điện mới thân thiện môi trường",
-        image: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=150&auto=format&fit=crop&q=60",
-        url: "https://tuoitre.vn/do-thi/xe-buyt-dien-tphcm"
-      },
-      {
-        title: "Giá vàng trong nước biến động mạnh trước thềm công bố lãi suất của FED",
-        image: "https://images.unsplash.com/photo-1610375461246-83df859d849d?w=150&auto=format&fit=crop&q=60",
-        url: "https://tuoitre.vn/kinh-doanh/gia-vang-bien-dong-manh"
-      },
-      {
-        title: "Khám phá vẻ đẹp ngoạn mục của Sơn Đoòng qua góc nhìn phóng viên quốc tế",
-        image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=150&auto=format&fit=crop&q=60",
-        url: "https://tuoitre.vn/du-lich/kham-pha-ve-dep-son-doong"
-      }
-    ]
-  },
-  dantri: {
-    main: {
-      title: "Chính phủ chủ trì hội nghị tháo gỡ khó khăn cho các doanh nghiệp công nghệ số",
-      excerpt: "Thủ tướng nhấn mạnh chuyển đổi số là động lực cốt lõi thúc đẩy kinh tế. Các ban ngành cần nhanh chóng gỡ bỏ các rào cản hành chính nhằm tối đa hóa tiềm năng khởi nghiệp sáng tạo.",
-      image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=600&auto=format&fit=crop&q=60",
-      url: "https://dantri.com.vn/kinh-doanh/chinh-phu-thao-go-doanh-nghiep-so"
-    },
-    sides: [
-      {
-        title: "Nhu cầu tuyển dụng nhân sự chất lượng cao ngành bán dẫn tăng mạnh",
-        image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=150&auto=format&fit=crop&q=60",
-        url: "https://dantri.com.vn/viec-lam/tuyen-dung-nganh-ban-dan"
-      },
-      {
-        title: "Đoàn thể thao Việt Nam sẵn sàng lên đường tham dự Giải vô địch châu Á",
-        image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=150&auto=format&fit=crop&q=60",
-        url: "https://dantri.com.vn/the-thao/vietnam-giai-vo-dich-chau-a"
-      },
-      {
-        title: "Trí tuệ nhân tạo AI đang tái định nghĩa trải nghiệm mua sắm trực tuyến",
-        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=150&auto=format&fit=crop&q=60",
-        url: "https://dantri.com.vn/cong-nghe/ai-tai-dinh-nghia-shopping"
-      },
-      {
-        title: "Những địa điểm du lịch mùa thu quyến rũ nhất định phải ghé thăm",
-        image: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=150&auto=format&fit=crop&q=60",
-        url: "https://dantri.com.vn/du-lich/dia-diem-mua-thu-quyen-ru"
-      }
-    ]
-  }
-};
-
 export default function Step2Article({
   sourceType,
   crawlStatus,
@@ -138,9 +50,10 @@ export default function Step2Article({
   const { t } = useLanguage();
   const { state, dispatch } = useCreatorFlow();
 
-  // Active site simulated browser modal
-  const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
+  // Active source browser modal
+  const [activeBrowserSite, setActiveBrowserSite] = useState<CreatorNewsSource | null>(null);
   const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
+  const [crawlError, setCrawlError] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleGoBack = () => {
@@ -153,30 +66,31 @@ export default function Step2Article({
     }
   };
 
-  React.useEffect(() => {
-    if (activeBrowserSite) {
-      const baseUrl = activeBrowserSite === 'gocnhinmoi'
-        ? 'https://gocnhinmoi.com.vn'
-        : activeBrowserSite === 'tuoitre'
-          ? 'https://tuoitre.vn'
-          : 'https://dantri.com.vn';
-      setCurrentBrowserUrl(baseUrl);
-    } else {
-      setCurrentBrowserUrl('');
-    }
-  }, [activeBrowserSite]);
+  const openSourceBrowser = (source: CreatorNewsSource) => {
+    setActiveBrowserSite(source);
+    setCurrentBrowserUrl(getCreatorSourceBaseUrl(source));
+    setCrawlError('');
+  };
 
   React.useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'URL_CHANGE' && typeof event.data?.url === 'string') {
-        setCurrentBrowserUrl(event.data.url);
+      if (
+        event.source !== iframeRef.current?.contentWindow
+        || event.data?.type !== 'URL_CHANGE'
+        || typeof event.data?.url !== 'string'
+        || !activeBrowserSite
+      ) return;
+      const normalized = normalizeCreatorSourceUrl(activeBrowserSite, event.data.url);
+      if (normalized) {
+        setCurrentBrowserUrl(normalized);
+        setCrawlError('');
       }
     };
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, []);
+  }, [activeBrowserSite]);
 
 
   // Audio & Document drag & drop upload states
@@ -266,9 +180,24 @@ export default function Step2Article({
 
   const handleSelectArticle = async (url: string) => {
     if (!activeBrowserSite) return;
-    await startCrawl(url, activeBrowserSite);
-    setActiveBrowserSite(null);
+    const validation = validateCreatorArticleUrl(activeBrowserSite, url);
+    if (!validation.valid) {
+      setCrawlError(validation.message);
+      return;
+    }
+    setCrawlError('');
+    try {
+      await startCrawl(validation.url, activeBrowserSite);
+      setActiveBrowserSite(null);
+      setCurrentBrowserUrl('');
+    } catch (error) {
+      setCrawlError(error instanceof Error ? error.message : 'Không thể cào dữ liệu bài viết');
+    }
   };
+
+  const selectedUrlValidation = activeBrowserSite
+    ? validateCreatorArticleUrl(activeBrowserSite, currentBrowserUrl)
+    : { valid: false as const, message: 'Chưa chọn nguồn bài viết.' };
 
   // Extract selected site articles data
 
@@ -469,7 +398,7 @@ export default function Step2Article({
         
         {/* Card 1: Gocnhinmoi */}
         <div 
-          onClick={() => setActiveBrowserSite('gocnhinmoi')}
+          onClick={() => openSourceBrowser('gocnhinmoi')}
           className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -498,7 +427,7 @@ export default function Step2Article({
 
         {/* Card 2: Tuoi Tre */}
         <div 
-          onClick={() => setActiveBrowserSite('tuoitre')}
+          onClick={() => openSourceBrowser('tuoitre')}
           className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -527,7 +456,7 @@ export default function Step2Article({
 
         {/* Card 3: Dan Tri */}
         <div 
-          onClick={() => setActiveBrowserSite('dantri')}
+          onClick={() => openSourceBrowser('dantri')}
           className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -751,14 +680,22 @@ export default function Step2Article({
               <button
                 type="button"
                 onClick={() => handleSelectArticle(currentBrowserUrl)}
-                className="px-4 py-1.5 bg-primary hover:bg-primary/95 text-white rounded-lg text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-primary/10 cursor-pointer"
+                disabled={!selectedUrlValidation.valid || crawlStatus === 'crawling'}
+                title={selectedUrlValidation.valid ? 'Cào và sử dụng bài viết này' : selectedUrlValidation.message}
+                className="px-4 py-1.5 bg-primary hover:bg-primary/95 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-primary/10 cursor-pointer"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>Chọn bài viết này</span>
+                {crawlStatus === 'crawling' && sourceType === activeBrowserSite
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Check className="w-3.5 h-3.5" />}
+                <span>{crawlStatus === 'crawling' && sourceType === activeBrowserSite ? 'Đang cào...' : 'Chọn bài viết này'}</span>
               </button>
 
               <button 
-                onClick={() => setActiveBrowserSite(null)}
+                onClick={() => {
+                  setActiveBrowserSite(null);
+                  setCurrentBrowserUrl('');
+                  setCrawlError('');
+                }}
                 className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
@@ -780,17 +717,16 @@ export default function Step2Article({
               <div className="w-full flex-grow relative bg-white rounded-2xl overflow-hidden border border-gray-250 dark:border-zinc-850 h-[50vh]">
                 <iframe
                   ref={iframeRef}
-                  src={`/api/proxy?url=${encodeURIComponent(
-                    activeBrowserSite === 'gocnhinmoi' 
-                      ? 'https://gocnhinmoi.com.vn' 
-                      : activeBrowserSite === 'tuoitre' 
-                        ? 'https://tuoitre.vn' 
-                        : 'https://dantri.com.vn'
-                  )}`}
+                  src={`/api/proxy?url=${encodeURIComponent(getCreatorSourceBaseUrl(activeBrowserSite))}`}
                   className="w-full h-full border-none"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                  sandbox="allow-scripts allow-forms allow-popups"
                 />
               </div>
+              {crawlError && (
+                <p role="alert" className="mt-3 text-xs font-semibold text-red-600 dark:text-red-400">
+                  {crawlError}
+                </p>
+              )}
             </div>
 
           </div>

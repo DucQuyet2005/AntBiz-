@@ -88,7 +88,15 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
   async ingestUrl(url: string) {
     const response = await this.request(`/api/scrape?url=${encodeURIComponent(url)}`);
     const body = await readJson(response);
-    if (!response.ok) throw new Error('SOURCE_INVALID');
+    if (!response.ok) {
+      throw transportError(body, 'SOURCE_INVALID', 'Không thể cào dữ liệu từ bài viết');
+    }
+    if (body.type === 'LISTING') {
+      throw new CreatorFlowError(
+        'SOURCE_IS_LISTING',
+        'Trang đã chọn là trang danh sách. Hãy mở một bài viết cụ thể rồi thử lại.'
+      );
+    }
     return normalizeArticle(body);
   }
 
@@ -152,7 +160,12 @@ function normalizeArticle(value: Record<string, unknown>): IngestedCreatorArticl
   const tags = typeof record.tags === 'string'
     ? record.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
     : [];
-  if (!articleId || !content) throw new Error('SOURCE_NOT_PERSISTED');
+  if (!articleId || !content) {
+    throw new CreatorFlowError(
+      'SOURCE_NOT_PERSISTED',
+      'Bài viết chưa được lưu thành công. Vui lòng thử lại.'
+    );
+  }
   return {
     articleId,
     context: {

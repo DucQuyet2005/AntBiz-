@@ -15,6 +15,16 @@ describe('AI Creator proxy navigation interceptor', () => {
 
   it('reports URL changes only when navigation state changes', () => {
     expect(proxyRoute).not.toContain('setInterval(report, 800)');
-    expect(proxyRoute).toContain('_currentTarget = abs;\n          report();');
+    expect(proxyRoute).toMatch(/_currentTarget = abs;\s+report\(\);/);
+  });
+
+  it('reports only to the AntBiz parent origin and blocks cross-source navigation', () => {
+    expect(proxyRoute).toContain(
+      "postMessage({ type: 'URL_CHANGE', url: _currentTarget }, PARENT_ORIGIN)",
+    );
+    expect(proxyRoute).not.toContain(
+      "postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*')",
+    );
+    expect(proxyRoute).toContain('if (!isAllowedHost(abs)) return;');
   });
 });

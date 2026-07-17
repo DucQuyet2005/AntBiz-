@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
 
   /* ── Report current page URL to parent AntBiz window ── */
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*'); } catch (_) {}
+    try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, PARENT_ORIGIN); } catch (_) {}
   }
   report();
 
@@ -296,6 +296,7 @@ export async function GET(request: NextRequest) {
         return;
       }
       var abs = new URL(href, TARGET_ORIGIN).href;
+      if (!isAllowedHost(abs)) return;
       window.location.href = PROXY + encodeURIComponent(abs);
     } catch (err) { console.error(err); }
   }, true);

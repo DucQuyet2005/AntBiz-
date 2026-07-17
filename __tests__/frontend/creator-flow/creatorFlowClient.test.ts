@@ -31,6 +31,28 @@ describe('BrowserCreatorFlowClient', () => {
     }));
   });
 
+  it('rejects listing pages before entering the creation flow', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      type: 'LISTING',
+      title: 'Danh sách bài viết',
+      full_text: 'Nội dung trang danh sách',
+    }), { status: 200 }));
+
+    await expect(
+      new BrowserCreatorFlowClient(request).ingestUrl('https://dantri.com.vn/xa-hoi/'),
+    ).rejects.toThrow('Trang đã chọn là trang danh sách');
+  });
+
+  it('surfaces safe backend errors when crawling an article fails', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'Không thể truy cập bài viết này',
+    }), { status: 422 }));
+
+    await expect(
+      new BrowserCreatorFlowClient(request).ingestUrl('https://dantri.com.vn/bai-viet.htm'),
+    ).rejects.toThrow('Không thể truy cập bài viết này');
+  });
+
   it('uploads audio to speech processing and prefers corrected text', async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       transcript: 'Raw transcript',
