@@ -233,7 +233,7 @@ export default function Step5Schedule() {
                             onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
                             onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
                             onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
-                            className={`border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 overflow-hidden ${
+                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 overflow-hidden ${
                               isPast
                                 ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
                                 : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
@@ -252,8 +252,8 @@ export default function Step5Schedule() {
                             {showGolden && !isPast && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1 z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help">
-                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 hover:opacity-100'}`} />
-                                  <span className={`hidden group-hover/golden:block absolute bottom-4 bg-[#1e293b] dark:bg-zinc-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/cell:opacity-100'}`} />
+                                  <span className={`hidden group-hover/cell:block absolute bottom-4 bg-[#1e293b] dark:bg-zinc-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
                                     Giờ Vàng {currentPlatform}
                                   </span>
                                 </div>
