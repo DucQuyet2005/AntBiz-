@@ -195,7 +195,6 @@ export function useScheduleDragDrop(
     handleCellDrop,
 
     // Golden Hour utilities
-    getGoldenHoursForPlatform,
     isCellGoldenHourForPlatform,
     isDefaultGoldenHour,
     shouldHighlightGoldenOnDrag,
