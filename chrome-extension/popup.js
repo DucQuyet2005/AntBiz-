@@ -15,6 +15,7 @@ const stateHistory = document.getElementById('state-history');
 const btnShowHistory = document.getElementById('btn-show-history');
 const btnCloseHistory = document.getElementById('btn-close-history');
 const historyList = document.getElementById('history-list');
+const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
 
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
@@ -330,6 +331,14 @@ function initEventListeners() {
   if (btnCloseHistory) {
     btnCloseHistory.addEventListener('click', () => {
       showState(stateHome);
+    });
+  }
+
+  if (btnOpenAntbiz) {
+    btnOpenAntbiz.addEventListener('click', (e) => {
+      e.preventDefault();
+      const antbizUrl = `${AntBizUrl}/content-calendar`;
+      chrome.tabs.create({ url: antbizUrl });
     });
   }
 
