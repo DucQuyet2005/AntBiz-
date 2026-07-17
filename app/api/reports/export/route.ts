@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import ExcelJS from 'exceljs';
+import path from 'path';
 
 export async function GET(request: NextRequest) {
   const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
 
   // Workbook initialization from template
   const workbook = new ExcelJS.Workbook();
-  const templatePath = 'd:\\Web\\AntBiz-\\utils\\templates\\report_template.xlsx';
+  const templatePath = path.join(process.cwd(), 'utils', 'templates', 'report_template.xlsx');
   try {
     await workbook.xlsx.readFile(templatePath);
   } catch (err) {
@@ -290,8 +291,9 @@ export async function GET(request: NextRequest) {
 
   writeRowValues(10, summaryHeaders);
   const summaryHeaderRow = wsOverview.getRow(10);
+  const thinBorderObj = thinBorder;
   summaryHeaderRow.height = 24;
-  summaryHeaderRow.eachCell((cell) => {
+  summaryHeaderRow.eachCell((cell: ExcelJS.Cell) => {
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
@@ -299,7 +301,7 @@ export async function GET(request: NextRequest) {
     };
     cell.font = { name: 'Segoe UI', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    cell.border = thinBorder;
+    cell.border = thinBorderObj;
   });
 
   writeRowValues(11, ['Facebook', fbStats.total, fbStats.posted, fbStats.successRate / 100, fbStats.likes, fbStats.comments, fbStats.shares, fbStats.clicks, fbStats.reach, fbStats.impressions, { formula: 'SUM(E11:G11)' }]);
@@ -311,7 +313,7 @@ export async function GET(request: NextRequest) {
   summaryRowNumbers.forEach((rowNum, rIdx) => {
     const isTotal = rIdx === 3;
     const row = wsOverview.getRow(rowNum);
-    row.eachCell((cell, colNumber) => {
+    row.eachCell((cell: ExcelJS.Cell, colNumber: number) => {
       cell.font = { name: 'Segoe UI', size: 9.5, bold: isTotal };
       cell.border = thinBorder;
       if (isTotal) {
@@ -342,7 +344,7 @@ export async function GET(request: NextRequest) {
   writeRowValues(18, chartHeaders);
   const chartHeaderRow = wsOverview.getRow(18);
   chartHeaderRow.height = 22;
-  chartHeaderRow.eachCell((cell) => {
+  chartHeaderRow.eachCell((cell: ExcelJS.Cell) => {
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
@@ -357,7 +359,7 @@ export async function GET(request: NextRequest) {
     const rowNum = 19 + idx;
     writeRowValues(rowNum, [day.date, day.likes, day.comments, day.clicks, day.reach, day.impressions]);
     const row = wsOverview.getRow(rowNum);
-    row.eachCell((cell, colIdx) => {
+    row.eachCell((cell: ExcelJS.Cell, colIdx: number) => {
       cell.font = { name: 'Segoe UI', size: 9.5 };
       cell.border = thinBorder;
       if (colIdx === 1) {
@@ -370,9 +372,9 @@ export async function GET(request: NextRequest) {
   });
 
   // Auto-fit column widths for Overview
-  wsOverview.columns.forEach((col) => {
+  wsOverview.columns.forEach((col: Partial<ExcelJS.Column>) => {
     let maxLen = 10;
-    col.eachCell?.({ includeEmpty: false }, (cell) => {
+    col.eachCell?.({ includeEmpty: false }, (cell: ExcelJS.Cell) => {
       const valStr = cell.value ? String(cell.value) : '';
       if (valStr.length > maxLen && !valStr.includes('BÁO CÁO') && !valStr.includes('DỮ LIỆU')) {
         maxLen = valStr.length;
@@ -393,7 +395,7 @@ export async function GET(request: NextRequest) {
     const detailsHeaders = ["STT", "Tiêu đề / Nội dung bài viết", "Thời gian lên lịch", "Thời gian đăng", "Trạng thái", "Lượt thích", "Bình luận", "Chia sẻ", "Click link", "Tiếp cận", "Lượt hiển thị"];
     const dHeaderRow = ws.addRow(detailsHeaders);
     dHeaderRow.height = 24;
-    dHeaderRow.eachCell((cell) => {
+    dHeaderRow.eachCell((cell: ExcelJS.Cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -467,7 +469,7 @@ export async function GET(request: NextRequest) {
         interactions.impressions || 0,
       ]);
 
-      row.eachCell((cell, colIdx) => {
+      row.eachCell((cell: ExcelJS.Cell, colIdx: number) => {
         cell.font = { name: 'Segoe UI', size: 9.5 };
         cell.border = thinBorder;
         if (colIdx === 1 || colIdx === 5) {
@@ -487,9 +489,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Auto-fit columns
-    ws.columns.forEach((col, colIdx) => {
+    ws.columns.forEach((col: Partial<ExcelJS.Column>, colIdx: number) => {
       let maxLen = 10;
-      col.eachCell?.({ includeEmpty: false }, (cell) => {
+      col.eachCell?.({ includeEmpty: false }, (cell: ExcelJS.Cell) => {
         const valStr = cell.value ? String(cell.value) : '';
         if (valStr.length > maxLen && !valStr.includes('DANH SÁCH')) {
           maxLen = valStr.length;

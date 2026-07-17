@@ -113,9 +113,9 @@ export async function logAndNotifyPublishResult(
   details: string,
   skipEmail = false
 ) {
-  // const statusLabel = status === 'success' ? 'THÀNH CÔNG' : 'THẤT BẠI';
-  // const subject = `[AntBiz] Thông báo kết quả đăng bài: ${statusLabel}`;
-  // const text = `Xin chào,\n\nBài đăng "${postTitle}" đã được tự động đăng lên Facebook với trạng thái: ${statusLabel}.\n\nChi tiết:\n${details}\n\nTrân trọng,\nĐội ngũ AntBiz`;
+  const statusLabel = status === 'success' ? 'THÀNH CÔNG' : 'THẤT BẠI';
+  const subject = `[AntBiz] Thông báo kết quả đăng bài: ${statusLabel}`;
+  const text = `Xin chào,\n\nBài đăng "${postTitle}" đã được tự động đăng lên Facebook với trạng thái: ${statusLabel}.\n\nChi tiết:\n${details}\n\nTrân trọng,\nĐội ngũ AntBiz`;
 
   // 1. Gửi thông báo qua Email
   if (userEmail && !skipEmail) {

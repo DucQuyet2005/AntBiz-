@@ -73,7 +73,7 @@ const settingsUpdateSchema = z.object({
 export function parseUpdateSettings(input: unknown) {
   const result = settingsUpdateSchema.safeParse(input);
   if (!result.success) {
-    throw validation(result.error.errors[0]?.message || 'Dữ liệu cấu hình không hợp lệ');
+    throw validation(result.error.issues[0]?.message || 'Dữ liệu cấu hình không hợp lệ');
   }
   return result.data;
 }

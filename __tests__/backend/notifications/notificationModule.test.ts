@@ -101,6 +101,11 @@ function makeRepository(): NotificationRepository {
     insert: vi.fn(), insertMany: vi.fn(),
     markRead: vi.fn().mockResolvedValue(null),
     markAllRead: vi.fn().mockResolvedValue(0),
+    getUserSettings: vi.fn().mockResolvedValue(null),
+    updateUserSettings: vi.fn().mockResolvedValue(null as any),
+    findUnsentEmailNotifications: vi.fn().mockResolvedValue([]),
+    markEmailsAsSent: vi.fn().mockResolvedValue(undefined),
+    findUsersForDigest: vi.fn().mockResolvedValue([]),
   };
 }
 
@@ -114,6 +119,7 @@ function notification(overrides: Partial<NotificationRecord> = {}): Notification
   return {
     id: 'n1', user_id: 'u1', type: 'info', title: 'Title', message: 'Message',
     is_read: false, metadata: {}, created_at: '2026-07-15T00:00:00.000Z',
+    email_sent: false,
     ...overrides,
   };
 }

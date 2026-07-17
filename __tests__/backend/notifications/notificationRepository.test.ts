@@ -45,7 +45,7 @@ describe('SupabaseNotificationRepository', () => {
       userId: 'u1', type: 'info', title: 'Title', message: 'Message', metadata: { x: 1 },
     });
     expect(builder.calls).toContainEqual(['insert', {
-      user_id: 'u1', type: 'info', title: 'Title', message: 'Message', metadata: { x: 1 },
+      user_id: 'u1', type: 'info', title: 'Title', message: 'Message', metadata: { x: 1 }, email_sent: false,
     }]);
   });
 });

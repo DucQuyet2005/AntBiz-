@@ -23,6 +23,7 @@ export interface NotificationRecord {
 }
 
 export interface UserNotificationSettings {
+  email?: string;
   email_on_success: boolean;
   email_on_failure: boolean;
   email_digest_enabled: boolean;
