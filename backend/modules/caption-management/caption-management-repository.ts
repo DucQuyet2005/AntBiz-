@@ -64,7 +64,7 @@ export class SupabaseCaptionManagementRepository implements CaptionManagementRep
   async findCaptionForMutation(id: string) {
     const { data, error } = await this.supabase
       .from('captions')
-      .select('id, created_by, ai_content, edited_content, status')
+      .select('id, article_id, platform, created_by, ai_content, edited_content, status, articles(id, title, description, full_text)')
       .eq('id', id)
       .maybeSingle();
     if (error) throw new CaptionManagementRepositoryError('findCaptionForMutation', error);
@@ -80,6 +80,22 @@ export class SupabaseCaptionManagementRepository implements CaptionManagementRep
       .single();
     if (error) throw new CaptionManagementRepositoryError('updateCaption', error);
     return data as CaptionRecord;
+  }
+
+  async updateCaptionIfCurrent(
+    id: string,
+    expected: { field: 'ai_content' | 'edited_content'; content: string },
+    input: Record<string, unknown>
+  ) {
+    let query = this.supabase.from('captions').update(input).eq('id', id);
+    if (expected.field === 'edited_content') {
+      query = query.eq('edited_content', expected.content);
+    } else {
+      query = query.is('edited_content', null).eq('ai_content', expected.content);
+    }
+    const { data, error } = await query.select().maybeSingle();
+    if (error) throw new CaptionManagementRepositoryError('updateCaptionIfCurrent', error);
+    return data as CaptionRecord | null;
   }
 
   async latestVersionForCaption(captionId: string) {

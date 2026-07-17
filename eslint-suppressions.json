@@ -449,34 +449,7 @@
     }
   },
   "components/views/AiCreatorView.tsx": {
-    "@next/next/no-img-element": {
-      "count": 14
-    },
     "@typescript-eslint/no-explicit-any": {
-      "count": 56
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 33
-    },
-    "prefer-const": {
-      "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
-    "react-hooks/globals": {
-      "count": 4
-    },
-    "react-hooks/immutability": {
-      "count": 3
-    },
-    "react-hooks/purity": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 10
-    },
-    "react/no-unescaped-entities": {
       "count": 4
     }
   },
@@ -598,17 +571,6 @@
     },
     "react-hooks/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "components/views/PlatformPresetsTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 6
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "components/views/ProfileView.tsx": {

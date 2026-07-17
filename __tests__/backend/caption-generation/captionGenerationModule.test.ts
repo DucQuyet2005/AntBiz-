@@ -175,6 +175,68 @@ describe('CaptionGenerationModule', () => {
     expect(gemini.lastInput?.prompt).toContain('preferred');
   });
 
+  it('omits the Preset section when presetMode is none', async () => {
+    const { generator, gemini } = setup();
+    const session = await generator.generate(
+      { id: 'user-1' },
+      {
+        articleId: 'article-1',
+        platform: 'facebook',
+        presetMode: 'none',
+        variantIndex: 0,
+      }
+    );
+    await collect(session.events);
+
+    expect(gemini.lastInput?.prompt).not.toContain('Hướng dẫn khai thác nội dung');
+    expect(gemini.lastInput?.prompt).not.toContain('Chưa chọn quy chuẩn');
+  });
+
+  it('uses an authorized selected Preset for the target platform', async () => {
+    const { generator, repository, gemini } = setup();
+    repository.platformPreset = {
+      id: 'preset-1', user_id: 'user-1', platform: 'facebook', rules: 'Selected rules', is_default: false,
+    };
+    const session = await generator.generate(
+      { id: 'user-1' },
+      {
+        articleId: 'article-1',
+        platform: 'facebook',
+        presetMode: 'selected',
+        platformPresetId: 'preset-1',
+        variantIndex: 0,
+      }
+    );
+    await collect(session.events);
+
+    expect(gemini.lastInput?.prompt).toContain('Selected rules');
+  });
+
+  it('rejects selected Presets owned by another user or for another platform', async () => {
+    const { generator, repository } = setup();
+    repository.platformPreset = {
+      id: 'preset-1', user_id: 'user-2', platform: 'facebook', rules: 'Private', is_default: false,
+    };
+    await expect(generator.generate(
+      { id: 'user-1' },
+      {
+        articleId: 'article-1', platform: 'facebook', presetMode: 'selected',
+        platformPresetId: 'preset-1', variantIndex: 0,
+      }
+    )).rejects.toMatchObject({ code: 'PRESET_NOT_FOUND', status: 404 });
+
+    repository.platformPreset = {
+      id: 'preset-1', user_id: null, platform: 'instagram', rules: 'Wrong platform', is_default: false,
+    };
+    await expect(generator.generate(
+      { id: 'user-1' },
+      {
+        articleId: 'article-1', platform: 'facebook', presetMode: 'selected',
+        platformPresetId: 'preset-1', variantIndex: 0,
+      }
+    )).rejects.toMatchObject({ code: 'PRESET_PLATFORM_MISMATCH', status: 400 });
+  });
+
   it('combines general and platform Brand Style JSON rules', async () => {
     const { generator, repository, gemini } = setup();
     repository.stylePreset = {

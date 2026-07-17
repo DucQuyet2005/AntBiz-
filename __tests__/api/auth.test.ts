@@ -190,7 +190,7 @@ describe('Password Recovery route contracts', () => {
 });
 
 function post(path: string, body: string, headers?: HeadersInit) {
-  return new Request(`http://localhost${path}`, { method: 'POST', body, headers });
+  return new NextRequest(`http://localhost${path}`, { method: 'POST', body, headers });
 }
 
 function resetInput() {
