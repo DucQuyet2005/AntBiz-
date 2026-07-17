@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Calendar, Clock, Facebook, Instagram, 
-  Zap, Info, Settings 
+  Settings
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 
@@ -16,7 +15,6 @@ const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?:
 );
 
 export default function Step5Schedule() {
-  const { t } = useLanguage();
   const { state, dispatch } = useCreatorFlow();
   
   // Local state for week pagination

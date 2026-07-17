@@ -19,7 +19,10 @@ import { useRouter } from 'next/navigation';
 function AiCreatorContent() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { state, dispatch, nextStep, prevStep, goToStep, confirmPostSchedule } = useCreatorFlow();
+  const {
+    state, dispatch, nextStep, prevStep, goToStep,
+    startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
+  } = useCreatorFlow();
 
   // Custom Toast notification states
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
@@ -41,9 +44,7 @@ function AiCreatorContent() {
       case 1:
         return state.selectedPlatforms.length > 0;
       case 2:
-        // Valid if user has chosen a source url or written custom content
-        return state.articleUrl.trim().length > 0 ||
-          (state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
+        return Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done');
       case 3:
         return state.postContent.trim().length > 0;
       case 4:
@@ -60,7 +61,7 @@ function AiCreatorContent() {
       // Validate intermediate steps
       let valid = true;
       if (state.currentStep === 1 && state.selectedPlatforms.length === 0) valid = false;
-      if (state.currentStep === 2 && !state.articleUrl && (!state.manualTitle || !state.manualContent)) valid = false;
+      if (state.currentStep === 2 && (!state.articleId || state.crawlStatus !== 'done')) valid = false;
 
       if (valid) {
         goToStep(targetStep);
@@ -71,15 +72,16 @@ function AiCreatorContent() {
   // Action handlers
   const handlePublishNow = async () => {
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' });
-    const success = await confirmPostSchedule();
-    if (success) {
+    const result = await confirmPostSchedule('now');
+    if (result.success) {
       showToast(t('creator.step5.successToast'), 'success');
       setTimeout(() => {
         dispatch({ type: 'RESET_FLOW' });
         router.push('/content-calendar');
       }, 1500);
     } else {
-      showToast(t('creator.step5.errorToast'), 'error');
+      const failed = result.failed.join(', ');
+      showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
     }
   };
 
@@ -89,15 +91,16 @@ function AiCreatorContent() {
       nextStep();
     } else if (state.currentStep === 4) {
       // Submit and publish/schedule
-      const success = await confirmPostSchedule();
-      if (success) {
+      const result = await confirmPostSchedule('scheduled');
+      if (result.success) {
         showToast(t('creator.step5.successToast'), 'success');
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
           router.push('/content-calendar');
         }, 1500);
       } else {
-        showToast(t('creator.step5.errorToast'), 'error');
+        const failed = result.failed.join(', ');
+        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
       }
     } else {
       nextStep();
@@ -120,34 +123,9 @@ function AiCreatorContent() {
             sourceType={state.sourceType}
             crawlStatus={state.crawlStatus}
             articleContext={state.articleContext}
-            startCrawl={async (url, src) => {
-              // Initiate crawl
-              const jobId = `job_${Math.random().toString(36).substring(2, 9)}`;
-              dispatch({ type: 'SET_SOURCE_TYPE', payload: src });
-              dispatch({ type: 'SET_ARTICLE_URL', payload: url });
-              dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId, status: 'crawling' } });
-            }}
-            submitManual={async (title, content) => {
-              dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
-              dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title, content } });
-              dispatch({ type: 'SET_CRAWL_STATUS', payload: 'crawling' });
-
-              // Simulate quick ingestion
-              setTimeout(() => {
-                dispatch({
-                  type: 'SET_ARTICLE_CONTEXT',
-                  payload: {
-                    title,
-                    content,
-                    sourceUrl: 'manual',
-                    summary: content.substring(0, 150) + '...',
-                    keywords: ['Bài viết thủ công', 'Nhập tay'],
-                    entities: ['AntBiz AI'],
-                  }
-                });
-                dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
-              }, 1000);
-            }}
+            startCrawl={startCrawl}
+            submitManual={submitManualArticle}
+            uploadSource={uploadSourceFile}
           />
         );
       case 3:

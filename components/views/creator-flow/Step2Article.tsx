@@ -2,7 +2,6 @@
 
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, ExternalLink, X,
@@ -10,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import type { CreatorUploadedSource } from '@/frontend/modules/creator-flow';
 import { ArticleContext } from '@/lib/services/creator/article.service';
 
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
@@ -30,6 +30,7 @@ interface Step2ArticleProps {
   articleContext: ArticleContext | null;
   startCrawl: (url: string, source: 'gocnhinmoi' | 'tuoitre' | 'dantri') => Promise<void>;
   submitManual: (title: string, content: string) => Promise<void>;
+  uploadSource: (file: File) => Promise<CreatorUploadedSource>;
 }
 
 // Mock articles data for simulation
@@ -131,6 +132,7 @@ export default function Step2Article({
   crawlStatus,
   startCrawl,
   submitManual,
+  uploadSource,
 }: Step2ArticleProps) {
   const { t } = useLanguage();
   const { state, dispatch } = useCreatorFlow();
@@ -141,13 +143,14 @@ export default function Step2Article({
   // Audio & Document drag & drop upload states
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLDivElement>(null);
 
   // Floating presets drawer states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
-  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('system');
+  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
 
   // Active tab for uploaded files status
   const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document' | 'write'>('audio');
@@ -172,30 +175,13 @@ export default function Step2Article({
     return null;
   };
 
-  // Uploaded files list (both audio, documents, and images)
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; size: string; type: 'audio' | 'document' | 'image'; url?: string; content?: string }[]>([
-    { name: 'phong-van-ceo-2023.mp3', size: '12.5 MB', type: 'audio' },
-    { 
-      name: 'NETSPACE_Lê Hải Trung_T6_2026.docx', 
-      size: '4.6 MB', 
-      type: 'document',
-      content: `BÁO CÁO HOẠT ĐỘNG TRUNG TÂM ĐÀO TẠO NETSPACE - THÁNG 06/2026
-Người thực hiện: Lê Hải Trung
-
-I. KẾT QUẢ ĐẠT ĐƯỢC:
-1. Hoàn tất đào tạo 4 lớp AI ứng dụng cho đối tác SMEs với tổng số 85 học viên.
-2. Tỷ lệ học viên hài lòng với chất lượng bài giảng và giảng viên đạt 94.5%.
-3. Phát triển thành công bộ giáo trình chuyên sâu về Next.js và Tailwind CSS.
-
-II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
-1. Đẩy mạnh tuyển sinh khóa học AI Creator và Content Automation.
-2. Nâng cấp hạ tầng lab thực hành phục vụ học viên trực tuyến.`
-    }
-  ]);
+  // Files that completed processing and Article persistence.
+  const [uploadedFiles, setUploadedFiles] = useState<CreatorUploadedSource[]>([]);
 
   const handleFileDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isUploading) return;
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       await processUploadedFile(files[0]);
@@ -207,60 +193,36 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
     if (files && files.length > 0) {
       await processUploadedFile(files[0]);
     }
+    e.target.value = '';
   };
 
   const processUploadedFile = async (file: File) => {
+    setUploadError('');
     setIsUploading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsUploading(false);
-
-    const fileType = file.type;
-    const fileName = file.name.toLowerCase();
-    
-    let detectedType: 'audio' | 'document' | 'image' = 'document';
-    let url = '';
-    if (fileType.startsWith('image/') || fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-      detectedType = 'image';
-      url = URL.createObjectURL(file);
-    } else if (fileType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav')) {
-      detectedType = 'audio';
-      url = URL.createObjectURL(file);
-    } else {
-      detectedType = 'document';
+    try {
+      const uploaded = await uploadSource(file);
+      setUploadedFiles((previous) => [
+        ...previous.filter((item) => item.name !== uploaded.name),
+        uploaded,
+      ]);
+      setActiveFileTab(uploaded.type);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Không thể xử lý tệp đã chọn');
+    } finally {
+      setIsUploading(false);
     }
-
-    let extractedText = '';
-    if (detectedType === 'audio') {
-      extractedText = `Chào mừng các bạn đến với buổi phỏng vấn ngày hôm nay. Chúng ta sẽ thảo luận về chiến lược phát triển bền vững trong năm 2024. Mục tiêu chính của chúng ta là giảm thiểu lượng khí thải carbon xuống 20% và tăng cường sử dụng năng lượng tái tạo.`;
-      setUploadedFiles(prev => [...prev, { name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, type: 'audio', url }]);
-      setActiveFileTab('audio');
-    } else if (detectedType === 'image') {
-      extractedText = `Hình ảnh: ${file.name}`;
-      setUploadedFiles(prev => [...prev, { name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, type: 'image', url }]);
-      // Keep active tab unchanged for images as they display persistently below
-    } else {
-      extractedText = `Nội dung tài liệu trích xuất tự động từ tệp ${file.name}. Kế hoạch phát triển bền vững và chuyển đổi số trong vận hành doanh nghiệp trong giai đoạn tiếp theo.`;
-      setUploadedFiles(prev => [...prev, { 
-        name: file.name, 
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, 
-        type: 'document',
-        content: extractedText
-      }]);
-      setActiveFileTab('write'); // Automatically switch to "Tự viết" editor when parsed
-
-      // Auto-fill manual form area state
-      const titleWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      dispatch({ 
-        type: 'SET_MANUAL_CONTENT', 
-        payload: { title: titleWithoutExtension, content: extractedText } 
-      });
-    }
-
-    await submitManual(file.name, extractedText);
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleManualSubmit = async () => {
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      await submitManual(state.manualTitle, state.manualContent);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Không thể lưu bài viết');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSelectArticle = async (url: string) => {
@@ -271,9 +233,6 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
 
   // Extract selected site articles data
   const siteData = activeBrowserSite ? MOCK_SITE_ARTICLES[activeBrowserSite] : null;
-
-  // Check if there are any uploaded images
-  const hasImages = uploadedFiles.some(f => f.type === 'image');
 
   return (
     <div className="w-full max-w-5xl mx-auto flex-grow pt-4 pb-20 px-4 md:px-6 select-none animate-fade-in">
@@ -381,7 +340,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                    const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                    const isSystem = Boolean(preset.isSystem);
                     const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                     return matchesSearch && matchesTab;
                   })
@@ -440,7 +399,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 {state.presets.filter((preset) => {
                   const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                     preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                  const isSystem = Boolean(preset.isSystem);
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (
@@ -567,11 +526,13 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
           {/* Left Column: Dropzone */}
           <div className="flex flex-col justify-between h-full min-h-[350px]">
             <div 
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors cursor-pointer flex-grow h-full min-h-[330px] ${
+              onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
+              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors flex-grow h-full min-h-[330px] ${
+                isUploading ? 'cursor-wait opacity-80' : 'cursor-pointer'
+              } ${
                 isDragging 
                   ? 'border-primary bg-primary/5' 
                   : 'border-gray-250 dark:border-zinc-800 hover:border-primary bg-gray-55 dark:bg-zinc-900/30'
@@ -582,23 +543,29 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 ref={fileInputRef} 
                 onChange={handleFileSelect} 
                 className="hidden" 
-                accept="audio/*,.pdf,.docx,.doc,.txt,image/*"
+                accept="audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,.mp3,.m4a,.pdf,.docx,.txt"
+                disabled={isUploading}
               />
               {isUploading ? (
                 <div className="flex flex-col items-center">
                   <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                  <span className="text-xs font-bold text-text">Đang tải tệp lên...</span>
+                  <span className="text-xs font-bold text-text">Đang xử lý và lưu nguồn...</span>
                 </div>
               ) : (
                 <>
                   <UploadCloud className="w-8 h-8 text-primary mb-2" />
                   <h4 className="text-xs font-bold text-text mb-1">Kéo thả tệp vào đây hoặc Duyệt tìm</h4>
                   <p className="text-[10px] text-text-muted text-center">
-                    Hỗ trợ Audio, Hình ảnh (PNG, JPG) hoặc Tài liệu (PDF, DOCX, TXT)
+                    Hỗ trợ Audio (MP3, M4A, WAV, OGG, WebM) hoặc Tài liệu (PDF, DOCX, TXT)
                   </p>
                 </>
               )}
             </div>
+            {uploadError && (
+              <p role="alert" className="mt-3 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                {uploadError}
+              </p>
+            )}
           </div>
 
           {/* Right Column: Uploaded Files Status / Manual Input */}
@@ -623,7 +590,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 ))}
               </div>
 
-              <div className={`flex-grow overflow-y-auto pr-1 no-scrollbar ${hasImages ? 'max-h-[210px]' : 'max-h-[290px]'}`}>
+              <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[290px]">
                 {activeFileTab === 'write' ? (
                   <div className="space-y-4 flex-grow animate-fade-in">
                     <div className="space-y-3">
@@ -633,6 +600,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                           type="text"
                           placeholder="Nhập tiêu đề bài viết gốc..."
                           value={state.manualTitle}
+                          disabled={isUploading}
                           onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
                           className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text"
                         />
@@ -643,11 +611,19 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                           placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
                           value={state.manualContent}
                           rows={4}
+                          disabled={isUploading}
                           onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
                           className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none"
                         />
                       </div>
-
+                      <button
+                        type="button"
+                        onClick={handleManualSubmit}
+                        disabled={isUploading}
+                        className="w-full px-4 py-2.5 bg-primary hover:bg-primary/95 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all active:scale-[0.99]"
+                      >
+                        {isUploading ? 'Đang lưu bài viết...' : 'Sử dụng nội dung tự viết'}
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -701,15 +677,6 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                               </button>
                             </div>
 
-                            {file.type === 'audio' && (
-                              <div className="mt-1">
-                                <audio 
-                                  src={file.url || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"} 
-                                  controls 
-                                  className="w-full h-8 rounded-lg text-xs" 
-                                />
-                              </div>
-                            )}
                           </div>
                         ))}
                     </div>
@@ -717,36 +684,6 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 )}
               </div>
             </div>
-
-            {/* Persistent Selected Images Gallery */}
-            {hasImages && (
-              <div className="mt-4 pt-4 border-t border-gray-150 dark:border-zinc-850 flex-shrink-0 animate-fade-in select-none">
-                <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Hình ảnh đã tải lên ({uploadedFiles.filter(f => f.type === 'image').length})</h4>
-                <div className="flex flex-wrap gap-2 overflow-x-auto py-1 max-h-[85px] no-scrollbar">
-                  {uploadedFiles
-                    .filter(f => f.type === 'image')
-                    .map((file, idx) => (
-                      <div key={idx} className="relative rounded-xl overflow-hidden border border-gray-250 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 w-16 h-16 group/img shadow-sm flex-shrink-0">
-                        <img 
-                          src={file.url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200"} 
-                          alt={file.name} 
-                          className="w-full h-full object-cover"
-                        />
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white p-1 rounded-full transition-colors opacity-95 shadow-md flex items-center justify-center"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
 
           </div>
         </div>

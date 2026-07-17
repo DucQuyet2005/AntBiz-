@@ -4,6 +4,20 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased] - 2026-07-17
+
+### Added
+- Kết nối AI Creator với luồng sinh Caption thực tế theo bài viết đã lưu, nền tảng và Preset được chọn; nội dung được stream về giao diện và giữ Caption ID thật cho các bước tiếp theo.
+- Bổ sung tạo lại toàn bộ Caption từ nút hiện hữu và tạo lại chính xác vùng văn bản được bôi đen, có kiểm tra xung đột khi nội dung đã thay đổi.
+- Kết nối thao tác Đăng ngay và Đặt lịch với Scheduled Publishing cho từng nền tảng, đồng thời giữ lại kết quả thành công khi một nền tảng khác gặp lỗi.
+
+### Changed
+- Chuyển điều phối Step 2–5 của AI Creator sang module Quick Publishing: nguồn nhập tay/URL được lưu thật, tài khoản liên kết và Platform Preset được tải từ backend, chỉnh sửa được lưu trước khi đăng hoặc lên lịch.
+
+### Fixed
+- Không còn bỏ qua draft thiếu Caption ID rồi hiển thị thông báo thành công; giao diện chỉ chuyển sang lịch nội dung khi tất cả nền tảng yêu cầu đã hoàn tất và hiển thị rõ nền tảng thất bại khi có partial failure.
+
+
 ## [Unreleased] - 2026-07-16
 
 ### Changed

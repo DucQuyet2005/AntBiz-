@@ -2,9 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  ChevronLeft, RefreshCw, Calendar, Send, Sparkles, 
-  Info, Cpu, Facebook, Instagram, X, Loader2, Globe,
+import {
+  RefreshCw, Send, Sparkles,
+  Cpu, Facebook, Instagram, X, Loader2, Globe,
   Bookmark, Check, Search
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
@@ -22,8 +22,6 @@ export default function Step4Editor() {
   const { 
     state, 
     dispatch,
-    prevStep,
-    nextStep,
     generateAIContent, 
     regeneratePostContent, 
     sendAssistantChat,
@@ -33,7 +31,7 @@ export default function Step4Editor() {
   // Style Presets states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
-  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('system');
+  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
 
   const getTagColorClass = (tag: string) => {
     const text = tag.toLowerCase();
@@ -101,8 +99,8 @@ export default function Step4Editor() {
     const selection = window.getSelection();
     if (!selection) return;
 
-    const text = selection.toString().trim();
-    if (!text || text.length < 3) {
+    const text = selection.toString();
+    if (!text.trim() || text.trim().length < 3) {
       setShowPopover(false);
       return;
     }
@@ -110,6 +108,11 @@ export default function Step4Editor() {
     // Verify selection is within the editor
     if (editorRef.current && editorRef.current.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
+      const prefix = range.cloneRange();
+      prefix.selectNodeContents(editorRef.current);
+      prefix.setEnd(range.startContainer, range.startOffset);
+      const selectionStart = prefix.toString().length;
+      const selectionEnd = selectionStart + text.length;
       const rect = range.getBoundingClientRect();
       
       // Calculate coordinates relative to screen view layout
@@ -117,7 +120,10 @@ export default function Step4Editor() {
         top: rect.top + window.scrollY - 55,
         left: rect.left + window.scrollX + (rect.width / 2),
       });
-      dispatch({ type: 'SET_HIGHLIGHT_TEXT', payload: text });
+      dispatch({
+        type: 'SET_HIGHLIGHT_SELECTION',
+        payload: { text, start: selectionStart, end: selectionEnd },
+      });
       setShowPopover(true);
     }
   };
@@ -204,7 +210,7 @@ export default function Step4Editor() {
           
           <div className="flex items-center gap-3.5 flex-shrink-0">
             <button
-              onClick={regeneratePostContent}
+              onClick={() => regeneratePostContent()}
               disabled={state.isGeneratingPost}
               className="flex items-center gap-1.5 text-xs font-bold text-text-muted hover:text-text border border-gray-250 dark:border-zinc-700 hover:bg-gray-55 dark:hover:bg-zinc-800 rounded-full px-4.5 py-2 transition-all disabled:opacity-50"
             >
@@ -545,7 +551,7 @@ export default function Step4Editor() {
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                    const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                    const isSystem = Boolean(preset.isSystem);
                     const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                     return matchesSearch && matchesTab;
                   })
@@ -557,7 +563,7 @@ export default function Step4Editor() {
                         onClick={() => {
                           const newId = isSelected ? null : preset.id;
                           dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
-                          regeneratePostContent(); // Regenerate AI content mid-way
+                          regeneratePostContent(newId);
                         }}
                         className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
                           isSelected
@@ -605,7 +611,7 @@ export default function Step4Editor() {
                 {state.presets.filter((preset) => {
                   const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                     preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                  const isSystem = Boolean(preset.isSystem);
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (

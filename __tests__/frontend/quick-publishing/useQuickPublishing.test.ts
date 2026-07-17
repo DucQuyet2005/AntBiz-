@@ -7,6 +7,7 @@ describe('Quick Publishing React adapter state', () => {
       isGenerating: false,
       regeneratingVariantId: null,
       isScheduling: false,
+      isPublishing: false,
       lastEvent: null,
     };
     const generating = reduceQuickPublishingExecution(initial, { type: 'generation', active: true });

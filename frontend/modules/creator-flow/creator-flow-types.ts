@@ -16,6 +16,7 @@ export interface CreatorFlowState {
   // Step 2: Article Ingestion
   sourceType: 'gocnhinmoi' | 'tuoitre' | 'dantri' | 'manual' | null;
   articleUrl: string;
+  articleId: string | null;
   manualTitle: string;
   manualContent: string;
   crawlJobId: string | null;
@@ -36,6 +37,8 @@ export interface CreatorFlowState {
   chatMessages: ChatMessage[];
   isChatSending: boolean;
   highlightedText: string;
+  highlightSelectionStart: number | null;
+  highlightSelectionEnd: number | null;
   isHighlightEditing: boolean;
   conversationalStep: number; // For step-by-step assistant questionnaire
 
@@ -48,6 +51,8 @@ export interface CreatorFlowState {
   timelinePosts: ScheduledPostInfo[];
   isLoadingTimeline: boolean;
   isScheduling: boolean;
+  publishingSucceededPlatforms: PlatformType[];
+  publishingFailedPlatforms: PlatformType[];
 }
 
 export type CreatorFlowAction =
@@ -58,6 +63,7 @@ export type CreatorFlowAction =
   | { type: 'SET_LOADING_PLATFORMS'; payload: boolean }
   | { type: 'SET_SOURCE_TYPE'; payload: 'gocnhinmoi' | 'tuoitre' | 'dantri' | 'manual' | null }
   | { type: 'SET_ARTICLE_URL'; payload: string }
+  | { type: 'SET_ARTICLE_ID'; payload: string | null }
   | { type: 'SET_MANUAL_CONTENT'; payload: { title: string; content: string } }
   | { type: 'SET_CRAWL_JOB'; payload: { jobId: string; status: 'idle' | 'crawling' | 'done' | 'error' } }
   | { type: 'SET_CRAWL_STATUS'; payload: 'idle' | 'crawling' | 'done' | 'error' }
@@ -74,6 +80,7 @@ export type CreatorFlowAction =
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'SET_CHAT_SENDING'; payload: boolean }
   | { type: 'SET_HIGHLIGHT_TEXT'; payload: string }
+  | { type: 'SET_HIGHLIGHT_SELECTION'; payload: { text: string; start: number; end: number } }
   | { type: 'SET_HIGHLIGHT_EDITING'; payload: boolean }
   | { type: 'SET_CONVERSATIONAL_STEP'; payload: number }
   | { type: 'SET_SCHEDULE_MODE'; payload: 'now' | 'scheduled' }
@@ -81,4 +88,5 @@ export type CreatorFlowAction =
   | { type: 'SET_TIMELINE'; payload: ScheduledPostInfo[] }
   | { type: 'SET_LOADING_TIMELINE'; payload: boolean }
   | { type: 'SET_SCHEDULING'; payload: boolean }
+  | { type: 'SET_PUBLISHING_RESULT'; payload: { successful: PlatformType[]; failed: PlatformType[] } }
   | { type: 'RESET_FLOW' };
