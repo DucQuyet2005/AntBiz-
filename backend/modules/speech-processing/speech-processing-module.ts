@@ -18,6 +18,24 @@ const defaultLogger: SpeechProcessingLogger = {
   },
 };
 
+function cleanWhisperHallucinations(text: string): string {
+  const patterns = [
+    /hãy subscribe cho kênh ghiền mì gõ để không bỏ lỡ những video hấp dẫn(?: nhé)?\.?/gi,
+    /hãy subscribe cho kênh ghiền mì gõ\.?/gi,
+    /ghiền mì gõ\.?/gi,
+    /cảm ơn các bạn đã theo dõi\.?/gi,
+    /cảm ơn quý vị và các bạn đã quan tâm theo dõi\.?/gi,
+    /cảm ơn quý vị và các bạn đã theo dõi\.?/gi,
+    /hãy đăng ký kênh để ủng hộ\.?/gi
+  ];
+  
+  let cleaned = text;
+  for (const pattern of patterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  return cleaned.trim();
+}
+
 export class SpeechProcessingModule implements SpeechProcessingModuleInterface {
   constructor(
     private readonly transcriber: SpeechTranscriber,
@@ -27,9 +45,12 @@ export class SpeechProcessingModule implements SpeechProcessingModuleInterface {
 
   async process(input: SpeechProcessingInput): Promise<SpeechProcessingResult> {
     const parsed = parseSpeechProcessingInput(input);
-    const transcript = (parsed.file
+    let transcript = (parsed.file
       ? await this.transcriber.transcribe(parsed.file)
       : parsed.bullets).trim();
+
+    // Làm sạch lỗi hallucination phổ biến của Whisper tiếng Việt
+    transcript = cleanWhisperHallucinations(transcript);
 
     if (!transcript) {
       throw new SpeechProcessingError(
