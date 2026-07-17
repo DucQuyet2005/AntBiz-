@@ -18,6 +18,7 @@ export interface PromptConfigRecord {
   rules: string;
   params: Record<string, unknown>;
   is_default: boolean;
+  is_system?: boolean;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

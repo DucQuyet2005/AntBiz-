@@ -84,4 +84,56 @@ describe('PromptConfigAiModule', () => {
       clientMessage: 'upstream failed',
     }));
   });
+
+  describe('generateQuestions robust JSON parsing', () => {
+    it('successfully parses clean JSON', async () => {
+      const gemini = new FakeGemini();
+      gemini.output = JSON.stringify({
+        steps: [
+          { key: 'tone', question: 'Văn phong?', options: ['A', 'B'] }
+        ]
+      });
+      const aiModule = new PromptConfigAiModule(gemini);
+      const result = await aiModule.generateQuestions({ objectives: ['Mục tiêu'] });
+      expect(result.steps).toHaveLength(1);
+      expect(result.steps[0].key).toBe('tone');
+    });
+
+    it('successfully parses JSON wrapped in markdown code blocks', async () => {
+      const gemini = new FakeGemini();
+      gemini.output = `
+\`\`\`json
+{
+  "steps": [
+    { "key": "tone", "question": "Văn phong?", "options": ["A", "B"] }
+  ]
+}
+\`\`\`
+`;
+      const aiModule = new PromptConfigAiModule(gemini);
+      const result = await aiModule.generateQuestions({ objectives: ['Mục tiêu'] });
+      expect(result.steps).toHaveLength(1);
+      expect(result.steps[0].key).toBe('tone');
+    });
+
+    it('successfully parses JSON with trailing commas', async () => {
+      const gemini = new FakeGemini();
+      gemini.output = `
+{
+  "steps": [
+    {
+      "key": "tone",
+      "question": "Văn phong?",
+      "options": ["A", "B",],
+    },
+  ],
+}
+`;
+      const aiModule = new PromptConfigAiModule(gemini);
+      const result = await aiModule.generateQuestions({ objectives: ['Mục tiêu'] });
+      expect(result.steps).toHaveLength(1);
+      expect(result.steps[0].key).toBe('tone');
+    });
+  });
 });
+

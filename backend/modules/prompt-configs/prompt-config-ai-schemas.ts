@@ -13,5 +13,12 @@ export const wizardPromptSchema = z.object({
   variantCount: z.number().int().min(2).max(3),
 });
 
+export const generateQuestionsSchema = z.object({
+  objectives: z.array(z.string()).optional(),
+  objective: z.string().optional(),
+  historySummary: z.string().optional(),
+});
+
 export type AnalyzeArticleConfigInput = z.infer<typeof analyzeArticleConfigSchema>;
 export type WizardPromptInput = z.infer<typeof wizardPromptSchema>;
+export type GenerateQuestionsInput = z.infer<typeof generateQuestionsSchema>;

@@ -3,8 +3,74 @@
 Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ được ghi nhận tại đây.
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-07-17
+
+### Added
+- **Tách biệt Chế độ Chỉnh sửa Trực tiếp và Chế độ Thu thập Wizard (Direct Edit vs Confirm Wizard Mode)**:
+  - Khi sửa một văn phong thương hiệu sẵn có (`step === -1`), hệ thống hiển thị duy nhất một ô nhập nội dung Quy định & Nguyên tắc văn phong trực tiếp (với `spellCheck={false}` để loại bỏ hoàn toàn các gạch đỏ lỗi chính tả của trình duyệt), ẩn toàn bộ phần xem trước và các lựa chọn cấu hình câu hỏi của wizard.
+  - Khi tạo mới bằng Wizard (`step > aiSteps.length`), hệ thống hiển thị phần Xem trước Văn phong AI song song với ô nhập Nguyên tắc bổ sung để người dùng rà soát nội dung do AI sinh ra và bổ sung ý kiến riêng của mình trước khi lưu.
+- **Khởi tạo 4 Văn phong hệ thống (Mẫu)**:
+  - Thiết lập sẵn 4 văn phong toàn diện, bao quát nhất bao gồm: *Chuyên gia Chuyên nghiệp*, *Người bạn Gần gũi*, *Năng động & Truyền cảm hứng*, và *Kể chuyện Sáng tạo*.
+  - Giao diện tự động hiển thị nhãn `🏷️ Mẫu` bên cạnh các văn phong này.
+  - Vô hiệu hóa menu thao tác (Sửa/Xóa) cho các văn phong mẫu để đảm bảo tính toàn vẹn của dữ liệu hệ thống chỉ đọc.
+  - Sửa lỗi hiển thị `Invalid Date` ở chân thẻ bằng cách thay thế bằng nhãn `Hệ thống` cho các thẻ mẫu.
+- **Sắp xếp thứ tự ưu tiên hiển thị**:
+  - Tự động đưa văn phong được cấu hình là `Mặc định` (⭐ Mặc định) lên vị trí đầu tiên của danh sách.
+  - Các văn phong cá nhân do người dùng tạo tự động xếp tiếp theo để đảm bảo tiện lợi khi truy cập.
+  - 4 văn phong hệ thống mẫu luôn được đưa xuống cuối cùng để giữ giao diện thoáng và ưu tiên tác vụ của người dùng.
+- **Tích hợp Thanh Tìm kiếm Tổng**:
+  - Loại bỏ hoàn toàn thanh tìm kiếm cục bộ tại trang Văn phong.
+  - Tích hợp bộ lắng nghe sự kiện (`global-search`) từ thanh tìm kiếm tổng trên Header để lọc trực tiếp danh sách Văn phong đang hiển thị tương ứng với từ khóa tìm kiếm.
+- **Sửa lỗi Nháy Con trỏ chuột và đóng Menu khi click ra ngoài**:
+  - Thay thế cách sử dụng overlay `fixed inset-0` lồng trong PresetCard (gây lỗi nháy con trỏ do xung đột hover với CSS transition dịch chuyển của Card) sang giải pháp dùng React Hook `useRef` + `useEffect` lắng nghe sự kiện click ngoài thông thường.
+  - Đảm bảo khi click ra ngoài, menu ba chấm "Sửa/Xóa" đóng lại chính xác và không kích hoạt sự kiện xem chi tiết của thẻ Card.
+- **Hỗ trợ chọn tối đa 2 mục tiêu ở Bước 0 của Wizard Cấu hình Prompt**:
+  - Chuyển đổi cơ chế chọn 1 mục tiêu duy nhất sang cho phép người dùng chọn tối đa 2 mục tiêu đồng thời tại Bước 0 của Wizard.
+  - Khi người dùng đã chọn đủ 2 mục tiêu, các ô mục tiêu chưa chọn khác sẽ tự động bị vô hiệu hóa (disabled) và giảm độ mờ (opacity-40) để tránh chọn quá giới hạn.
+  - Thêm ô nhập văn bản tự do ("Khác...") khi người dùng tick chọn mục tiêu "Khác", hiển thị ngay bên dưới lưới mục tiêu và chiếm 1 trong 2 slot lựa chọn tối đa.
+  - Vô hiệu hóa nút chuyển tiếp "Bắt đầu định hình" nếu chưa chọn mục tiêu nào, hoặc nếu có chọn "Khác" nhưng chưa nhập nội dung tùy chỉnh.
+  - **Tự động đặt tên văn phong dựa trên mục tiêu**:
+    - Khi người dùng tới bước xác nhận cuối cùng, hệ thống tự động đặt tên gợi ý dựa trên mục tiêu đã chọn (ví dụ: `Văn phong Tăng doanh số & Bán hàng` hoặc `Văn phong Khác...`), giúp người dùng tiết kiệm thao tác nhập liệu.
+  - **Khắc phục triệt để lỗi chồng đè layout**:
+    - Sử dụng `createPortal` để render toàn bộ `WizardModal` trực tiếp vào `document.body` cùng với `z-[9999]`, tránh việc bị ẩn hoặc bị che khuất bởi các thanh điều hướng (sidebar) hay thanh tìm kiếm thuộc layout cha.
+  - **Tối giản hóa nhãn giao diện**:
+    - Loại bỏ các ghi chú nằm trong dấu ngoặc đơn `()` không cần thiết tại màn hình mục tiêu (`(Tối đa 2)`) và màn hình xác nhận (`Đặt làm mặc định (Áp dụng tự động khi sinh bài viết)`, `Nguyên tắc bổ sung (Cấu hình mềm)`), mang lại giao diện tinh gọn, chuyên nghiệp và rõ ràng hơn.
+  - **Lược bỏ Quy tắc bổ sung trống**:
+    - Chỉ hiển thị tiêu đề và nội dung của "Quy định bổ sung" (hoặc "Additional Rules") trong khung xem trước và chỉ lưu vào database khi người dùng có nhập nội dung cụ thể. Nếu để trống, mục này sẽ tự động được lược bỏ để tránh lưu các dòng tiêu đề rỗng dư thừa.
+  - **Chuyển đổi sang định dạng chỉ dẫn thuộc tính ngắn gọn (Direct Directives)**:
+    - Bổ sung cấu hình prompt yêu cầu mô hình AI sinh thêm trường `"label"` (nhãn thuộc tính ngắn gọn tiếng Việt, ví dụ: "Vai trò thương hiệu", "Sắc thái cảm xúc") bên cạnh `"question"`.
+    - Khi hiển thị xem trước hoặc biên dịch lưu trữ prompt config (`compiledRules`), hệ thống sẽ tự động ghép nhãn này thay vì hiển thị toàn bộ câu hỏi dài dòng. Điều này giúp bộ quy tắc văn phong lưu trữ trở nên cô đọng, chuyên nghiệp và tiết kiệm token khi gọi AI sinh bài viết.
+  - **Cơ chế bắt lỗi & chống phá hoại dữ liệu (Client-side Safeguards)**:
+    - Thêm hàm xác thực thủ công `validateCustomInput` kiểm tra các ô nhập "Khác" (Mục tiêu khác & Câu trả lời khác).
+    - Bộ lọc quy định độ dài ký tự hợp lệ (4 - 80 ký tự), chặn hành vi phá hoại/lặp ký tự vô nghĩa (như `aaaa`, `....`) và chặn các chuỗi không có nghĩa (như `asdfgh`) thông qua thuật toán lọc nguyên âm tiếng Việt/tiếng Anh.
+    - Hiển thị thông điệp cảnh báo nhỏ màu đỏ tức thì ngay dưới ô nhập và tạm thời vô hiệu hóa nút "Tiếp tục" / "Bắt đầu định hình" cho tới khi người dùng nhập đúng định dạng.
+  - **Tối ưu hóa UI Thẻ Văn Phong (PresetCard Visual Optimization)**:
+    - Thay đổi giao diện hiển thị thô dạng chuỗi ký tự dài bằng cách phân tách (parse) chuỗi `compiledRules` thành danh sách các dòng quy tắc có cấu trúc, hiển thị với dấu đầu dòng (bullet point) màu tím đậm nét.
+    - Nhóm và chuyển đổi trường mục tiêu (objectives) thành các thẻ badge màu tím nhạt bo góc hiện đại (`🎯 [Mục tiêu]`).
+    - Nâng cấp huy hiệu "Mặc định" sang định dạng màu vàng hổ phách nổi bật kèm biểu tượng ngôi sao (`⭐ Mặc định`).
+    - Bổ sung hiệu ứng chuyển động hover tinh tế (dịch chuyển nhẹ, đổ bóng mờ mềm mại) và thiết lập chiều cao tối thiểu đồng đều cho các thẻ trong lưới hiển thị.
+
+### Changed
+- **Nâng cấp API sinh câu hỏi và Prompt dựa trên nhiều mục tiêu (Multi-objectives prompt integration)**:
+  - Cập nhật định nghĩa schema `generateQuestionsSchema` trong `prompt-config-ai-schemas.ts` để nhận mảng `objectives` (array of strings) và hỗ trợ thuộc tính `objective` (chuỗi đơn) nhằm tương thích ngược với dữ liệu cũ.
+  - Nâng cấp prompt sinh câu hỏi `buildGenerateQuestionsInstruction` trong `prompt-config-ai-prompts.ts` để ghép danh sách các mục tiêu đã chọn thành chuỗi tiếng Việt rõ ràng, giúp AI hiểu sâu hơn về ý đồ của thương hiệu.
+  - Cập nhật handler `generateQuestions` trong `prompt-config-ai-module.ts` để bóc tách mảng mục tiêu hoặc tự động chuyển đổi từ mục tiêu đơn lẻ của các preset cũ.
+  - Cập nhật luồng lưu trữ tham số preset (`handleSave` ở `PresetsView.tsx`) để lưu cả hai thuộc tính `objectives` và `objective` vào cơ sở dữ liệu.
+  - Sửa lỗi cú pháp toán tử 3 ngôi lồng nhau (nested ternary expression) thiếu nhánh fallback `: null` tại component `PresetCard` trong `PresetsView.tsx` gây lỗi khi chạy Turbopack dev server.
+  - **Tối ưu hóa Model và UX nâng cao trải nghiệm sinh câu hỏi**:
+    - Chuyển đổi model mặc định từ `gemini-2.5-flash` / `gemini-3.5-flash` sang `gemini-3.1-flash-lite` (hoặc cấu hình thông qua `GEMINI_PROMPT_MODEL`), giúp giảm thiểu đáng kể độ trễ khởi động (cold start) và đẩy nhanh tốc độ sinh câu hỏi.
+    - Cấu hình lại `generationConfig` với `temperature: 0.1` đối với chế độ JSON Mode và `temperature: 0.2` đối với các chế độ sinh văn bản thông thường, cải thiện tốc độ phản hồi và sự ổn định của kết quả.
+    - Bổ sung hiệu ứng dòng chữ trạng thái xoay vòng (rotating loading messages) thay đổi sau mỗi 2 giây ở màn hình loading của Wizard để người dùng biết AI đang làm gì (phân tích mục tiêu, cấu trúc câu hỏi, tối ưu hóa văn phong...), giảm cảm giác chờ đợi.
+
+### Fixed
+- **Sửa lỗi SyntaxError JSON khi gọi AI sinh bộ câu hỏi động (`generate-questions`)**:
+  - Khắc phục lỗi phân tích cú pháp JSON `SyntaxError: Expected ',' or '}'` xảy ra khi mô hình sinh câu hỏi phản hồi có chứa các dấu ngoặc kép lồng trong nội dung hoặc có dấu phẩy dư thừa ở cuối mảng/đối tượng.
+  - Bổ sung hàm tiện ích `cleanAndParseJSON` tự động lọc bỏ markdown code block wrappers (như ` ```json `), dọn sạch các dấu phẩy dư thừa (trailing commas) trước khi gọi `JSON.parse`.
+  - Cập nhật prompt chỉ dẫn hệ thống `GENERATE_QUESTIONS_SYSTEM_INSTRUCTION` yêu cầu AI tuyệt đối không sử dụng ngoặc kép lồng chưa escape bên trong các chuỗi giá trị của JSON.
+  - Bổ sung 3 test case kiểm thử độ ổn định khi phân tích JSON trong `promptConfigAiModule.test.ts`.
 
 ## [Unreleased] - 2026-07-16
+
 
 ### Changed
 - Chuyển quality gate của dự án sang ESLint CLI theo Next.js 16, bổ sung type-check độc lập có sinh route types và baseline có kiểm soát để lỗi legacy không che mất lỗi mới của Sprint 3.

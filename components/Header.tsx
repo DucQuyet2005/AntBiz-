@@ -152,7 +152,18 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // Emit global search event for pages that want to use the header search bar locally
+  useEffect(() => {
+    if (pathname === '/presets') {
+      window.dispatchEvent(new CustomEvent('global-search', { detail: searchQuery }));
+    }
+  }, [searchQuery, pathname]);
+
   const triggerSearch = () => {
+    if (pathname === '/presets') {
+      setIsSearchOpen(false);
+      return;
+    }
     if (searchQuery.trim()) {
       setIsSearchOpen(false);
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);

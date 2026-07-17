@@ -10,7 +10,7 @@ export function buildPromptConfigAiModule(): PromptConfigAiModuleInterface {
     throw new PromptConfigAiError('MISSING_GEMINI_KEY', 'Thiếu GEMINI_API_KEY trong .env');
   }
   return new PromptConfigAiModule(
-    new GeminiPromptConfigAdapter(apiKey, process.env.GEMINI_MODEL || 'gemini-2.5-flash')
+    new GeminiPromptConfigAdapter(apiKey, process.env.GEMINI_PROMPT_MODEL || 'gemini-3.1-flash-lite')
   );
 }
 
