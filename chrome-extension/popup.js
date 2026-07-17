@@ -316,8 +316,14 @@ function initEventListeners() {
   // Sự kiện nút Lịch sử
   if (btnShowHistory) {
     btnShowHistory.addEventListener('click', () => {
-      showState(stateHistory);
-      fetchExtensionHistory();
+      // Nếu đang mở rồi thì đóng lại
+      if (!stateHistory.classList.contains('hidden')) {
+        showState(stateHome);
+      } else {
+        // Nếu chưa mở thì mở lên
+        showState(stateHistory);
+        fetchExtensionHistory();
+      }
     });
   }
 
