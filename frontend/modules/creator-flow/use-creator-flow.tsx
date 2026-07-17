@@ -13,6 +13,7 @@ import { PlatformType } from '@/lib/services/creator/platform.service';
 const initialState: CreatorFlowState = {
   currentStep: 1,
   selectedPlatform: null,
+  selectedPlatforms: [],
   platforms: [],
   isLoadingPlatforms: false,
   sourceType: null,
@@ -46,14 +47,26 @@ const initialState: CreatorFlowState = {
   timelinePosts: [],
   isLoadingTimeline: false,
   isScheduling: false,
+  drafts: {},
 };
 
 function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowAction): CreatorFlowState {
   switch (action.type) {
     case 'SET_STEP':
       return { ...state, currentStep: action.payload };
-    case 'SET_PLATFORM':
-      return { ...state, selectedPlatform: action.payload };
+    case 'SET_PLATFORM': {
+      const activePlatform = action.payload;
+      const draft = activePlatform ? state.drafts[activePlatform] : null;
+      return { 
+        ...state, 
+        selectedPlatform: activePlatform,
+        postContent: draft ? draft.content : '',
+        postId: draft ? draft.postId : null,
+        generatedPost: draft ? draft.generatedPost : null
+      };
+    }
+    case 'SET_SELECTED_PLATFORMS':
+      return { ...state, selectedPlatforms: action.payload };
     case 'SET_PLATFORMS':
       return { ...state, platforms: action.payload };
     case 'SET_LOADING_PLATFORMS':
@@ -87,13 +100,63 @@ function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowAction):
     case 'SET_LOADING_PRESETS':
       return { ...state, isLoadingPresets: action.payload };
     case 'SET_POST_CONTENT':
-      return { ...state, postContent: action.payload };
+      return { 
+        ...state, 
+        postContent: action.payload,
+        drafts: state.selectedPlatform ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            ...state.drafts[state.selectedPlatform] || { content: '', postId: null, generatedPost: null },
+            content: action.payload
+          }
+        } : state.drafts
+      };
+    case 'SET_DRAFT':
+      return {
+        ...state,
+        drafts: {
+          ...state.drafts,
+          [action.payload.platform]: {
+            content: action.payload.content,
+            postId: action.payload.postId,
+            generatedPost: action.payload.generatedPost
+          }
+        },
+        // If updating the currently active platform, sync it to primary states
+        ...(state.selectedPlatform === action.payload.platform ? {
+          postContent: action.payload.content,
+          postId: action.payload.postId,
+          generatedPost: action.payload.generatedPost
+        } : {})
+      };
+    case 'UPDATE_DRAFT_CONTENT':
+      return {
+        ...state,
+        drafts: {
+          ...state.drafts,
+          [action.payload.platform]: {
+            ...(state.drafts[action.payload.platform] || { content: '', postId: null, generatedPost: null }),
+            content: action.payload.content
+          }
+        },
+        ...(state.selectedPlatform === action.payload.platform ? {
+          postContent: action.payload.content
+        } : {})
+      };
     case 'SET_GENERATED_POST':
       return { 
         ...state, 
         generatedPost: action.payload,
         postId: action.payload ? action.payload.id : null,
-        postContent: action.payload ? action.payload.content : ''
+        postContent: action.payload ? action.payload.content : '',
+        drafts: state.selectedPlatform && action.payload ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            content: action.payload.content,
+            postId: action.payload.id,
+            generatedPost: action.payload
+          }
+        } : state.drafts
       };
     case 'SET_GENERATING_POST':
       return { ...state, isGeneratingPost: action.payload };
@@ -215,7 +278,7 @@ export function CreatorFlowProvider({ children }: { children: React.ReactNode })
 
   // Navigation actions
   const nextStep = () => {
-    if (state.currentStep < 5) {
+    if (state.currentStep < 4) {
       dispatch({ type: 'SET_STEP', payload: state.currentStep + 1 });
     }
   };
@@ -275,47 +338,56 @@ export function CreatorFlowProvider({ children }: { children: React.ReactNode })
 
   // Step 4 content generator (Gemini 2.5 Flash)
   const generateAIContent = async () => {
-    if (!state.selectedPlatform || !state.articleContext) return;
+    const targetPlatforms = state.selectedPlatforms.length > 0 
+      ? state.selectedPlatforms 
+      : (state.selectedPlatform ? [state.selectedPlatform] : []);
+
+    if (targetPlatforms.length === 0 || !state.articleContext) return;
     dispatch({ type: 'SET_GENERATING_POST', payload: true });
 
-    const platformName = state.selectedPlatform.charAt(0).toUpperCase() + state.selectedPlatform.slice(1);
+    // Set first platform as active
+    const firstPlatform = targetPlatforms[0];
+    dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
 
-    // Initial message from user selecting the platform
-    const userMsg: ChatMessage = {
-      id: `msg_user_${Math.random()}`,
-      sender: 'user',
-      text: platformName,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+    for (const platform of targetPlatforms) {
+      const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
 
-    // AI assistant says: Cảm ơn bạn! Tôi đã có đủ thông tin...
-    const introMsg: ChatMessage = {
-      id: `msg_ai_intro_${Math.random()}`,
-      sender: 'ai',
-      text: `Cảm ơn bạn! Tôi đã có đủ thông tin. Hãy nhấn "Tạo nội dung" để AI sinh bài đăng cho ${platformName} nhé 🚀`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: introMsg });
-
-    const response = await postService.generatePost(
-      state.selectedPlatform,
-      state.articleContext,
-      state.selectedPresetId
-    );
-
-    if (response.status === 'success' && response.data) {
-      dispatch({ type: 'SET_GENERATED_POST', payload: response.data });
-      
-      // Success confirmation message
-      const successMsg: ChatMessage = {
-        id: `msg_ai_success_${Math.random()}`,
-        sender: 'ai',
-        text: `✨ Nội dung đã được tạo cho nền tảng ${platformName}! Bạn có thể bôi đen bất kỳ đoạn nào để nhờ tôi chỉnh sửa.`,
+      // Initial message from user selecting the platform
+      const userMsg: ChatMessage = {
+        id: `msg_user_${Math.random()}`,
+        sender: 'user',
+        text: `Tạo bài đăng cho ${platformName}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        modelUsed: 'Gemini 3.1 Flash Lite'
       };
-      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: successMsg });
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+
+      const response = await postService.generatePost(
+        platform,
+        state.articleContext,
+        state.selectedPresetId
+      );
+
+      if (response.status === 'success' && response.data) {
+        dispatch({
+          type: 'SET_DRAFT',
+          payload: {
+            platform,
+            content: response.data.content,
+            postId: response.data.id,
+            generatedPost: response.data
+          }
+        });
+        
+        // Success confirmation message
+        const successMsg: ChatMessage = {
+          id: `msg_ai_success_${Math.random()}`,
+          sender: 'ai',
+          text: `✨ Nội dung đã được tạo cho nền tảng ${platformName}! Bạn có thể bôi đen bất kỳ đoạn nào để nhờ tôi chỉnh sửa.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: 'Gemini 3.1 Flash Lite'
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: successMsg });
+      }
     }
     dispatch({ type: 'SET_GENERATING_POST', payload: false });
   };
@@ -400,22 +472,35 @@ export function CreatorFlowProvider({ children }: { children: React.ReactNode })
 
   // Schedule publisher
   const confirmPostSchedule = async (): Promise<boolean> => {
-    if (!state.postId) return false;
+    const targetPlatforms = state.selectedPlatforms.length > 0 
+      ? state.selectedPlatforms 
+      : (state.selectedPlatform ? [state.selectedPlatform] : []);
+
+    if (targetPlatforms.length === 0) return false;
     dispatch({ type: 'SET_SCHEDULING', payload: true });
 
-    let response;
-    if (state.scheduleMode === 'now') {
-      response = await scheduleService.publishNow(state.postId);
-    } else {
-      response = await scheduleService.schedulePost(
-        state.postId,
-        state.scheduledDateTime,
-        state.selectedPlatform || 'facebook'
-      );
+    let allSuccess = true;
+    for (const platform of targetPlatforms) {
+      const draft = state.drafts[platform];
+      if (!draft || !draft.postId) continue;
+
+      let response;
+      if (state.scheduleMode === 'now') {
+        response = await scheduleService.publishNow(draft.postId);
+      } else {
+        response = await scheduleService.schedulePost(
+          draft.postId,
+          state.scheduledDateTime,
+          platform
+        );
+      }
+      if (response.status !== 'success') {
+        allSuccess = false;
+      }
     }
 
     dispatch({ type: 'SET_SCHEDULING', payload: false });
-    return response.status === 'success';
+    return allSuccess;
   };
 
   // Weekly Timeline drag and drop simulation callback

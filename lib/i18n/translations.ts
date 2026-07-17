@@ -867,6 +867,7 @@ export const translations = {
       activeStatus: "Đang sử dụng",
       pendingStatus: "Chờ đăng (Pending)",
       showingLogs: "Hiển thị {start} - {end} trong tổng số {total} nhật ký",
+      geminiKeys: "Quản lý Keys",
     },
     landingEditor: {
       mode: "Editor Mode",
@@ -1140,10 +1141,9 @@ export const translations = {
     creator: {
       stepper: {
         step1: "Nền tảng",
-        step2: "Bài viết",
-        step3: "Presets",
-        step4: "Bài đăng",
-        step5: "Lên lịch",
+        step2: "Nguồn & Presets",
+        step3: "Bài đăng",
+        step4: "Lên lịch",
         stepCount: "Bước {current} / {total}",
       },
       buttons: {
@@ -2088,6 +2088,7 @@ export const translations = {
       activeStatus: "Active",
       pendingStatus: "Pending",
       showingLogs: "Showing {start} - {end} of {total} logs",
+      geminiKeys: "Keys Management",
     },
     landingEditor: {
       mode: "Editor Mode",
@@ -2361,10 +2362,9 @@ export const translations = {
     creator: {
       stepper: {
         step1: "Platform",
-        step2: "Source",
-        step3: "Presets",
-        step4: "AI Post",
-        step5: "Schedule",
+        step2: "Source & Presets",
+        step3: "AI Post",
+        step4: "Schedule",
         stepCount: "Step {current} / {total}",
       },
       buttons: {

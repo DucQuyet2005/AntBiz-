@@ -8,7 +8,8 @@ export interface CreatorFlowState {
   currentStep: number;
   
   // Step 1: Platform Selection
-  selectedPlatform: PlatformType | null;
+  selectedPlatform: PlatformType | null; // active platform
+  selectedPlatforms: PlatformType[];     // all selected platforms
   platforms: PlatformConnection[];
   isLoadingPlatforms: boolean;
 
@@ -38,6 +39,9 @@ export interface CreatorFlowState {
   isHighlightEditing: boolean;
   conversationalStep: number; // For step-by-step assistant questionnaire
 
+  // Drafts for each selected platform
+  drafts: Record<string, { content: string; postId: string | null; generatedPost: GeneratedPost | null }>;
+
   // Step 5: Schedule
   scheduleMode: 'now' | 'scheduled';
   scheduledDateTime: string; // ISO or YYYY-MM-DDTHH:mm
@@ -49,6 +53,7 @@ export interface CreatorFlowState {
 export type CreatorFlowAction =
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_PLATFORM'; payload: PlatformType | null }
+  | { type: 'SET_SELECTED_PLATFORMS'; payload: PlatformType[] }
   | { type: 'SET_PLATFORMS'; payload: PlatformConnection[] }
   | { type: 'SET_LOADING_PLATFORMS'; payload: boolean }
   | { type: 'SET_SOURCE_TYPE'; payload: 'gocnhinmoi' | 'tuoitre' | 'dantri' | 'manual' | null }
@@ -62,6 +67,8 @@ export type CreatorFlowAction =
   | { type: 'SET_SEARCH_PRESET'; payload: string }
   | { type: 'SET_LOADING_PRESETS'; payload: boolean }
   | { type: 'SET_POST_CONTENT'; payload: string }
+  | { type: 'SET_DRAFT'; payload: { platform: string; content: string; postId: string | null; generatedPost: GeneratedPost | null } }
+  | { type: 'UPDATE_DRAFT_CONTENT'; payload: { platform: string; content: string } }
   | { type: 'SET_GENERATED_POST'; payload: GeneratedPost | null }
   | { type: 'SET_GENERATING_POST'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
