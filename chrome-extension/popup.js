@@ -90,6 +90,7 @@ let currentArticleData = null;
 let activeRequestId = null;
 let lastActionType = ''; // 'scrape', 'select', 'record', 'upload'
 let lastActionParams = null; // Lưu tham số khi thử lại
+let activePresets = [];
 
 // Biến quản lý ghi âm
 let mediaRecorder = null;
@@ -213,6 +214,81 @@ function isJwtExpired(token) {
   return true;
 }
 
+// Tải danh sách Văn phong thương hiệu động từ API
+function loadPromptConfigs(callback) {
+  if (!authToken) {
+    if (callback) callback();
+    return;
+  }
+
+  chrome.runtime.sendMessage({
+    action: 'get_prompt_configs',
+    token: authToken,
+    host: AntBizUrl
+  }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn('Lỗi tải cấu hình văn phong:', chrome.runtime.lastError);
+      if (callback) callback();
+      return;
+    }
+
+    if (response && response.success && response.data && Array.isArray(response.data.data)) {
+      activePresets = response.data.data;
+      
+      // Lưu lại giá trị hiện tại trước khi cập nhật
+      const currentValue = selectPreset.value;
+
+      // Tìm cấu hình mặc định (is_default === true)
+      const defaultPreset = activePresets.find(config => config.is_default);
+
+      // Xóa tất cả các option hiện có
+      selectPreset.innerHTML = '';
+
+      // Thêm tùy chọn mặc định động lên đầu
+      const defaultOption = document.createElement('option');
+      if (defaultPreset) {
+        defaultOption.value = defaultPreset.id;
+        defaultOption.textContent = `-- Mặc định (${defaultPreset.name}) --`;
+      } else {
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Mặc định (Không áp dụng) --';
+      }
+      selectPreset.appendChild(defaultOption);
+
+      activePresets.forEach(config => {
+        const option = document.createElement('option');
+        option.value = config.id;
+        
+        let displayName = config.name;
+        if (config.is_system) {
+          displayName += ' (Mẫu hệ thống)';
+        } else {
+          displayName += ' (Cá nhân)';
+        }
+        if (config.is_default) {
+          displayName += ' [Mặc định]';
+        }
+        option.textContent = displayName;
+        selectPreset.appendChild(option);
+      });
+
+      // Phục hồi lại giá trị cũ nếu giá trị đó vẫn tồn tại trong danh sách mới, ngược lại chọn mặc định
+      const exists = currentValue && Array.from(selectPreset.options).some(opt => opt.value === currentValue);
+      if (exists) {
+        selectPreset.value = currentValue;
+      } else if (defaultPreset) {
+        selectPreset.value = defaultPreset.id;
+      } else {
+        selectPreset.value = '';
+      }
+    } else {
+      console.warn('Không thể lấy danh sách văn phong từ API:', response?.error);
+    }
+    
+    if (callback) callback();
+  });
+}
+
 // Kiểm tra phiên đăng nhập từ Web AntBiz
 function checkAuthAndInitialize() {
   showState(stateLoading, 'Đang kiểm tra kết nối AntBiz...');
@@ -240,45 +316,55 @@ function checkAuthAndInitialize() {
         userProfile.classList.remove('hidden');
       }
 
-      // Kiểm tra và khôi phục trạng thái cũ nếu có
-      chrome.storage.local.get('antbiz_extension_state', (res) => {
-        const state = res.antbiz_extension_state;
-        if (state && state.activeState) {
-          // Khôi phục giá trị input
-          if (state.articleData) {
-            inputTitle.value = state.articleData.title || '';
-            inputImage.value = state.articleData.imageUrl || '';
-            inputDesc.value = state.articleData.description || '';
-            inputContent.value = state.articleData.content || '';
-          }
-          if (state.socialConfig) {
-            selectPlatform.value = state.socialConfig.platform || 'facebook';
-            selectPreset.value = state.socialConfig.presetId || '';
-          }
-          if (state.postPreview) {
-            inputCaption.value = state.postPreview.caption || '';
-            inputScheduleTime.value = state.postPreview.scheduledAt || '';
-          }
+      // Tải văn phong động, sau khi hoàn thành mới khôi phục state để selectPreset nhận được value
+      loadPromptConfigs(() => {
+        chrome.storage.local.get('antbiz_extension_state', (res) => {
+          const state = res.antbiz_extension_state;
+          if (state && state.activeState) {
+            // Khôi phục giá trị input
+            if (state.articleData) {
+              inputTitle.value = state.articleData.title || '';
+              inputImage.value = state.articleData.imageUrl || '';
+              inputDesc.value = state.articleData.description || '';
+              inputContent.value = state.articleData.content || '';
+            }
+            if (state.socialConfig) {
+              selectPlatform.value = state.socialConfig.platform || 'facebook';
+              
+              const savedPresetId = state.socialConfig.presetId;
+              const hasSavedPreset = savedPresetId && Array.from(selectPreset.options).some(opt => opt.value === savedPresetId);
+              if (hasSavedPreset) {
+                selectPreset.value = savedPresetId;
+              } else {
+                const defaultPreset = activePresets.find(config => config.is_default);
+                selectPreset.value = defaultPreset ? defaultPreset.id : '';
+              }
+            }
+            if (state.postPreview) {
+              inputCaption.value = state.postPreview.caption || '';
+              inputScheduleTime.value = state.postPreview.scheduledAt || '';
+            }
 
-          // Hiển thị màn hình và bước Wizard
-          const stateEl = document.getElementById(state.activeState);
-          if (stateEl) {
-            showState(stateEl);
-            if (state.activeState === 'state-extracted' && state.activeStep) {
-              const stepEl = document.getElementById(state.activeStep);
-              if (stepEl) {
-                showSubStep(stepEl);
-                if (state.activeStep === 'step-post-preview') {
-                  updateFbPreview();
+            // Hiển thị màn hình và bước Wizard
+            const stateEl = document.getElementById(state.activeState);
+            if (stateEl) {
+              showState(stateEl);
+              if (state.activeState === 'state-extracted' && state.activeStep) {
+                const stepEl = document.getElementById(state.activeStep);
+                if (stepEl) {
+                  showSubStep(stepEl);
+                  if (state.activeStep === 'step-post-preview') {
+                    updateFbPreview();
+                  }
                 }
               }
+            } else {
+              showState(stateHome);
             }
           } else {
             showState(stateHome);
           }
-        } else {
-          showState(stateHome);
-        }
+        });
       });
     } else {
       authToken = '';
@@ -555,10 +641,46 @@ function initEventListeners() {
     const title = inputTitle.value.trim() || 'Bài viết phác thảo ' + new Date().toLocaleDateString('vi-VN');
     const content = inputContent.value.trim();
     const platform = selectPlatform.value;
+    const presetId = selectPreset.value;
 
     if (!content) {
       alert('Thiếu nội dung bài viết gốc để AI phân tích.');
       return;
+    }
+
+    // Xây dựng customPrompt nếu người dùng chọn Văn phong cụ thể
+    let customPrompt = undefined;
+    if (presetId) {
+      const selectedPreset = activePresets.find(p => p.id === presetId);
+      if (selectedPreset) {
+        let rulesText = selectedPreset.rules;
+        try {
+          const parsed = JSON.parse(rulesText);
+          if (parsed && typeof parsed === 'object') {
+            rulesText = parsed.general || '';
+            const platformKey = platform === 'threads' ? 'threads' : platform;
+            if (parsed[platformKey]) {
+              rulesText += `\n\nQuy định riêng cho ${platform}: ${parsed[platformKey]}`;
+            }
+          }
+        } catch (e) {
+          // Chuỗi thô không phải JSON, giữ nguyên
+        }
+
+        customPrompt = `Bạn là một chuyên gia Content Marketing.
+Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
+Tiêu đề: ${title}
+Nội dung tóm tắt: ${content}
+
+Yêu cầu bài viết (Áp dụng nghiêm ngặt các quy tắc văn phong sau):
+${rulesText}
+
+Yêu cầu định dạng:
+1. Có cấu trúc rõ ràng: Hook -> Body -> CTA.
+2. Sử dụng Emoji phù hợp.
+3. Thêm 3-5 hashtag liên quan.
+4. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
+      }
     }
 
     const reqId = startNewRequest();
@@ -569,6 +691,7 @@ function initEventListeners() {
       title: title,
       content: content,
       platform: platform,
+      customPrompt: customPrompt,
       token: authToken,
       requestId: reqId
     }, (response) => {

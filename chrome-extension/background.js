@@ -191,7 +191,7 @@ async function parseDocumentViaServer(base64Data, fileName, fileType, token, req
 }
 
 // Hàm gọi AI sinh nội dung bài viết
-async function generateAiContentViaServer(title, content, platform, token, requestId) {
+async function generateAiContentViaServer(title, content, platform, token, requestId, customPrompt) {
   const controller = new AbortController();
   if (requestId) activeRequests.set(requestId, controller);
 
@@ -205,7 +205,8 @@ async function generateAiContentViaServer(title, content, platform, token, reque
       body: JSON.stringify({
         title,
         content,
-        platform
+        platform,
+        customPrompt
       }),
       signal: controller.signal
     });
@@ -240,6 +241,23 @@ async function sendArticleToAntBiz(articleData, token) {
   return await response.json();
 }
 
+// Hàm lấy danh sách cấu hình văn phong (Prompt Configs / Presets) từ server
+async function getPromptConfigsViaServer(token, host = 'http://localhost:3000') {
+  const response = await fetch(`${host}/api/prompt-configs`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errJson = await response.json().catch(() => ({}));
+    throw new Error(errJson.error || `Lỗi tải danh sách văn phong: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 // Lắng nghe các tin nhắn từ Popup UI hoặc Content Script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'get_session') {
@@ -247,6 +265,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(session => sendResponse({ session }))
       .catch(error => sendResponse({ error: error.message || error }));
     return true; // Giữ kênh kết nối không đồng bộ
+  }
+
+  if (message.action === 'get_prompt_configs') {
+    getPromptConfigsViaServer(message.token, message.host)
+      .then(data => sendResponse({ success: true, data }))
+      .catch(error => sendResponse({ success: false, error: error.message || error }));
+    return true;
   }
 
   if (message.action === 'scrape_url') {
@@ -271,7 +296,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'generate_content') {
-    generateAiContentViaServer(message.title, message.content, message.platform, message.token, message.requestId)
+    generateAiContentViaServer(message.title, message.content, message.platform, message.token, message.requestId, message.customPrompt)
       .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error.message || error }));
     return true;
