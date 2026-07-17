@@ -45,23 +45,63 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const reqHeaders = new Headers();
+    reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
+    reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8');
+    
+    const headersToForward = [
+      'cache-control',
+      'content-type',
+      'rsc',
+      'next-router-state-tree',
+      'next-router-prefetch',
+      'next-url'
+    ];
+    for (const h of headersToForward) {
+      const val = request.headers.get(h);
+      if (val) {
+        reqHeaders.set(h, val);
+      }
+    }
+
     const res = await fetch(targetUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8',
-        'Cache-Control': 'no-cache',
-      },
+      headers: reqHeaders,
       redirect: 'follow',
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       return new NextResponse(`Failed to fetch: ${res.statusText}`, { status: res.status });
     }
 
-    let html = await res.text();
+    const contentType = res.headers.get('content-type') || '';
+    const isHtml = contentType.toLowerCase().includes('text/html');
     const targetOrigin = new URL(targetUrl).origin;
+
+    if (!isHtml) {
+      const rawData = await res.arrayBuffer();
+      const response = new NextResponse(rawData, {
+        status: res.status,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': res.headers.get('cache-control') || 'no-store',
+        },
+      });
+      response.cookies.set('active_proxy_origin', targetOrigin, {
+        path: '/',
+        maxAge: 3600,
+        sameSite: 'lax',
+      });
+      return response;
+    }
+
+    let html = await res.text();
 
     // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
     // Match src="/..." attributes and make them absolute
@@ -124,13 +164,6 @@ export async function GET(request: NextRequest) {
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // ── 4. Strip only the internal Next.js inline hydration/data scripts ──────
-    // Keep external or CDN-served /_next/ JS bundles so the target site can hydrate.
-    html = html.replace(/<script\b[^>]*\bid=["']__NEXT_DATA__["'][^>]*>[\s\S]*?<\/script>/gi, '');
-    html = html.replace(/<script\b[^>]*>([\s\S]*?\bself\.__next[\s\S]*?)<\/script>/gi, '');
-    html = html.replace(/<script\b[^>]*\bdata-next-page[^>]*>[\s\S]*?<\/script>/gi, '');
-    html = html.replace(/<script\b[^>]*\b__NEXT_LOADED_PAGES__\b[^>]*>[\s\S]*?<\/script>/gi, '');
-
     // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
     const forwardedHost = request.headers ? request.headers.get('x-forwarded-host') : null;
     const forwardedProto = (request.headers ? request.headers.get('x-forwarded-proto') : null) || 'http';
@@ -149,6 +182,7 @@ export async function GET(request: NextRequest) {
   [id*="cate_top_ads"], [id*="article_top_ads"], [id*="ads_"],
   .box-ads, .box-banner, .banner-ads, .ads-banner,
   [class*="ads-top"], [class*="top-ads"], [class*="dfp-"],
+  #bannerMasthead, .ads-masthead, #desktop-home-top-page, .top-page,
   /* Tuổi Trẻ specific */
   .box-adv, #ads300x250_sticky, #ads300x600,
   /* Generic */
@@ -178,12 +212,14 @@ export async function GET(request: NextRequest) {
     } catch(_) { return false; }
   }
 
+  /* ── Track the "real" URL (updated when Next.js does soft navigation) ── */
+  var _currentTarget = TARGET;
+
   /* ── Report current page URL to parent AntBiz window ── */
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: TARGET }, '*'); } catch (_) {}
+    try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*'); } catch (_) {}
   }
   report();
-  setInterval(report, 800);
 
   function getAbsoluteUrl(urlStr) {
     try {
@@ -207,19 +243,27 @@ export async function GET(request: NextRequest) {
     } catch(_) {}
   }
 
-  /* ── Override history.pushState / replaceState ── */
+  /* ── Override history.pushState / replaceState ──────────────────────────────
+   * Strategy: track _currentTarget for address-bar reporting but do NOT call
+   * navigateViaProxy() (that caused infinite full-page reload loops).
+   * We DO let _origPush/_origReplace run so Next.js App Router registers that
+   * the URL changed and stops retrying navigation (blocking pushState caused
+   * ~500ms polling loops). Leaked RSC requests from the new URL are handled by
+   * proxy.ts middleware (204 for non-AntBiz RSC), and leaked ?url= navigations
+   * are caught by the recovery redirect in proxy.ts.
+   * ─────────────────────────────────────────────────────────────────────────── */
   var _origPush = history.pushState.bind(history);
   history.pushState = function (state, title, url) {
     if (url) {
       try {
         var abs = getAbsoluteUrl(String(url));
         if (isAllowedHost(abs)) {
-          navigateViaProxy(abs);
-          return;
+          _currentTarget = abs;
+          report();
         }
       } catch (_) {}
     }
-    return _origPush(state, title, url);
+    return _origPush(state, title, url); /* allow URL to change so Next.js doesn't retry */
   };
 
   var _origReplace = history.replaceState.bind(history);
@@ -228,78 +272,12 @@ export async function GET(request: NextRequest) {
       try {
         var abs = getAbsoluteUrl(String(url));
         if (isAllowedHost(abs)) {
-          navigateViaProxy(abs);
-          return;
+          _currentTarget = abs;
+          report();
         }
       } catch (_) {}
     }
-    return _origReplace(state, title, url);
-  };
-
-  /* ── Override window.fetch ── */
-  var _origFetch = window.fetch.bind(window);
-  window.fetch = function(input, init) {
-    try {
-      var urlStr = (typeof input === 'string') ? input
-                 : (input instanceof Request ? input.url : String(input));
-      var abs = getAbsoluteUrl(urlStr);
-
-      if (isAllowedHost(abs)) {
-        var parsedUrl = new URL(abs);
-        var pathname = parsedUrl.pathname;
-
-        /* Allow Next.js static chunk files to load directly */
-        if (pathname.startsWith('/_next/static/')) {
-          return _origFetch(input, init);
-        }
-
-        /* Detect RSC / data navigation requests */
-        var isRscRequest = false;
-        try {
-          var headers = (init && init.headers) ? init.headers
-                      : (input instanceof Request ? input.headers : null);
-          if (headers) {
-            var get = function(name) {
-              try {
-                if (headers instanceof Headers) return !!headers.get(name);
-                if (typeof headers === 'object') return !!(headers[name] || headers[name.toLowerCase()]);
-              } catch(_) {}
-              return false;
-            };
-            isRscRequest = get('Next-Router-State-Tree') || get('RSC') || get('Next-Url');
-          }
-        } catch(_) {}
-
-        if (!isRscRequest) {
-          isRscRequest = parsedUrl.searchParams.has('_rsc') || pathname.startsWith('/_next/data/');
-        }
-
-        if (isRscRequest) {
-          navigateViaProxy(TARGET_ORIGIN + pathname + parsedUrl.search);
-          return new Promise(function() {});
-        }
-      }
-    } catch(_) {}
-    return _origFetch(input, init);
-  };
-
-  /* ── Override XMLHttpRequest (belt-and-suspenders for RSC/data requests) ── */
-  var _origOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    try {
-      var abs = getAbsoluteUrl(String(url));
-      if (isAllowedHost(abs)) {
-        var parsedXhr = new URL(abs);
-        var xhrPath = parsedXhr.pathname;
-        /* Only intercept Next.js RSC data fetch paths, not all XHR */
-        var isXhrRsc = parsedXhr.searchParams.has('_rsc') || xhrPath.startsWith('/_next/data/');
-        if (isXhrRsc) {
-          navigateViaProxy(TARGET_ORIGIN + xhrPath + parsedXhr.search);
-          return;
-        }
-      }
-    } catch(_) {}
-    return _origOpen.apply(this, arguments);
+    return _origReplace(state, title, url); /* allow URL to change so Next.js doesn't retry */
   };
 
   /* ── Capture-phase click interceptor ── */
@@ -334,13 +312,20 @@ export async function GET(request: NextRequest) {
       html = fullHeaderInjection + html;
     }
 
-    return new NextResponse(html, {
+    const response = new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
       },
     });
+    response.cookies.set('active_proxy_origin', targetOrigin, {
+      path: '/',
+      maxAge: 3600,
+      sameSite: 'lax',
+    });
+    return response;
   } catch (error: any) {
+    console.error(`[Proxy Error] Failed to proxy URL ${targetUrl}:`, error);
     return new NextResponse(`Error proxying page: ${error.message}`, { status: 500 });
   }
 }

@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 import { 
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, ExternalLink, X,
-  Search, Check, Bookmark, Facebook, Instagram
+  Search, Check, Bookmark, Facebook, Instagram,
+  ChevronLeft
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
@@ -139,6 +140,44 @@ export default function Step2Article({
 
   // Active site simulated browser modal
   const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
+  const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const handleGoBack = () => {
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.history.back();
+      } catch (err) {
+        console.error('Failed to navigate back:', err);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeBrowserSite) {
+      const baseUrl = activeBrowserSite === 'gocnhinmoi'
+        ? 'https://gocnhinmoi.com.vn'
+        : activeBrowserSite === 'tuoitre'
+          ? 'https://tuoitre.vn'
+          : 'https://dantri.com.vn';
+      setCurrentBrowserUrl(baseUrl);
+    } else {
+      setCurrentBrowserUrl('');
+    }
+  }, [activeBrowserSite]);
+
+  React.useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'URL_CHANGE' && typeof event.data?.url === 'string') {
+        setCurrentBrowserUrl(event.data.url);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
 
   // Audio & Document drag & drop upload states
   const [isDragging, setIsDragging] = useState(false);
@@ -232,7 +271,6 @@ export default function Step2Article({
   };
 
   // Extract selected site articles data
-  const siteData = activeBrowserSite ? MOCK_SITE_ARTICLES[activeBrowserSite] : null;
 
   return (
     <div className="w-full max-w-5xl mx-auto flex-grow pt-4 pb-20 px-4 md:px-6 select-none animate-fade-in">
@@ -443,10 +481,10 @@ export default function Step2Article({
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">G</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              Gocnhinmoi.com.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-primary transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/gocnhinmoi-logo.png" alt="Góc Nhìn Mới" className="h-6 object-contain" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Góc Nhìn Mới
             </span>
           </div>
 
@@ -472,10 +510,10 @@ export default function Step2Article({
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-[#E32119] text-white flex items-center justify-center font-bold text-sm">T</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              tuoitre.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#E32119] transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/tuoitre-logo.png" alt="Tuổi Trẻ" className="h-6 object-contain bg-red-600 p-1 rounded" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Tuổi Trẻ
             </span>
           </div>
 
@@ -501,10 +539,10 @@ export default function Step2Article({
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-[#008953] text-white flex items-center justify-center font-bold text-sm">D</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              dantri.com.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#008953] transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/dantri-logo.png" alt="Dân Trí" className="h-6 object-contain" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Dân Trí
             </span>
           </div>
 
@@ -690,108 +728,68 @@ export default function Step2Article({
       </div>
 
       {/* Simulated News Website Browser Modal */}
-      {activeBrowserSite && siteData && typeof window !== 'undefined' && createPortal(
+      {activeBrowserSite && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in select-text font-sans">
           <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scale-up">
             
             {/* Chrome-style browser address bar */}
             <div className="bg-zinc-100 dark:bg-zinc-950 px-4 py-3 border-b border-gray-200 dark:border-zinc-850 flex items-center gap-3">
-              <div className="flex gap-1.5 flex-shrink-0">
-                <span onClick={() => setActiveBrowserSite(null)} className="w-3 h-3 rounded-full bg-red-400 block cursor-pointer hover:bg-red-500 transition-colors"></span>
-                <span className="w-3 h-3 rounded-full bg-yellow-400 block"></span>
-                <span className="w-3 h-3 rounded-full bg-green-400 block"></span>
+              {/* Nút quay lại trang trước */}
+              <button
+                type="button"
+                onClick={handleGoBack}
+                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                title="Quay lại trang trước"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-4 py-1.5 text-xs text-text-muted border border-gray-200 dark:border-zinc-800 select-all truncate font-semibold">
+                {currentBrowserUrl}
               </div>
-              <div className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-4 py-1.5 text-xs text-text-muted border border-gray-200 dark:border-zinc-800 select-all truncate">
-                {`https://www.${activeBrowserSite === 'gocnhinmoi' ? 'gocnhinmoi.com.vn' : activeBrowserSite === 'tuoitre' ? 'tuoitre.vn' : 'dantri.com.vn'}`}
-              </div>
+              
+              <button
+                type="button"
+                onClick={() => handleSelectArticle(currentBrowserUrl)}
+                className="px-4 py-1.5 bg-primary hover:bg-primary/95 text-white rounded-lg text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-primary/10 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Chọn bài viết này</span>
+              </button>
+
               <button 
                 onClick={() => setActiveBrowserSite(null)}
-                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors"
+                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
             </div>
 
             {/* Browser Content Area */}
-            <div className="overflow-y-auto p-6 flex-grow bg-[#fcf9f8] dark:bg-zinc-900/40">
-              <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-200 dark:border-zinc-800">
+            <div className="flex-grow flex flex-col bg-[#fcf9f8] dark:bg-zinc-900/40 p-4 min-h-[500px]">
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-zinc-800 flex-shrink-0">
                 <h2 className="text-xs font-black text-text uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#a04100] animate-pulse"></span>
-                  CHỌN BÀI VIẾT CHO BẢN TIN HÔM NAY
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+                  Trình duyệt tích hợp - Duyệt tin trực tiếp
                 </h2>
-                <span className="text-[10px] bg-[#a04100]/10 text-[#a04100] font-black px-2.5 py-1 rounded-full uppercase">
-                  Bước 2: Chọn bài viết
+                <span className="text-[10px] bg-primary/10 text-primary font-black px-2.5 py-1 rounded-full uppercase">
+                  Chọn bài viết để crawl nội dung
                 </span>
               </div>
-
-              {/* Main and Side articles layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Main Article (Left) */}
-                <div 
-                  onClick={() => handleSelectArticle(siteData.main.url)}
-                  className="lg:col-span-2 group relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-[380px]"
-                >
-                  <div className="h-[240px] overflow-hidden bg-zinc-150 relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" 
-                      src={siteData.main.image} 
-                      alt={siteData.main.title}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent"></div>
-                    
-                    {/* Select Article Badge Overlay */}
-                    <div className="absolute top-4 right-4 bg-zinc-900/90 text-white font-black text-[10px] px-3.5 py-1.5 rounded-md transition-colors border border-zinc-700 uppercase tracking-wider shadow-md hover:bg-black">
-                      CHỌN BÀI VIẾT
-                    </div>
-                    
-                    <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <span className="text-[9px] bg-[#a04100] text-white font-black px-2 py-0.5 rounded mr-2 uppercase">Tin nóng</span>
-                      <span className="text-[10px] text-zinc-300">Vừa xong</span>
-                      <h3 className="text-base font-black mt-2 leading-snug tracking-tight text-white group-hover:text-[#ffb693] transition-colors line-clamp-2">
-                        {siteData.main.title}
-                      </h3>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 flex-grow flex flex-col justify-between">
-                    <p className="text-[11px] text-text-muted line-clamp-3 leading-relaxed">
-                      {siteData.main.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-[9px] text-text-muted mt-2 border-t border-gray-150 dark:border-zinc-800 pt-2">
-                      <span>Nguồn: {activeBrowserSite === 'gocnhinmoi' ? 'Góc Nhìn Mới' : activeBrowserSite === 'tuoitre' ? 'Tuổi Trẻ' : 'Dân Trí'}</span>
-                      <span>Chuyên mục: Thời sự</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Side Articles List (Right) */}
-                <div className="space-y-4 flex flex-col h-[380px]">
-                  <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex-shrink-0">Tin nóng khác</h4>
-                  <div className="space-y-3 overflow-y-auto pr-1 flex-grow">
-                    {siteData.sides.map((article, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleSelectArticle(article.url)}
-                        className="group flex gap-3 p-2.5 bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-xl cursor-pointer hover:border-[#a04100] hover:shadow-md transition-all"
-                      >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-150 flex-shrink-0 relative">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350" src={article.image} alt={article.title} />
-                        </div>
-                        
-                        <div className="flex flex-col justify-between min-w-0 flex-grow">
-                          <h5 className="text-[10px] font-bold text-text leading-snug line-clamp-2 group-hover:text-[#a04100] transition-colors">
-                            {article.title}
-                          </h5>
-                          <span className="text-[8px] text-text-muted mt-1 block">15 phút trước</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
+              
+              <div className="w-full flex-grow relative bg-white rounded-2xl overflow-hidden border border-gray-250 dark:border-zinc-850 h-[50vh]">
+                <iframe
+                  ref={iframeRef}
+                  src={`/api/proxy?url=${encodeURIComponent(
+                    activeBrowserSite === 'gocnhinmoi' 
+                      ? 'https://gocnhinmoi.com.vn' 
+                      : activeBrowserSite === 'tuoitre' 
+                        ? 'https://tuoitre.vn' 
+                        : 'https://dantri.com.vn'
+                  )}`}
+                  className="w-full h-full border-none"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                />
               </div>
             </div>
 
