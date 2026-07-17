@@ -121,37 +121,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
     let realtimeChannel: RealtimeChannel | null = null;
-    let subscribedUserId: string | null = null;
-    let isSubscribing = false;
 
     const setupRealtime = async () => {
-      if (isSubscribing) return;
       try {
-        isSubscribing = true;
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user;
-        if (!user || !active) {
-          isSubscribing = false;
-          return;
-        }
+        if (!user || !active) return;
 
-        // If already subscribed to this user's notifications, do nothing
-        if (subscribedUserId === user.id && realtimeChannel) {
-          isSubscribing = false;
-          return;
-        }
-
-        // Clean up previous channel if it exists
         if (realtimeChannel) {
           supabase.removeChannel(realtimeChannel);
           realtimeChannel = null;
-          subscribedUserId = null;
         }
 
-        const channelName = `toast-notifications-${user.id}`;
-        const channel = supabase.channel(channelName);
-
-        realtimeChannel = channel
+        realtimeChannel = supabase
+          .channel(`toast-notifications-${user.id}`)
           .on(
             "postgres_changes",
             {
@@ -177,14 +160,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 showToast(notifMessage, toastType, link);
               }
             }
-          );
-        
-        realtimeChannel.subscribe();
-        subscribedUserId = user.id;
+          )
+          .subscribe();
       } catch (err) {
         console.warn("Error setting up Realtime in ToastProvider:", err);
-      } finally {
-        isSubscribing = false;
       }
     };
 
@@ -197,7 +176,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         if (realtimeChannel) {
           supabase.removeChannel(realtimeChannel);
           realtimeChannel = null;
-          subscribedUserId = null;
         }
       }
     });
