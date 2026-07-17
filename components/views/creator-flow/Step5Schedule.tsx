@@ -250,10 +250,10 @@ export default function Step5Schedule() {
                           >
                             {/* Golden Hour indicator */}
                             {showGolden && !isPast && (
-                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1 z-20">
-                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help">
-                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/cell:opacity-100'}`} />
-                                  <span className={`hidden group-hover/cell:block absolute bottom-4 bg-[#1e293b] dark:bg-zinc-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
+                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
+                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/golden:opacity-100'}`} />
+                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[11px] font-bold px-2 py-1 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
                                     Giờ Vàng {currentPlatform}
                                   </span>
                                 </div>
