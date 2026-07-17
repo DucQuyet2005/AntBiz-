@@ -128,6 +128,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         const user = session?.user;
         if (!user || !active) return;
 
+        if (realtimeChannel) {
+          supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+        }
+
         realtimeChannel = supabase
           .channel(`toast-notifications-${user.id}`)
           .on(

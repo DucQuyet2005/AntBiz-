@@ -52,5 +52,5 @@ const nextConfig = {
 };
 
 export default nextConfig;
-// Force dev server config reload after middleware removal
+// Force dev server config reload after middleware removal: trigger 2026-07-17T09:10:00
 
