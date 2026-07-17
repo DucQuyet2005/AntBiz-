@@ -9,6 +9,12 @@ const stateHome = document.getElementById('state-home');
 const stateError = document.getElementById('state-error');
 const stateExtracted = document.getElementById('state-extracted');
 const stateSuccess = document.getElementById('state-success');
+const stateHistory = document.getElementById('state-history');
+
+// Lịch sử
+const btnShowHistory = document.getElementById('btn-show-history');
+const btnCloseHistory = document.getElementById('btn-close-history');
+const historyList = document.getElementById('history-list');
 
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
@@ -112,6 +118,7 @@ function showState(stateEl, message = '') {
   stateSuccess.classList.add('hidden');
   if (stateRecording) stateRecording.classList.add('hidden');
   if (stateVoiceConfirm) stateVoiceConfirm.classList.add('hidden');
+  if (stateHistory) stateHistory.classList.add('hidden');
 
   if (stateEl === stateLoading && message) {
     loadingText.textContent = message;
@@ -305,6 +312,62 @@ function initEventListeners() {
       el.addEventListener('change', saveCurrentState);
     }
   });
+
+  // Sự kiện nút Lịch sử
+  if (btnShowHistory) {
+    btnShowHistory.addEventListener('click', () => {
+      showState(stateHistory);
+      fetchExtensionHistory();
+    });
+  }
+
+  if (btnCloseHistory) {
+    btnCloseHistory.addEventListener('click', () => {
+      showState(stateHome);
+    });
+  }
+
+  function fetchExtensionHistory() {
+    historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
+    
+    chrome.runtime.sendMessage({ action: 'api_get', endpoint: '/api/scheduled-posts/extension-history' }, (response) => {
+      if (chrome.runtime.lastError || !response || response.error) {
+        historyList.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 12px; padding: 20px 0;">Lỗi tải dữ liệu.</div>`;
+        return;
+      }
+
+      const items = response.history || [];
+      if (items.length === 0) {
+        historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Chưa có bài đăng nào từ Extension.</div>';
+        return;
+      }
+
+      historyList.innerHTML = '';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        
+        let statusName = item.status;
+        if (item.status === 'pending') statusName = 'Chờ duyệt';
+        if (item.status === 'scheduled') statusName = 'Đã lên lịch';
+        if (item.status === 'posted') statusName = 'Thành công';
+        if (item.status === 'failed') statusName = 'Thất bại';
+
+        const date = new Date(item.scheduledAt || item.createdAt);
+        const timeStr = date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        div.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-platform">${item.platform || 'Unknown'}</span>
+            <span class="history-item-status status-${item.status}">${statusName}</span>
+          </div>
+          <div class="history-item-title" title="${item.title}">${item.title}</div>
+          <div class="history-item-time">Lịch: ${timeStr}</div>
+        `;
+        historyList.appendChild(div);
+      });
+    });
+  }
 
   // Đăng nhập trực tiếp từ Extension
   if (btnLoginSubmit) {

@@ -272,6 +272,23 @@ async function sendArticleToAntBiz(articleData, token) {
   return await response.json();
 }
 
+// Hàm gửi GET request chung (ví dụ lấy lịch sử)
+async function fetchDataViaServer(endpoint, token) {
+  const response = await fetch(`http://localhost:3000${endpoint}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errJson = await response.json().catch(() => ({}));
+    throw new Error(errJson.error || `Lỗi truy vấn dữ liệu: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 // Lắng nghe các tin nhắn từ Popup UI hoặc Content Script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'get_session') {
@@ -285,6 +302,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     scrapeArticleViaServer(message.url, message.token, message.requestId)
       .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error.message || error }));
+    return true;
+  }
+
+  if (message.action === 'api_get') {
+    getSupabaseSession().then(session => {
+      if (!session || !session.access_token) throw new Error('Unauthenticated');
+      return fetchDataViaServer(message.endpoint, session.access_token);
+    })
+    .then(data => sendResponse(data))
+    .catch(error => sendResponse({ error: error.message || error }));
     return true;
   }
 

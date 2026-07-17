@@ -15,7 +15,8 @@
         <span class="logo-icon">⚡</span>
         <h1 class="logo-text">AntBiz Assistant</h1>
       </div>
-      <div id="user-profile" class="user-profile hidden">
+      <div id="user-profile" class="user-profile hidden" style="display: flex; align-items: center;">
+        <button id="btn-show-history" class="btn-icon" title="Lịch sử bài đăng từ Extension" style="background: none; border: none; cursor: pointer; font-size: 16px; margin-right: 8px; padding: 4px; border-radius: 4px;">🕒</button>
         <span id="user-name" class="user-name">...</span>
       </div>
     </header>
@@ -297,6 +298,19 @@
         <div class="action-buttons horizontal">
           <button id="btn-voice-cancel" class="btn btn-secondary">Làm lại</button>
           <button id="btn-voice-confirm" class="btn btn-primary">Xác nhận & Viết bài</button>
+        </div>
+      </div>
+
+      <!-- History State -->
+      <div id="state-history" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 class="step-header" style="border-left: 3px solid #8b5cf6; padding-left: 8px; margin: 0;">Lịch sử bài đăng (Top 10)</h3>
+          <button id="btn-close-history" style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280;">✕</button>
+        </div>
+        
+        <div id="history-list" style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Items will be injected here -->
+          <div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>
         </div>
       </div>
     </main>
