@@ -9,7 +9,7 @@ const importExtensionSchema = z.object({
   description: z.string().optional().default(''),
   content: z.string().min(1, 'Nội dung không được rỗng'),
   imageUrl: z.string().optional().default(''),
-  originUrl: z.string().url('URL gốc không hợp lệ'),
+  originUrl: z.string().optional().default(''),
 
   // Các trường phục vụ chức năng Đăng bài / Lên lịch
   action: z.enum(['draft', 'publish_now', 'schedule']).optional().default('draft'),
@@ -67,15 +67,19 @@ export async function POST(request: NextRequest) {
     : [];
 
   try {
-    // 2. Tìm kiếm bài viết gốc
-    let { data: existingArticle, error: findError } = await adminSupabase
-      .from('articles')
-      .select('*')
-      .eq('url', originUrl)
-      .maybeSingle();
+    // 2. Tìm kiếm bài viết gốc (chỉ tìm nếu có originUrl hợp lệ)
+    let existingArticle = null;
+    if (originUrl) {
+      const { data, error: findError } = await adminSupabase
+        .from('articles')
+        .select('*')
+        .eq('url', originUrl)
+        .maybeSingle();
 
-    if (findError) {
-      console.warn('[Extension Import API] Lỗi tìm bài viết cũ:', findError);
+      if (findError) {
+        console.warn('[Extension Import API] Lỗi tìm bài viết cũ:', findError);
+      }
+      existingArticle = data;
     }
 
     let articleId = '';
