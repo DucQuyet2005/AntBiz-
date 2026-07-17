@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       const { data: insertedArticle, error: insertError } = await adminSupabase
         .from('articles')
         .insert({
-          url: originUrl,
+          url: originUrl || `extension-import-${crypto.randomUUID()}`,
           title,
           description,
           author: 'Chrome Extension',
