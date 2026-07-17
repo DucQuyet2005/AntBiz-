@@ -28,7 +28,7 @@ describe('GeminiPromptConfigAdapter', () => {
     })).resolves.toBe(' result ');
     expect(mocks.getGenerativeModel).toHaveBeenCalledWith({
       model: 'gemini-custom',
-      generationConfig: { responseMimeType: 'application/json' },
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
       systemInstruction: 'system',
     });
     expect(mocks.generateContent).toHaveBeenCalledWith('instruction');
@@ -38,7 +38,8 @@ describe('GeminiPromptConfigAdapter', () => {
     const adapter = new GeminiPromptConfigAdapter('key');
     await adapter.generate({ systemInstruction: 'system', instruction: 'wizard' });
     expect(mocks.getGenerativeModel).toHaveBeenCalledWith({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-flash-lite',
+      generationConfig: { temperature: 0.2 },
       systemInstruction: 'system',
     });
   });
