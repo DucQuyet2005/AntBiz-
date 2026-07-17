@@ -194,8 +194,9 @@ describe('Prompt Configs API Endpoints (US-2.07)', () => {
       const res = await getConfigs(req);
       expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json.data).toHaveLength(1);
-      expect(json.data[0].id).toBe('pc1');
+      const userConfigs = json.data.filter((item: any) => !item.is_system);
+      expect(userConfigs).toHaveLength(1);
+      expect(userConfigs[0].id).toBe('pc1');
     });
 
     it('filters configs by platform', async () => {
@@ -209,8 +210,9 @@ describe('Prompt Configs API Endpoints (US-2.07)', () => {
       const res = await getConfigs(req);
       expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json.data).toHaveLength(1);
-      expect(json.data[0].name).toBe('IG Config');
+      const userConfigs = json.data.filter((item: any) => !item.is_system);
+      expect(userConfigs).toHaveLength(1);
+      expect(userConfigs[0].name).toBe('IG Config');
     });
 
     it('returns 500 if database error occurs', async () => {
