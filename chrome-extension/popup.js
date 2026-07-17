@@ -337,7 +337,7 @@ function initEventListeners() {
   if (btnOpenAntbiz) {
     btnOpenAntbiz.addEventListener('click', (e) => {
       e.preventDefault();
-      const antbizUrl = `${AntBizUrl}/content-calendar`;
+      const antbizUrl = `${AntBizUrl}/archive`;
       chrome.tabs.create({ url: antbizUrl });
     });
   }
