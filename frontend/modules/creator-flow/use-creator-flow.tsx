@@ -1,0 +1,733 @@
+'use client';
+
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { postService, ChatMessage } from '@/lib/services/creator/post.service';
+import { scheduleService } from '@/lib/services/creator/schedule.service';
+import { CreatorFlowState, CreatorFlowAction } from './creator-flow-types';
+import { PlatformType } from '@/lib/services/creator/platform.service';
+import { BrowserCreatorFlowClient, type CreatorFlowClient } from './creator-flow-client';
+import {
+  persistManualCreatorSource,
+  uploadCreatorSource,
+  type CreatorUploadedSource,
+} from './creator-source-workflow';
+import {
+  QuickPublishingError,
+  type QuickPublishingEvent,
+  useQuickPublishing,
+} from '@/frontend/modules/quick-publishing';
+
+export const initialCreatorFlowState: CreatorFlowState = {
+  currentStep: 1,
+  selectedPlatform: null,
+  selectedPlatforms: [],
+  platforms: [],
+  isLoadingPlatforms: false,
+  sourceType: null,
+  articleUrl: '',
+  articleId: null,
+  manualTitle: '',
+  manualContent: '',
+  crawlJobId: null,
+  crawlStatus: 'idle',
+  articleContext: null,
+  presets: [],
+  selectedPresetId: null,
+  searchPresetQuery: '',
+  isLoadingPresets: false,
+  postContent: '',
+  postId: null,
+  generatedPost: null,
+  isGeneratingPost: false,
+  chatMessages: [],
+  isChatSending: false,
+  highlightedText: '',
+  highlightSelectionStart: null,
+  highlightSelectionEnd: null,
+  isHighlightEditing: false,
+  conversationalStep: 1,
+  scheduleMode: 'now',
+  scheduledDateTime: (() => {
+    // Default to tomorrow at 09:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split('T')[0];
+    return `${dateStr}T09:00`;
+  })(),
+  timelinePosts: [],
+  isLoadingTimeline: false,
+  isScheduling: false,
+  publishingSucceededPlatforms: [],
+  publishingFailedPlatforms: [],
+  drafts: {},
+};
+
+export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowAction): CreatorFlowState {
+  switch (action.type) {
+    case 'SET_STEP':
+      return { ...state, currentStep: action.payload };
+    case 'SET_PLATFORM': {
+      const activePlatform = action.payload;
+      const draft = activePlatform ? state.drafts[activePlatform] : null;
+      return { 
+        ...state, 
+        selectedPlatform: activePlatform,
+        postContent: draft ? draft.content : '',
+        postId: draft ? draft.postId : null,
+        generatedPost: draft ? draft.generatedPost : null
+      };
+    }
+    case 'SET_SELECTED_PLATFORMS':
+      return { ...state, selectedPlatforms: action.payload };
+    case 'SET_PLATFORMS':
+      return { ...state, platforms: action.payload };
+    case 'SET_LOADING_PLATFORMS':
+      return { ...state, isLoadingPlatforms: action.payload };
+    case 'SET_SOURCE_TYPE':
+      return { ...state, sourceType: action.payload };
+    case 'SET_ARTICLE_URL':
+      return { ...state, articleUrl: action.payload };
+    case 'SET_ARTICLE_ID':
+      return { ...state, articleId: action.payload };
+    case 'SET_MANUAL_CONTENT':
+      return { 
+        ...state, 
+        manualTitle: action.payload.title, 
+        manualContent: action.payload.content 
+      };
+    case 'SET_CRAWL_JOB':
+      return { 
+        ...state, 
+        crawlJobId: action.payload.jobId, 
+        crawlStatus: action.payload.status 
+      };
+    case 'SET_CRAWL_STATUS':
+      return { ...state, crawlStatus: action.payload };
+    case 'SET_ARTICLE_CONTEXT':
+      return { ...state, articleContext: action.payload };
+    case 'SET_PRESETS':
+      return { ...state, presets: action.payload };
+    case 'SET_SELECTED_PRESET':
+      return { ...state, selectedPresetId: action.payload };
+    case 'SET_SEARCH_PRESET':
+      return { ...state, searchPresetQuery: action.payload };
+    case 'SET_LOADING_PRESETS':
+      return { ...state, isLoadingPresets: action.payload };
+    case 'SET_POST_CONTENT':
+      return { 
+        ...state, 
+        postContent: action.payload,
+        drafts: state.selectedPlatform ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            ...state.drafts[state.selectedPlatform] || { content: '', postId: null, generatedPost: null },
+            content: action.payload
+          }
+        } : state.drafts
+      };
+    case 'SET_DRAFT':
+      return {
+        ...state,
+        drafts: {
+          ...state.drafts,
+          [action.payload.platform]: {
+            content: action.payload.content,
+            postId: action.payload.postId,
+            generatedPost: action.payload.generatedPost
+          }
+        },
+        // If updating the currently active platform, sync it to primary states
+        ...(state.selectedPlatform === action.payload.platform ? {
+          postContent: action.payload.content,
+          postId: action.payload.postId,
+          generatedPost: action.payload.generatedPost
+        } : {})
+      };
+    case 'UPDATE_DRAFT_CONTENT':
+      return {
+        ...state,
+        drafts: {
+          ...state.drafts,
+          [action.payload.platform]: {
+            ...(state.drafts[action.payload.platform] || { content: '', postId: null, generatedPost: null }),
+            content: action.payload.content
+          }
+        },
+        ...(state.selectedPlatform === action.payload.platform ? {
+          postContent: action.payload.content
+        } : {})
+      };
+    case 'SET_GENERATED_POST':
+      return { 
+        ...state, 
+        generatedPost: action.payload,
+        postId: action.payload ? action.payload.id : null,
+        postContent: action.payload ? action.payload.content : '',
+        drafts: state.selectedPlatform && action.payload ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            content: action.payload.content,
+            postId: action.payload.id,
+            generatedPost: action.payload
+          }
+        } : state.drafts
+      };
+    case 'SET_GENERATING_POST':
+      return { ...state, isGeneratingPost: action.payload };
+    case 'ADD_CHAT_MESSAGE':
+      return { ...state, chatMessages: [...state.chatMessages, action.payload] };
+    case 'SET_CHAT_SENDING':
+      return { ...state, isChatSending: action.payload };
+    case 'SET_HIGHLIGHT_TEXT':
+      return {
+        ...state, highlightedText: action.payload,
+        ...(!action.payload ? { highlightSelectionStart: null, highlightSelectionEnd: null } : {}),
+      };
+    case 'SET_HIGHLIGHT_SELECTION':
+      return {
+        ...state,
+        highlightedText: action.payload.text,
+        highlightSelectionStart: action.payload.start,
+        highlightSelectionEnd: action.payload.end,
+      };
+    case 'SET_HIGHLIGHT_EDITING':
+      return { ...state, isHighlightEditing: action.payload };
+    case 'SET_CONVERSATIONAL_STEP':
+      return { ...state, conversationalStep: action.payload };
+    case 'SET_SCHEDULE_MODE':
+      return { ...state, scheduleMode: action.payload };
+    case 'SET_SCHEDULE_DATE_TIME':
+      return { ...state, scheduledDateTime: action.payload };
+    case 'SET_TIMELINE':
+      return { ...state, timelinePosts: action.payload };
+    case 'SET_LOADING_TIMELINE':
+      return { ...state, isLoadingTimeline: action.payload };
+    case 'SET_SCHEDULING':
+      return { ...state, isScheduling: action.payload };
+    case 'SET_PUBLISHING_RESULT':
+      return {
+        ...state,
+        publishingSucceededPlatforms: action.payload.successful,
+        publishingFailedPlatforms: action.payload.failed,
+      };
+    case 'RESET_FLOW':
+      return { ...initialCreatorFlowState };
+    default:
+      return state;
+  }
+}
+
+interface CreatorFlowContextProps {
+  state: CreatorFlowState;
+  dispatch: React.Dispatch<CreatorFlowAction>;
+  nextStep: () => void;
+  prevStep: () => void;
+  goToStep: (step: number) => void;
+  selectPlatform: (platform: PlatformType | null) => void;
+  startCrawl: (url: string, source: 'gocnhinmoi' | 'tuoitre' | 'dantri') => Promise<void>;
+  submitManualArticle: (title: string, content: string) => Promise<void>;
+  uploadSourceFile: (file: File) => Promise<CreatorUploadedSource>;
+  selectPreset: (presetId: string | null) => void;
+  searchPresets: (query: string) => void;
+  generateAIContent: () => Promise<void>;
+  regeneratePostContent: (presetId?: string | null) => Promise<void>;
+  editHighlighted: (instruction: string) => Promise<void>;
+  sendAssistantChat: (message: string) => Promise<void>;
+  confirmPostSchedule: (mode?: 'now' | 'scheduled') => Promise<{
+    success: boolean;
+    failed: PlatformType[];
+  }>;
+  updateScheduledTime: (postId: string, dayIndex: number, timeStr: string) => void;
+}
+
+const CreatorFlowContext = createContext<CreatorFlowContextProps | undefined>(undefined);
+
+export function CreatorFlowProvider({
+  children,
+  client,
+}: {
+  children: React.ReactNode;
+  client?: CreatorFlowClient;
+}) {
+  const [state, dispatch] = useReducer(creatorFlowReducer, initialCreatorFlowState);
+  const [creatorClient] = useState(() => client ?? new BrowserCreatorFlowClient());
+  const quickPublishing = useQuickPublishing();
+
+  // 1. Fetch platforms connection
+  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery({
+    queryKey: ['connectedPlatforms'],
+    queryFn: () => creatorClient.listConnectedPlatforms(),
+  });
+
+  useEffect(() => {
+    if (platforms) dispatch({ type: 'SET_PLATFORMS', payload: platforms });
+    dispatch({ type: 'SET_LOADING_PLATFORMS', payload: isLoadingPlatforms });
+  }, [platforms, isLoadingPlatforms]);
+
+  // 2. Fetch presets
+  const presetPlatforms = state.selectedPlatforms.length > 0
+    ? state.selectedPlatforms
+    : (['facebook', 'threads', 'instagram'] as PlatformType[]);
+  const { data: presets, isLoading: isLoadingPresets } = useQuery({
+    queryKey: ['creatorPlatformPresets', presetPlatforms],
+    queryFn: async () => {
+      const results = await Promise.all(presetPlatforms.map(async (platform) => {
+        const result = await quickPublishing.loadPresets(platform);
+        return result.presets.map((preset) => ({
+          id: preset.id,
+          name: preset.name,
+          platform,
+          tags: preset.rules ? [preset.rules.slice(0, 48)] : [],
+          lastUpdated: '',
+          isSystem: !preset.user_id,
+        }));
+      }));
+      return results.flat();
+    },
+  });
+
+  useEffect(() => {
+    if (presets) dispatch({ type: 'SET_PRESETS', payload: presets });
+    dispatch({ type: 'SET_LOADING_PRESETS', payload: isLoadingPresets });
+  }, [presets, isLoadingPresets]);
+
+  // 3. Fetch Weekly Timeline schedule grid
+  const { data: timelineResponse, isLoading: isLoadingTimeline } = useQuery({
+    queryKey: ['weeklyTimeline'],
+    queryFn: () => scheduleService.getTimeline(),
+  });
+
+  useEffect(() => {
+    if (timelineResponse?.status === 'success' && timelineResponse.data) {
+      dispatch({ type: 'SET_TIMELINE', payload: timelineResponse.data });
+    }
+    dispatch({ type: 'SET_LOADING_TIMELINE', payload: isLoadingTimeline });
+  }, [timelineResponse, isLoadingTimeline]);
+
+  // Navigation actions
+  const nextStep = () => {
+    if (state.currentStep < 4) {
+      dispatch({ type: 'SET_STEP', payload: state.currentStep + 1 });
+    }
+  };
+
+  const prevStep = () => {
+    if (state.currentStep > 1) {
+      dispatch({ type: 'SET_STEP', payload: state.currentStep - 1 });
+    }
+  };
+
+  const goToStep = (step: number) => {
+    dispatch({ type: 'SET_STEP', payload: step });
+  };
+
+  const selectPlatform = (platform: PlatformType | null) => {
+    dispatch({ type: 'SET_PLATFORM', payload: platform });
+  };
+
+  const beginSourceIngestion = () => {
+    dispatch({ type: 'SET_ARTICLE_ID', payload: null });
+    dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: null });
+    dispatch({ type: 'SET_CRAWL_STATUS', payload: 'crawling' });
+  };
+
+  const completeSourceIngestion = (result: Awaited<ReturnType<CreatorFlowClient['createManualArticle']>>) => {
+    dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
+    dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
+    dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
+  };
+
+  // Article crawling initiator
+  const startCrawl = async (url: string, source: 'gocnhinmoi' | 'tuoitre' | 'dantri') => {
+    dispatch({ type: 'SET_SOURCE_TYPE', payload: source });
+    dispatch({ type: 'SET_ARTICLE_URL', payload: url });
+    dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId: url, status: 'crawling' } });
+
+    try {
+      const result = await creatorClient.ingestUrl(url);
+      dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
+      dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
+      dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
+    } catch {
+      dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
+    }
+  };
+
+  const submitManualArticle = async (title: string, content: string) => {
+    dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
+    dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title, content } });
+    beginSourceIngestion();
+
+    try {
+      const result = await persistManualCreatorSource(creatorClient, title, content);
+      completeSourceIngestion(result);
+    } catch (error) {
+      dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
+      throw error;
+    }
+  };
+
+  const uploadSourceFile = async (file: File) => {
+    dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
+    beginSourceIngestion();
+
+    try {
+      const uploaded = await uploadCreatorSource(creatorClient, file);
+      dispatch({
+        type: 'SET_MANUAL_CONTENT',
+        payload: { title: uploaded.article.context.title, content: uploaded.content },
+      });
+      completeSourceIngestion(uploaded.article);
+      return uploaded;
+    } catch (error) {
+      dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
+      throw error;
+    }
+  };
+
+  const selectPreset = (presetId: string | null) => {
+    dispatch({ type: 'SET_SELECTED_PRESET', payload: presetId });
+  };
+
+  const searchPresets = (query: string) => {
+    dispatch({ type: 'SET_SEARCH_PRESET', payload: query });
+  };
+
+  const presetForPlatform = (
+    platform: PlatformType,
+    selectedPresetId: string | null = state.selectedPresetId
+  ) => {
+    const selected = state.presets.find((preset) => preset.id === selectedPresetId);
+    return selected?.platform === platform ? selected.id : '';
+  };
+
+  const draftInputFor = (platform: PlatformType) => {
+    const draft = state.drafts[platform];
+    if (!draft) return null;
+    return {
+      variantId: platform,
+      platform,
+      articleId: state.articleId || undefined,
+      captionId: draft.postId || undefined,
+      originalContent: draft.generatedPost?.content || draft.content,
+      currentContent: draft.content,
+      compiledContent: draft.content,
+    };
+  };
+
+  const generatedPost = (platform: PlatformType, id: string, content: string) => ({
+    id,
+    platform,
+    title: state.articleContext?.title || '',
+    content,
+    status: 'draft' as const,
+  });
+
+  const reportOperationError = (text: string) => {
+    const message: ChatMessage = {
+      id: `msg_error_${Date.now()}`,
+      sender: 'ai',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: message });
+  };
+
+  // Step 4 content generator through the Quick Publishing interface.
+  const generateAIContent = async () => {
+    const targetPlatforms = state.selectedPlatforms.length > 0 
+      ? state.selectedPlatforms 
+      : (state.selectedPlatform ? [state.selectedPlatform] : []);
+
+    if (targetPlatforms.length === 0 || !state.articleContext || !state.articleId) return;
+    dispatch({ type: 'SET_GENERATING_POST', payload: true });
+
+    // Set first platform as active
+    const firstPlatform = targetPlatforms[0];
+    dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
+
+    const contents = new Map<PlatformType, string>();
+    const captionIds = new Map<PlatformType, string>();
+    const failedPlatforms = new Set<PlatformType>();
+    const onEvent = (event: QuickPublishingEvent) => {
+      if (event.type === 'article-resolved') {
+        dispatch({ type: 'SET_ARTICLE_ID', payload: event.articleId });
+        return;
+      }
+      if (!('platform' in event) || !targetPlatforms.includes(event.platform)) return;
+      const platform = event.platform;
+      if (event.type === 'generation-failed') failedPlatforms.add(platform);
+      if (event.type === 'text-fragment') contents.set(platform, event.accumulated);
+      if (event.type === 'caption-resolved') captionIds.set(platform, event.captionId);
+      if (event.type === 'text-fragment' || event.type === 'caption-resolved') {
+        const content = contents.get(platform) || '';
+        const captionId = captionIds.get(platform) || '';
+        dispatch({
+          type: 'SET_DRAFT',
+          payload: {
+            platform, content, postId: captionId || null,
+            generatedPost: generatedPost(platform, captionId, content),
+          },
+        });
+      }
+    };
+
+    try {
+      const configFor = (platform: PlatformType) => ({
+        presetId: presetForPlatform(platform), customText: '', quickPicks: [], configId: '',
+      });
+      await quickPublishing.generate({
+        articleId: state.articleId,
+        platforms: targetPlatforms,
+        variantIds: ['primary'],
+        variantIndexes: [0],
+        variantGroupId: `creator-${Date.now()}`,
+        basePrompt: '',
+        platformConfigs: {
+          facebook: configFor('facebook'),
+          threads: configFor('threads'),
+          instagram: configFor('instagram'),
+        },
+      }, onEvent);
+      for (const platform of targetPlatforms) {
+        const content = contents.get(platform) || '';
+        const captionId = captionIds.get(platform) || '';
+        if (!content || !captionId) continue;
+        dispatch({
+          type: 'SET_DRAFT',
+          payload: {
+            platform, content, postId: captionId,
+            generatedPost: generatedPost(platform, captionId, content),
+          },
+        });
+      }
+      if (failedPlatforms.size > 0) {
+        reportOperationError(
+          `Không thể tạo nội dung cho: ${Array.from(failedPlatforms).join(', ')}.`
+        );
+      }
+    } catch {
+      reportOperationError('Không thể tạo nội dung lúc này. Vui lòng kiểm tra nguồn bài viết và thử lại.');
+    } finally {
+      dispatch({ type: 'SET_GENERATING_POST', payload: false });
+    }
+  };
+
+  // Regenerate the complete persisted Caption.
+  const regeneratePostContent = async (presetOverride?: string | null) => {
+    if (!state.selectedPlatform) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+    dispatch({ type: 'SET_GENERATING_POST', payload: true });
+
+    try {
+      const captionId = await quickPublishing.saveEdit(draft);
+      const presetId = presetForPlatform(
+        state.selectedPlatform,
+        presetOverride === undefined ? state.selectedPresetId : presetOverride
+      );
+      const result = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'full',
+        presetMode: presetId ? 'selected' : 'none',
+        ...(presetId ? { platformPresetId: presetId } : {}),
+      });
+      dispatch({
+        type: 'SET_DRAFT',
+        payload: {
+          platform: state.selectedPlatform, content: result.content, postId: result.captionId,
+          generatedPost: generatedPost(state.selectedPlatform, result.captionId, result.content),
+        },
+      });
+    } catch {
+      reportOperationError('Không thể tạo lại toàn bộ bài viết lúc này.');
+    } finally {
+      dispatch({ type: 'SET_GENERATING_POST', payload: false });
+    }
+  };
+
+  // Regenerate the exact selected UTF-16 range in the persisted Caption.
+  const editHighlighted = async (instruction: string) => {
+    if (
+      !state.selectedPlatform || !state.highlightedText || !instruction
+      || state.highlightSelectionStart === null || state.highlightSelectionEnd === null
+    ) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+    dispatch({ type: 'SET_HIGHLIGHT_EDITING', payload: true });
+
+    try {
+      const captionId = await quickPublishing.saveEdit(draft);
+      const presetId = presetForPlatform(state.selectedPlatform);
+      const result = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'partial',
+        selectionStart: state.highlightSelectionStart,
+        selectionEnd: state.highlightSelectionEnd,
+        selectedText: state.highlightedText,
+        instruction,
+        presetMode: presetId ? 'selected' : 'none',
+        ...(presetId ? { platformPresetId: presetId } : {}),
+      });
+      dispatch({
+        type: 'SET_DRAFT',
+        payload: {
+          platform: state.selectedPlatform, content: result.content, postId: result.captionId,
+          generatedPost: generatedPost(state.selectedPlatform, result.captionId, result.content),
+        },
+      });
+    } catch (error) {
+      reportOperationError(
+        error instanceof QuickPublishingError && error.code === 'CAPTION_STALE'
+          ? 'Nội dung đã thay đổi. Vui lòng chọn lại đoạn cần sửa.'
+          : 'Không thể sửa đoạn đã chọn lúc này.'
+      );
+    } finally {
+      dispatch({ type: 'SET_HIGHLIGHT_TEXT', payload: '' });
+      dispatch({ type: 'SET_HIGHLIGHT_EDITING', payload: false });
+    }
+  };
+
+  // Assistant chatbot conversation (Gemini 3.1 Flash Lite)
+  const sendAssistantChat = async (message: string) => {
+    if (!message.trim()) return;
+    
+    // User message
+    const userMsg: ChatMessage = {
+      id: `msg_user_${Math.random()}`,
+      sender: 'user',
+      text: message,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+    dispatch({ type: 'SET_CHAT_SENDING', payload: true });
+
+    const response = await postService.sendChatMessage(
+      state.postId || 'temp_post',
+      message,
+      state.chatMessages
+    );
+
+    if (response.status === 'success' && response.data) {
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: response.data });
+    }
+    dispatch({ type: 'SET_CHAT_SENDING', payload: false });
+  };
+
+  // Persist every Caption, then publish now or schedule through Quick Publishing.
+  const confirmPostSchedule = async (
+    requestedMode: 'now' | 'scheduled' = state.scheduleMode
+  ): Promise<{ success: boolean; failed: PlatformType[] }> => {
+    const targetPlatforms = state.selectedPlatforms.length > 0 
+      ? state.selectedPlatforms 
+      : (state.selectedPlatform ? [state.selectedPlatform] : []);
+
+    if (targetPlatforms.length === 0) return { success: false, failed: [] };
+    dispatch({ type: 'SET_SCHEDULING', payload: true });
+    const drafts = targetPlatforms.map((platform) => ({ platform, draft: draftInputFor(platform) }));
+    const missing = drafts.filter((item) => !item.draft).map((item) => item.platform);
+    if (missing.length > 0) {
+      dispatch({ type: 'SET_PUBLISHING_RESULT', payload: { successful: [], failed: missing } });
+      dispatch({ type: 'SET_SCHEDULING', payload: false });
+      return { success: false, failed: missing };
+    }
+
+    const connectedPlatforms = state.platforms
+      .filter((platform) => platform.connected)
+      .map((platform) => platform.id);
+    const imageUrls = state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : [];
+    let successful: PlatformType[] = [];
+    let failed: PlatformType[] = [];
+    const onEvent = (event: QuickPublishingEvent) => {
+      if (event.type === 'publish-completed' || event.type === 'schedule-completed') {
+        successful = event.successful;
+        failed = event.failed;
+        dispatch({ type: 'SET_PUBLISHING_RESULT', payload: { successful, failed } });
+      }
+    };
+
+    try {
+      if (requestedMode === 'now') {
+        await quickPublishing.publishNow({
+          connectedPlatforms,
+          imageUrls,
+          platforms: drafts.map((item) => ({ platform: item.platform, draft: item.draft! })),
+        }, onEvent);
+      } else {
+        const scheduledAt = new Date(state.scheduledDateTime).toISOString();
+        await quickPublishing.schedule({
+          connectedPlatforms,
+          imageUrls,
+          platforms: drafts.map((item) => ({
+            platform: item.platform,
+            scheduledAt,
+            draft: item.draft!,
+          })),
+        }, onEvent);
+      }
+      return {
+        success: failed.length === 0 && successful.length === targetPlatforms.length,
+        failed,
+      };
+    } catch {
+      const failedPlatforms = failed.length > 0 ? failed : targetPlatforms;
+      if (failed.length === 0) {
+        dispatch({
+          type: 'SET_PUBLISHING_RESULT',
+          payload: { successful, failed: failedPlatforms },
+        });
+      }
+      return { success: false, failed: failedPlatforms };
+    } finally {
+      dispatch({ type: 'SET_SCHEDULING', payload: false });
+    }
+  };
+
+  // Weekly Timeline drag and drop simulation callback
+  const updateScheduledTime = (postId: string, dayIndex: number, timeStr: string) => {
+    const updated = state.timelinePosts.map((p) => {
+      if (p.postId === postId) {
+        return { ...p, dayIndex, time: timeStr };
+      }
+      return p;
+    });
+    dispatch({ type: 'SET_TIMELINE', payload: updated });
+  };
+
+  return (
+    <CreatorFlowContext.Provider
+      value={{
+        state,
+        dispatch,
+        nextStep,
+        prevStep,
+        goToStep,
+        selectPlatform,
+        startCrawl,
+        submitManualArticle,
+        uploadSourceFile,
+        selectPreset,
+        searchPresets,
+        generateAIContent,
+        regeneratePostContent,
+        editHighlighted,
+        sendAssistantChat,
+        confirmPostSchedule,
+        updateScheduledTime,
+      }}
+    >
+      {children}
+    </CreatorFlowContext.Provider>
+  );
+}
+
+export function useCreatorFlow() {
+  const context = useContext(CreatorFlowContext);
+  if (!context) {
+    throw new Error('useCreatorFlow must be used within a CreatorFlowProvider');
+  }
+  return context;
+}

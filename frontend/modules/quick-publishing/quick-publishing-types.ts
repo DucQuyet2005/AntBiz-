@@ -3,6 +3,7 @@ export type QuickPublishingPlatform = 'facebook' | 'threads' | 'instagram';
 export interface QuickPublishingPreset {
   id: string;
   user_id?: string | null;
+  platform?: string;
   name: string;
   rules: string;
   is_default?: boolean;
@@ -26,6 +27,7 @@ export interface GenerateCaptionCommand {
   oldCaptionId?: string;
   model?: string;
   stylePresetId: string;
+  presetMode: 'auto' | 'selected' | 'none';
   platformPresetId?: string;
 }
 
@@ -43,9 +45,14 @@ export type QuickPublishingEvent =
   | { type: 'generation-failed'; platform: QuickPublishingPlatform; variantId: string; variantIndex: number; error: QuickPublishingFailure }
   | { type: 'generation-aborted'; platform: QuickPublishingPlatform; variantId: string; variantIndex: number }
   | { type: 'draft-resolved'; platform: QuickPublishingPlatform; variantId: string; captionId: string; status: string }
+  | { type: 'caption-edit-saved'; platform: QuickPublishingPlatform; variantId: string; captionId: string; status: string }
+  | { type: 'caption-regenerated'; platform: QuickPublishingPlatform; captionId: string; mode: 'full' | 'partial'; content: string; replacementRange?: { start: number; end: number } }
   | { type: 'platform-scheduled'; platform: QuickPublishingPlatform; captionId: string }
   | { type: 'platform-schedule-failed'; platform: QuickPublishingPlatform; error: QuickPublishingFailure }
-  | { type: 'schedule-completed'; successful: QuickPublishingPlatform[]; failed: QuickPublishingPlatform[] };
+  | { type: 'schedule-completed'; successful: QuickPublishingPlatform[]; failed: QuickPublishingPlatform[] }
+  | { type: 'platform-published'; platform: QuickPublishingPlatform; captionId: string }
+  | { type: 'platform-publish-failed'; platform: QuickPublishingPlatform; error: QuickPublishingFailure }
+  | { type: 'publish-completed'; successful: QuickPublishingPlatform[]; failed: QuickPublishingPlatform[] };
 
 export interface QuickPublishingFailure {
   code: QuickPublishingErrorCode;
@@ -58,9 +65,13 @@ export type QuickPublishingErrorCode =
   | 'GENERATION_FAILED'
   | 'GENERATION_ABORTED'
   | 'CAPTION_SAVE_FAILED'
+  | 'CAPTION_REGENERATION_FAILED'
+  | 'CAPTION_STALE'
+  | 'CAPTION_LOCKED'
   | 'PLATFORM_NOT_CONNECTED'
   | 'SCHEDULE_INVALID'
-  | 'SCHEDULE_FAILED';
+  | 'SCHEDULE_FAILED'
+  | 'PUBLISH_FAILED';
 
 export interface GenerateBatchInput {
   url?: string;
@@ -100,6 +111,46 @@ export interface ScheduleInput {
   imageUrls: string[];
 }
 
+interface RegenerateCaptionOptions {
+  presetMode: 'auto' | 'selected' | 'none';
+  platformPresetId?: string;
+}
+
+export type RegenerateCaptionCommand =
+  | (RegenerateCaptionOptions & { mode: 'full'; instruction?: string })
+  | (RegenerateCaptionOptions & {
+      mode: 'partial';
+      selectionStart: number;
+      selectionEnd: number;
+      selectedText: string;
+      instruction: string;
+    });
+
+export type RegenerateCaptionInput = RegenerateCaptionCommand & {
+  captionId: string;
+  platform: QuickPublishingPlatform;
+};
+
+export interface RegenerateCaptionResult {
+  captionId: string;
+  content: string;
+  status?: string;
+  mode: 'full' | 'partial';
+  generatedText: string;
+  replacementRange?: { start: number; end: number };
+}
+
+export interface PublishPlatformInput {
+  platform: QuickPublishingPlatform;
+  draft: DraftInput;
+}
+
+export interface PublishInput {
+  platforms: PublishPlatformInput[];
+  connectedPlatforms: QuickPublishingPlatform[];
+  imageUrls: string[];
+}
+
 export interface QuickPublishingClient {
   listPresets(platform: QuickPublishingPlatform): Promise<QuickPublishingPreset[]>;
   generate(command: GenerateCaptionCommand, signal?: AbortSignal): AsyncIterable<CaptionStreamEvent>;
@@ -111,5 +162,10 @@ export interface QuickPublishingClient {
     edited_content: string | null;
     prompt_id?: string;
   }): Promise<{ id: string; status?: string }>;
+  regenerateCaption(
+    id: string,
+    input: RegenerateCaptionCommand
+  ): Promise<RegenerateCaptionResult>;
   schedule(input: { captionId: string; scheduledAt: string; imageUrls: string[] }): Promise<void>;
+  publishNow(input: { captionId: string; imageUrls: string[] }): Promise<void>;
 }

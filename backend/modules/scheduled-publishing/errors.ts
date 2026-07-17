@@ -3,6 +3,7 @@ export type ScheduledPublishingErrorCode =
   | 'NOT_FOUND'
   | 'FORBIDDEN'
   | 'CONFLICT'
+  | 'PUBLICATION_FAILED'
   | 'PERSISTENCE';
 
 export class ScheduledPublishingError extends Error {

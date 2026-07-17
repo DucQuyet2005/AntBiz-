@@ -9,6 +9,8 @@ import type {
   QuickPublishingClient,
   QuickPublishingEvent,
   QuickPublishingPlatform,
+  PublishInput,
+  RegenerateCaptionInput,
   ScheduleInput,
 } from './quick-publishing-types';
 
@@ -16,6 +18,7 @@ export interface QuickPublishingExecutionState {
   isGenerating: boolean;
   regeneratingVariantId: string | null;
   isScheduling: boolean;
+  isPublishing: boolean;
   lastEvent: QuickPublishingEvent | null;
 }
 
@@ -23,6 +26,7 @@ const initialState: QuickPublishingExecutionState = {
   isGenerating: false,
   regeneratingVariantId: null,
   isScheduling: false,
+  isPublishing: false,
   lastEvent: null,
 };
 
@@ -32,11 +36,13 @@ export function reduceQuickPublishingExecution(
     | { type: 'generation'; active: boolean }
     | { type: 'regeneration'; variantId: string | null }
     | { type: 'scheduling'; active: boolean }
+    | { type: 'publishing'; active: boolean }
     | { type: 'event'; event: QuickPublishingEvent }
 ): QuickPublishingExecutionState {
   if (action.type === 'generation') return { ...state, isGenerating: action.active };
   if (action.type === 'regeneration') return { ...state, regeneratingVariantId: action.variantId };
   if (action.type === 'scheduling') return { ...state, isScheduling: action.active };
+  if (action.type === 'publishing') return { ...state, isPublishing: action.active };
   return { ...state, lastEvent: action.event };
 }
 
@@ -90,6 +96,15 @@ export function useQuickPublishing(client?: QuickPublishingClient) {
     capacity.ensureDraft(input, (event) => project(event, listener))
   ), [capacity, project]);
 
+  const saveEdit = useCallback((input: DraftInput, listener?: (event: QuickPublishingEvent) => void) => (
+    capacity.saveEdit(input, (event) => project(event, listener))
+  ), [capacity, project]);
+
+  const regenerateCaption = useCallback((
+    input: RegenerateCaptionInput,
+    listener?: (event: QuickPublishingEvent) => void
+  ) => capacity.regenerateCaption(input, (event) => project(event, listener)), [capacity, project]);
+
   const schedule = useCallback(async (input: ScheduleInput, listener?: (event: QuickPublishingEvent) => void) => {
     setState((current) => reduceQuickPublishingExecution(current, { type: 'scheduling', active: true }));
     try {
@@ -99,5 +114,17 @@ export function useQuickPublishing(client?: QuickPublishingClient) {
     }
   }, [capacity, project]);
 
-  return { state, loadPresets, generate, regenerate, ensureDraft, schedule };
+  const publishNow = useCallback(async (input: PublishInput, listener?: (event: QuickPublishingEvent) => void) => {
+    setState((current) => reduceQuickPublishingExecution(current, { type: 'publishing', active: true }));
+    try {
+      return await capacity.publishNow(input, (event) => project(event, listener));
+    } finally {
+      setState((current) => reduceQuickPublishingExecution(current, { type: 'publishing', active: false }));
+    }
+  }, [capacity, project]);
+
+  return {
+    state, loadPresets, generate, regenerate, ensureDraft, saveEdit,
+    regenerateCaption, schedule, publishNow,
+  };
 }

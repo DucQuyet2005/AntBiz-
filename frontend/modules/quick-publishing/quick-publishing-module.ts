@@ -7,6 +7,8 @@ import type {
   QuickPublishingEvent,
   QuickPublishingPlatform,
   QuickPublishingPreset,
+  PublishInput,
+  RegenerateCaptionInput,
   ScheduleInput,
 } from './quick-publishing-types';
 
@@ -90,6 +92,34 @@ export class QuickPublishingModule {
     return record.id;
   }
 
+  async saveEdit(input: DraftInput, emit?: (event: QuickPublishingEvent) => void) {
+    const captionId = await this.ensureDraft(input);
+    emit?.({
+      type: 'caption-edit-saved', platform: input.platform, variantId: input.variantId,
+      captionId, status: 'draft',
+    });
+    return captionId;
+  }
+
+  async regenerateCaption(
+    input: RegenerateCaptionInput,
+    emit?: (event: QuickPublishingEvent) => void
+  ) {
+    const { captionId, platform, ...command } = input;
+    try {
+      const result = await this.client.regenerateCaption(captionId, command);
+      emit?.({
+        type: 'caption-regenerated', platform, captionId: result.captionId,
+        mode: result.mode, content: result.content,
+        ...(result.replacementRange ? { replacementRange: result.replacementRange } : {}),
+      });
+      return result;
+    } catch (error) {
+      if (error instanceof QuickPublishingError) throw error;
+      throw new QuickPublishingError('CAPTION_REGENERATION_FAILED', { platform });
+    }
+  }
+
   async schedule(input: ScheduleInput, emit: (event: QuickPublishingEvent) => void) {
     if (input.platforms.length === 0) throw new QuickPublishingError('SCHEDULE_INVALID', { reason: 'empty' });
     const connected = new Set(input.connectedPlatforms);
@@ -122,6 +152,34 @@ export class QuickPublishingModule {
     }));
     emit({ type: 'schedule-completed', successful, failed });
     if (failed.length > 0) throw new QuickPublishingError('SCHEDULE_FAILED', { failed });
+    return { successful, failed };
+  }
+
+  async publishNow(input: PublishInput, emit: (event: QuickPublishingEvent) => void) {
+    if (input.platforms.length === 0) throw new QuickPublishingError('SCHEDULE_INVALID', { reason: 'empty' });
+    const connected = new Set(input.connectedPlatforms);
+    const successful: QuickPublishingPlatform[] = [];
+    const failed: QuickPublishingPlatform[] = [];
+
+    await Promise.all(input.platforms.map(async (item) => {
+      try {
+        if (!connected.has(item.platform)) {
+          throw new QuickPublishingError('PLATFORM_NOT_CONNECTED', { platform: item.platform });
+        }
+        const captionId = await this.ensureDraft(item.draft, emit);
+        await this.client.publishNow({ captionId, imageUrls: input.imageUrls });
+        successful.push(item.platform);
+        emit({ type: 'platform-published', platform: item.platform, captionId });
+      } catch (error) {
+        failed.push(item.platform);
+        emit({
+          type: 'platform-publish-failed', platform: item.platform,
+          error: toQuickPublishingFailure(error, 'PUBLISH_FAILED', { platform: item.platform }),
+        });
+      }
+    }));
+    emit({ type: 'publish-completed', successful, failed });
+    if (failed.length > 0) throw new QuickPublishingError('PUBLISH_FAILED', { failed });
     return { successful, failed };
   }
 
@@ -197,6 +255,7 @@ function buildGenerateCommand(
     ...(input.oldCaptionId ? { oldCaptionId: input.oldCaptionId } : {}),
     ...(input.model ? { model: input.model } : {}),
     stylePresetId: config.configId || 'none',
+    presetMode: config.presetId ? 'selected' : 'none',
     ...(config.presetId ? { platformPresetId: config.presetId } : {}),
     ...(variantIndex === 0 && input.promptId ? { promptId: input.promptId } : {}),
   };

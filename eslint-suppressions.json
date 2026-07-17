@@ -373,11 +373,6 @@
       "count": 1
     }
   },
-  "components/Toast.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "components/UserProfileDropdown.tsx": {
     "@next/next/no-img-element": {
       "count": 1
@@ -449,34 +444,7 @@
     }
   },
   "components/views/AiCreatorView.tsx": {
-    "@next/next/no-img-element": {
-      "count": 14
-    },
     "@typescript-eslint/no-explicit-any": {
-      "count": 56
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 33
-    },
-    "prefer-const": {
-      "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
-    "react-hooks/globals": {
-      "count": 4
-    },
-    "react-hooks/immutability": {
-      "count": 3
-    },
-    "react-hooks/purity": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 10
-    },
-    "react/no-unescaped-entities": {
       "count": 4
     }
   },
@@ -600,17 +568,6 @@
       "count": 3
     }
   },
-  "components/views/PlatformPresetsTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 6
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/views/ProfileView.tsx": {
     "@next/next/no-img-element": {
       "count": 2
@@ -651,17 +608,8 @@
     "@typescript-eslint/no-explicit-any": {
       "count": 4
     },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
-    },
-    "react-hooks/immutability": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 2
     }
   },
   "contexts/FontContext.tsx": {
@@ -750,11 +698,6 @@
       "count": 7
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    }
-  },
-  "lib/email.ts": {
-    "@typescript-eslint/no-explicit-any": {
       "count": 4
     }
   },
@@ -854,9 +797,6 @@
   },
   "worker.ts": {
     "@typescript-eslint/ban-ts-comment": {
-      "count": 1
-    },
-    "@typescript-eslint/no-explicit-any": {
       "count": 1
     }
   }
