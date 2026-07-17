@@ -224,8 +224,20 @@
             </div>
           </div>
 
-          <!-- Chọn ngày giờ lên lịch -->
-          <div id="schedule-picker-box" class="schedule-picker-box hidden">
+          <div class="action-buttons">
+            <button id="btn-publish-now" class="btn btn-primary">Đăng ngay</button>
+          </div>
+          <div class="action-buttons horizontal">
+            <button id="btn-back-to-social" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-schedule-post" class="btn btn-emerald">Lên lịch đăng bài</button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 4: Lên lịch đăng bài -->
+        <div id="step-schedule-config" class="wizard-step hidden">
+          <h4 class="step-header">Bước 4: Lên lịch đăng bài</h4>
+
+          <div class="form-group">
             <label for="input-schedule-time">Chọn Ngày & Giờ đăng bài</label>
             
             <div id="golden-hour-suggestions" style="margin: 8px 0; display: none;">
@@ -237,15 +249,11 @@
             </div>
 
             <input type="datetime-local" id="input-schedule-time">
-            <button id="btn-confirm-schedule" class="btn btn-emerald">Xác nhận lên lịch đăng bài</button>
           </div>
 
-          <div class="action-buttons">
-            <button id="btn-publish-now" class="btn btn-primary">Đăng ngay</button>
-          </div>
           <div class="action-buttons horizontal">
-            <button id="btn-back-to-social" class="btn btn-secondary">Quay lại</button>
-            <button id="btn-schedule-post" class="btn btn-emerald">Lên lịch đăng bài</button>
+            <button id="btn-back-to-preview" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-confirm-schedule" class="btn btn-emerald">Xác nhận lên lịch đăng bài</button>
           </div>
         </div>
       </div>

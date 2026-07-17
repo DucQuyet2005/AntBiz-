@@ -69,11 +69,14 @@ const btnCreatePost = document.getElementById('btn-create-post');
 
 // Bước 3 Form
 const inputCaption = document.getElementById('input-caption');
-const schedulePickerBox = document.getElementById('schedule-picker-box');
-const inputScheduleTime = document.getElementById('input-schedule-time');
 const btnBackToSocial = document.getElementById('btn-back-to-social');
 const btnPublishNow = document.getElementById('btn-publish-now');
 const btnSchedulePost = document.getElementById('btn-schedule-post');
+
+// Bước 4 Form (Lên lịch)
+const stepScheduleConfig = document.getElementById('step-schedule-config');
+const inputScheduleTime = document.getElementById('input-schedule-time');
+const btnBackToPreview = document.getElementById('btn-back-to-preview');
 const btnConfirmSchedule = document.getElementById('btn-confirm-schedule');
 
 // Facebook Post Preview elements
@@ -121,6 +124,7 @@ function showSubStep(stepEl) {
   stepArticleInfo.classList.add('hidden');
   stepSocialConfig.classList.add('hidden');
   stepPostPreview.classList.add('hidden');
+  if (stepScheduleConfig) stepScheduleConfig.classList.add('hidden');
 
   stepEl.classList.remove('hidden');
 }
@@ -624,27 +628,28 @@ function initEventListeners() {
   });
 
   btnSchedulePost.addEventListener('click', () => {
-    if (schedulePickerBox.classList.contains('hidden')) {
-      schedulePickerBox.classList.remove('hidden');
+    showSubStep(stepScheduleConfig);
 
-      // Gán mặc định là 1 tiếng sau
-      const now = new Date();
-      now.setHours(now.getHours() + 1);
-      now.setMinutes(0);
-      now.setSeconds(0);
+    // Gán mặc định là 1 tiếng sau
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    now.setMinutes(0);
+    now.setSeconds(0);
 
-      const pad = (n) => n < 10 ? '0' + n : n;
-      const localIso = now.getFullYear() + '-' +
-        pad(now.getMonth() + 1) + '-' +
-        pad(now.getDate()) + 'T' +
-        pad(now.getHours()) + ':' +
-        pad(now.getMinutes());
+    const pad = (n) => n < 10 ? '0' + n : n;
+    const localIso = now.getFullYear() + '-' +
+      pad(now.getMonth() + 1) + '-' +
+      pad(now.getDate()) + 'T' +
+      pad(now.getHours()) + ':' +
+      pad(now.getMinutes());
 
-      inputScheduleTime.value = localIso;
-      renderGoldenHours();
-    } else {
-      schedulePickerBox.classList.add('hidden');
-    }
+    inputScheduleTime.value = localIso;
+    renderGoldenHours();
+    saveCurrentState();
+  });
+
+  btnBackToPreview.addEventListener('click', () => {
+    showSubStep(stepPostPreview);
     saveCurrentState();
   });
 
@@ -1390,7 +1395,7 @@ function getActiveStateId() {
 
 // Lấy ID bước wizard hiện tại
 function getActiveStepId() {
-  const steps = [stepArticleInfo, stepSocialConfig, stepPostPreview];
+  const steps = [stepArticleInfo, stepSocialConfig, stepPostPreview, stepScheduleConfig];
   for (const st of steps) {
     if (st && !st.classList.contains('hidden')) {
       return st.id;
