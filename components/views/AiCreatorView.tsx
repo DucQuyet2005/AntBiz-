@@ -2,15 +2,14 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import {
-  CreatorFlowProvider,
-  useCreatorFlow
+import { 
+  CreatorFlowProvider, 
+  useCreatorFlow 
 } from '@/frontend/modules/creator-flow';
 import StepperHeader from './creator-flow/StepperHeader';
 import NavigationFooter from './creator-flow/NavigationFooter';
 import Step1Platform from './creator-flow/Step1Platform';
 import Step2Article from './creator-flow/Step2Article';
-import Step3Presets from './creator-flow/Step3Presets';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -21,7 +20,7 @@ function AiCreatorContent() {
   const { t } = useLanguage();
   const router = useRouter();
   const { state, dispatch, nextStep, prevStep, goToStep, confirmPostSchedule } = useCreatorFlow();
-
+  
   // Custom Toast notification states
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
     show: false,
@@ -40,16 +39,14 @@ function AiCreatorContent() {
   const isStepValid = (): boolean => {
     switch (state.currentStep) {
       case 1:
-        return state.selectedPlatform !== null;
+        return state.selectedPlatforms.length > 0;
       case 2:
         // Valid if user has chosen a source url or written custom content
-        return state.articleUrl.trim().length > 0 ||
-          (state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
+        return state.articleUrl.trim().length > 0 || 
+               (state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
       case 3:
-        return true; // Presets step is always next-able (skip option)
-      case 4:
         return state.postContent.trim().length > 0;
-      case 5:
+      case 4:
         return true; // Date & Time settings default values are populated
       default:
         return false;
@@ -62,9 +59,9 @@ function AiCreatorContent() {
     } else {
       // Validate intermediate steps
       let valid = true;
-      if (state.currentStep === 1 && !state.selectedPlatform) valid = false;
+      if (state.currentStep === 1 && state.selectedPlatforms.length === 0) valid = false;
       if (state.currentStep === 2 && !state.articleUrl && (!state.manualTitle || !state.manualContent)) valid = false;
-
+      
       if (valid) {
         goToStep(targetStep);
       }
@@ -72,8 +69,25 @@ function AiCreatorContent() {
   };
 
   // Action handlers
+  const handlePublishNow = async () => {
+    dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' });
+    const success = await confirmPostSchedule();
+    if (success) {
+      showToast(t('creator.step5.successToast'), 'success');
+      setTimeout(() => {
+        dispatch({ type: 'RESET_FLOW' });
+        router.push('/content-calendar');
+      }, 1500);
+    } else {
+      showToast(t('creator.step5.errorToast'), 'error');
+    }
+  };
+
   const handleContinue = async () => {
-    if (state.currentStep === 5) {
+    if (state.currentStep === 3) {
+      dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
+      nextStep();
+    } else if (state.currentStep === 4) {
       // Submit and publish/schedule
       const success = await confirmPostSchedule();
       if (success) {
@@ -95,14 +109,14 @@ function AiCreatorContent() {
     switch (state.currentStep) {
       case 1:
         return (
-          <Step1Platform
-            selectedPlatform={state.selectedPlatform}
-            onSelect={(plat) => dispatch({ type: 'SET_PLATFORM', payload: plat })}
+          <Step1Platform 
+            selectedPlatforms={state.selectedPlatforms} 
+            onSelect={(plats) => dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: plats })} 
           />
         );
       case 2:
         return (
-          <Step2Article
+          <Step2Article 
             sourceType={state.sourceType}
             crawlStatus={state.crawlStatus}
             articleContext={state.articleContext}
@@ -112,24 +126,23 @@ function AiCreatorContent() {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: src });
               dispatch({ type: 'SET_ARTICLE_URL', payload: url });
               dispatch({ type: 'SET_CRAWL_JOB', payload: { jobId, status: 'crawling' } });
-              goToStep(3);
             }}
             submitManual={async (title, content) => {
               dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
               dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title, content } });
               dispatch({ type: 'SET_CRAWL_STATUS', payload: 'crawling' });
-
+              
               // Simulate quick ingestion
               setTimeout(() => {
                 dispatch({
                   type: 'SET_ARTICLE_CONTEXT',
                   payload: {
-                    title,
-                    content,
-                    sourceUrl: 'manual',
-                    summary: content.substring(0, 150) + '...',
-                    keywords: ['Bài viết thủ công', 'Nhập tay'],
-                    entities: ['AntBiz AI'],
+                     title,
+                     content,
+                     sourceUrl: 'manual',
+                     summary: content.substring(0, 150) + '...',
+                     keywords: ['Bài viết thủ công', 'Nhập tay'],
+                     entities: ['AntBiz AI'],
                   }
                 });
                 dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
@@ -138,56 +151,44 @@ function AiCreatorContent() {
           />
         );
       case 3:
-        return (
-          <Step3Presets
-            presets={state.presets}
-            selectedPresetId={state.selectedPresetId}
-            searchQuery={state.searchPresetQuery}
-            onSelect={(id) => dispatch({ type: 'SET_SELECTED_PRESET', payload: id })}
-            onSearch={(q) => dispatch({ type: 'SET_SEARCH_PRESET', payload: q })}
-          />
-        );
-      case 4:
         return <Step4Editor />;
-      case 5:
+      case 4:
         return <Step5Schedule />;
       default:
         return null;
     }
   };
 
-  // Slide transitions using Framer Motion
+  // Fade transitions using Framer Motion (avoid x-axis slide which causes scroll snap-back)
   const slideVariants = {
-    initial: (direction: number) => ({
-      x: direction > 0 ? 100 : -100,
-      opacity: 0
-    }),
+    initial: {
+      opacity: 0,
+      y: 8,
+    },
     animate: {
-      x: 0,
       opacity: 1,
+      y: 0,
       transition: {
-        x: { type: "spring", stiffness: 300, damping: 30, duration: 0.3 },
-        opacity: { duration: 0.2 }
+        opacity: { duration: 0.2 },
+        y: { duration: 0.2, ease: 'easeOut' },
       }
     },
-    exit: (direction: number) => ({
-      x: direction < 0 ? 100 : -100,
+    exit: {
       opacity: 0,
+      y: -8,
       transition: {
-        x: { type: "spring", stiffness: 300, damping: 30, duration: 0.3 },
-        opacity: { duration: 0.2 }
+        opacity: { duration: 0.15 },
+        y: { duration: 0.15, ease: 'easeIn' },
       }
-    })
+    }
   };
 
-  const isStep4 = state.currentStep === 4;
-
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden bg-bg">
-
+    <div className="w-full bg-bg">
+      
       {/* Main wizard frame */}
-      <main className="flex-1 flex flex-col select-none w-full max-w-7xl mx-auto px-4 md:px-6 pt-6">
-
+      <div className="select-none w-full max-w-7xl mx-auto px-4 md:px-6 pt-6">
+        
         {/* Page Title Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
@@ -195,39 +196,37 @@ function AiCreatorContent() {
         </div>
 
         {/* Progress header - Render for all steps */}
-        <StepperHeader
-          currentStep={state.currentStep}
-          onStepClick={handleStepChange}
+        <StepperHeader 
+          currentStep={state.currentStep} 
+          onStepClick={handleStepChange} 
         />
 
         {/* Wizard content step body */}
-        <div className={`flex-1 flex flex-col w-full ${isStep4 ? 'pt-0 pb-0 h-full' : ''}`}>
-          <AnimatePresence mode="wait" custom={state.currentStep}>
+        <div className="w-full overflow-hidden">
+          <AnimatePresence mode="wait">
             <motion.div
               key={state.currentStep}
-              custom={state.currentStep}
               variants={slideVariants}
               initial="initial"
               animate="animate"
               exit="exit"
-              className="flex-1 flex flex-col"
+              className="flex flex-col"
             >
               {renderStepContent()}
             </motion.div>
           </AnimatePresence>
         </div>
-      </main>
 
-      {/* Double actions footer - Step 4 manages its own internal header transition controls */}
-      {!isStep4 && (
-        <NavigationFooter
+        {/* Double actions footer */}
+        <NavigationFooter 
           currentStep={state.currentStep}
           isValid={isStepValid()}
           isLoading={state.isScheduling}
           onBack={prevStep}
           onContinue={handleContinue}
+          onPublishNow={handlePublishNow}
         />
-      )}
+      </div>
 
       {/* Floating high-fidelity Toast Alert Banner */}
       <AnimatePresence>
@@ -236,10 +235,11 @@ function AiCreatorContent() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-24 right-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
-              : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
-              }`}
+            className={`fixed bottom-24 right-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${
+              toast.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
+                : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
+            }`}
           >
             {toast.type === 'success' ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -247,7 +247,7 @@ function AiCreatorContent() {
               <AlertCircle className="w-5 h-5 text-red-650" />
             )}
             <span className="text-sm font-bold">{toast.message}</span>
-            <button
+            <button 
               onClick={() => setToast((prev) => ({ ...prev, show: false }))}
               className="text-text-muted hover:text-text ml-2 p-0.5"
             >
@@ -294,8 +294,8 @@ export function EditableText({
 
   const context = (React.useContext(React.createContext<any>(null) as any) || {
     editState: null,
-    setEditState: () => { },
-    handleUpdateVariantField: () => { },
+    setEditState: () => {},
+    handleUpdateVariantField: () => {},
     variants: []
   }) as any;
 

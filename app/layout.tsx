@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { FontProvider } from "@/contexts/FontContext";
 import QueryProvider from "@/components/QueryProvider";
+import { ToastProvider } from "@/components/Toast";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -71,7 +72,9 @@ export default async function RootLayout({
           <FontProvider>
             <QueryProvider>
               <LanguageProvider defaultLanguage={lang}>
-                {children}
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
               </LanguageProvider>
             </QueryProvider>
           </FontProvider>
