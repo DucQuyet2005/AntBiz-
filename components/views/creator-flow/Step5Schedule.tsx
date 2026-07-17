@@ -221,11 +221,9 @@ export default function Step5Schedule() {
                         const showGolden = isDefaultGolden || isDragGolden;
                         const goldenStyle = showGolden ? dnd.getGoldenHourStyle(currentPlatform) : null;
 
-                        let tooltipAlignClass = "left-1/2 -translate-x-1/2";
+                        let tooltipAlignClass = "right-0";
                         if (dayIdx === 0) {
-                          tooltipAlignClass = "left-0 translate-x-0";
-                        } else if (dayIdx === 6) {
-                          tooltipAlignClass = "right-0 left-auto translate-x-0";
+                          tooltipAlignClass = "left-0";
                         }
 
                         return (
@@ -254,9 +252,9 @@ export default function Step5Schedule() {
                             {showGolden && !isPast && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1 z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help">
-                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 hover:opacity-90'}`} />
-                                  <span className={`hidden group-hover/golden:inline-block absolute bottom-6 bg-slate-900/90 dark:bg-zinc-800/90 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg backdrop-blur-sm whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
-                                    Giờ vàng {currentPlatform}
+                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 hover:opacity-100'}`} />
+                                  <span className={`hidden group-hover/golden:block absolute bottom-4 bg-[#1e293b] dark:bg-zinc-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                    Giờ Vàng {currentPlatform}
                                   </span>
                                 </div>
                               </div>
@@ -380,13 +378,6 @@ export default function Step5Schedule() {
                   </span>
                 </div>
               </div>
-
-              {currentPostHourVal !== null && dnd.isDefaultGoldenHour(currentPlatform, currentPostHourVal) && (
-                <div className="mt-3 p-2.5 bg-amber-50/80 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-700/30 rounded-xl flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-sm">
-                  <Star size={14} className="fill-amber-400" />
-                  <span className="text-[11px] font-bold tracking-wide">Giờ đăng trùng với Giờ vàng {currentPlatform}!</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
