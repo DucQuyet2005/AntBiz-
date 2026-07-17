@@ -1,7 +1,14 @@
 import { validateThreadsLength } from '@/lib/validations/threads';
 import { buildCaptionPrompt } from './caption-prompt-builder';
+import {
+  CaptionPresetResolutionError,
+  resolveCaptionPlatformRules,
+} from './caption-preset-resolver';
 import { CaptionGenerationError, CaptionGenerationRepositoryError } from './errors';
-import type { CaptionGenerationInput } from './caption-generation-schemas';
+import {
+  captionGenerationInputSchema,
+  type CaptionGenerationInput,
+} from './caption-generation-schemas';
 import type {
   ArticleCrawler,
   ArticleRecord,
@@ -12,7 +19,6 @@ import type {
   CaptionGenerationSession,
   DefaultPromptSource,
   GeminiCaptionGateway,
-  PlatformPresetRecord,
 } from './caption-generation-types';
 
 export class CaptionGenerationModule implements CaptionGenerationModuleInterface {
@@ -27,6 +33,13 @@ export class CaptionGenerationModule implements CaptionGenerationModuleInterface
     actor: CaptionGenerationActor,
     input: CaptionGenerationInput
   ): Promise<CaptionGenerationSession> {
+    const parsed = captionGenerationInputSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new CaptionGenerationError(
+        'VALIDATION', 400, parsed.error.issues[0]?.message || 'Dữ liệu không hợp lệ'
+      );
+    }
+    input = parsed.data;
     const article = await this.resolveArticle(input);
     const platformRules = await this.resolvePlatformRules(actor.id, input);
     const styleContent = await this.resolveStyle(input);
@@ -52,7 +65,7 @@ export class CaptionGenerationModule implements CaptionGenerationModuleInterface
         title: String(article.title || ''),
         content: fullText,
         prompt,
-        temperature: input.variantIndex >= 1 ? 1 : 0.7,
+        temperature: (input.variantIndex ?? 0) >= 1 ? 1 : 0.7,
       });
     } catch (error) {
       throw new CaptionGenerationError(
@@ -132,16 +145,21 @@ export class CaptionGenerationModule implements CaptionGenerationModuleInterface
   }
 
   private async resolvePlatformRules(actorId: string, input: CaptionGenerationInput) {
-    if (input.platformPresetId) {
-      const explicit = await this.repository.findPlatformPresetById(input.platformPresetId);
-      if (explicit?.rules) return explicit.rules;
+    try {
+      return await resolveCaptionPlatformRules(this.repository, {
+        actorId,
+        platform: input.platform,
+        presetMode: input.presetMode ?? 'auto',
+        platformPresetId: input.platformPresetId,
+      });
+    } catch (error) {
+      if (error instanceof CaptionPresetResolutionError) {
+        throw new CaptionGenerationError(
+          error.code, error.status, error.clientMessage, error
+        );
+      }
+      throw error;
     }
-
-    if (!input.platform) return '';
-    const platform = normalizePlatform(input.platform);
-    const presets = await this.repository.listPlatformPresets(actorId, platform);
-    const selected = selectPlatformPreset(presets, actorId);
-    return selected?.rules || '';
   }
 
   private async resolveStyle(input: CaptionGenerationInput) {
@@ -272,7 +290,7 @@ export class CaptionGenerationModule implements CaptionGenerationModuleInterface
           platform: normalizePlatform(targetPlatform),
           ai_content: generatedText,
           status: 'draft',
-          variant_index: input.variantIndex,
+          variant_index: input.variantIndex ?? 0,
           created_at: now,
           updated_at: now,
         };
@@ -297,11 +315,4 @@ function normalizePlatform(platform: string): string;
 function normalizePlatform(platform?: string): string | undefined;
 function normalizePlatform(platform?: string) {
   return platform === 'threads' ? 'thread' : platform;
-}
-
-function selectPlatformPreset(presets: PlatformPresetRecord[], userId: string) {
-  return presets.find((preset) => preset.user_id === userId && preset.is_default)
-    || presets.find((preset) => preset.user_id === userId)
-    || presets.find((preset) => !preset.user_id && preset.is_default)
-    || presets.find((preset) => !preset.user_id);
 }

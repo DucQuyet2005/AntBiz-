@@ -87,4 +87,16 @@ describe('SpeechProcessingModule', () => {
     await expect(module.process({ file: null, bullets: null }))
       .rejects.toBeInstanceOf(SpeechProcessingError);
   });
+
+  it('filters out Vietnamese Whisper hallucinations from the transcript', async () => {
+    const { module, transcriber, enricher } = setup();
+    const raw = 'Hãy subscribe cho kênh Ghiền Mì Gõ để không bỏ lỡ những video hấp dẫn. Đây là nội dung chính.';
+    vi.mocked(transcriber.transcribe).mockResolvedValue(raw);
+
+    const file = new File(['audio'], 'voice.mp3', { type: 'audio/mpeg' });
+    const result = await module.process({ file, bullets: null });
+
+    expect(result.transcript).toBe('Đây là nội dung chính.');
+    expect(enricher.correct).toHaveBeenCalledWith('Đây là nội dung chính.');
+  });
 });

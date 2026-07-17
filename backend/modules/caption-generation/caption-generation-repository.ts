@@ -53,20 +53,22 @@ export class SupabaseCaptionGenerationRepository implements CaptionGenerationRep
   }
 
   async findPlatformPresetById(id: string) {
-    const { data } = await this.serviceClient
+    const { data, error } = await this.serviceClient
       .from('platform_presets')
       .select('*')
       .eq('id', id)
       .maybeSingle();
+    if (error) throw new CaptionGenerationRepositoryError('findPlatformPresetById', error);
     return data as PlatformPresetRecord | null;
   }
 
   async listPlatformPresets(userId: string, platform: string) {
-    const { data } = await this.serviceClient
+    const { data, error } = await this.serviceClient
       .from('platform_presets')
       .select('*')
       .eq('platform', platform)
       .or(`user_id.eq.${userId},user_id.is.null`);
+    if (error) throw new CaptionGenerationRepositoryError('listPlatformPresets', error);
     return (data ?? []) as PlatformPresetRecord[];
   }
 

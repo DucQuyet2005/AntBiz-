@@ -7,6 +7,7 @@ export interface Preset {
   platform: PlatformType;
   tags: string[];
   lastUpdated: string;
+  isSystem?: boolean;
 }
 
 export const presetService = {

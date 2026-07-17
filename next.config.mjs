@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: {
+    appIsrStatus: false,
+  },
   // ─── VPS Production Hardening ─────────────────────────────────────────────
 
   // Tắt X-Powered-By header để tránh lộ stack
@@ -49,5 +52,5 @@ const nextConfig = {
 };
 
 export default nextConfig;
-// Force dev server config reload after middleware removal
+// Force dev server config reload after middleware removal: trigger 2026-07-17T09:10:00
 

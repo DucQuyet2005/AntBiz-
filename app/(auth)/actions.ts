@@ -106,8 +106,9 @@ export async function login(formData: FormData) {
   cookieStore.delete('login_attempts')
   cookieStore.delete('login_lockout')
 
+  const nextUrl = (formData.get('next') as string) || '/overview'
   // Supabase sẽ tự động set JWT Token vào Cookie. Middleware sẽ đọc JWT này để xác thực.
-  redirect('/overview')
+  redirect(nextUrl)
 }
 
 export async function signup(formData: FormData) {
@@ -146,7 +147,7 @@ export async function signup(formData: FormData) {
   return { success: 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.' }
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(next = '/overview') {
   const supabase = createClient()
   const headersList = await headers()
   const forwardedHost = headersList.get('x-forwarded-host')
@@ -159,7 +160,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${siteUrl}/api/auth/callback`,
+      redirectTo: `${siteUrl}/api/auth/callback?next=${encodeURIComponent(next)}`,
     },
   })
 

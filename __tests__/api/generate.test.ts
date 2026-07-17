@@ -73,6 +73,28 @@ describe('POST /api/captions/generate', () => {
     expect(missingSource.status).toBe(400);
   });
 
+  it('allows generation without a Preset when presetMode is none', async () => {
+    mocks.generate.mockResolvedValue(eventSession([{
+      type: 'completed', done: true, captionId: '', articleId: 'a1', variantGroupId: null,
+    }]));
+    const response = await POST(request(JSON.stringify({
+      articleId: 'a1', platform: 'facebook', presetMode: 'none',
+    })));
+
+    expect(response.status).toBe(200);
+    expect(mocks.generate).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      expect.objectContaining({ presetMode: 'none', platform: 'facebook' })
+    );
+  });
+
+  it('requires a Preset ID when presetMode is selected', async () => {
+    const response = await POST(request(JSON.stringify({
+      articleId: 'a1', platform: 'facebook', presetMode: 'selected',
+    })));
+    expect(response.status).toBe(400);
+  });
+
   it('maps typed preparation errors to JSON', async () => {
     mocks.generate.mockRejectedValue(
       new CaptionGenerationError('PROMPT_NOT_FOUND', 404, 'Không tìm thấy prompt')

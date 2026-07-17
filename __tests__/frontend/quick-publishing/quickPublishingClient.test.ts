@@ -37,7 +37,7 @@ describe('BrowserQuickPublishingClient', () => {
     const client = new BrowserQuickPublishingClient(request);
     const command = {
       articleId: 'article-1', customPrompt: 'Prompt', platform: 'facebook' as const,
-      variantGroupId: 'group-1', variantIndex: 0, stylePresetId: 'none',
+      variantGroupId: 'group-1', variantIndex: 0, stylePresetId: 'none', presetMode: 'none' as const,
     };
     const events = [];
     for await (const event of client.generate(command)) events.push(event);
@@ -60,11 +60,35 @@ describe('BrowserQuickPublishingClient', () => {
     const consume = async () => {
       for await (const event of client.generate({
         articleId: 'article-1', customPrompt: 'Prompt', platform: 'facebook',
-        variantGroupId: 'group-1', variantIndex: 0, stylePresetId: 'none',
+        variantGroupId: 'group-1', variantIndex: 0, stylePresetId: 'none', presetMode: 'none',
       })) { void event; }
     };
 
     await expect(consume()).rejects.toMatchObject({ code: 'GENERATION_FAILED', context: { status: 500 } });
     await expect(consume()).rejects.not.toThrow('raw provider response with secret');
+  });
+
+  it('calls persisted edit, regeneration, publish-now, and schedule contracts', async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: 'caption-1', status: 'draft' } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+        caption: { id: 'caption-1', edited_content: 'New content', status: 'edited' },
+        mode: 'partial', generatedText: 'New', replacementRange: { start: 0, end: 3 },
+      } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 201 }));
+    const client = new BrowserQuickPublishingClient(request);
+
+    await client.updateCaption('caption-1', { edited_content: 'Edited', status: 'draft' });
+    await expect(client.regenerateCaption('caption-1', {
+      mode: 'partial', selectionStart: 0, selectionEnd: 3, selectedText: 'Old',
+      instruction: 'Rewrite', presetMode: 'none',
+    })).resolves.toMatchObject({ content: 'New content', mode: 'partial' });
+    await client.publishNow({ captionId: 'caption-1', imageUrls: [] });
+    await client.schedule({ captionId: 'caption-1', scheduledAt: '2026-07-18T09:00:00Z', imageUrls: [] });
+
+    expect(request).toHaveBeenNthCalledWith(2, '/api/captions/caption-1/regenerate', expect.objectContaining({ method: 'POST' }));
+    expect(request).toHaveBeenNthCalledWith(3, '/api/scheduled-posts/publish-now', expect.objectContaining({ method: 'POST' }));
+    expect(request).toHaveBeenNthCalledWith(4, '/api/scheduled-posts', expect.objectContaining({ method: 'POST' }));
   });
 });

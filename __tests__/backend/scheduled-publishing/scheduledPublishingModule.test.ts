@@ -137,6 +137,67 @@ describe('ScheduledPublishingModule', () => {
     await expect(module.runPublicationCycle()).resolves.toEqual({ due: 1, processed: 1 });
     expect(repository.markPosted).toHaveBeenCalled();
   });
+
+  it('publishes immediately and returns the persisted provider result', async () => {
+    vi.mocked(repository.findCaption).mockResolvedValue({
+      id: 'c1', platform: 'facebook', ai_content: 'Caption', created_by: 'u1',
+      articles: { title: 'Article' },
+    });
+    vi.mocked(repository.findLinkedAccount).mockResolvedValue({
+      access_token: 'token', account_id: 'page-1',
+    });
+    vi.mocked(repository.insert).mockResolvedValue(post({ scheduled_at: now.toISOString() }));
+    vi.mocked(repository.claimPending).mockResolvedValue(true);
+    vi.mocked(repository.findById).mockResolvedValue(post({
+      status: 'posted', posted_at: now.toISOString(), fb_post_id: 'external-1',
+    }));
+
+    const result = await module.publishNow(actor, { captionId: 'c1', imageUrls: [] });
+
+    expect(repository.insert).toHaveBeenCalledWith(expect.objectContaining({
+      caption_id: 'c1', created_by: 'u1', status: 'pending', scheduled_at: now.toISOString(),
+    }));
+    expect(publisher.publish).toHaveBeenCalledWith(expect.objectContaining({
+      platform: 'facebook', accessToken: 'token', accountId: 'page-1',
+    }));
+    expect(result).toMatchObject({
+      externalPostId: 'external-1', platform: 'facebook', publishedAt: now.toISOString(),
+      post: { status: 'posted' },
+    });
+  });
+
+  it('requires caption ownership and a linked account for immediate publication', async () => {
+    vi.mocked(repository.findCaption).mockResolvedValue({
+      id: 'c1', platform: 'facebook', ai_content: 'Caption', created_by: 'u2',
+    });
+    await expect(module.publishNow(actor, { captionId: 'c1' }))
+      .rejects.toMatchObject({ code: 'FORBIDDEN', status: 403 });
+
+    vi.mocked(repository.findCaption).mockResolvedValue({
+      id: 'c1', platform: 'facebook', ai_content: 'Caption', created_by: 'u1',
+    });
+    await expect(module.publishNow(actor, { captionId: 'c1' }))
+      .rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+    expect(repository.insert).not.toHaveBeenCalled();
+  });
+
+  it('persists a failed immediate publication and returns a provider error', async () => {
+    vi.mocked(repository.findCaption).mockResolvedValue({
+      id: 'c1', platform: 'facebook', ai_content: 'Caption', created_by: 'u1',
+    });
+    vi.mocked(repository.findLinkedAccount).mockResolvedValue({
+      access_token: 'token', account_id: 'page-1',
+    });
+    vi.mocked(repository.insert).mockResolvedValue(post({ scheduled_at: now.toISOString() }));
+    vi.mocked(repository.claimPending).mockResolvedValue(true);
+    vi.mocked(publisher.publish).mockResolvedValue({ success: false, error: 'Provider down' });
+
+    await expect(module.publishNow(actor, { captionId: 'c1' }))
+      .rejects.toMatchObject({ code: 'PUBLICATION_FAILED', status: 502 });
+    expect(repository.markFailed).toHaveBeenCalledWith('sp1', expect.objectContaining({
+      status: 'failed', failure_reason: 'Provider down',
+    }));
+  });
 });
 
 function makeRepository(): ScheduledPublishingRepository {

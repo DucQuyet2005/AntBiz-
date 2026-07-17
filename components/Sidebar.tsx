@@ -17,6 +17,7 @@ import {
   Users,
   History,
   Key,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -56,12 +57,14 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
       { href: "/presets", label: t("sidebar.presets"), icon: FileText },
       { href: "/content-calendar", label: t("sidebar.contentCalendar"), icon: CalendarDays },
       { href: "/archive", label: t("sidebar.archive"), icon: Archive },
+      { href: "/reports", label: t("sidebar.reports"), icon: BarChart3 },
     ] : []),
     ...(userRole === 'admin' ? [
       { href: "/admin/users", label: t("admin.userManagement"), icon: Users },
       { href: "/admin/audit-logs", label: t("admin.auditLogs"), icon: History },
       { href: "/admin/landing-editor", label: t("sidebar.landingEditor"), icon: Globe },
       { href: "/admin/gemini-keys", label: t("admin.geminiKeys"), icon: Key },
+      { href: "/admin/platform-presets", label: language === 'vi' ? 'Quy chuẩn nền tảng' : 'Platform Presets', icon: FileText },
     ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
