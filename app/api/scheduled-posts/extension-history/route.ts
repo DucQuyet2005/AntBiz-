@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUserWithRole, createServiceRoleClient } from '@/lib/api/auth';
+import { requireUser, createServiceRoleClient } from '@/lib/api/auth';
 
 /**
  * GET /api/scheduled-posts/extension-history
@@ -8,7 +8,9 @@ import { requireUserWithRole, createServiceRoleClient } from '@/lib/api/auth';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await requireUserWithRole(request);
+    const { user, unauthorized } = await requireUser();
+    if (unauthorized) return unauthorized;
+
     const adminSupabase = createServiceRoleClient();
 
     // 1. Get recent scheduled posts by user
