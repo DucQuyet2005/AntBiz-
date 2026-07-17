@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const proxyRoute = readFileSync(
   resolve(process.cwd(), 'app/api/proxy/route.ts'),
   'utf8',
-);
+).replace(/\r\n/g, '\n');
 
 describe('AI Creator proxy navigation interceptor', () => {
   it('does not proxy the embedded site application data requests', () => {
