@@ -2,12 +2,15 @@ import { PromptConfigAiError } from './prompt-config-ai-errors';
 import {
   ANALYZE_SYSTEM_INSTRUCTION,
   WIZARD_SYSTEM_INSTRUCTION,
+  GENERATE_QUESTIONS_SYSTEM_INSTRUCTION,
   buildAnalyzeInstruction,
   buildWizardInstruction,
+  buildGenerateQuestionsInstruction,
 } from './prompt-config-ai-prompts';
 import type {
   AnalyzeArticleConfigInput,
   WizardPromptInput,
+  GenerateQuestionsInput,
 } from './prompt-config-ai-schemas';
 import type {
   AnalyzedPromptConfig,
@@ -31,7 +34,7 @@ export class PromptConfigAiModule implements PromptConfigAiModuleInterface {
         instruction: buildAnalyzeInstruction(input),
         jsonMode: true,
       });
-      const parsed = JSON.parse(text.trim()) as Partial<AnalyzedPromptConfig>;
+      const parsed = cleanAndParseJSON(text) as Partial<AnalyzedPromptConfig>;
       return {
         tone: typeof parsed.tone === 'string' && parsed.tone
           ? parsed.tone
@@ -64,4 +67,49 @@ export class PromptConfigAiModule implements PromptConfigAiModuleInterface {
       );
     }
   }
+
+  async generateQuestions(input: GenerateQuestionsInput) {
+    try {
+      const objectives = input.objectives && input.objectives.length > 0
+        ? input.objectives
+        : (input.objective ? [input.objective] : []);
+      const text = await this.gemini.generate({
+        systemInstruction: GENERATE_QUESTIONS_SYSTEM_INSTRUCTION,
+        instruction: buildGenerateQuestionsInstruction(objectives, input.historySummary),
+        jsonMode: true,
+      });
+      
+      const parsed = cleanAndParseJSON(text);
+      if (!parsed.steps || !Array.isArray(parsed.steps)) {
+        throw new Error('Invalid JSON format: missing steps array');
+      }
+      
+      return parsed;
+    } catch (error) {
+      throw new PromptConfigAiError(
+        'WIZARD_GENERATION_FAILED',
+        error instanceof Error ? error.message : 'Lỗi khi sinh bộ câu hỏi động',
+        error
+      );
+    }
+  }
 }
+
+function cleanAndParseJSON(text: string): any {
+  // Remove markdown block wraps if present
+  let cleaned = text
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+
+  // Remove trailing commas in arrays/objects
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (firstError) {
+    console.error('[JSON Parse Fail] Cleaned text:', cleaned);
+    throw firstError;
+  }
+}
+
