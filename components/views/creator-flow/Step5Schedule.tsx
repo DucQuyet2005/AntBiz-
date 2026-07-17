@@ -23,9 +23,10 @@ export default function Step5Schedule() {
   
   // Local state for week pagination
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
+  const currentPlatform = state.selectedPlatform || 'facebook';
 
   // Fetch dynamic golden hours for selected platform
-  const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(state.selectedPlatform);
+  const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
   const today = new Date();
   const currentDayOfWeek = today.getDay(); // 0 is Sun, 1 is Mon...
@@ -214,11 +215,11 @@ export default function Step5Schedule() {
                         
                         const isHighlighted = dayIdx === currentPostDayIndex;
 
-                        const isDefaultGolden = dnd.isDefaultGoldenHour(state.selectedPlatform, hourVal);
+                        const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal);
                         const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
                         const isCellHover = dnd.isCellHovered(dayIdx, hourVal);
                         const showGolden = isDefaultGolden || isDragGolden;
-                        const goldenStyle = showGolden ? dnd.getGoldenHourStyle(state.selectedPlatform || 'facebook') : null;
+                        const goldenStyle = showGolden ? dnd.getGoldenHourStyle(currentPlatform) : null;
 
                         let tooltipAlignClass = "left-1/2 -translate-x-1/2";
                         if (dayIdx === 0) {
