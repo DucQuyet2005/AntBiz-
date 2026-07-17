@@ -31,6 +31,8 @@ function AiCreatorContent() {
     type: 'success'
   });
 
+  const [isSavingManual, setIsSavingManual] = useState(false);
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => {
@@ -44,7 +46,10 @@ function AiCreatorContent() {
       case 1:
         return state.selectedPlatforms.length > 0;
       case 2:
-        return Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done');
+        return Boolean(
+          (state.articleId && state.articleContext && state.crawlStatus === 'done') ||
+          (state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0)
+        );
       case 3:
         return state.postContent.trim().length > 0;
       case 4:
@@ -61,8 +66,12 @@ function AiCreatorContent() {
       // Validate intermediate steps
       let valid = true;
       if (state.currentStep === 1 && state.selectedPlatforms.length === 0) valid = false;
-      if (state.currentStep === 2 && (!state.articleId || state.crawlStatus !== 'done')) valid = false;
-
+      if (state.currentStep === 2) {
+        const hasArticle = Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done');
+        const hasManual = Boolean(state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
+        if (!hasArticle && !hasManual) valid = false;
+      }
+ 
       if (valid) {
         goToStep(targetStep);
       }
@@ -86,7 +95,20 @@ function AiCreatorContent() {
   };
 
   const handleContinue = async () => {
-    if (state.currentStep === 3) {
+    if (state.currentStep === 2) {
+      if (state.manualTitle && state.manualContent) {
+        setIsSavingManual(true);
+        try {
+          await submitManualArticle(state.manualTitle, state.manualContent);
+        } catch (error) {
+          showToast('Không thể lưu nội dung bài viết', 'error');
+          setIsSavingManual(false);
+          return;
+        }
+        setIsSavingManual(false);
+      }
+      nextStep();
+    } else if (state.currentStep === 3) {
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
       nextStep();
     } else if (state.currentStep === 4) {
@@ -199,7 +221,7 @@ function AiCreatorContent() {
         <NavigationFooter
           currentStep={state.currentStep}
           isValid={isStepValid()}
-          isLoading={state.isScheduling}
+          isLoading={state.isScheduling || isSavingManual}
           onBack={prevStep}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}

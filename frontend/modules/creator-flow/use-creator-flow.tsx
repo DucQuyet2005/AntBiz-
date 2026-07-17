@@ -335,6 +335,10 @@ export function CreatorFlowProvider({
   const completeSourceIngestion = (result: Awaited<ReturnType<CreatorFlowClient['createManualArticle']>>) => {
     dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
     dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
+    dispatch({
+      type: 'SET_MANUAL_CONTENT',
+      payload: { title: result.context.title, content: result.context.content || '' },
+    });
     dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
   };
 

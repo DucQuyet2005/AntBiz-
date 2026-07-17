@@ -6,7 +6,7 @@ import {
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, X,
   Search, Check, Bookmark, Facebook, Instagram,
-  ChevronLeft
+  ChevronLeft, Plus, Image as ImageIcon, Mic
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -106,10 +106,165 @@ export default function Step2Article({
   const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
 
   // Active tab for uploaded files status
-  const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document' | 'write'>('audio');
+  const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document'>('audio');
 
   // Preview document state modal
   const [previewDoc, setPreviewDoc] = useState<{ name: string; content: string } | null>(null);
+
+  // Extracted images states
+  const [extractedImages, setExtractedImages] = useState<{ src: string; name: string }[]>([]);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+  const removeExtractedImage = (indexToRemove: number) => {
+    setExtractedImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // Audio Recording States
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Tries up to 4 getUserMedia constraint variants, waiting 400 ms between
+  // each attempt so Windows can fully release the audio session after a
+  // previous failed call (the most common cause of NotReadableError when no
+  // other app is running).
+  const tryGetAudioStream = async (): Promise<MediaStream> => {
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+    // Build the constraint list, optionally appending a device-specific variant
+    const constraintsList: MediaStreamConstraints[] = [
+      { audio: true },
+      { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } },
+      { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 16000 } },
+    ];
+
+    // Try to enumerate and add a constraint targeting the first real input device
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const firstMic = devices.find((d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default');
+      if (firstMic) {
+        constraintsList.push({
+          audio: {
+            deviceId: { exact: firstMic.deviceId },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        });
+      }
+    } catch {
+      // enumerateDevices is best-effort — ignore errors
+    }
+
+    let lastErr: unknown = null;
+    for (let i = 0; i < constraintsList.length; i++) {
+      if (i > 0) {
+        // Give the OS 400 ms to release the audio device between attempts
+        await sleep(400);
+      }
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraintsList[i]);
+      } catch (err) {
+        lastErr = err;
+        const isHardwareError =
+          err instanceof DOMException &&
+          (err.name === 'NotReadableError' || err.name === 'TrackStartError' || err.name === 'AbortError');
+        if (!isHardwareError) throw err; // permission / device-not-found — no point retrying
+      }
+    }
+    throw lastErr;
+  };
+
+  const startRecording = async () => {
+    setUploadError('');
+    audioChunksRef.current = [];
+    setRecordingDuration(0);
+
+    let stream: MediaStream;
+    try {
+      stream = await tryGetAudioStream();
+    } catch (err) {
+      console.error('Microphone access error:', err);
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setUploadError(
+            'Bạn đã từ chối quyền truy cập Microphone. Vui lòng click vào biểu tượng 🔒 hoặc 🎙 trên thanh địa chỉ trình duyệt, chọn "Cho phép" và thử lại.'
+          );
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setUploadError('Không tìm thấy thiết bị Microphone. Vui lòng cắm micro và thử lại.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError' || err.name === 'AbortError') {
+          setUploadError(
+            'Microphone không phản hồi sau nhiều lần thử. Hãy thử: (1) Tải lại trang, (2) Mở lại tab này, hoặc (3) Vào Cài đặt âm thanh Windows → chọn micro → tắt "Exclusive Mode".'
+          );
+        } else {
+          setUploadError(`Lỗi Microphone: ${err.message}`);
+        }
+      } else {
+        setUploadError('Không thể truy cập Microphone. Vui lòng kiểm tra lại thiết bị.');
+      }
+      return;
+    }
+
+    streamRef.current = stream;
+
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      const audioFile = new File([audioBlob], 'ghi_am_truc_tiep.webm', { type: 'audio/webm' });
+      await handleFiles([audioFile]);
+    };
+
+    mediaRecorder.start(1000);
+    setIsRecording(true);
+
+    timerRef.current = setInterval(() => {
+      setRecordingDuration((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const stopRecording = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    setIsRecording(false);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   const getTagColorClass = (tag: string) => {
     const text = tag.toLowerCase();
@@ -137,16 +292,38 @@ export default function Step2Article({
     if (isUploading) return;
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      await processUploadedFile(files[0]);
+      await handleFiles(Array.from(files));
     }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      await processUploadedFile(files[0]);
+      await handleFiles(Array.from(files));
     }
     e.target.value = '';
+  };
+
+  const handleFiles = async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const sourceFiles = files.filter(f => !f.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      const newImages: { src: string; name: string }[] = [];
+      for (const file of imageFiles) {
+        const src = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        newImages.push({ src, name: file.name });
+      }
+      setExtractedImages(prev => [...prev, ...newImages]);
+    }
+
+    if (sourceFiles.length > 0) {
+      await processUploadedFile(sourceFiles[0]);
+    }
   };
 
   const processUploadedFile = async (file: File) => {
@@ -490,14 +667,14 @@ export default function Step2Article({
         <h2 className="text-sm font-bold text-text mb-4">Hoặc tải lên tệp tin của bạn</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch min-h-[380px]">
-          {/* Left Column: Dropzone */}
-          <div className="flex flex-col justify-between h-full min-h-[350px]">
+          {/* Left Column: Dropzone & Image List */}
+          <div className="flex flex-col justify-between h-full min-h-[350px] gap-6">
             <div 
               onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleFileDrop}
               onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
-              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors flex-grow h-full min-h-[330px] ${
+              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-all min-h-[220px] flex-grow ${
                 isUploading ? 'cursor-wait opacity-80' : 'cursor-pointer'
               } ${
                 isDragging 
@@ -510,7 +687,7 @@ export default function Step2Article({
                 ref={fileInputRef} 
                 onChange={handleFileSelect} 
                 className="hidden" 
-                accept="audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,.mp3,.m4a,.pdf,.docx,.txt"
+                accept="audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,.mp3,.m4a,.pdf,.docx,.txt,image/*"
                 disabled={isUploading}
               />
               {isUploading ? (
@@ -522,26 +699,126 @@ export default function Step2Article({
                 <>
                   <UploadCloud className="w-8 h-8 text-primary mb-2" />
                   <h4 className="text-xs font-bold text-text mb-1">Kéo thả tệp vào đây hoặc Duyệt tìm</h4>
-                  <p className="text-[10px] text-text-muted text-center">
-                    Hỗ trợ Audio (MP3, M4A, WAV, OGG, WebM) hoặc Tài liệu (PDF, DOCX, TXT)
+                  <p className="text-[10px] text-text-muted text-center leading-relaxed">
+                    Hỗ trợ Hình ảnh (PNG, JPG, JPEG), Audio (MP3, M4A, WAV, OGG, WebM) hoặc Tài liệu (PDF, DOCX, TXT)
                   </p>
                 </>
               )}
             </div>
             {uploadError && (
-              <p role="alert" className="mt-3 text-[11px] font-semibold text-red-600 dark:text-red-400">
+              <p role="alert" className="text-[11px] font-semibold text-red-600 dark:text-red-400">
                 {uploadError}
               </p>
             )}
+
+            {/* Audio Recording Controller */}
+            <div className="border border-gray-250 dark:border-zinc-800 rounded-2xl p-4 bg-gray-55/30 dark:bg-zinc-950/10 flex items-center justify-between gap-4 font-sans">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isRecording 
+                    ? 'bg-red-500/10 text-red-500 animate-pulse' 
+                    : 'bg-primary/10 text-primary'
+                }`}>
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-text">Ghi âm trực tiếp</h4>
+                  <p className="text-[10px] text-text-muted">
+                    {isRecording 
+                      ? 'Đang ghi âm...' 
+                      : 'Bấm nút để nói và chuyển thành bài viết'}
+                  </p>
+                </div>
+              </div>
+
+              {isRecording ? (
+                <div className="flex items-center gap-4">
+                  {/* Pulsing indicator & timer */}
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <span className="text-xs font-mono font-bold text-text">
+                      {formatDuration(recordingDuration)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-red-500/10"
+                  >
+                    Dừng
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={startRecording}
+                  className="px-4 py-2 bg-primary hover:bg-primary/95 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10 flex items-center gap-1.5"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  Bắt đầu
+                </button>
+              )}
+            </div>
+
+            {/* Extracted Images Gallery */}
+            {extractedImages.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Hình ảnh trích xuất ({extractedImages.length})</span>
+                <div className="grid grid-cols-5 gap-3">
+                  {extractedImages.slice(0, 5).map((img, slotIdx) => {
+                    const isLastSlot = slotIdx === 4;
+                    const hasOverlay = isLastSlot && extractedImages.length > 5;
+                    const overlayCount = extractedImages.length - 4;
+
+                    return (
+                      <div 
+                        key={slotIdx} 
+                        onClick={() => {
+                          if (hasOverlay) {
+                            setIsGalleryOpen(true);
+                          }
+                        }}
+                        className={`flex flex-col gap-1 items-center min-w-0 ${hasOverlay ? 'cursor-pointer' : ''}`}
+                      >
+                        <div className="relative w-full aspect-square rounded-xl overflow-hidden border border-gray-250 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950 flex-shrink-0 group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img.src} alt={img.name} className="w-full h-full object-cover" />
+                          {hasOverlay && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity group-hover:bg-black/50">
+                              <span className="text-white font-bold text-sm">+{overlayCount}</span>
+                            </div>
+                          )}
+                          {!hasOverlay && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeExtractedImage(slotIdx);
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Xóa ảnh"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-[9px] text-text-muted truncate w-full text-center">{img.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Uploaded Files Status / Manual Input */}
-          <div className="flex flex-col h-full min-h-[350px] border-t md:border-t-0 md:border-l border-gray-150 dark:border-zinc-850 pt-6 md:pt-0 md:pl-6 justify-between">
+          {/* Right Column: Uploaded Files Status & Manual Input */}
+          <div className="flex flex-col h-full min-h-[350px] border-t md:border-t-0 md:border-l border-gray-150 dark:border-zinc-850 pt-6 md:pt-0 md:pl-6 justify-between gap-6">
             <div className="flex-grow flex flex-col min-h-0">
               <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Trạng thái tệp tải lên</h4>
               
               <div className="flex border-b border-gray-150 dark:border-zinc-800 mb-4 flex-shrink-0">
-                {(['audio', 'document', 'write'] as const).map((tab) => (
+                {(['audio', 'document'] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
@@ -552,106 +829,93 @@ export default function Step2Article({
                         : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
-                    {tab === 'audio' ? 'Audio' : tab === 'document' ? 'Tài liệu' : 'Tự viết'}
+                    {tab === 'audio' ? 'Audio' : 'Tài liệu'}
                   </button>
                 ))}
               </div>
 
-              <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[290px]">
-                {activeFileTab === 'write' ? (
-                  <div className="space-y-4 flex-grow animate-fade-in">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Tiêu đề bài viết gốc</label>
-                        <input
-                          type="text"
-                          placeholder="Nhập tiêu đề bài viết gốc..."
-                          value={state.manualTitle}
-                          disabled={isUploading}
-                          onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Nội dung bài viết gốc</label>
-                        <textarea
-                          placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
-                          value={state.manualContent}
-                          rows={4}
-                          disabled={isUploading}
-                          onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleManualSubmit}
-                        disabled={isUploading}
-                        className="w-full px-4 py-2.5 bg-primary hover:bg-primary/95 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all active:scale-[0.99]"
-                      >
-                        {isUploading ? 'Đang lưu bài viết...' : 'Sử dụng nội dung tự viết'}
-                      </button>
-                    </div>
+              <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[140px] mb-4">
+                {uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
+                  <div className="text-[11px] text-text-muted py-4 text-center border border-dashed border-gray-200 dark:border-zinc-800 rounded-xl flex items-center justify-center min-h-[80px]">
+                    Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
                   </div>
                 ) : (
-                  uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
-                    <div className="text-[11px] text-text-muted py-8 text-center border border-dashed border-gray-200 dark:border-zinc-800 rounded-xl flex-grow flex items-center justify-center min-h-[180px]">
-                      Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pr-1">
-                      {uploadedFiles
-                        .filter(f => f.type === activeFileTab)
-                        .map((file, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={() => {
-                              if (file.type === 'document') {
-                                setPreviewDoc({
-                                  name: file.name,
-                                  content: file.content || 'Không có nội dung preview.'
-                                });
-                              }
-                            }}
-                            className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${
-                              file.type === 'document' ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center flex-shrink-0">
-                                  {file.type === 'audio' ? (
-                                    <Music className="w-4 h-4" />
-                                  ) : (
-                                    <FileSpreadsheet className="w-4 h-4" />
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-[11px] font-bold text-text truncate">{file.name}</p>
-                                  <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
-                                </div>
+                  <div className="space-y-2 pr-1">
+                    {uploadedFiles
+                      .filter(f => f.type === activeFileTab)
+                      .map((file, idx) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => {
+                            if (file.type === 'document') {
+                              setPreviewDoc({
+                                name: file.name,
+                                content: file.content || 'Không có nội dung preview.'
+                              });
+                            }
+                          }}
+                          className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${
+                            file.type === 'document' ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center flex-shrink-0">
+                                {file.type === 'audio' ? (
+                                  <Music className="w-4 h-4" />
+                                ) : (
+                                  <FileSpreadsheet className="w-4 h-4" />
+                                )}
                               </div>
-                              
-                              <button 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
-                                }}
-                                className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0"
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-text truncate">{file.name}</p>
+                                <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
+                              </div>
                             </div>
-
+                            
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
+                              }}
+                              className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        ))}
-                    </div>
-                  )
+                        </div>
+                      ))}
+                  </div>
                 )}
               </div>
             </div>
 
+            {/* Permanent Manual Ingestion Fields */}
+            <div className="space-y-4 border-t border-gray-150 dark:border-zinc-850 pt-4">
+              <div>
+                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Tiêu đề bài viết gốc</label>
+                <input
+                  type="text"
+                  placeholder="Nhập tiêu đề bài viết gốc..."
+                  value={state.manualTitle}
+                  disabled={isUploading}
+                  onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Nội dung bài viết gốc</label>
+                <textarea
+                  placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
+                  value={state.manualContent}
+                  rows={12}
+                  disabled={isUploading}
+                  onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -773,7 +1037,6 @@ export default function Step2Article({
                     payload: { title: previewDoc.name.substring(0, previewDoc.name.lastIndexOf('.')), content: previewDoc.content } 
                   });
                   setPreviewDoc(null);
-                  setActiveFileTab('write'); // Switches to input tab
                 }}
                 className="px-4 py-2 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10"
               >
@@ -783,6 +1046,73 @@ export default function Step2Article({
                 type="button"
                 onClick={() => setPreviewDoc(null)}
                 className="px-4 py-2 bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-800 text-text rounded-xl text-xs font-bold transition-all"
+              >
+                Đóng
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Extracted Images Gallery Modal */}
+      {isGalleryOpen && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scale-up">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-text truncate">Hình ảnh trích xuất ({extractedImages.length})</h3>
+                  <p className="text-[10px] text-text-muted">Danh sách toàn bộ hình ảnh được trích xuất hoặc tải lên</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsGalleryOpen(false)}
+                className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-all active:scale-95"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-grow bg-gray-55/30 dark:bg-zinc-950/10">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                {extractedImages.map((img, idx) => (
+                  <div key={idx} className="flex flex-col gap-2 p-2 rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 relative group shadow-sm">
+                    <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-55 dark:bg-zinc-950 flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.src} alt={img.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <span className="text-[10px] text-text font-semibold truncate flex-grow">{img.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeExtractedImage(idx);
+                        }}
+                        className="text-red-500 hover:text-red-650 hover:bg-red-500/10 p-1 rounded-lg transition-colors flex-shrink-0"
+                        title="Xóa ảnh"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="px-6 py-4 border-t border-gray-150 dark:border-zinc-850 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsGalleryOpen(false)}
+                className="px-5 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10"
               >
                 Đóng
               </button>
