@@ -187,11 +187,7 @@ export default function Step5Schedule() {
                 {hours.map((hour) => {
                   const hourVal = parseInt(hour);
                   return (
-<<<<<<< HEAD
-                    <div key={hour} className="flex border-b border-gray-150/20 dark:border-zinc-850/20 h-14">
-=======
                     <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 h-14 group">
->>>>>>> origin/AngAng
                       {/* Hour column */}
                       <div className="flex items-start justify-center pt-2 font-mono text-[9px] font-bold text-text-muted/80 border-r border-slate-100/50 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/10">
                         {hour}
@@ -210,97 +206,76 @@ export default function Step5Schedule() {
                           currentPostDayIndex === dayIdx && 
                           currentPostHourVal === hourVal;
 
-<<<<<<< HEAD
-                          const today = new Date();
-                          const currentDayOfWeek = today.getDay();
-                          const offset = (dayIdx + 1) - currentDayOfWeek;
-                          const targetCellDate = new Date();
-                          targetCellDate.setDate(today.getDate() + offset);
-                          targetCellDate.setHours(hourVal, 0, 0, 0);
-                          const isPast = targetCellDate.getTime() < today.getTime();
-
-                          const isDefaultGolden = dnd.isDefaultGoldenHour(state.selectedPlatform, hourVal);
-                          const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
-                          const isCellHover = dnd.isCellHovered(dayIdx, hourVal);
-                          const showGolden = isDefaultGolden || isDragGolden;
-                          const goldenStyle = showGolden ? dnd.getGoldenHourStyle(state.selectedPlatform || 'facebook') : null;
-
-                          let tooltipAlignClass = "left-1/2 -translate-x-1/2";
-                          if (dayIdx === 0) {
-                            tooltipAlignClass = "left-0 translate-x-0";
-                          } else if (dayIdx === 6) {
-                            tooltipAlignClass = "right-0 left-auto translate-x-0";
-                          }
-
-                          return (
-                            <div
-                              key={dayIdx}
-                              onClick={() => !isPast && handleCellClick(dayIdx, hour)}
-                              onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
-                              onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
-                              onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
-                              className={`group border-r border-gray-150/20 dark:border-zinc-850/20 last:border-r-0 h-full p-1 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
-                                isPast
-                                  ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
-                                  : 'cursor-crosshair hover:bg-primary/2 dark:hover:bg-primary/2'
-                              } ${
-                                isCellHover && !isPast
-                                  ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
-                                  : ''
-                              }`}
-                              style={showGolden && !isPast ? {
-                                backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
-                              } : undefined}
-                            >
-                              {/* Golden Hour indicator — clean star with group-hover tooltip, only if not in the past */}
-                              {showGolden && !isPast && (
-                                <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1">
-                                  <div className="flex items-center gap-1 relative">
-                                    <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover:opacity-90'}`} />
-                                    <span className={`hidden group-hover:inline-block absolute bottom-6 bg-slate-900/90 dark:bg-zinc-800/90 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg backdrop-blur-sm whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
-                                      Giờ vàng {state.selectedPlatform || 'Facebook'}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {isCurrentPostInCell && (
-                                <div
-                                  draggable
-                                  onDragStart={(e) => dnd.handleDragStart(e, {
-                                    type: 'draft',
-                                    platform: state.selectedPlatform || 'facebook',
-                                    label: `Bản thảo (${state.selectedPlatform === 'facebook' ? 'FA' : state.selectedPlatform === 'instagram' ? 'IG' : 'TH'})`,
-                                  })}
-                                  onDragEnd={dnd.handleDragEnd}
-                                  className={`rounded-lg py-1 px-2 text-[9px] font-extrabold flex items-center gap-1.5 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
-                                    dnd.isDragging ? 'opacity-40' : 'animate-pulse'
-                                  }`}
-                                >
-                                  <div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
-                                    {getPlatformIcon(state.selectedPlatform || 'facebook')}
-                                  </div>
-                                  <span className="truncate">
-                                    Bản thảo ({state.selectedPlatform === 'facebook' ? 'FA' : state.selectedPlatform === 'instagram' ? 'IG' : 'TH'})
-                                  </span>
-=======
+                        const targetDay = days.find(d => d.index === dayIdx);
+                        if (!targetDay) return null;
+                        const hourPad = `${hourVal.toString().padStart(2, '0')}:00`;
+                        const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+                        const isPast = targetDate.getTime() < new Date().getTime();
+                        
                         const isHighlighted = dayIdx === currentPostDayIndex;
+
+                        const isDefaultGolden = dnd.isDefaultGoldenHour(state.selectedPlatform, hourVal);
+                        const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
+                        const isCellHover = dnd.isCellHovered(dayIdx, hourVal);
+                        const showGolden = isDefaultGolden || isDragGolden;
+                        const goldenStyle = showGolden ? dnd.getGoldenHourStyle(state.selectedPlatform || 'facebook') : null;
+
+                        let tooltipAlignClass = "left-1/2 -translate-x-1/2";
+                        if (dayIdx === 0) {
+                          tooltipAlignClass = "left-0 translate-x-0";
+                        } else if (dayIdx === 6) {
+                          tooltipAlignClass = "right-0 left-auto translate-x-0";
+                        }
 
                         return (
                           <div
                             key={dayIdx}
-                            onClick={() => handleCellClick(dayIdx, hour)}
-                            className={`border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative hover:bg-primary/4 dark:hover:bg-primary/8 transition-colors cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden ${
-                              isHighlighted ? 'bg-primary/[0.01]' : ''
+                            onClick={() => !isPast && handleCellClick(dayIdx, hour)}
+                            onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
+                            onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
+                            onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
+                            className={`border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 overflow-hidden ${
+                              isPast
+                                ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
+                                : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
+                            } ${
+                              isCellHover && !isPast
+                                ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
+                                : ''
+                            } ${
+                              isHighlighted ? 'bg-primary/[0.02]' : ''
                             }`}
+                            style={showGolden && !isPast ? {
+                              backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
+                            } : undefined}
                           >
+                            {/* Golden Hour indicator */}
+                            {showGolden && !isPast && (
+                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end p-1">
+                                <div className="flex items-center gap-1 relative group/golden">
+                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 hover:opacity-90'}`} />
+                                  <span className={`hidden group-hover/golden:inline-block absolute bottom-6 bg-slate-900/90 dark:bg-zinc-800/90 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg backdrop-blur-sm whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                    Giờ vàng {state.selectedPlatform || 'Facebook'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
                             {isCurrentPostInCell && (
                               <div
-                                className="rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-primary bg-primary/5 dark:bg-primary/10 text-primary animate-pulse shadow-sm"
+                                draggable
+                                onDragStart={(e) => dnd.handleDragStart(e, {
+                                  type: 'draft',
+                                  platform: state.selectedPlatform || 'facebook',
+                                  label: `Bản thảo`,
+                                })}
+                                onDragEnd={dnd.handleDragEnd}
+                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
+                                  dnd.isDragging ? 'opacity-40' : 'animate-pulse'
+                                }`}
                               >
-                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-primary/35">
+                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
                                   {getPlatformIcon(state.selectedPlatform || 'facebook')}
->>>>>>> origin/AngAng
                                 </div>
                                 <span className="truncate">
                                   Bản thảo
