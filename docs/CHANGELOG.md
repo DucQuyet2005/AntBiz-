@@ -6,7 +6,22 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [Unreleased] - 2026-07-17
 
 ### Added
-- **Tách biệt Chế độ Chỉnh sửa Trực tiếp và Chế độ Thu thập Wizard (Direct Edit vs Confirm Wizard Mode)**:
+- **Hệ thống Thông Báo Trực Quan (Toast & Bell Notification) Thời Gian Thực**:
+  - Tự động hiển thị Toast nhỏ ở góc phải màn hình khi đăng bài thành công hoặc thất bại, tự biến mất sau 5 giây.
+  - Cập nhật số lượng thông báo tương ứng trên biểu tượng chuông (Header Bell) theo thời gian thực nhờ Supabase Realtime CDC (Realtime Broadcast).
+- **Cấu hình Động Email Thông Báo & Báo Cáo Tổng Hợp**:
+  - Cho phép người dùng tùy chỉnh linh hoạt trên trang Cài đặt (`SettingsView`): bật/tắt nhận email tức thì khi đăng bài thành công (`email_on_success`), khi đăng bài thất bại (`email_on_failure`).
+  - Hỗ trợ tùy chọn nhận Báo cáo email tổng hợp hàng ngày (`email_digest_enabled`) vào một khung giờ tự chọn trong ngày (`email_digest_time`).
+  - Thiết kế Cron-job backend tự động gom nhóm, định dạng HTML chuyên nghiệp và gửi email tổng hợp kết quả đăng bài hàng ngày cho từng Marketer.
+- **Unit & Integration Test Suite cho Notification Module**:
+  - Xây dựng 2 file kiểm thử Vitest `realtime-notification.test.ts` và `email-digest.test.ts` để kiểm tra độ tin cậy của luồng gửi mail tức thời, bỏ qua cấu hình và gom nhóm email tổng hợp.
+  - Bảo đảm tỷ lệ phủ và toàn bộ test case đều pass thành công.
+
+### Changed
+- **Tái cấu trúc Module Thông Báo theo chuẩn AGENTS.md**:
+  - Đóng gói toàn bộ logic nghiệp vụ thông báo và gửi mail vào module backend `backend/modules/notifications/` độc lập.
+  - Sử dụng presentation views (`SettingsView`, `Header`) mỏng chỉ để giao tiếp qua REST APIs `GET/POST /api/users/me/notification-preferences`.
+
   - Khi sửa một văn phong thương hiệu sẵn có (`step === -1`), hệ thống hiển thị duy nhất một ô nhập nội dung Quy định & Nguyên tắc văn phong trực tiếp (với `spellCheck={false}` để loại bỏ hoàn toàn các gạch đỏ lỗi chính tả của trình duyệt), ẩn toàn bộ phần xem trước và các lựa chọn cấu hình câu hỏi của wizard.
   - Khi tạo mới bằng Wizard (`step > aiSteps.length`), hệ thống hiển thị phần Xem trước Văn phong AI song song với ô nhập Nguyên tắc bổ sung để người dùng rà soát nội dung do AI sinh ra và bổ sung ý kiến riêng của mình trước khi lưu.
 - **Khởi tạo 4 Văn phong hệ thống (Mẫu)**:

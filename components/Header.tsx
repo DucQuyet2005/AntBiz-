@@ -259,6 +259,21 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             (payload) => {
               console.log('Realtime notification update received in Header:', payload);
               fetchNotifications(true); // silent fetch
+
+              if (payload.eventType === 'INSERT') {
+                const newNotif = payload.new as { type: string; title: string; message: string };
+                if (newNotif.type === 'post_success' || newNotif.type === 'post_failed') {
+                  const translated = translateNotification(newNotif.title, newNotif.message, language);
+                  window.dispatchEvent(
+                    new CustomEvent('show-notification-toast', {
+                      detail: {
+                        message: `${translated.title}: ${translated.message}`,
+                        type: newNotif.type === 'post_success' ? 'success' : 'error'
+                      }
+                    })
+                  );
+                }
+              }
             }
           )
           .subscribe((status, err) => {

@@ -10,6 +10,7 @@ import { createClient } from '@/utils/supabase/client';
 import { ShieldX, ChevronUp, RefreshCw, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRef } from 'react';
+import { Toast } from '@/components/Toast';
 
 export default function DashboardLayout({
   children,
@@ -22,6 +23,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
   const [roleChangeData, setRoleChangeData] = useState<{ active: boolean; newRole: string }>({ active: false, newRole: '' });
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const { t, language } = useLanguage();
   const currentRoleRef = useRef<string | null>(null);
 
@@ -148,6 +150,20 @@ export default function DashboardLayout({
     setIsSidebarOpen(false);
     setEditorSidebarHover(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleShowToast = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message: string; type: 'success' | 'error' | 'info' }>;
+      if (customEvent.detail) {
+        setToast({
+          message: customEvent.detail.message,
+          type: customEvent.detail.type || 'success'
+        });
+      }
+    };
+    window.addEventListener('show-notification-toast', handleShowToast);
+    return () => window.removeEventListener('show-notification-toast', handleShowToast);
+  }, []);
 
   useEffect(() => {
     const mainEl = mainRef.current;
@@ -407,6 +423,16 @@ export default function DashboardLayout({
           >
             <ChevronUp size={18} strokeWidth={2.5} />
           </motion.button>
+        )}
+      </AnimatePresence>
+      {/* Global Toast Container */}
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
         )}
       </AnimatePresence>
     </div>

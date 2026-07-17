@@ -1,5 +1,5 @@
 import { logAndNotifyPublishResult } from '@/lib/email';
-import { createNotification } from '@/lib/services/notificationService';
+import { createNotification, getUserNotificationSettings } from '@/lib/services/notificationService';
 import type {
   PublicationNotificationInput,
   PublicationNotifier,
@@ -30,14 +30,51 @@ export class ProductionPublicationNotifier implements PublicationNotifier {
     const detail = input.result.success
       ? `Đã đăng lên ${input.platformName} thành công.\nPost ID: ${input.result.postId}`
       : `Đăng lên ${input.platformName} thất bại.\nLý do: ${input.result.error}`;
+
+    let emailSent = false;
+
     try {
-      await logAndNotifyPublishResult(
-        input.userId, input.userEmail, input.postTitle, status, detail
-      );
+      // 1. Fetch user notification settings to determine routing
+      const settings = await getUserNotificationSettings(input.userId);
+      if (settings) {
+        const emailDigestEnabled = settings.email_digest_enabled;
+
+        // If daily digest is disabled, send immediate email only if user has opted in
+        if (!emailDigestEnabled) {
+          const optedIn = status === 'success' 
+            ? settings.email_on_success 
+            : settings.email_on_failure;
+
+          if (optedIn) {
+            await logAndNotifyPublishResult(
+              input.userId, input.userEmail, input.postTitle, status, detail, false
+            );
+            emailSent = true;
+          } else {
+            // Log to audit logs, but skip immediate email sending
+            await logAndNotifyPublishResult(
+              input.userId, input.userEmail, input.postTitle, status, detail, true
+            );
+          }
+        } else {
+          // Digest is enabled: skip immediate email, write to audit logs
+          await logAndNotifyPublishResult(
+            input.userId, input.userEmail, input.postTitle, status, detail, true
+          );
+        }
+      } else {
+        // Fallback: send immediate transactional email if preferences are missing
+        await logAndNotifyPublishResult(
+          input.userId, input.userEmail, input.postTitle, status, detail, false
+        );
+        emailSent = true;
+      }
     } catch (error) {
       console.error('[Scheduled Publishing] Publish email/audit failed:', error);
     }
+
     try {
+      // 2. Insert in-app notification tracking the email delivery status
       await createNotification({
         userId: input.userId,
         type: input.result.success ? 'post_success' : 'post_failed',
@@ -48,6 +85,7 @@ export class ProductionPublicationNotifier implements PublicationNotifier {
         metadata: input.result.success
           ? { post_id: input.post.id, external_post_id: input.result.postId }
           : { post_id: input.post.id, error: input.result.error },
+        emailSent: emailSent,
       });
     } catch (error) {
       console.error('[Scheduled Publishing] In-app publication notification failed:', error);
