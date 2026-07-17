@@ -233,14 +233,14 @@ export default function Step5Schedule() {
                             onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
                             onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
                             onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
-                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 overflow-hidden ${
+                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
                               isPast
                                 ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
                                 : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
                             } ${
                               isCellHover && !isPast
                                 ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
-                                : ''
+                                : 'z-0 hover:z-10'
                             } ${
                               isHighlighted ? 'bg-primary/[0.02]' : ''
                             }`}
@@ -253,7 +253,7 @@ export default function Step5Schedule() {
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
                                   <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/golden:opacity-100'}`} />
-                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[11px] font-bold px-2 py-1 rounded-md shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
                                     Giờ Vàng {currentPlatform}
                                   </span>
                                 </div>
