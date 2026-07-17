@@ -3,72 +3,77 @@
 // Hàm lấy session đăng nhập Supabase từ cookie của AntBiz
 function getSupabaseSession() {
   return new Promise((resolve) => {
-    chrome.cookies.getAll({}, (allCookies = []) => {
-      if (chrome.runtime.lastError) {
-        console.warn('Lỗi quét cookies:', chrome.runtime.lastError);
-        return resolve(null);
+    // 1. Kiểm tra session trong chrome.storage.local trước
+    chrome.storage.local.get('antbiz_local_session', (res) => {
+      const stored = res.antbiz_local_session;
+      if (stored && Array.isArray(stored)) {
+        return resolve({
+          access_token: stored[0],
+          refresh_token: stored[1],
+          user: stored[4] || null
+        });
       }
 
-      // Lọc các cookie thuộc các domain phát triển cục bộ của AntBiz
-      const cookies = allCookies.filter(c => 
-        c.domain.includes('localhost') || 
-        c.domain.includes('127.0.0.1') || 
-        c.domain.includes('172.25.240.1')
-      );
+      // 2. Nếu không có trong storage, tìm trong cookie (để đồng bộ từ trình duyệt)
+      chrome.cookies.getAll({}, (allCookies = []) => {
+        if (chrome.runtime.lastError) {
+          console.warn('Lỗi quét cookies:', chrome.runtime.lastError);
+          return resolve(null);
+        }
 
-      console.log('Quét tìm thấy các cookie:', cookies.map(c => `${c.domain}: ${c.name}`));
+        const cookies = allCookies.filter(c => 
+          c.domain.includes('localhost') || 
+          c.domain.includes('127.0.0.1') || 
+          c.domain.includes('172.25.240.1')
+        );
 
-      // Lọc các cookie chứa token xác thực của Supabase (khớp cụ thể với dự án AntBiz nttnyvgprhbthsqmvyjp hoặc local)
-      const sbCookies = cookies.filter(c => 
-        c.name.includes('nttnyvgprhbthsqmvyjp-auth-token') || 
-        c.name.includes('sb-local-auth-token')
-      );
-      if (sbCookies.length === 0) {
-        console.log('Không tìm thấy cookie Supabase nào khớp.');
-        return resolve(null);
-      }
+        console.log('Quét tìm thấy các cookie:', cookies.map(c => `${c.domain}: ${c.name}`));
 
-      // Sắp xếp các chunk cookie theo thứ tự tăng dần (.0, .1, .2)
-      sbCookies.sort((a, b) => {
-        const aParts = a.name.split('.');
-        const bParts = b.name.split('.');
-        const aIdx = aParts.length > 2 ? parseInt(aParts[aParts.length - 1], 10) : -1;
-        const bIdx = bParts.length > 2 ? parseInt(bParts[bParts.length - 1], 10) : -1;
-        return aIdx - bIdx;
+        const sbCookies = cookies.filter(c => 
+          c.name.includes('nttnyvgprhbthsqmvyjp-auth-token') || 
+          c.name.includes('sb-local-auth-token')
+        );
+        if (sbCookies.length === 0) {
+          console.log('Không tìm thấy cookie Supabase nào khớp.');
+          return resolve(null);
+        }
+
+        sbCookies.sort((a, b) => {
+          const aParts = a.name.split('.');
+          const bParts = b.name.split('.');
+          const aIdx = aParts.length > 2 ? parseInt(aParts[aParts.length - 1], 10) : -1;
+          const bIdx = bParts.length > 2 ? parseInt(bParts[bParts.length - 1], 10) : -1;
+          return aIdx - bIdx;
+        });
+
+        const rawValue = sbCookies.map(c => c.value).join('');
+
+        try {
+          const decodedValue = decodeURIComponent(rawValue);
+          const sessionData = JSON.parse(decodedValue);
+
+          if (Array.isArray(sessionData)) {
+            return resolve({
+              access_token: sessionData[0],
+              refresh_token: sessionData[1],
+              user: sessionData[4] || null
+            });
+          }
+
+          if (sessionData && typeof sessionData === 'object') {
+            return resolve({
+              access_token: sessionData.access_token,
+              refresh_token: sessionData.refresh_token,
+              user: sessionData.user || null
+            });
+          }
+
+          resolve(null);
+        } catch (err) {
+          console.warn('Lỗi giải mã session cookie:', err);
+          resolve({ access_token: rawValue });
+        }
       });
-
-      // Ghép các giá trị cookie lại
-      const rawValue = sbCookies.map(c => c.value).join('');
-
-      try {
-        // Giải mã URL và parse JSON
-        const decodedValue = decodeURIComponent(rawValue);
-        const sessionData = JSON.parse(decodedValue);
-
-        // Supabase SSR có thể lưu trữ dưới dạng mảng [access_token, refresh_token, ...]
-        if (Array.isArray(sessionData)) {
-          return resolve({
-            access_token: sessionData[0],
-            refresh_token: sessionData[1],
-            user: sessionData[4] || null
-          });
-        }
-
-        // Hoặc lưu dưới dạng object
-        if (sessionData && typeof sessionData === 'object') {
-          return resolve({
-            access_token: sessionData.access_token,
-            refresh_token: sessionData.refresh_token,
-            user: sessionData.user || null
-          });
-        }
-
-        resolve(null);
-      } catch (err) {
-        console.warn('Lỗi giải mã session cookie hoặc cookie lưu token trực tiếp:', err);
-        // Fallback nếu cookie lưu chuỗi token thô trực tiếp
-        resolve({ access_token: rawValue });
-      }
     });
   });
 }
@@ -146,6 +151,7 @@ async function transcribeAudioViaServer(base64Data, fileName, fileType, token, r
 async function loginDirectViaServer(email, password) {
   const response = await fetch('http://localhost:3000/api/auth/login', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json'
     },
@@ -157,7 +163,33 @@ async function loginDirectViaServer(email, password) {
     throw new Error(errJson.error || `Đăng nhập thất bại: ${response.status}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  if (data.success && data.session) {
+    const sessionData = [
+      data.session.access_token,
+      data.session.refresh_token,
+      null,
+      null,
+      data.session.user
+    ];
+    const cookieValue = encodeURIComponent(JSON.stringify(sessionData));
+    
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ antbiz_local_session: sessionData }, () => {
+        chrome.cookies.set({
+          url: 'http://localhost:3000',
+          name: 'sb-local-auth-token',
+          value: cookieValue,
+          path: '/',
+          expirationDate: Math.floor(Date.now() / 1000) + 3600 * 24 * 7 // 7 days
+        }, (cookie) => {
+          if (chrome.runtime.lastError) console.error('Error setting cookie:', chrome.runtime.lastError);
+          resolve(cookie);
+        });
+      });
+    });
+  }
+  return data;
 }
 
 // Hàm gửi tệp tài liệu PDF/Word để trích xuất văn bản
