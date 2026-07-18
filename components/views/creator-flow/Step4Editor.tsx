@@ -46,6 +46,7 @@ export default function Step4Editor() {
   // Local states
   const [editableTitle, setEditableTitle] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
+  const [imageError, setImageError] = useState<boolean>(false);
   
   // Highlighting popover state
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -69,6 +70,11 @@ export default function Step4Editor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset image error state when thumbnail changes
+  useEffect(() => {
+    setImageError(false);
+  }, [state.articleContext?.thumbnail]);
 
   // Update title sync
   useEffect(() => {
@@ -311,13 +317,14 @@ export default function Step4Editor() {
               </div>
 
               {/* Fake post media thumbnail - spans full-width with 4:3 ratio */}
-              {state.articleContext?.thumbnail && (
+              {state.articleContext?.thumbnail && !imageError && (
                 <div className="w-full border-t border-b border-gray-100 dark:border-zinc-850 select-none overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={state.articleContext.thumbnail}
                     alt="Post media thumbnail"
                     className="w-full aspect-[4/3] object-cover"
+                    onError={() => setImageError(true)}
                   />
                 </div>
               )}

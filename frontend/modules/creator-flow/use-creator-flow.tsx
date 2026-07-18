@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useEffect, useState } fro
 import { useQuery } from '@tanstack/react-query';
 import { postService, ChatMessage } from '@/lib/services/creator/post.service';
 import { scheduleService } from '@/lib/services/creator/schedule.service';
+import { presetService } from '@/lib/services/creator/preset.service';
 import { CreatorFlowState, CreatorFlowAction } from './creator-flow-types';
 import { PlatformType } from '@/lib/services/creator/platform.service';
 import { BrowserCreatorFlowClient, type CreatorFlowClient } from './creator-flow-client';
@@ -266,24 +267,14 @@ export function CreatorFlowProvider({
   }, [platforms, isLoadingPlatforms]);
 
   // 2. Fetch presets
-  const presetPlatforms = state.selectedPlatforms.length > 0
-    ? state.selectedPlatforms
-    : (['facebook', 'threads', 'instagram'] as PlatformType[]);
   const { data: presets, isLoading: isLoadingPresets } = useQuery({
-    queryKey: ['creatorPlatformPresets', presetPlatforms],
+    queryKey: ['creatorPlatformPresets'],
     queryFn: async () => {
-      const results = await Promise.all(presetPlatforms.map(async (platform) => {
-        const result = await quickPublishing.loadPresets(platform);
-        return result.presets.map((preset) => ({
-          id: preset.id,
-          name: preset.name,
-          platform,
-          tags: preset.rules ? [preset.rules.slice(0, 48)] : [],
-          lastUpdated: '',
-          isSystem: !preset.user_id,
-        }));
-      }));
-      return results.flat();
+      const res = await presetService.getPresets();
+      if (res.status === 'success' && res.data) {
+        return res.data;
+      }
+      return [];
     },
   });
 
@@ -475,7 +466,10 @@ export function CreatorFlowProvider({
 
     try {
       const configFor = (platform: PlatformType) => ({
-        presetId: presetForPlatform(platform), customText: '', quickPicks: [], configId: '',
+        presetId: '',
+        customText: '',
+        quickPicks: [],
+        configId: state.selectedPresetId || '',
       });
       await quickPublishing.generate({
         articleId: state.articleId,
@@ -523,16 +517,11 @@ export function CreatorFlowProvider({
 
     try {
       const captionId = await quickPublishing.saveEdit(draft);
-      const presetId = presetForPlatform(
-        state.selectedPlatform,
-        presetOverride === undefined ? state.selectedPresetId : presetOverride
-      );
       const result = await quickPublishing.regenerateCaption({
         captionId,
         platform: state.selectedPlatform,
         mode: 'full',
-        presetMode: presetId ? 'selected' : 'none',
-        ...(presetId ? { platformPresetId: presetId } : {}),
+        presetMode: 'auto',
       });
       dispatch({
         type: 'SET_DRAFT',
@@ -541,7 +530,7 @@ export function CreatorFlowProvider({
           generatedPost: generatedPost(state.selectedPlatform, result.captionId, result.content),
         },
       });
-    } catch {
+    } catch (error) {
       reportOperationError('Không thể tạo lại toàn bộ bài viết lúc này.');
     } finally {
       dispatch({ type: 'SET_GENERATING_POST', payload: false });
@@ -560,7 +549,6 @@ export function CreatorFlowProvider({
 
     try {
       const captionId = await quickPublishing.saveEdit(draft);
-      const presetId = presetForPlatform(state.selectedPlatform);
       const result = await quickPublishing.regenerateCaption({
         captionId,
         platform: state.selectedPlatform,
@@ -569,8 +557,7 @@ export function CreatorFlowProvider({
         selectionEnd: state.highlightSelectionEnd,
         selectedText: state.highlightedText,
         instruction,
-        presetMode: presetId ? 'selected' : 'none',
-        ...(presetId ? { platformPresetId: presetId } : {}),
+        presetMode: 'auto',
       });
       dispatch({
         type: 'SET_DRAFT',
