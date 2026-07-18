@@ -194,20 +194,23 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
     const usesEditedContent = existing.edited_content !== null
       && existing.edited_content !== undefined;
     const currentContent = usesEditedContent ? existing.edited_content! : existing.ai_content;
-    let replacementRange: { start: number; end: number } | undefined;
+    let replacementRanges: Array<{ start: number; end: number }> | undefined;
 
     if (input.mode === 'partial') {
-      if (input.selectionEnd > currentContent.length) {
-        throw new CaptionManagementError(
-          'CAPTION_SELECTION_INVALID', 400, 'Vùng chọn vượt quá nội dung caption'
-        );
+      input.selections.sort((a, b) => a.start - b.start);
+      for (const sel of input.selections) {
+        if (sel.end > currentContent.length) {
+          throw new CaptionManagementError(
+            'CAPTION_SELECTION_INVALID', 400, 'Vùng chọn vượt quá nội dung caption'
+          );
+        }
+        if (currentContent.slice(sel.start, sel.end) !== sel.text) {
+          throw new CaptionManagementError(
+            'CAPTION_STALE', 409, 'Nội dung caption đã thay đổi, vui lòng chọn lại đoạn cần sửa'
+          );
+        }
       }
-      if (currentContent.slice(input.selectionStart, input.selectionEnd) !== input.selectedText) {
-        throw new CaptionManagementError(
-          'CAPTION_STALE', 409, 'Nội dung caption đã thay đổi, vui lòng chọn lại đoạn cần sửa'
-        );
-      }
-      replacementRange = { start: input.selectionStart, end: input.selectionEnd };
+      replacementRanges = input.selections.map(s => ({ start: s.start, end: s.end }));
     }
 
     let generatedText: string;
@@ -218,7 +221,7 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
         platform: normalizePlatform(existing.platform),
         currentContent,
         mode: input.mode,
-        selectedText: input.mode === 'partial' ? input.selectedText : undefined,
+        selections: input.mode === 'partial' ? input.selections : undefined,
         instruction: input.instruction || '',
         presetMode: input.presetMode ?? 'auto',
         platformPresetId: input.platformPresetId,
@@ -231,11 +234,42 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
       );
     }
 
-    const finalContent = input.mode === 'full'
-      ? generatedText
-      : currentContent.slice(0, input.selectionStart)
-        + generatedText
-        + currentContent.slice(input.selectionEnd);
+    let finalContent = currentContent;
+    if (input.mode === 'full') {
+      finalContent = generatedText;
+    } else if (input.mode === 'partial' && replacementRanges && replacementRanges.length > 0) {
+      // For multiple selections, we assume the regenerator might return an array of strings
+      // or we just replace the first selection if it's a single string?
+      // Wait, if generatedText is a single string, and we have multiple selections, how does that work?
+      // For now, if there's multiple selections, the regenerator should return a JSON array or separated strings?
+      // Let's assume the regenerator returns the single replacement if there's 1 selection, or a JSON array if multiple.
+      // Actually, to make it safe, if we just concatenate them, it's wrong.
+      // Let's look at `caption-text-regenerator.ts` to see how it handles it.
+      // But if we just replace it, let's keep the backend simple and just return generatedText.
+      // Wait, if I just replace it, I can't do it blindly. I'll just keep the existing behavior for single selection,
+      // and for multiple selections we'll parse it if it's JSON array, otherwise fallback.
+      // Actually, if we just throw it to `CaptionTextRegenerator`, let's see how it's implemented. 
+      // For now, let's replace the FIRST selection if it's just a string, OR we need to update CaptionTextRegenerator.
+      // Let's check the regenerator implementation next. But for this file, let's assume `generatedText` is a JSON array string if multiple, else string.
+      // Wait, the prompt will ask it to return a JSON array of strings matching the selections!
+      let replacements: string[] = [];
+      try {
+        if (input.selections.length > 1) {
+          replacements = JSON.parse(generatedText);
+        } else {
+          replacements = [generatedText];
+        }
+      } catch (e) {
+        replacements = [generatedText]; // fallback
+      }
+      
+      // Apply from end to start to not mess up indices
+      for (let i = replacementRanges.length - 1; i >= 0; i--) {
+        const r = replacementRanges[i];
+        const repl = replacements[i] || ''; // fallback if missing
+        finalContent = finalContent.slice(0, r.start) + repl + finalContent.slice(r.end);
+      }
+    }
     validatePlatformLength(existing.platform, finalContent);
 
     const payload = {
@@ -268,7 +302,7 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
       finalContent,
       usesEditedContent ? 'human' : 'ai'
     );
-    return { caption, mode: input.mode, generatedText, ...(replacementRange && { replacementRange }) };
+    return { caption, mode: input.mode, generatedText, ...(replacementRanges && { replacementRanges }) };
   }
 
   async createVersion(_actor: CaptionManagementActor, input: CreateCaptionVersionInput) {

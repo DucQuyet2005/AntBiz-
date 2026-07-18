@@ -46,7 +46,7 @@ export type QuickPublishingEvent =
   | { type: 'generation-aborted'; platform: QuickPublishingPlatform; variantId: string; variantIndex: number }
   | { type: 'draft-resolved'; platform: QuickPublishingPlatform; variantId: string; captionId: string; status: string }
   | { type: 'caption-edit-saved'; platform: QuickPublishingPlatform; variantId: string; captionId: string; status: string }
-  | { type: 'caption-regenerated'; platform: QuickPublishingPlatform; captionId: string; mode: 'full' | 'partial'; content: string; replacementRange?: { start: number; end: number } }
+  | { type: 'caption-regenerated'; platform: QuickPublishingPlatform; captionId: string; mode: 'full' | 'partial'; content: string; replacementRanges?: Array<{ start: number; end: number }> }
   | { type: 'platform-scheduled'; platform: QuickPublishingPlatform; captionId: string }
   | { type: 'platform-schedule-failed'; platform: QuickPublishingPlatform; error: QuickPublishingFailure }
   | { type: 'schedule-completed'; successful: QuickPublishingPlatform[]; failed: QuickPublishingPlatform[] }
@@ -120,9 +120,7 @@ export type RegenerateCaptionCommand =
   | (RegenerateCaptionOptions & { mode: 'full'; instruction?: string })
   | (RegenerateCaptionOptions & {
       mode: 'partial';
-      selectionStart: number;
-      selectionEnd: number;
-      selectedText: string;
+      selections: Array<{ start: number; end: number; text: string }>;
       instruction: string;
     });
 
@@ -137,7 +135,7 @@ export interface RegenerateCaptionResult {
   status?: string;
   mode: 'full' | 'partial';
   generatedText: string;
-  replacementRange?: { start: number; end: number };
+  replacementRanges?: Array<{ start: number; end: number }>;
 }
 
 export interface PublishPlatformInput {

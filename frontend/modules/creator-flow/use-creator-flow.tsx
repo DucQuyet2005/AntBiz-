@@ -33,6 +33,7 @@ export const initialCreatorFlowState: CreatorFlowState = {
   crawlJobId: null,
   crawlStatus: 'idle',
   articleContext: null,
+  crawledImageUrls: [],
   presets: [],
   selectedPresetId: null,
   searchPresetQuery: '',
@@ -43,9 +44,7 @@ export const initialCreatorFlowState: CreatorFlowState = {
   isGeneratingPost: false,
   chatMessages: [],
   isChatSending: false,
-  highlightedText: '',
-  highlightSelectionStart: null,
-  highlightSelectionEnd: null,
+  highlightSelections: [],
   isHighlightEditing: false,
   conversationalStep: 1,
   scheduleMode: 'now',
@@ -107,6 +106,8 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       return { ...state, crawlStatus: action.payload };
     case 'SET_ARTICLE_CONTEXT':
       return { ...state, articleContext: action.payload };
+    case 'SET_CRAWLED_IMAGES':
+      return { ...state, crawledImageUrls: action.payload };
     case 'SET_PRESETS':
       return { ...state, presets: action.payload };
     case 'SET_SELECTED_PRESET':
@@ -180,17 +181,28 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       return { ...state, chatMessages: [...state.chatMessages, action.payload] };
     case 'SET_CHAT_SENDING':
       return { ...state, isChatSending: action.payload };
-    case 'SET_HIGHLIGHT_TEXT':
-      return {
-        ...state, highlightedText: action.payload,
-        ...(!action.payload ? { highlightSelectionStart: null, highlightSelectionEnd: null } : {}),
-      };
-    case 'SET_HIGHLIGHT_SELECTION':
+    case 'ADD_HIGHLIGHT_SELECTION':
+      // Prevent overlapping or duplicate ranges
+      if (state.highlightSelections.some(s => 
+        (action.payload.start >= s.start && action.payload.start < s.end) ||
+        (action.payload.end > s.start && action.payload.end <= s.end) ||
+        (action.payload.start <= s.start && action.payload.end >= s.end)
+      )) {
+        return state;
+      }
       return {
         ...state,
-        highlightedText: action.payload.text,
-        highlightSelectionStart: action.payload.start,
-        highlightSelectionEnd: action.payload.end,
+        highlightSelections: [...state.highlightSelections, action.payload].sort((a, b) => a.start - b.start),
+      };
+    case 'REMOVE_HIGHLIGHT_SELECTION':
+      return {
+        ...state,
+        highlightSelections: state.highlightSelections.filter(s => s.id !== action.payload),
+      };
+    case 'CLEAR_HIGHLIGHT_SELECTIONS':
+      return {
+        ...state,
+        highlightSelections: [],
       };
     case 'SET_HIGHLIGHT_EDITING':
       return { ...state, isHighlightEditing: action.payload };
@@ -339,6 +351,10 @@ export function CreatorFlowProvider({
       const result = await creatorClient.ingestUrl(url);
       dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
       dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
+      // Collect all images from article context for use in Step 3+ publish
+      const crawledImages: string[] = [];
+      if (result.context.thumbnail) crawledImages.push(result.context.thumbnail);
+      dispatch({ type: 'SET_CRAWLED_IMAGES', payload: crawledImages });
       dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
     } catch {
       dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
@@ -537,11 +553,10 @@ export function CreatorFlowProvider({
     }
   };
 
-  // Regenerate the exact selected UTF-16 range in the persisted Caption.
+  // Regenerate the exact selected UTF-16 ranges in the persisted Caption.
   const editHighlighted = async (instruction: string) => {
     if (
-      !state.selectedPlatform || !state.highlightedText || !instruction
-      || state.highlightSelectionStart === null || state.highlightSelectionEnd === null
+      !state.selectedPlatform || state.highlightSelections.length === 0 || !instruction
     ) return;
     const draft = draftInputFor(state.selectedPlatform);
     if (!draft) return;
@@ -553,9 +568,7 @@ export function CreatorFlowProvider({
         captionId,
         platform: state.selectedPlatform,
         mode: 'partial',
-        selectionStart: state.highlightSelectionStart,
-        selectionEnd: state.highlightSelectionEnd,
-        selectedText: state.highlightedText,
+        selections: state.highlightSelections.map(s => ({ start: s.start, end: s.end, text: s.text })),
         instruction,
         presetMode: 'auto',
       });
@@ -573,7 +586,7 @@ export function CreatorFlowProvider({
           : 'Không thể sửa đoạn đã chọn lúc này.'
       );
     } finally {
-      dispatch({ type: 'SET_HIGHLIGHT_TEXT', payload: '' });
+      dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' });
       dispatch({ type: 'SET_HIGHLIGHT_EDITING', payload: false });
     }
   };
@@ -625,7 +638,10 @@ export function CreatorFlowProvider({
     const connectedPlatforms = state.platforms
       .filter((platform) => platform.connected)
       .map((platform) => platform.id);
-    const imageUrls = state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : [];
+    const imageUrls = [
+      ...(state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []),
+      ...state.crawledImageUrls.filter(url => url !== state.articleContext?.thumbnail),
+    ];
     let successful: PlatformType[] = [];
     let failed: PlatformType[] = [];
     const onEvent = (event: QuickPublishingEvent) => {

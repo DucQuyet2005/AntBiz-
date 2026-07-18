@@ -47,7 +47,7 @@ export interface CaptionTextRegenerator {
     platform: string;
     currentContent: string;
     mode: RegenerateCaptionInput['mode'];
-    selectedText?: string;
+    selections?: Array<{ start: number; end: number; text: string }>;
     instruction: string;
     presetMode: 'auto' | 'selected' | 'none';
     platformPresetId?: string;
@@ -99,7 +99,7 @@ export interface CaptionManagementModuleInterface {
     caption: CaptionRecord;
     mode: RegenerateCaptionInput['mode'];
     generatedText: string;
-    replacementRange?: { start: number; end: number };
+    replacementRanges?: Array<{ start: number; end: number }>;
   }>;
   createVersion(actor: CaptionManagementActor, input: CreateCaptionVersionInput): Promise<CaptionVersionRecord>;
 }

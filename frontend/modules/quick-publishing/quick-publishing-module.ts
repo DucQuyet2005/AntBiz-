@@ -111,7 +111,7 @@ export class QuickPublishingModule {
       emit?.({
         type: 'caption-regenerated', platform, captionId: result.captionId,
         mode: result.mode, content: result.content,
-        ...(result.replacementRange ? { replacementRange: result.replacementRange } : {}),
+        ...(result.replacementRanges ? { replacementRanges: result.replacementRanges } : {}),
       });
       return result;
     } catch (error) {

@@ -100,15 +100,15 @@ export class BrowserQuickPublishingClient implements QuickPublishingClient {
     if (!data || !caption || typeof content !== 'string') {
       throw new QuickPublishingError('CAPTION_REGENERATION_FAILED', { phase: 'response' });
     }
-    const range = asRecord(data.replacementRange);
+    const ranges = Array.isArray(data.replacementRanges) ? data.replacementRanges : undefined;
     return {
       captionId: typeof caption.id === 'string' ? caption.id : id,
       content,
       status: typeof caption.status === 'string' ? caption.status : undefined,
       mode: data.mode === 'partial' ? 'partial' : 'full',
       generatedText: typeof data.generatedText === 'string' ? data.generatedText : content,
-      ...(typeof range?.start === 'number' && typeof range.end === 'number'
-        ? { replacementRange: { start: range.start, end: range.end } }
+      ...(ranges
+        ? { replacementRanges: ranges as Array<{ start: number; end: number }> }
         : {}),
     };
   }

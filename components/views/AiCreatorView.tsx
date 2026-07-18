@@ -31,6 +31,8 @@ function AiCreatorContent() {
     type: 'success'
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => {
@@ -44,7 +46,10 @@ function AiCreatorContent() {
       case 1:
         return state.selectedPlatforms.length > 0;
       case 2:
-        return Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done');
+        return (
+          Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done') ||
+          Boolean(state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0)
+        );
       case 3:
         return state.postContent.trim().length > 0;
       case 4:
@@ -86,7 +91,27 @@ function AiCreatorContent() {
   };
 
   const handleContinue = async () => {
-    if (state.currentStep === 3) {
+    if (state.currentStep === 2) {
+      // Auto-submit manual article if manual title and content are entered and not yet matching the saved article
+      if (state.manualTitle.trim() && state.manualContent.trim()) {
+        const isDirty = !state.articleId || 
+          state.manualTitle !== state.articleContext?.title || 
+          state.manualContent !== state.articleContext?.description; // or content
+        
+        if (isDirty) {
+          setIsSubmitting(true);
+          try {
+            await submitManualArticle(state.manualTitle, state.manualContent);
+          } catch (err) {
+            showToast("Không thể lưu bài viết. Vui lòng kiểm tra lại.", "error");
+            setIsSubmitting(false);
+            return;
+          }
+          setIsSubmitting(false);
+        }
+      }
+      nextStep();
+    } else if (state.currentStep === 3) {
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
       nextStep();
     } else if (state.currentStep === 4) {
@@ -199,7 +224,7 @@ function AiCreatorContent() {
         <NavigationFooter
           currentStep={state.currentStep}
           isValid={isStepValid()}
-          isLoading={state.isScheduling}
+          isLoading={state.isScheduling || isSubmitting}
           onBack={prevStep}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}

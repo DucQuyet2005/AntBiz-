@@ -50,9 +50,11 @@ export const regenerateCaptionSchema = z.discriminatedUnion('mode', [
   }),
   regenerationPresetSchema.extend({
     mode: z.literal('partial'),
-    selectionStart: z.number().int().nonnegative(),
-    selectionEnd: z.number().int().positive(),
-    selectedText: z.string().min(1),
+    selections: z.array(z.object({
+      start: z.number().int().nonnegative(),
+      end: z.number().int().positive(),
+      text: z.string().min(1),
+    })).min(1),
     instruction: z.string().trim().min(1).max(2000),
   }),
 ]).superRefine((input, context) => {
@@ -62,8 +64,13 @@ export const regenerateCaptionSchema = z.discriminatedUnion('mode', [
   if (input.presetMode === 'none' && input.platformPresetId) {
     context.addIssue({ code: 'custom', message: 'Không gửi platformPresetId khi bỏ qua Preset' });
   }
-  if (input.mode === 'partial' && input.selectionEnd <= input.selectionStart) {
-    context.addIssue({ code: 'custom', message: 'Vùng chọn không hợp lệ' });
+  if (input.mode === 'partial') {
+    for (const sel of input.selections) {
+      if (sel.end <= sel.start) {
+        context.addIssue({ code: 'custom', message: 'Vùng chọn không hợp lệ' });
+        break;
+      }
+    }
   }
 });
 

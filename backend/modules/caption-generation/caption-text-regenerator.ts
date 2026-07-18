@@ -64,12 +64,27 @@ function buildRegenerationPrompt(
     : '';
 
   if (input.mode === 'partial') {
+    if (input.selections && input.selections.length > 1) {
+      const texts = input.selections.map((s, i) => `Đoạn ${i + 1}: ${s.text}`).join('\n');
+      return `Bạn là Content Marketer chuyên nghiệp. Viết lại đúng CÁC đoạn được chọn cho nền tảng ${input.platform}.
+
+Tiêu đề nguồn: ${input.article.title || ''}
+Nội dung nguồn: ${articleContent}
+Toàn bộ caption hiện tại: ${input.currentContent}
+
+Các đoạn cần sửa:
+${texts}
+${presetSection}${instruction}
+TRẢ VỀ DUY NHẤT một mảng JSON các chuỗi (string array) tương ứng với từng đoạn thay thế, theo đúng thứ tự. Ví dụ: ["thay thế 1", "thay thế 2"]. KHÔNG giải thích thêm, KHÔNG format markdown.`;
+    }
+
+    const selectedText = input.selections?.[0]?.text || '';
     return `Bạn là Content Marketer chuyên nghiệp. Viết lại đúng đoạn được chọn cho nền tảng ${input.platform}.
 
 Tiêu đề nguồn: ${input.article.title || ''}
 Nội dung nguồn: ${articleContent}
 Toàn bộ caption hiện tại: ${input.currentContent}
-Đoạn được chọn: ${input.selectedText || ''}${presetSection}${instruction}
+Đoạn được chọn: ${selectedText}${presetSection}${instruction}
 Chỉ trả về đoạn thay thế, không giải thích, không thêm dấu ngoặc hay lời dẫn.`;
   }
 

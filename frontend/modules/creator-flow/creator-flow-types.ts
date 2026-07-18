@@ -22,6 +22,7 @@ export interface CreatorFlowState {
   crawlJobId: string | null;
   crawlStatus: 'idle' | 'crawling' | 'done' | 'error';
   articleContext: ArticleContext | null;
+  crawledImageUrls: string[]; // Images extracted from crawled article
 
   // Step 3: Presets
   presets: Preset[];
@@ -36,9 +37,7 @@ export interface CreatorFlowState {
   isGeneratingPost: boolean;
   chatMessages: ChatMessage[];
   isChatSending: boolean;
-  highlightedText: string;
-  highlightSelectionStart: number | null;
-  highlightSelectionEnd: number | null;
+  highlightSelections: Array<{ id: string; text: string; start: number; end: number }>;
   isHighlightEditing: boolean;
   conversationalStep: number; // For step-by-step assistant questionnaire
 
@@ -68,6 +67,7 @@ export type CreatorFlowAction =
   | { type: 'SET_CRAWL_JOB'; payload: { jobId: string; status: 'idle' | 'crawling' | 'done' | 'error' } }
   | { type: 'SET_CRAWL_STATUS'; payload: 'idle' | 'crawling' | 'done' | 'error' }
   | { type: 'SET_ARTICLE_CONTEXT'; payload: ArticleContext | null }
+  | { type: 'SET_CRAWLED_IMAGES'; payload: string[] }
   | { type: 'SET_PRESETS'; payload: Preset[] }
   | { type: 'SET_SELECTED_PRESET'; payload: string | null }
   | { type: 'SET_SEARCH_PRESET'; payload: string }
@@ -79,8 +79,9 @@ export type CreatorFlowAction =
   | { type: 'SET_GENERATING_POST'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'SET_CHAT_SENDING'; payload: boolean }
-  | { type: 'SET_HIGHLIGHT_TEXT'; payload: string }
-  | { type: 'SET_HIGHLIGHT_SELECTION'; payload: { text: string; start: number; end: number } }
+  | { type: 'ADD_HIGHLIGHT_SELECTION'; payload: { id: string; text: string; start: number; end: number } }
+  | { type: 'REMOVE_HIGHLIGHT_SELECTION'; payload: string }
+  | { type: 'CLEAR_HIGHLIGHT_SELECTIONS' }
   | { type: 'SET_HIGHLIGHT_EDITING'; payload: boolean }
   | { type: 'SET_CONVERSATIONAL_STEP'; payload: number }
   | { type: 'SET_SCHEDULE_MODE'; payload: 'now' | 'scheduled' }
