@@ -18,10 +18,12 @@ export class PlatformPresetModule {
 
   async list(actor: PlatformPresetActor, requestedPlatform: string): Promise<PlatformPresetRecord[]> {
     const platform = normalizePresetPlatform(requestedPlatform);
-    let presets: PlatformPresetRecord[];
+    let userPresets: PlatformPresetRecord[] = [];
+    let systemPresets: PlatformPresetRecord[] = [];
 
     try {
-      presets = await this.repository.listUserPresets(actor.id, platform);
+      userPresets = await this.repository.listUserPresets(actor.id, platform);
+      systemPresets = await this.repository.listSystemPresets(platform);
     } catch (error) {
       throw this.persistenceFailure('Không thể tải danh sách quy chuẩn', error, {
         actorId: actor.id,
@@ -29,11 +31,8 @@ export class PlatformPresetModule {
       });
     }
 
-    if (presets.length === 0) {
-      presets = await this.provisionFromSystem(actor, platform, presets);
-    }
-
-    return this.sortPresets(presets);
+    const allPresets = [...userPresets, ...systemPresets];
+    return this.sortPresets(allPresets);
   }
 
   async create(

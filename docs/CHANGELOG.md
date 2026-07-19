@@ -6,7 +6,22 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
 ## [Unreleased] - 2026-07-17
 
 ### Added
-- **Tách biệt Chế độ Chỉnh sửa Trực tiếp và Chế độ Thu thập Wizard (Direct Edit vs Confirm Wizard Mode)**:
+- **Hệ thống Thông Báo Trực Quan (Toast & Bell Notification) Thời Gian Thực**:
+  - Tự động hiển thị Toast nhỏ ở góc phải màn hình khi đăng bài thành công hoặc thất bại, tự biến mất sau 5 giây.
+  - Cập nhật số lượng thông báo tương ứng trên biểu tượng chuông (Header Bell) theo thời gian thực nhờ Supabase Realtime CDC (Realtime Broadcast).
+- **Cấu hình Động Email Thông Báo & Báo Cáo Tổng Hợp**:
+  - Cho phép người dùng tùy chỉnh linh hoạt trên trang Cài đặt (`SettingsView`): bật/tắt nhận email tức thì khi đăng bài thành công (`email_on_success`), khi đăng bài thất bại (`email_on_failure`).
+  - Hỗ trợ tùy chọn nhận Báo cáo email tổng hợp hàng ngày (`email_digest_enabled`) vào một khung giờ tự chọn trong ngày (`email_digest_time`).
+  - Thiết kế Cron-job backend tự động gom nhóm, định dạng HTML chuyên nghiệp và gửi email tổng hợp kết quả đăng bài hàng ngày cho từng Marketer.
+- **Unit & Integration Test Suite cho Notification Module**:
+  - Xây dựng 2 file kiểm thử Vitest `realtime-notification.test.ts` và `email-digest.test.ts` để kiểm tra độ tin cậy của luồng gửi mail tức thời, bỏ qua cấu hình và gom nhóm email tổng hợp.
+  - Bảo đảm tỷ lệ phủ và toàn bộ test case đều pass thành công.
+
+### Changed
+- **Tái cấu trúc Module Thông Báo theo chuẩn AGENTS.md**:
+  - Đóng gói toàn bộ logic nghiệp vụ thông báo và gửi mail vào module backend `backend/modules/notifications/` độc lập.
+  - Sử dụng presentation views (`SettingsView`, `Header`) mỏng chỉ để giao tiếp qua REST APIs `GET/POST /api/users/me/notification-preferences`.
+
   - Khi sửa một văn phong thương hiệu sẵn có (`step === -1`), hệ thống hiển thị duy nhất một ô nhập nội dung Quy định & Nguyên tắc văn phong trực tiếp (với `spellCheck={false}` để loại bỏ hoàn toàn các gạch đỏ lỗi chính tả của trình duyệt), ẩn toàn bộ phần xem trước và các lựa chọn cấu hình câu hỏi của wizard.
   - Khi tạo mới bằng Wizard (`step > aiSteps.length`), hệ thống hiển thị phần Xem trước Văn phong AI song song với ô nhập Nguyên tắc bổ sung để người dùng rà soát nội dung do AI sinh ra và bổ sung ý kiến riêng của mình trước khi lưu.
 - **Khởi tạo 4 Văn phong hệ thống (Mẫu)**:
@@ -68,6 +83,20 @@ Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ đ�
   - Bổ sung hàm tiện ích `cleanAndParseJSON` tự động lọc bỏ markdown code block wrappers (như ` ```json `), dọn sạch các dấu phẩy dư thừa (trailing commas) trước khi gọi `JSON.parse`.
   - Cập nhật prompt chỉ dẫn hệ thống `GENERATE_QUESTIONS_SYSTEM_INSTRUCTION` yêu cầu AI tuyệt đối không sử dụng ngoặc kép lồng chưa escape bên trong các chuỗi giá trị của JSON.
   - Bổ sung 3 test case kiểm thử độ ổn định khi phân tích JSON trong `promptConfigAiModule.test.ts`.
+
+## [Unreleased] - 2026-07-17
+
+### Added
+- Kết nối AI Creator với luồng sinh Caption thực tế theo bài viết đã lưu, nền tảng và Preset được chọn; nội dung được stream về giao diện và giữ Caption ID thật cho các bước tiếp theo.
+- Bổ sung tạo lại toàn bộ Caption từ nút hiện hữu và tạo lại chính xác vùng văn bản được bôi đen, có kiểm tra xung đột khi nội dung đã thay đổi.
+- Kết nối thao tác Đăng ngay và Đặt lịch với Scheduled Publishing cho từng nền tảng, đồng thời giữ lại kết quả thành công khi một nền tảng khác gặp lỗi.
+
+### Changed
+- Chuyển điều phối Step 2–5 của AI Creator sang module Quick Publishing: nguồn nhập tay/URL được lưu thật, tài khoản liên kết và Platform Preset được tải từ backend, chỉnh sửa được lưu trước khi đăng hoặc lên lịch.
+
+### Fixed
+- Không còn bỏ qua draft thiếu Caption ID rồi hiển thị thông báo thành công; giao diện chỉ chuyển sang lịch nội dung khi tất cả nền tảng yêu cầu đã hoàn tất và hiển thị rõ nền tảng thất bại khi có partial failure.
+
 
 ## [Unreleased] - 2026-07-16
 

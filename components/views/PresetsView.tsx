@@ -40,6 +40,7 @@ interface PromptConfigRecord {
   rules: string;
   params: any;
   is_default: boolean;
+  is_system?: boolean;
   created_at: string;
   updated_at: string;
 }

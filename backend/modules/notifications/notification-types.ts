@@ -7,6 +7,7 @@ export interface CreateNotificationInput {
   title: string;
   message: string;
   metadata?: unknown;
+  emailSent?: boolean;
 }
 
 export interface NotificationRecord {
@@ -18,6 +19,15 @@ export interface NotificationRecord {
   is_read: boolean;
   metadata: unknown;
   created_at: string;
+  email_sent: boolean;
+}
+
+export interface UserNotificationSettings {
+  email?: string;
+  email_on_success: boolean;
+  email_on_failure: boolean;
+  email_digest_enabled: boolean;
+  email_digest_time: string;
 }
 
 export interface NotificationListInput {
@@ -51,4 +61,11 @@ export interface NotificationRepository {
   insertMany(inputs: CreateNotificationInput[]): Promise<NotificationRecord[]>;
   markRead(userId: string, notificationId: string): Promise<NotificationRecord | null>;
   markAllRead(userId: string): Promise<number>;
+  
+  // Settings & Email Digest methods
+  getUserSettings(userId: string): Promise<UserNotificationSettings | null>;
+  updateUserSettings(userId: string, settings: Partial<UserNotificationSettings>): Promise<UserNotificationSettings>;
+  findUnsentEmailNotifications(userId: string): Promise<NotificationRecord[]>;
+  markEmailsAsSent(notificationIds: string[]): Promise<void>;
+  findUsersForDigest(currentHour: string): Promise<{ id: string; email: string; email_digest_time: string }[]>;
 }

@@ -138,7 +138,7 @@ describe('Platform Presets Route Handlers', () => {
     expect(invalid.status).toBe(400);
   });
 
-  it('normalizes threads and auto-provisions system presets', async () => {
+  it('normalizes threads and returns both user and system presets', async () => {
     rows = [{
       id: 'system-1', user_id: null, platform: 'thread', name: 'System', rules: 'Rules', is_default: true,
     }];
@@ -148,7 +148,7 @@ describe('Platform Presets Route Handlers', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toHaveLength(1);
-    expect(body.data[0]).toMatchObject({ user_id: 'user-1', platform: 'thread', name: 'System' });
+    expect(body.data[0]).toMatchObject({ user_id: null, platform: 'thread', name: 'System' });
   });
 
   it('sorts defaults first and then by name', async () => {

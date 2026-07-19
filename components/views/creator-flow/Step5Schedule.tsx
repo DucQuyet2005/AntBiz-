@@ -18,7 +18,6 @@ const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?:
 );
 
 export default function Step5Schedule() {
-  const { t } = useLanguage();
   const { state, dispatch } = useCreatorFlow();
   
   // Local state for week pagination

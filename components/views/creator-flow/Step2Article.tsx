@@ -2,15 +2,17 @@
 
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, ExternalLink, X,
-  Search, Check, Bookmark, Facebook, Instagram
+  Search, Check, Bookmark, Facebook, Instagram,
+  ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import type { CreatorUploadedSource } from '@/frontend/modules/creator-flow';
 import { ArticleContext } from '@/lib/services/creator/article.service';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
   <svg 
@@ -30,6 +32,7 @@ interface Step2ArticleProps {
   articleContext: ArticleContext | null;
   startCrawl: (url: string, source: 'gocnhinmoi' | 'tuoitre' | 'dantri') => Promise<void>;
   submitManual: (title: string, content: string) => Promise<void>;
+  uploadSource: (file: File) => Promise<CreatorUploadedSource>;
 }
 
 // Mock articles data for simulation
@@ -129,31 +132,279 @@ const MOCK_SITE_ARTICLES = {
 export default function Step2Article({
   sourceType,
   crawlStatus,
+  articleContext,
   startCrawl,
   submitManual,
+  uploadSource,
 }: Step2ArticleProps) {
   const { t } = useLanguage();
   const { state, dispatch } = useCreatorFlow();
 
   // Active site simulated browser modal
   const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
+  const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const handleGoBack = () => {
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.history.back();
+      } catch (err) {
+        console.error('Failed to navigate back:', err);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeBrowserSite) {
+      const baseUrl = activeBrowserSite === 'gocnhinmoi'
+        ? 'https://gocnhinmoi.com.vn'
+        : activeBrowserSite === 'tuoitre'
+          ? 'https://tuoitre.vn'
+          : 'https://dantri.com.vn';
+      setCurrentBrowserUrl(baseUrl);
+    } else {
+      setCurrentBrowserUrl('');
+    }
+  }, [activeBrowserSite]);
+
+  React.useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'URL_CHANGE' && typeof event.data?.url === 'string') {
+        setCurrentBrowserUrl(event.data.url);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
 
   // Audio & Document drag & drop upload states
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLDivElement>(null);
 
   // Floating presets drawer states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
-  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('system');
+  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
 
-  // Active tab for uploaded files status
-  const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document' | 'write'>('audio');
+  // Active tab for uploaded files status - restricted to audio and document (manual is always visible below)
+  const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document'>('audio');
 
   // Preview document state modal
   const [previewDoc, setPreviewDoc] = useState<{ name: string; content: string } | null>(null);
+
+  // Recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [uploadedImages, setUploadedImages] = useState<{ file: File; url: string }[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const initialUrls = state.crawledImageUrls || [];
+    return initialUrls
+      .filter(url => url.startsWith('blob:'))
+      .map(url => {
+        const dummyFile = new File([], "anh_tai_len.png", { type: "image/png" });
+        return { file: dummyFile, url };
+      });
+  });
+  const uploadedImagesRef = useRef(uploadedImages);
+
+  // Lightbox & image list modal states
+  const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
+  const [showAllImagesModal, setShowAllImagesModal] = useState(false);
+
+  // Audio playback and object URL states
+  const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlayAudio = (fileName: string, url: string) => {
+    if (playingAudio === fileName) {
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+      }
+      setPlayingAudio(null);
+    } else {
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+      }
+      const audio = new Audio(url);
+      audioPlaybackRef.current = audio;
+      audio.onended = () => {
+        setPlayingAudio(null);
+      };
+      audio.play().catch(err => {
+        console.error("Playback failed:", err);
+      });
+      setPlayingAudio(fileName);
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(audioUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [audioUrls]);
+
+  React.useEffect(() => {
+    uploadedImagesRef.current = uploadedImages;
+
+    // Sync manually uploaded images to global state.crawledImageUrls
+    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:'));
+    const uploadedUrls = uploadedImages.map(img => img.url);
+    const combined = [...crawledOnly, ...uploadedUrls];
+    
+    const currentCombinedStr = JSON.stringify(state.crawledImageUrls || []);
+    const newCombinedStr = JSON.stringify(combined);
+    if (currentCombinedStr !== newCombinedStr) {
+      dispatch({ type: 'SET_CRAWLED_IMAGES', payload: combined });
+    }
+  }, [uploadedImages, state.crawledImageUrls, dispatch]);
+
+  // Crawl success popup and content flow animation states
+  const [isCrawlingActive, setIsCrawlingActive] = useState(false);
+  const [showCrawlSuccessDialog, setShowCrawlSuccessDialog] = useState(false);
+  const [animatingData, setAnimatingData] = useState<{ title: string; content: string } | null>(null);
+  const [isHighlighting, setIsHighlighting] = useState(false);
+  // Track previous crawlStatus to detect transitions (avoids race condition with isCrawlingActive state)
+  // Initialized with current crawlStatus so first render does not false-trigger
+  const prevCrawlStatusRef = React.useRef<string>(crawlStatus);
+
+  React.useEffect(() => {
+    const prev = prevCrawlStatusRef.current;
+    prevCrawlStatusRef.current = crawlStatus;
+
+    // Detect transition from 'crawling' → 'done'
+    if (prev === 'crawling' && crawlStatus === 'done') {
+      setIsCrawlingActive(false);
+      if (articleContext) {
+        // Fill data IMMEDIATELY — do not rely on onAnimationComplete
+        dispatch({
+          type: 'SET_MANUAL_CONTENT',
+          payload: { title: articleContext.title || '', content: articleContext.content || '' }
+        });
+        // Then trigger visual effects
+        setAnimatingData({ title: articleContext.title || '', content: articleContext.content || '' });
+        setShowCrawlSuccessDialog(true);
+        setIsHighlighting(true);
+        setTimeout(() => setIsHighlighting(false), 1500);
+        const timer = setTimeout(() => setShowCrawlSuccessDialog(false), 6000);
+        return () => clearTimeout(timer);
+      }
+    } else if (prev === 'crawling' && crawlStatus === 'error') {
+      setIsCrawlingActive(false);
+      setUploadError('Không thể thu thập bài viết. Vui lòng thử lại hoặc nhập thủ công.');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crawlStatus, articleContext]);
+
+  React.useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      uploadedImagesRef.current.forEach(img => URL.revokeObjectURL(img.url));
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (crawlStatus === 'error') {
+      setUploadError('Không thể lấy dữ liệu bài viết từ liên kết này. Vui lòng kiểm tra lại đường dẫn hoặc tự điền nội dung thủ công.');
+    }
+  }, [crawlStatus]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartRecording = async () => {
+    setUploadError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const startTime = Date.now();
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+
+        const durationMs = Date.now() - startTime;
+        if (durationMs < 2000) {
+          setUploadError('Thời lượng ghi âm quá ngắn. Vui lòng nói lâu hơn (tối thiểu 2 giây).');
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const file = new File([audioBlob], `Ghi-am-${Date.now()}.wav`, { type: 'audio/wav' });
+        await processUploadedFile(file);
+      };
+      
+      mediaRecorder.start(1000); // chunk every 1s
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => {
+          if (prev >= 300) { // Limit to 5 mins
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+              mediaRecorderRef.current.stop();
+            }
+            if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Không thể truy cập microphone:', err);
+      setUploadError('Không thể truy cập microphone. Vui lòng kiểm tra quyền thiết bị.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  };
 
   const getTagColorClass = (tag: string) => {
     const text = tag.toLowerCase();
@@ -172,108 +423,85 @@ export default function Step2Article({
     return null;
   };
 
-  // Uploaded files list (both audio, documents, and images)
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; size: string; type: 'audio' | 'document' | 'image'; url?: string; content?: string }[]>([
-    { name: 'phong-van-ceo-2023.mp3', size: '12.5 MB', type: 'audio' },
-    { 
-      name: 'NETSPACE_Lê Hải Trung_T6_2026.docx', 
-      size: '4.6 MB', 
-      type: 'document',
-      content: `BÁO CÁO HOẠT ĐỘNG TRUNG TÂM ĐÀO TẠO NETSPACE - THÁNG 06/2026
-Người thực hiện: Lê Hải Trung
-
-I. KẾT QUẢ ĐẠT ĐƯỢC:
-1. Hoàn tất đào tạo 4 lớp AI ứng dụng cho đối tác SMEs với tổng số 85 học viên.
-2. Tỷ lệ học viên hài lòng với chất lượng bài giảng và giảng viên đạt 94.5%.
-3. Phát triển thành công bộ giáo trình chuyên sâu về Next.js và Tailwind CSS.
-
-II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
-1. Đẩy mạnh tuyển sinh khóa học AI Creator và Content Automation.
-2. Nâng cấp hạ tầng lab thực hành phục vụ học viên trực tuyến.`
-    }
-  ]);
+  // Files that completed processing and Article persistence.
+  const [uploadedFiles, setUploadedFiles] = useState<CreatorUploadedSource[]>([]);
 
   const handleFileDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isUploading) return;
     const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      await processUploadedFile(files[0]);
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        await processUploadedFile(files[i]);
+      }
     }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      await processUploadedFile(files[0]);
+      for (let i = 0; i < files.length; i++) {
+        await processUploadedFile(files[i]);
+      }
     }
+    e.target.value = '';
   };
 
   const processUploadedFile = async (file: File) => {
+    setUploadError('');
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension)) {
+      const url = URL.createObjectURL(file);
+      setUploadedImages(prev => [...prev, { file, url }]);
+      return;
+    }
+
     setIsUploading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsUploading(false);
-
-    const fileType = file.type;
-    const fileName = file.name.toLowerCase();
-    
-    let detectedType: 'audio' | 'document' | 'image' = 'document';
-    let url = '';
-    if (fileType.startsWith('image/') || fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-      detectedType = 'image';
-      url = URL.createObjectURL(file);
-    } else if (fileType.startsWith('audio/') || fileName.endsWith('.mp3') || fileName.endsWith('.wav')) {
-      detectedType = 'audio';
-      url = URL.createObjectURL(file);
-    } else {
-      detectedType = 'document';
+    try {
+      const uploaded = await uploadSource(file);
+      setUploadedFiles((previous) => [
+        ...previous.filter((item) => item.name !== uploaded.name),
+        uploaded,
+      ]);
+      if (uploaded.type === 'audio') {
+        const url = URL.createObjectURL(file);
+        setAudioUrls(prev => ({ ...prev, [uploaded.name]: url }));
+      }
+      if (uploaded.type === 'audio' || uploaded.type === 'document') {
+        setActiveFileTab(uploaded.type);
+        // Trigger highlight glow effect when content is filled from STT/Doc
+        setIsHighlighting(true);
+        setTimeout(() => setIsHighlighting(false), 1500);
+      }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Không thể xử lý tệp đã chọn');
+    } finally {
+      setIsUploading(false);
     }
-
-    let extractedText = '';
-    if (detectedType === 'audio') {
-      extractedText = `Chào mừng các bạn đến với buổi phỏng vấn ngày hôm nay. Chúng ta sẽ thảo luận về chiến lược phát triển bền vững trong năm 2024. Mục tiêu chính của chúng ta là giảm thiểu lượng khí thải carbon xuống 20% và tăng cường sử dụng năng lượng tái tạo.`;
-      setUploadedFiles(prev => [...prev, { name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, type: 'audio', url }]);
-      setActiveFileTab('audio');
-    } else if (detectedType === 'image') {
-      extractedText = `Hình ảnh: ${file.name}`;
-      setUploadedFiles(prev => [...prev, { name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, type: 'image', url }]);
-      // Keep active tab unchanged for images as they display persistently below
-    } else {
-      extractedText = `Nội dung tài liệu trích xuất tự động từ tệp ${file.name}. Kế hoạch phát triển bền vững và chuyển đổi số trong vận hành doanh nghiệp trong giai đoạn tiếp theo.`;
-      setUploadedFiles(prev => [...prev, { 
-        name: file.name, 
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`, 
-        type: 'document',
-        content: extractedText
-      }]);
-      setActiveFileTab('write'); // Automatically switch to "Tự viết" editor when parsed
-
-      // Auto-fill manual form area state
-      const titleWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      dispatch({ 
-        type: 'SET_MANUAL_CONTENT', 
-        payload: { title: titleWithoutExtension, content: extractedText } 
-      });
-    }
-
-    await submitManual(file.name, extractedText);
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleManualSubmit = async () => {
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      await submitManual(state.manualTitle, state.manualContent);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Không thể lưu bài viết');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleSelectArticle = async (url: string) => {
+  const handleSelectArticle = (url: string) => {
     if (!activeBrowserSite) return;
-    await startCrawl(url, activeBrowserSite);
+    const site = activeBrowserSite;
     setActiveBrowserSite(null);
+    setIsCrawlingActive(true);
+    startCrawl(url, site);
   };
 
   // Extract selected site articles data
-  const siteData = activeBrowserSite ? MOCK_SITE_ARTICLES[activeBrowserSite] : null;
-
-  // Check if there are any uploaded images
-  const hasImages = uploadedFiles.some(f => f.type === 'image');
 
   return (
     <div className="w-full max-w-5xl mx-auto flex-grow pt-4 pb-20 px-4 md:px-6 select-none animate-fade-in">
@@ -381,7 +609,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                    const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                    const isSystem = Boolean(preset.isSystem);
                     const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                     return matchesSearch && matchesTab;
                   })
@@ -440,7 +668,7 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 {state.presets.filter((preset) => {
                   const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                     preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                  const isSystem = Boolean(preset.isSystem);
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (
@@ -484,10 +712,10 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">G</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              Gocnhinmoi.com.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-primary transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/gocnhinmoi-logo.png" alt="Góc Nhìn Mới" className="h-6 object-contain" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Góc Nhìn Mới
             </span>
           </div>
 
@@ -513,10 +741,10 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-[#E32119] text-white flex items-center justify-center font-bold text-sm">T</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              tuoitre.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#E32119] transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/tuoitre-logo.png" alt="Tuổi Trẻ" className="h-6 object-contain bg-red-600 p-1 rounded" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Tuổi Trẻ
             </span>
           </div>
 
@@ -542,10 +770,10 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
-            <div className="w-7 h-7 rounded-full bg-[#008953] text-white flex items-center justify-center font-bold text-sm">D</div>
-            <span className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-              dantri.com.vn
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#008953] transition-colors" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/dantri-logo.png" alt="Dân Trí" className="h-6 object-contain" />
+            <span className="font-bold text-sm text-zinc-900 dark:text-white">
+              Dân Trí
             </span>
           </div>
 
@@ -564,17 +792,19 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
         <h2 className="text-sm font-bold text-text mb-4">Hoặc tải lên tệp tin của bạn</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch min-h-[380px]">
-          {/* Left Column: Dropzone */}
-          <div className="flex flex-col justify-between h-full min-h-[350px]">
+          {/* Left Column: Dropzone & Direct Recording */}
+          <div className="flex flex-col gap-4 justify-between h-full min-h-[350px]">
             <div 
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors cursor-pointer flex-grow h-full min-h-[330px] ${
+              onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
+              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors flex-grow h-full min-h-[220px] ${
+                isUploading ? 'cursor-wait opacity-80' : 'cursor-pointer'
+              } ${
                 isDragging 
-                  ? 'border-primary bg-primary/5' 
-                  : 'border-gray-250 dark:border-zinc-800 hover:border-primary bg-gray-55 dark:bg-zinc-900/30'
+                  ? 'border-amber-500 bg-amber-500/5' 
+                  : 'border-gray-250 dark:border-zinc-800 hover:border-amber-500 bg-gray-55 dark:bg-zinc-900/30'
               }`}
             >
               <input 
@@ -582,279 +812,348 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                 ref={fileInputRef} 
                 onChange={handleFileSelect} 
                 className="hidden" 
-                accept="audio/*,.pdf,.docx,.doc,.txt,image/*"
+                accept="image/png,image/jpeg,image/jpg,image/webp,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,.mp3,.m4a,.pdf,.docx,.txt"
+                disabled={isUploading}
+                multiple
               />
               {isUploading ? (
                 <div className="flex flex-col items-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                  <span className="text-xs font-bold text-text">Đang tải tệp lên...</span>
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-2" />
+                  <span className="text-xs font-bold text-text">Đang xử lý và lưu nguồn...</span>
                 </div>
               ) : (
                 <>
-                  <UploadCloud className="w-8 h-8 text-primary mb-2" />
+                  <UploadCloud className="w-10 h-10 text-amber-500 mb-3" />
                   <h4 className="text-xs font-bold text-text mb-1">Kéo thả tệp vào đây hoặc Duyệt tìm</h4>
-                  <p className="text-[10px] text-text-muted text-center">
-                    Hỗ trợ Audio, Hình ảnh (PNG, JPG) hoặc Tài liệu (PDF, DOCX, TXT)
+                  <p className="text-[10px] text-text-muted text-center max-w-[280px] leading-relaxed">
+                    Hỗ trợ Hình ảnh (PNG, JPG, JPEG), Audio (MP3, M4A, WAV, OGG, WebM) hoặc Tài liệu (PDF, DOCX, TXT)
                   </p>
                 </>
               )}
             </div>
+
+            {/* Direct Recording Card */}
+            <div className="flex items-center justify-between p-4 bg-gray-55 dark:bg-zinc-900/30 border border-gray-250 dark:border-zinc-800 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                  {isRecording ? (
+                    <span className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-text">
+                    {isRecording ? `Đang ghi âm... (${formatDuration(recordingDuration)})` : 'Ghi âm trực tiếp'}
+                  </p>
+                  <p className="text-[10px] text-text-muted">
+                    {isRecording ? 'Bấm dừng để nói và chuyển thành bài viết' : 'Bấm nút để nói và chuyển thành bài viết'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                disabled={isUploading}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-95 duration-150 shrink-0 ${
+                  isRecording 
+                    ? 'bg-red-500 hover:bg-red-650 shadow-md shadow-red-500/10' 
+                    : 'bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/10'
+                }`}
+              >
+                {isRecording ? (
+                  <>
+                    <Square className="w-3.5 h-3.5 fill-white" />
+                    <span>Dừng</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>Bắt đầu</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Combined Images Preview Row: crawled images + manually uploaded images */}
+            {(() => {
+              // Build a unified list: crawled images (url-only) + user-uploaded images (File + url)
+              const crawledUrls = state.crawledImageUrls || [];
+              const crawledItems = crawledUrls.map(url => ({ type: 'crawled' as const, url, name: 'Ảnh bài báo' }));
+              const uploadedItems = uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name, file: img.file, index: uploadedImages.indexOf(img) }));
+              const allItems = [...crawledItems, ...uploadedItems];
+              if (allItems.length === 0) return null;
+              return (
+                <div className="grid grid-cols-5 gap-3.5 mt-2 animate-fade-in select-none w-full">
+                  {allItems.slice(0, 4).map((item, idx) => (
+                    <div key={idx} className="flex flex-col items-center w-full group relative select-none">
+                      <div
+                        onClick={() => setActiveLightboxImage(item.url)}
+                        className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md transition-all duration-200 cursor-zoom-in"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.url} alt={item.name} className="w-full h-full object-cover select-none" />
+                        {item.type === 'crawled' ? (
+                          <div className="absolute bottom-1 left-1 bg-amber-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">Crawl</div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedImages(prev => prev.filter((_, i) => i !== (item as typeof uploadedItems[0]).index));
+                              URL.revokeObjectURL(item.url);
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm"
+                            title="Xóa ảnh"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-text-muted text-center w-full truncate font-semibold mt-1">
+                        {item.name.split('.')[0]}
+                      </span>
+                    </div>
+                  ))}
+
+                  {allItems.length > 4 && (
+                    <div className="flex flex-col items-center w-full relative select-none">
+                      <div
+                        onClick={() => setShowAllImagesModal(true)}
+                        className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden relative shadow-sm cursor-pointer hover:brightness-110 transition-all"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={allItems[4].url} alt={allItems[4].name} className="w-full h-full object-cover brightness-[0.4] select-none" />
+                        <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-black">
+                          +{allItems.length - 4}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-text-muted text-center w-full truncate font-semibold mt-1">
+                        {allItems[4].name.split('.')[0]}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
 
-          {/* Right Column: Uploaded Files Status / Manual Input */}
+          {/* Right Column: Uploaded Files Status & Manual Input Always Visible */}
           <div className="flex flex-col h-full min-h-[350px] border-t md:border-t-0 md:border-l border-gray-150 dark:border-zinc-850 pt-6 md:pt-0 md:pl-6 justify-between">
             <div className="flex-grow flex flex-col min-h-0">
               <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Trạng thái tệp tải lên</h4>
               
+              {/* Audio and Document Tabs */}
               <div className="flex border-b border-gray-150 dark:border-zinc-800 mb-4 flex-shrink-0">
-                {(['audio', 'document', 'write'] as const).map((tab) => (
+                {(['audio', 'document'] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveFileTab(tab)}
                     className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 capitalize ${
                       activeFileTab === tab 
-                        ? 'border-primary text-primary' 
+                        ? 'border-amber-500 text-amber-500' 
                         : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
-                    {tab === 'audio' ? 'Audio' : tab === 'document' ? 'Tài liệu' : 'Tự viết'}
+                    {tab === 'audio' ? 'Audio' : 'Tài liệu'}
                   </button>
                 ))}
               </div>
 
-              <div className={`flex-grow overflow-y-auto pr-1 no-scrollbar ${hasImages ? 'max-h-[210px]' : 'max-h-[290px]'}`}>
-                {activeFileTab === 'write' ? (
-                  <div className="space-y-4 flex-grow animate-fade-in">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Tiêu đề bài viết gốc</label>
-                        <input
-                          type="text"
-                          placeholder="Nhập tiêu đề bài viết gốc..."
-                          value={state.manualTitle}
-                          onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Nội dung bài viết gốc</label>
-                        <textarea
-                          placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
-                          value={state.manualContent}
-                          rows={4}
-                          onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none"
-                        />
-                      </div>
-
-                    </div>
+              {/* Uploaded File List / Empty State Container */}
+              <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[120px] mb-4">
+                {uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
+                  <div className="text-[11px] text-text-muted py-6 text-center border border-dashed border-gray-250 dark:border-zinc-800 rounded-xl bg-gray-55 dark:bg-zinc-950/20 flex items-center justify-center min-h-[80px]">
+                    Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
                   </div>
                 ) : (
-                  uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
-                    <div className="text-[11px] text-text-muted py-8 text-center border border-dashed border-gray-200 dark:border-zinc-800 rounded-xl flex-grow flex items-center justify-center min-h-[180px]">
-                      Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pr-1">
-                      {uploadedFiles
-                        .filter(f => f.type === activeFileTab)
-                        .map((file, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={() => {
-                              if (file.type === 'document') {
-                                setPreviewDoc({
-                                  name: file.name,
-                                  content: file.content || 'Không có nội dung preview.'
-                                });
-                              }
-                            }}
-                            className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${
-                              file.type === 'document' ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center flex-shrink-0">
-                                  {file.type === 'audio' ? (
-                                    <Music className="w-4 h-4" />
+                  <div className="space-y-2 pr-1">
+                    {uploadedFiles
+                      .filter(f => f.type === activeFileTab)
+                      .map((file, idx) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => {
+                            if (file.type === 'document') {
+                              setPreviewDoc({
+                                name: file.name,
+                                content: file.content || 'Không có nội dung preview.'
+                              });
+                            }
+                          }}
+                          className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${
+                            file.type === 'document' ? 'cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-amber-500/5 text-amber-500 flex items-center justify-center flex-shrink-0">
+                                {file.type === 'audio' ? (
+                                  audioUrls[file.name] ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        togglePlayAudio(file.name, audioUrls[file.name]);
+                                      }}
+                                      className="w-full h-full rounded-lg flex items-center justify-center hover:bg-amber-500/10 active:scale-90 transition-all cursor-pointer"
+                                      title={playingAudio === file.name ? "Tạm dừng" : "Phát ghi âm"}
+                                    >
+                                      {playingAudio === file.name ? (
+                                        <Pause className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                      ) : (
+                                        <Play className="w-3.5 h-3.5 text-amber-500" />
+                                      )}
+                                    </button>
                                   ) : (
-                                    <FileSpreadsheet className="w-4 h-4" />
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-[11px] font-bold text-text truncate">{file.name}</p>
-                                  <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
-                                </div>
+                                    <Music className="w-4 h-4" />
+                                  )
+                                ) : (
+                                  <FileSpreadsheet className="w-4 h-4" />
+                                )}
                               </div>
-                              
-                              <button 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
-                                }}
-                                className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0"
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-text truncate">{file.name}</p>
+                                <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
+                              </div>
                             </div>
-
-                            {file.type === 'audio' && (
-                              <div className="mt-1">
-                                <audio 
-                                  src={file.url || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"} 
-                                  controls 
-                                  className="w-full h-8 rounded-lg text-xs" 
-                                />
-                              </div>
-                            )}
+                            
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (playingAudio === file.name) {
+                                  if (audioPlaybackRef.current) audioPlaybackRef.current.pause();
+                                  setPlayingAudio(null);
+                                }
+                                if (audioUrls[file.name]) {
+                                  URL.revokeObjectURL(audioUrls[file.name]);
+                                  setAudioUrls(prev => {
+                                    const next = { ...prev };
+                                    delete next[file.name];
+                                    return next;
+                                  });
+                                }
+                                setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
+                              }}
+                              className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        ))}
-                    </div>
-                  )
+                        </div>
+                      ))}
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Persistent Selected Images Gallery */}
-            {hasImages && (
-              <div className="mt-4 pt-4 border-t border-gray-150 dark:border-zinc-850 flex-shrink-0 animate-fade-in select-none">
-                <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Hình ảnh đã tải lên ({uploadedFiles.filter(f => f.type === 'image').length})</h4>
-                <div className="flex flex-wrap gap-2 overflow-x-auto py-1 max-h-[85px] no-scrollbar">
-                  {uploadedFiles
-                    .filter(f => f.type === 'image')
-                    .map((file, idx) => (
-                      <div key={idx} className="relative rounded-xl overflow-hidden border border-gray-250 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 w-16 h-16 group/img shadow-sm flex-shrink-0">
-                        <img 
-                          src={file.url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200"} 
-                          alt={file.name} 
-                          className="w-full h-full object-cover"
-                        />
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white p-1 rounded-full transition-colors opacity-95 shadow-md flex items-center justify-center"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+              {/* Divider Line */}
+              <div className="border-b border-gray-200 dark:border-zinc-800/80 my-4" />
+
+              {/* Manual Input Fields - Always Visible */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Tiêu đề bài viết gốc</label>
+                  <input
+                    type="text"
+                    placeholder="Nhập tiêu đề bài viết gốc..."
+                    value={state.manualTitle}
+                    disabled={isUploading}
+                    onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
+                    className={`w-full px-3 py-2 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all duration-1000 ${
+                      isHighlighting 
+                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.01]' 
+                        : 'border-gray-250 dark:border-zinc-800'
+                    }`}
+                  />
+                </div>
+                <div className="flex-grow flex flex-col min-h-[180px]">
+                  <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Nội dung bài viết gốc</label>
+                  <textarea
+                    placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
+                    value={state.manualContent}
+                    rows={6}
+                    disabled={isUploading}
+                    onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
+                    className={`w-full flex-grow px-3 py-3 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none min-h-[160px] leading-relaxed transition-all duration-1000 ${
+                      isHighlighting 
+                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.005]' 
+                        : 'border-gray-250 dark:border-zinc-800'
+                    }`}
+                  />
                 </div>
               </div>
-            )}
+            </div>
 
           </div>
         </div>
       </div>
 
       {/* Simulated News Website Browser Modal */}
-      {activeBrowserSite && siteData && typeof window !== 'undefined' && createPortal(
+      {activeBrowserSite && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in select-text font-sans">
           <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scale-up">
             
             {/* Chrome-style browser address bar */}
             <div className="bg-zinc-100 dark:bg-zinc-950 px-4 py-3 border-b border-gray-200 dark:border-zinc-850 flex items-center gap-3">
-              <div className="flex gap-1.5 flex-shrink-0">
-                <span onClick={() => setActiveBrowserSite(null)} className="w-3 h-3 rounded-full bg-red-400 block cursor-pointer hover:bg-red-500 transition-colors"></span>
-                <span className="w-3 h-3 rounded-full bg-yellow-400 block"></span>
-                <span className="w-3 h-3 rounded-full bg-green-400 block"></span>
+              {/* Nút quay lại trang trước */}
+              <button
+                type="button"
+                onClick={handleGoBack}
+                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                title="Quay lại trang trước"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-4 py-1.5 text-xs text-text-muted border border-gray-200 dark:border-zinc-800 select-all truncate font-semibold">
+                {currentBrowserUrl}
               </div>
-              <div className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-4 py-1.5 text-xs text-text-muted border border-gray-200 dark:border-zinc-800 select-all truncate">
-                {`https://www.${activeBrowserSite === 'gocnhinmoi' ? 'gocnhinmoi.com.vn' : activeBrowserSite === 'tuoitre' ? 'tuoitre.vn' : 'dantri.com.vn'}`}
-              </div>
+              
+              <button
+                type="button"
+                onClick={() => handleSelectArticle(currentBrowserUrl)}
+                className="px-4 py-1.5 bg-primary hover:bg-primary/95 text-white rounded-lg text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-primary/10 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Chọn bài viết này</span>
+              </button>
+
               <button 
                 onClick={() => setActiveBrowserSite(null)}
-                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors"
+                className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
             </div>
 
             {/* Browser Content Area */}
-            <div className="overflow-y-auto p-6 flex-grow bg-[#fcf9f8] dark:bg-zinc-900/40">
-              <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-200 dark:border-zinc-800">
+            <div className="flex-grow flex flex-col bg-[#fcf9f8] dark:bg-zinc-900/40 p-4 min-h-[500px]">
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-zinc-800 flex-shrink-0">
                 <h2 className="text-xs font-black text-text uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#a04100] animate-pulse"></span>
-                  CHỌN BÀI VIẾT CHO BẢN TIN HÔM NAY
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+                  Trình duyệt tích hợp - Duyệt tin trực tiếp
                 </h2>
-                <span className="text-[10px] bg-[#a04100]/10 text-[#a04100] font-black px-2.5 py-1 rounded-full uppercase">
-                  Bước 2: Chọn bài viết
+                <span className="text-[10px] bg-primary/10 text-primary font-black px-2.5 py-1 rounded-full uppercase">
+                  Chọn bài viết để crawl nội dung
                 </span>
               </div>
-
-              {/* Main and Side articles layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Main Article (Left) */}
-                <div 
-                  onClick={() => handleSelectArticle(siteData.main.url)}
-                  className="lg:col-span-2 group relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-[380px]"
-                >
-                  <div className="h-[240px] overflow-hidden bg-zinc-150 relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" 
-                      src={siteData.main.image} 
-                      alt={siteData.main.title}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent"></div>
-                    
-                    {/* Select Article Badge Overlay */}
-                    <div className="absolute top-4 right-4 bg-zinc-900/90 text-white font-black text-[10px] px-3.5 py-1.5 rounded-md transition-colors border border-zinc-700 uppercase tracking-wider shadow-md hover:bg-black">
-                      CHỌN BÀI VIẾT
-                    </div>
-                    
-                    <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <span className="text-[9px] bg-[#a04100] text-white font-black px-2 py-0.5 rounded mr-2 uppercase">Tin nóng</span>
-                      <span className="text-[10px] text-zinc-300">Vừa xong</span>
-                      <h3 className="text-base font-black mt-2 leading-snug tracking-tight text-white group-hover:text-[#ffb693] transition-colors line-clamp-2">
-                        {siteData.main.title}
-                      </h3>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 flex-grow flex flex-col justify-between">
-                    <p className="text-[11px] text-text-muted line-clamp-3 leading-relaxed">
-                      {siteData.main.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-[9px] text-text-muted mt-2 border-t border-gray-150 dark:border-zinc-800 pt-2">
-                      <span>Nguồn: {activeBrowserSite === 'gocnhinmoi' ? 'Góc Nhìn Mới' : activeBrowserSite === 'tuoitre' ? 'Tuổi Trẻ' : 'Dân Trí'}</span>
-                      <span>Chuyên mục: Thời sự</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Side Articles List (Right) */}
-                <div className="space-y-4 flex flex-col h-[380px]">
-                  <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex-shrink-0">Tin nóng khác</h4>
-                  <div className="space-y-3 overflow-y-auto pr-1 flex-grow">
-                    {siteData.sides.map((article, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleSelectArticle(article.url)}
-                        className="group flex gap-3 p-2.5 bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-xl cursor-pointer hover:border-[#a04100] hover:shadow-md transition-all"
-                      >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-150 flex-shrink-0 relative">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350" src={article.image} alt={article.title} />
-                        </div>
-                        
-                        <div className="flex flex-col justify-between min-w-0 flex-grow">
-                          <h5 className="text-[10px] font-bold text-text leading-snug line-clamp-2 group-hover:text-[#a04100] transition-colors">
-                            {article.title}
-                          </h5>
-                          <span className="text-[8px] text-text-muted mt-1 block">15 phút trước</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
+              
+              <div className="w-full flex-grow relative bg-white rounded-2xl overflow-hidden border border-gray-250 dark:border-zinc-850 h-[50vh]">
+                <iframe
+                  ref={iframeRef}
+                  src={`/api/proxy?url=${encodeURIComponent(
+                    activeBrowserSite === 'gocnhinmoi' 
+                      ? 'https://gocnhinmoi.com.vn' 
+                      : activeBrowserSite === 'tuoitre' 
+                        ? 'https://tuoitre.vn' 
+                        : 'https://dantri.com.vn'
+                  )}`}
+                  className="w-full h-full border-none"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                />
               </div>
             </div>
 
@@ -902,7 +1201,6 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
                     payload: { title: previewDoc.name.substring(0, previewDoc.name.lastIndexOf('.')), content: previewDoc.content } 
                   });
                   setPreviewDoc(null);
-                  setActiveFileTab('write'); // Switches to input tab
                 }}
                 className="px-4 py-2 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10"
               >
@@ -919,6 +1217,156 @@ II. KẾ THỪA VÀ PHÁT TRIỂN QUÝ TIẾP THEO:
 
           </div>
         </div>,
+        document.body
+      )}
+
+      {/* Image Lightbox Modal */}
+      {activeLightboxImage && typeof window !== 'undefined' && createPortal(
+        <div 
+          onClick={() => setActiveLightboxImage(null)}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 cursor-zoom-out animate-fade-in select-none"
+        >
+          <div className="relative max-w-[90vw] max-h-[85vh] select-none" onClick={e => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={activeLightboxImage} 
+              alt="Preview gốc" 
+              className="rounded-2xl max-w-full max-h-[80vh] object-contain shadow-2xl border border-white/10"
+            />
+            <button
+              onClick={() => setActiveLightboxImage(null)}
+              className="absolute -top-10 right-0 text-white/80 hover:text-white flex items-center gap-1 text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Đóng</span>
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* All Uploaded Images Modal */}
+      {showAllImagesModal && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in select-text font-sans">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-scale-up">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-text">Tất cả ảnh đã tải lên ({uploadedImages.length})</h3>
+                <p className="text-[10px] text-text-muted">Xem và quản lý tất cả các ảnh nguồn</p>
+              </div>
+              <button 
+                onClick={() => setShowAllImagesModal(false)}
+                className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-all active:scale-95 cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Grid of Images */}
+            <div className="p-6 overflow-y-auto flex-grow bg-gray-55 dark:bg-zinc-950/20">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {uploadedImages.map((img, index) => (
+                  <div key={index} className="flex flex-col items-center gap-1.5 group relative select-none">
+                    <div 
+                      onClick={() => setActiveLightboxImage(img.url)}
+                      className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={img.file.name} className="w-full h-full object-cover select-none" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                          URL.revokeObjectURL(img.url);
+                          if (uploadedImages.length <= 1) {
+                            setShowAllImagesModal(false);
+                          }
+                        }}
+                        className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-650 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md cursor-pointer"
+                        title="Xóa ảnh"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-text-muted text-center w-full truncate font-semibold px-1 mt-1">
+                      {img.file.name.split('.')[0]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-150 dark:border-zinc-850 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAllImagesModal(false)}
+                className="px-4 py-2 bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-800 text-text rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Warning Toast - bottom right, non-blocking. AnimatePresence removed: incompatible with createPortal */}
+      {uploadError && typeof window !== 'undefined' && createPortal(
+        <motion.div
+          key="error-toast"
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+          className="fixed bottom-6 right-6 z-[500] bg-white dark:bg-zinc-900 border-l-4 border-l-red-500 border border-red-200 dark:border-red-900/40 rounded-2xl p-4 shadow-2xl flex items-center gap-3 w-full max-w-sm font-sans select-text"
+        >
+          <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+          </div>
+          <div className="flex-grow min-w-0">
+            <h4 className="text-xs font-black text-text">Cảnh báo</h4>
+            <p className="text-[10px] text-text-muted break-words leading-relaxed mt-0.5">{uploadError}</p>
+          </div>
+          <button
+            onClick={() => setUploadError('')}
+            className="p-1.5 rounded-full hover:bg-gray-150 dark:hover:bg-zinc-850 text-text-muted hover:text-text transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>,
+        document.body
+      )}
+
+
+
+      {/* Crawl Success Toast - bottom right, non-blocking. AnimatePresence removed: incompatible with createPortal */}
+      {showCrawlSuccessDialog && typeof window !== 'undefined' && createPortal(
+        <motion.div
+          key="success-toast"
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+          className="fixed bottom-6 right-6 z-[500] bg-white dark:bg-zinc-900 border-l-4 border-l-emerald-500 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl p-4 shadow-2xl flex items-center gap-3 w-full max-w-sm font-sans select-text"
+        >
+          <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div className="flex-grow min-w-0">
+            <h4 className="text-xs font-black text-text">Thu thập thành công</h4>
+            <p className="text-[10px] text-text-muted mt-0.5 truncate font-semibold">
+              {articleContext?.title || 'Đã tải bài viết về trình soạn thảo.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCrawlSuccessDialog(false)}
+            className="text-text-muted hover:text-text p-1 cursor-pointer hover:bg-gray-150 dark:hover:bg-zinc-800 rounded-full transition-colors flex-shrink-0"
+            title="Đóng"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>,
         document.body
       )}
 

@@ -15,6 +15,7 @@ export interface ArticleSummary {
 
 export interface CaptionSummary {
   id: string;
+  created_by?: string;
   platform: string;
   ai_content?: string | null;
   edited_content?: string | null;

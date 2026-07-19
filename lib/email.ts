@@ -110,16 +110,17 @@ export async function logAndNotifyPublishResult(
   userEmail: string,
   postTitle: string,
   status: 'success' | 'failed',
-  details: string
+  details: string,
+  skipEmail = false
 ) {
-  // const statusLabel = status === 'success' ? 'THÀNH CÔNG' : 'THẤT BẠI';
-  // const subject = `[AntBiz] Thông báo kết quả đăng bài: ${statusLabel}`;
-  // const text = `Xin chào,\n\nBài đăng "${postTitle}" đã được tự động đăng lên Facebook với trạng thái: ${statusLabel}.\n\nChi tiết:\n${details}\n\nTrân trọng,\nĐội ngũ AntBiz`;
+  const statusLabel = status === 'success' ? 'THÀNH CÔNG' : 'THẤT BẠI';
+  const subject = `[AntBiz] Thông báo kết quả đăng bài: ${statusLabel}`;
+  const text = `Xin chào,\n\nBài đăng "${postTitle}" đã được tự động đăng lên Facebook với trạng thái: ${statusLabel}.\n\nChi tiết:\n${details}\n\nTrân trọng,\nĐội ngũ AntBiz`;
 
-  // 1. Gửi thông báo qua Email (Đã được tắt để chuyển sang gửi email tổng hợp lúc 20:00 hàng ngày)
-  // if (userEmail) {
-  //   await sendEmail({ to: userEmail, subject, text });
-  // }
+  // 1. Gửi thông báo qua Email
+  if (userEmail && !skipEmail) {
+    await sendEmail({ to: userEmail, subject, text });
+  }
 
   // 2. Lưu lịch sử ghi nhận vào database audit_logs
   try {

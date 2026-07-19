@@ -76,6 +76,69 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     return data?.length || 0;
   }
 
+  async getUserSettings(userId: string) {
+    const { data, error } = await this.supabase
+      .from('users')
+      .select('email, email_on_success, email_on_failure, email_digest_enabled, email_digest_time')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw this.failure('getUserSettings', error);
+    return data as any;
+  }
+
+  async updateUserSettings(userId: string, settings: any) {
+    const { data, error } = await this.supabase
+      .from('users')
+      .update(settings)
+      .eq('id', userId)
+      .select('email_on_success, email_on_failure, email_digest_enabled, email_digest_time')
+      .single();
+    if (error) throw this.failure('updateUserSettings', error);
+    return data as any;
+  }
+
+  async findUnsentEmailNotifications(userId: string) {
+    const { data, error } = await this.supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('email_sent', false)
+      .in('type', ['post_success', 'post_failed'])
+      .order('created_at', { ascending: true });
+    if (error) throw this.failure('findUnsentEmailNotifications', error);
+    return (data || []) as NotificationRecord[];
+  }
+
+  async markEmailsAsSent(notificationIds: string[]) {
+    if (!notificationIds.length) return;
+    const { error } = await this.supabase
+      .from('notifications')
+      .update({ email_sent: true })
+      .in('id', notificationIds);
+    if (error) throw this.failure('markEmailsAsSent', error);
+  }
+
+  async findUsersForDigest(currentHour: string) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const { data, error } = await this.supabase
+      .from('users')
+      .select('id, email, email_digest_time, last_digest_sent_at')
+      .eq('email_digest_enabled', true)
+      .eq('email_digest_time', currentHour);
+    
+    if (error) throw this.failure('findUsersForDigest', error);
+
+    const users = (data || []).filter((u: any) => {
+      if (!u.last_digest_sent_at) return true;
+      const lastSent = new Date(u.last_digest_sent_at);
+      return lastSent < todayStart;
+    });
+
+    return users.map((u: any) => ({ id: u.id, email: u.email, email_digest_time: u.email_digest_time }));
+  }
+
   private failure(operation: string, error: unknown) {
     return new NotificationRepositoryError(operation, error);
   }
@@ -88,5 +151,6 @@ function toRow(input: CreateNotificationInput) {
     title: input.title,
     message: input.message,
     metadata: input.metadata || {},
+    email_sent: input.emailSent ?? false,
   };
 }

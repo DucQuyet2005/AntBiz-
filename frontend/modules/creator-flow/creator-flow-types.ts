@@ -16,11 +16,13 @@ export interface CreatorFlowState {
   // Step 2: Article Ingestion
   sourceType: 'gocnhinmoi' | 'tuoitre' | 'dantri' | 'manual' | null;
   articleUrl: string;
+  articleId: string | null;
   manualTitle: string;
   manualContent: string;
   crawlJobId: string | null;
   crawlStatus: 'idle' | 'crawling' | 'done' | 'error';
   articleContext: ArticleContext | null;
+  crawledImageUrls: string[]; // Images extracted from crawled article
 
   // Step 3: Presets
   presets: Preset[];
@@ -35,7 +37,7 @@ export interface CreatorFlowState {
   isGeneratingPost: boolean;
   chatMessages: ChatMessage[];
   isChatSending: boolean;
-  highlightedText: string;
+  highlightSelections: Array<{ id: string; text: string; start: number; end: number }>;
   isHighlightEditing: boolean;
   conversationalStep: number; // For step-by-step assistant questionnaire
 
@@ -48,6 +50,8 @@ export interface CreatorFlowState {
   timelinePosts: ScheduledPostInfo[];
   isLoadingTimeline: boolean;
   isScheduling: boolean;
+  publishingSucceededPlatforms: PlatformType[];
+  publishingFailedPlatforms: PlatformType[];
 }
 
 export type CreatorFlowAction =
@@ -58,10 +62,12 @@ export type CreatorFlowAction =
   | { type: 'SET_LOADING_PLATFORMS'; payload: boolean }
   | { type: 'SET_SOURCE_TYPE'; payload: 'gocnhinmoi' | 'tuoitre' | 'dantri' | 'manual' | null }
   | { type: 'SET_ARTICLE_URL'; payload: string }
+  | { type: 'SET_ARTICLE_ID'; payload: string | null }
   | { type: 'SET_MANUAL_CONTENT'; payload: { title: string; content: string } }
   | { type: 'SET_CRAWL_JOB'; payload: { jobId: string; status: 'idle' | 'crawling' | 'done' | 'error' } }
   | { type: 'SET_CRAWL_STATUS'; payload: 'idle' | 'crawling' | 'done' | 'error' }
   | { type: 'SET_ARTICLE_CONTEXT'; payload: ArticleContext | null }
+  | { type: 'SET_CRAWLED_IMAGES'; payload: string[] }
   | { type: 'SET_PRESETS'; payload: Preset[] }
   | { type: 'SET_SELECTED_PRESET'; payload: string | null }
   | { type: 'SET_SEARCH_PRESET'; payload: string }
@@ -73,7 +79,9 @@ export type CreatorFlowAction =
   | { type: 'SET_GENERATING_POST'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'SET_CHAT_SENDING'; payload: boolean }
-  | { type: 'SET_HIGHLIGHT_TEXT'; payload: string }
+  | { type: 'ADD_HIGHLIGHT_SELECTION'; payload: { id: string; text: string; start: number; end: number } }
+  | { type: 'REMOVE_HIGHLIGHT_SELECTION'; payload: string }
+  | { type: 'CLEAR_HIGHLIGHT_SELECTIONS' }
   | { type: 'SET_HIGHLIGHT_EDITING'; payload: boolean }
   | { type: 'SET_CONVERSATIONAL_STEP'; payload: number }
   | { type: 'SET_SCHEDULE_MODE'; payload: 'now' | 'scheduled' }
@@ -81,4 +89,5 @@ export type CreatorFlowAction =
   | { type: 'SET_TIMELINE'; payload: ScheduledPostInfo[] }
   | { type: 'SET_LOADING_TIMELINE'; payload: boolean }
   | { type: 'SET_SCHEDULING'; payload: boolean }
+  | { type: 'SET_PUBLISHING_RESULT'; payload: { successful: PlatformType[]; failed: PlatformType[] } }
   | { type: 'RESET_FLOW' };

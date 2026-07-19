@@ -2,9 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  ChevronLeft, RefreshCw, Calendar, Send, Sparkles, 
-  Info, Cpu, Facebook, Instagram, X, Loader2, Globe,
+import {
+  RefreshCw, Send, Sparkles,
+  Cpu, Facebook, Instagram, X, Loader2, Globe,
   Bookmark, Check, Search
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
@@ -22,8 +22,6 @@ export default function Step4Editor() {
   const { 
     state, 
     dispatch,
-    prevStep,
-    nextStep,
     generateAIContent, 
     regeneratePostContent, 
     sendAssistantChat,
@@ -33,7 +31,12 @@ export default function Step4Editor() {
   // Style Presets states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
-  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('system');
+  const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
+
+  // Determine active post preview image (prefer custom uploaded/crawled list first, then thumbnail fallback)
+  const postImage = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
+    ? state.crawledImageUrls[0]
+    : state.articleContext?.thumbnail;
 
   const getTagColorClass = (tag: string) => {
     const text = tag.toLowerCase();
@@ -48,10 +51,12 @@ export default function Step4Editor() {
   // Local states
   const [editableTitle, setEditableTitle] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
+  const [imageError, setImageError] = useState<boolean>(false);
   
   // Highlighting popover state
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [showPopover, setShowPopover] = useState<boolean>(false);
+  const [currentSelection, setCurrentSelection] = useState<{ id: string; text: string; start: number; end: number } | null>(null);
   const [instructionText, setInstructionText] = useState<string>('');
   
   // Track visual flash transition state on update
@@ -60,6 +65,7 @@ export default function Step4Editor() {
   // References
   const editorRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Mobile layout mode switcher: 'canvas' | 'chat'
   const [mobileMode, setMobileMode] = useState<'canvas' | 'chat'>('canvas');
@@ -71,6 +77,11 @@ export default function Step4Editor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset image error state when active post image changes
+  useEffect(() => {
+    setImageError(false);
+  }, [postImage]);
 
   // Update title sync
   useEffect(() => {
@@ -96,56 +107,95 @@ export default function Step4Editor() {
     }
   }, [state.postContent]);
 
-  // Monitor text selections to draw inline popover
   const handleSelectionCheck = () => {
     const selection = window.getSelection();
     if (!selection) return;
 
-    const text = selection.toString().trim();
-    if (!text || text.length < 3) {
+    const text = selection.toString();
+    if (!text.trim() || text.trim().length < 3) {
       setShowPopover(false);
+      setCurrentSelection(null);
       return;
     }
 
     // Verify selection is within the editor
     if (editorRef.current && editorRef.current.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
+      const prefix = range.cloneRange();
+      prefix.selectNodeContents(editorRef.current);
+      prefix.setEnd(range.startContainer, range.startOffset);
+      const selectionStart = prefix.toString().length;
+      const selectionEnd = selectionStart + text.length;
       const rect = range.getBoundingClientRect();
       
-      // Calculate coordinates relative to screen view layout
+      // Calculate coordinates relative to viewport for fixed positioning
       setPopoverPos({
-        top: rect.top + window.scrollY - 55,
-        left: rect.left + window.scrollX + (rect.width / 2),
+        top: rect.top - 55,
+        left: rect.left + (rect.width / 2),
       });
-      dispatch({ type: 'SET_HIGHLIGHT_TEXT', payload: text });
+      
+      const newSelection = { id: `sel_${Date.now()}`, text, start: selectionStart, end: selectionEnd };
+      setCurrentSelection(newSelection);
+      dispatch({
+        type: 'ADD_HIGHLIGHT_SELECTION',
+        payload: newSelection
+      });
+      
       setShowPopover(true);
+      window.getSelection()?.removeAllRanges();
     }
   };
 
-  const handleClearSelection = () => {
+  const handleCancelSelection = () => {
     setShowPopover(false);
-    window.getSelection()?.removeAllRanges();
+    if (currentSelection) {
+      dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: currentSelection.id });
+    }
+    setCurrentSelection(null);
   };
 
-  const handleSendHighlightEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!instructionText.trim()) return;
-    setShowPopover(false);
+  const renderHighlightedBackdrop = (text: string, selections: Array<{start: number, end: number}>) => {
+    if (!text || selections.length === 0) return text;
+    const sorted = [...selections].sort((a, b) => a.start - b.start);
+    let lastIndex = 0;
+    const elements: React.ReactNode[] = [];
     
-    // Switch mobile mode to chat side if active
-    setMobileMode('chat');
+    sorted.forEach((sel, idx) => {
+      if (sel.start > lastIndex) {
+        elements.push(<span key={`text-${idx}`}>{text.slice(lastIndex, sel.start)}</span>);
+      }
+      elements.push(
+        <mark key={`mark-${idx}`} className="bg-amber-300/60 dark:bg-amber-500/40 text-transparent rounded-[3px]">
+          {text.slice(sel.start, sel.end)}
+        </mark>
+      );
+      lastIndex = sel.end;
+    });
+    if (lastIndex < text.length) {
+      elements.push(<span key="text-last">{text.slice(lastIndex)}</span>);
+    }
+    
+    return elements;
+  };
 
-    // Call editHighlighted to run Gemini 2.5 Flash and replace the text
-    await editHighlighted(instructionText);
-    
-    setInstructionText('');
-    handleClearSelection();
+  const handleSendHighlightEdit = () => {
+    setShowPopover(false);
+    setMobileMode('chat');
+    // Focus the chat input
+    setTimeout(() => {
+      chatInputRef.current?.focus();
+    }, 100);
   };
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    sendAssistantChat(chatInput);
+
+    if (state.highlightSelections.length > 0) {
+      editHighlighted(chatInput);
+    } else {
+      sendAssistantChat(chatInput);
+    }
     setChatInput('');
   };
 
@@ -204,7 +254,7 @@ export default function Step4Editor() {
           
           <div className="flex items-center gap-3.5 flex-shrink-0">
             <button
-              onClick={regeneratePostContent}
+              onClick={() => regeneratePostContent()}
               disabled={state.isGeneratingPost}
               className="flex items-center gap-1.5 text-xs font-bold text-text-muted hover:text-text border border-gray-250 dark:border-zinc-700 hover:bg-gray-55 dark:hover:bg-zinc-800 rounded-full px-4.5 py-2 transition-all disabled:opacity-50"
             >
@@ -305,19 +355,27 @@ export default function Step4Editor() {
               </div>
 
               {/* Fake post media thumbnail - spans full-width with 4:3 ratio */}
-              {state.articleContext?.thumbnail && (
+              {postImage && !imageError && (
                 <div className="w-full border-t border-b border-gray-100 dark:border-zinc-850 select-none overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={state.articleContext.thumbnail}
+                    src={postImage}
                     alt="Post media thumbnail"
                     className="w-full aspect-[4/3] object-cover"
+                    onError={() => setImageError(true)}
                   />
                 </div>
               )}
 
-              {/* Editable Text Area */}
-              <div className="p-6 pt-4">
+              {/* Editable Text Area Wrapper */}
+              <div className="p-6 pt-4 relative min-h-[300px]">
+                {/* Backdrop for highlights */}
+                <div 
+                  className="absolute inset-0 p-6 pt-4 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden"
+                >
+                  {renderHighlightedBackdrop(state.postContent, state.highlightSelections)}
+                </div>
+                {/* Actual Editor */}
                 <div 
                   ref={editorRef}
                   contentEditable={!state.isGeneratingPost}
@@ -325,7 +383,7 @@ export default function Step4Editor() {
                   onBlur={(e) => {
                     dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                   }}
-                  className="text-sm md:text-[15px] text-text leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[300px] bg-transparent focus:ring-0 focus:outline-none"
+                  className="text-sm md:text-[15px] text-text leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[300px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                 >
                   {state.postContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
                 </div>
@@ -336,43 +394,29 @@ export default function Step4Editor() {
           {/* Inline Selection Highlight popover */}
           {showPopover && (
             <div
-              className="absolute z-50 bg-[#121214] text-white rounded-2xl shadow-2xl flex flex-col p-3.5 w-72 animate-scale-up border border-zinc-800"
+              className="fixed z-50 bg-zinc-950 text-white rounded-xl shadow-2xl flex items-center gap-2 p-1.5 animate-scale-up border border-zinc-800"
               style={{
                 top: `${popoverPos.top}px`,
                 left: `${popoverPos.left}px`,
                 transform: 'translateX(-50%)',
               }}
             >
-              <div className="text-[10px] uppercase font-bold tracking-wider text-[#ff6b00] mb-2 flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-[#ff6b00]" />
-                <span>AI EDIT: &quot;{state.highlightedText.substring(0, 15)}...&quot;</span>
-              </div>
-              <form onSubmit={handleSendHighlightEdit} className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="Nhập yêu cầu sửa..."
-                  value={instructionText}
-                  onChange={(e) => setInstructionText(e.target.value)}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] w-full"
-                />
-                <div className="flex justify-end gap-1.5 mt-1">
-                  <button
-                    type="button"
-                    onClick={handleClearSelection}
-                    className="px-2.5 py-1 text-[10px] font-bold text-zinc-400 hover:text-white"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-[#ff6b00] hover:bg-[#ff6b00]/90 text-white px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-md shadow-[#ff6b00]/25"
-                  >
-                    <Send className="w-3 h-3" />
-                    <span>Gửi AI sửa</span>
-                  </button>
-                </div>
-              </form>
+              <button
+                type="button"
+                onClick={handleSendHighlightEdit}
+                className="bg-[#ff6b00] hover:bg-[#ff6b00]/90 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#ff6b00]/25 transition-all active:scale-95 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Gửi AI sửa</span>
+              </button>
+              <div className="w-px h-5 bg-zinc-800" />
+              <button
+                type="button"
+                onClick={handleCancelSelection}
+                className="text-zinc-400 hover:text-white px-2 py-1.5 text-xs font-bold transition-all hover:bg-zinc-900 rounded-lg cursor-pointer"
+              >
+                Hủy
+              </button>
             </div>
           )}
         </div>
@@ -443,10 +487,45 @@ export default function Step4Editor() {
 
         {/* Chat input footer */}
         <div className="p-4 border-t border-gray-150 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md">
+          {state.highlightSelections.length > 0 && (
+            <div className="mb-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl p-2.5 flex flex-col gap-2 text-xs animate-fade-in select-none">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
+                  <span className="text-text font-semibold">
+                    Đang sửa {state.highlightSelections.length} đoạn
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' })}
+                  className="text-text-muted hover:text-text p-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-full transition-colors shrink-0"
+                  title="Xóa tất cả"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-1 max-h-24 overflow-y-auto pr-1">
+                {state.highlightSelections.map(sel => (
+                  <div key={sel.id} className="flex items-center justify-between gap-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                    <span className="italic text-text-muted truncate">"{sel.text}"</span>
+                    <button 
+                      onClick={() => dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: sel.id })} 
+                      className="text-text-muted hover:text-red-500 shrink-0 transition-colors"
+                      title="Xóa đoạn này"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSendChat} className="relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden">
             <textarea
+              ref={chatInputRef}
               className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-sm p-4 resize-none h-20 text-text placeholder-text-muted/65 pr-14"
-              placeholder="Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)"
+              placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)"}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
@@ -545,7 +624,7 @@ export default function Step4Editor() {
                   .filter((preset) => {
                     const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                    const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                    const isSystem = Boolean(preset.isSystem);
                     const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                     return matchesSearch && matchesTab;
                   })
@@ -557,7 +636,7 @@ export default function Step4Editor() {
                         onClick={() => {
                           const newId = isSelected ? null : preset.id;
                           dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
-                          regeneratePostContent(); // Regenerate AI content mid-way
+                          regeneratePostContent(newId);
                         }}
                         className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
                           isSelected
@@ -605,7 +684,7 @@ export default function Step4Editor() {
                 {state.presets.filter((preset) => {
                   const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                     preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  const isSystem = preset.id === 'preset_summer_campaign' || preset.id === 'preset_product_launch' || preset.id === 'preset_insta_lifestyle';
+                  const isSystem = Boolean(preset.isSystem);
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (

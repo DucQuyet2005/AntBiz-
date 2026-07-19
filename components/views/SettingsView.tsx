@@ -38,8 +38,20 @@ export default function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { font, setFont } = useFont();
 
-  const [aiGenNotify, setAiGenNotify] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'platform-presets'>('general');
+
+  // State for interactive inputs
+  const [openaiConnected, setOpenaiConnected] = useState(true);
+  const [openaiLoading, setOpenaiLoading] = useState(false);
+  const [midjourneyConnected, setMidjourneyConnected] = useState(false);
+  const [midjourneyLoading, setMidjourneyLoading] = useState(false);
+  // Dynamic Email Notification settings state
+  const [notifSettingsLoading, setNotifSettingsLoading] = useState(false);
+  const [notifSettingsSaving, setNotifSettingsSaving] = useState(false);
+  const [emailPostSuccess, setEmailPostSuccess] = useState(true);
+  const [emailPostFailed, setEmailPostFailed] = useState(true);
+  const [emailDailyDigest, setEmailDailyDigest] = useState(false);
+  const [digestTime, setDigestTime] = useState('08:00');
 
   const [userId, setUserId] = useState<string | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
@@ -95,7 +107,70 @@ export default function SettingsView() {
     }, 0);
   }, []);
 
+  // Load email notification settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      setNotifSettingsLoading(true);
+      try {
+        const res = await fetch('/api/notifications/settings');
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.data) {
+            setEmailPostSuccess(json.data.email_post_success ?? true);
+            setEmailPostFailed(json.data.email_post_failed ?? true);
+            setEmailDailyDigest(json.data.email_daily_digest ?? false);
+            setDigestTime(json.data.digest_time ?? '08:00');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching notification settings:', err);
+      } finally {
+        setNotifSettingsLoading(false);
+      }
+    };
+    if (userId) {
+      fetchSettings();
+    }
+  }, [userId]);
 
+  const handleSaveNotifSettings = async (
+    postSuccess: boolean,
+    postFailed: boolean,
+    dailyDigest: boolean,
+    time: string
+  ) => {
+    setNotifSettingsSaving(true);
+    try {
+      const res = await fetch('/api/notifications/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          emailPostSuccess: postSuccess,
+          emailPostFailed: postFailed,
+          emailDailyDigest: dailyDigest,
+          digestTime: time,
+        }),
+      });
+      if (res.ok) {
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? 'Đã cập nhật cấu hình thông báo thành công!' 
+                : 'Notification settings updated successfully!',
+              type: 'success',
+            }
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Error saving notification settings:', err);
+    } finally {
+      setNotifSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -322,59 +397,150 @@ export default function SettingsView() {
         <div className="col-span-12 lg:col-span-5 bg-sidebar/50 dark:bg-black/40 border border-primary/10 dark:border-white/5 rounded-2xl p-8 flex flex-col gap-6 text-text">
           
           {/* Header Notifications */}
-          <div className="flex items-center gap-3 font-bold text-lg text-primary">
-            <Bell size={20} />
-            <h2>{t('settings.apiIntegrations')}</h2>
+          <div className="flex items-center justify-between font-bold text-lg text-primary border-b border-primary/10 pb-3">
+            <div className="flex items-center gap-3">
+              <Bell size={20} />
+              <h2>{language === 'vi' ? 'Cấu hình thông báo email' : 'Email Notification Preferences'}</h2>
+            </div>
+            {(notifSettingsLoading || notifSettingsSaving) && (
+              <Loader2 size={16} className="animate-spin text-primary" />
+            )}
           </div>
 
           {/* Configuration List */}
           <div className="flex flex-col gap-5 mt-1">
-            
-            {/* Config Item 1 */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5" id="ai-notify-label">
-                <span className="text-sm font-bold">{t('settings.aiNotifyTitle')}</span>
-                <span id="ai-notify-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                  {t('settings.aiNotifyDesc')}
-                </span>
+            {notifSettingsLoading ? (
+              <div className="py-6 flex flex-col items-center justify-center gap-2 text-text-muted">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="text-xs">{language === 'vi' ? 'Đang tải cấu hình...' : 'Loading preferences...'}</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
-                <input 
-                  type="checkbox" 
-                  checked={aiGenNotify}
-                  onChange={() => setAiGenNotify(!aiGenNotify)}
-                  aria-labelledby="ai-notify-label"
-                  aria-describedby="ai-notify-desc"
-                  className="sr-only peer" 
-                />
-                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  aiGenNotify ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
-                }`}></div>
-              </label>
-            </div>
+            ) : (
+              <>
+                {/* 1. Post Success Email */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5" id="email-success-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo đăng bài thành công' : 'Email on successful posts'}
+                    </span>
+                    <span id="email-success-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gửi email thông báo chi tiết ngay lập tức sau khi bài viết được đăng tải thành công.' 
+                        : 'Send an email notification immediately after a post is successfully published.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailPostSuccess}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailPostSuccess(val);
+                        handleSaveNotifSettings(val, emailPostFailed, emailDailyDigest, digestTime);
+                      }}
+                      aria-labelledby="email-success-label"
+                      aria-describedby="email-success-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailPostSuccess ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
 
-            {/* Config Item 2 */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5" id="weekly-digest-label">
-                <span className="text-sm font-bold">{t('settings.weeklyDigestTitle')}</span>
-                <span id="weekly-digest-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                  {t('settings.weeklyDigestDesc')}
-                </span>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
-                <input 
-                  type="checkbox" 
-                  checked={weeklyDigest}
-                  onChange={() => setWeeklyDigest(!weeklyDigest)}
-                  aria-labelledby="weekly-digest-label"
-                  aria-describedby="weekly-digest-desc"
-                  className="sr-only peer" 
-                />
-                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  weeklyDigest ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
-                }`}></div>
-              </label>
-            </div>
+                {/* 2. Post Failed Email */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5" id="email-failed-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo đăng bài thất bại' : 'Email on failed posts'}
+                    </span>
+                    <span id="email-failed-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gửi thông báo và nguyên nhân lỗi chi tiết qua email ngay khi đăng bài thất bại.' 
+                        : 'Send an email notification with failure details if publishing fails.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailPostFailed}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailPostFailed(val);
+                        handleSaveNotifSettings(emailPostSuccess, val, emailDailyDigest, digestTime);
+                      }}
+                      aria-labelledby="email-failed-label"
+                      aria-describedby="email-failed-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailPostFailed ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
+
+                {/* 3. Daily Digest Email */}
+                <div className="flex items-start justify-between gap-4 border-t border-primary/10 pt-4">
+                  <div className="flex flex-col gap-0.5" id="daily-digest-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo tổng hợp hàng ngày' : 'Daily summary email digest'}
+                    </span>
+                    <span id="daily-digest-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gom tất cả thông báo trong ngày thành 1 email tổng hợp gửi vào khung giờ lựa chọn.' 
+                        : 'Aggregate all notifications into a single email summary sent at your preferred hour.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailDailyDigest}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailDailyDigest(val);
+                        handleSaveNotifSettings(emailPostSuccess, emailPostFailed, val, digestTime);
+                      }}
+                      aria-labelledby="daily-digest-label"
+                      aria-describedby="daily-digest-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailDailyDigest ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
+
+                {/* 4. Daily Digest Hour Selector */}
+                {emailDailyDigest && (
+                  <div className="flex items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-primary/5 ml-2 transition-all">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-bold text-text">
+                        {language === 'vi' ? 'Thời gian nhận email' : 'Digest Delivery Time'}
+                      </span>
+                      <span className="text-[9px] text-text-muted">
+                        {language === 'vi' ? 'Chọn khung giờ (GMT+7)' : 'Select preferred hour (GMT+7)'}
+                      </span>
+                    </div>
+                    <select
+                      value={digestTime}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDigestTime(val);
+                        handleSaveNotifSettings(emailPostSuccess, emailPostFailed, emailDailyDigest, val);
+                      }}
+                      className="bg-white dark:bg-black border border-primary/10 rounded-xl px-3 py-1.5 text-xs font-bold text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'].map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Language Setting Block */}
             <div className="border-t border-primary/10 pt-5 flex items-center justify-between gap-4">

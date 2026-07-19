@@ -38,7 +38,44 @@ export const createCaptionVersionSchema = z.object({
   caption_id: z.string().uuid('caption_id phải là UUID hợp lệ').optional().nullable(),
 });
 
+const regenerationPresetSchema = z.object({
+  presetMode: z.enum(['auto', 'selected', 'none']).default('auto'),
+  platformPresetId: z.string().uuid().optional(),
+});
+
+export const regenerateCaptionSchema = z.discriminatedUnion('mode', [
+  regenerationPresetSchema.extend({
+    mode: z.literal('full'),
+    instruction: z.string().trim().max(2000).optional().default(''),
+  }),
+  regenerationPresetSchema.extend({
+    mode: z.literal('partial'),
+    selections: z.array(z.object({
+      start: z.number().int().nonnegative(),
+      end: z.number().int().positive(),
+      text: z.string().min(1),
+    })).min(1),
+    instruction: z.string().trim().min(1).max(2000),
+  }),
+]).superRefine((input, context) => {
+  if (input.presetMode === 'selected' && !input.platformPresetId) {
+    context.addIssue({ code: 'custom', message: 'Thiếu platformPresetId khi chọn Preset' });
+  }
+  if (input.presetMode === 'none' && input.platformPresetId) {
+    context.addIssue({ code: 'custom', message: 'Không gửi platformPresetId khi bỏ qua Preset' });
+  }
+  if (input.mode === 'partial') {
+    for (const sel of input.selections) {
+      if (sel.end <= sel.start) {
+        context.addIssue({ code: 'custom', message: 'Vùng chọn không hợp lệ' });
+        break;
+      }
+    }
+  }
+});
+
 export type CreateCaptionInput = z.infer<typeof createCaptionSchema>;
 export type ListCaptionsInput = z.infer<typeof listCaptionsSchema>;
 export type UpdateCaptionInput = z.infer<typeof updateCaptionSchema>;
 export type CreateCaptionVersionInput = z.infer<typeof createCaptionVersionSchema>;
+export type RegenerateCaptionInput = z.input<typeof regenerateCaptionSchema>;

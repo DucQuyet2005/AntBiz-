@@ -15,3 +15,7 @@ export function createNotifications(inputs: CreateNotificationInput[]) {
   if (!inputs?.length) return Promise.resolve([]);
   return createNotificationModule(createAdminClient()).createManyInternal(inputs);
 }
+
+export function getUserNotificationSettings(userId: string) {
+  return createNotificationModule(createAdminClient()).getUserSettings(userId);
+}

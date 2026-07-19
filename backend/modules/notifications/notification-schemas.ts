@@ -16,6 +16,7 @@ const createSchema = z.object({
   title: z.string().trim().min(1),
   message: z.string().trim().min(1),
   metadata: z.unknown().optional(),
+  emailSent: z.boolean().optional(),
 });
 
 const categories = new Set<NotificationCategory>([
@@ -60,6 +61,21 @@ function parsePositiveInteger(value: string | null | undefined, fallback: number
     throw validation('page và limit phải là số nguyên dương');
   }
   return parsed;
+}
+
+const settingsUpdateSchema = z.object({
+  email_on_success: z.boolean().optional(),
+  email_on_failure: z.boolean().optional(),
+  email_digest_enabled: z.boolean().optional(),
+  email_digest_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Khung giờ phải ở định dạng HH:MM').optional(),
+});
+
+export function parseUpdateSettings(input: unknown) {
+  const result = settingsUpdateSchema.safeParse(input);
+  if (!result.success) {
+    throw validation(result.error.issues[0]?.message || 'Dữ liệu cấu hình không hợp lệ');
+  }
+  return result.data;
 }
 
 function validation(message: string) {

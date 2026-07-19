@@ -9,6 +9,12 @@ const scheduleSchema = z.object({
   mediaUrl: z.string().nullable().optional(),
 });
 
+const publishNowSchema = z.object({
+  captionId: z.string().trim().min(1),
+  imageUrls: z.array(z.string()).nullable().optional(),
+  mediaUrl: z.string().nullable().optional(),
+});
+
 const rescheduleSchema = z.object({ scheduledAt: z.string().trim().min(1) });
 const bulkRescheduleSchema = z.object({
   ids: z.array(z.string().trim().min(1)).min(1),
@@ -16,11 +22,16 @@ const bulkRescheduleSchema = z.object({
 });
 
 export type ScheduleInput = z.infer<typeof scheduleSchema>;
+export type PublishNowInput = z.infer<typeof publishNowSchema>;
 export type RescheduleInput = z.infer<typeof rescheduleSchema>;
 export type BulkRescheduleInput = z.infer<typeof bulkRescheduleSchema>;
 
 export function parseScheduleInput(input: unknown) {
   return parseSchema(scheduleSchema, input, 'Thiếu thông tin captionId hoặc scheduledAt');
+}
+
+export function parsePublishNowInput(input: unknown) {
+  return parseSchema(publishNowSchema, input, 'Thiếu thông tin captionId');
 }
 
 export function parseRescheduleInput(input: unknown) {

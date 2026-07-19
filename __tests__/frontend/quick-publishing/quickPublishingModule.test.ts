@@ -7,12 +7,15 @@ import {
   type QuickPublishingClient,
   type QuickPublishingEvent,
   type QuickPublishingPlatform,
+  type RegenerateCaptionCommand,
 } from '@/frontend/modules/quick-publishing';
 
 class FakeClient implements QuickPublishingClient {
   commands: GenerateCaptionCommand[] = [];
   scheduled: Array<{ captionId: string; scheduledAt: string; imageUrls: string[] }> = [];
   failSchedule = new Set<string>();
+  published: Array<{ captionId: string; imageUrls: string[] }> = [];
+  failPublish = new Set<string>();
 
   async listPresets() { return []; }
   async *generate(command: GenerateCaptionCommand): AsyncIterable<CaptionStreamEvent> {
@@ -24,9 +27,20 @@ class FakeClient implements QuickPublishingClient {
   async createCaption(input: { platform: 'facebook' | 'thread' | 'instagram' }) {
     return { id: `${input.platform}-draft`, status: 'draft' };
   }
+  async regenerateCaption(id: string, input: RegenerateCaptionCommand) {
+    return {
+      captionId: id, content: input.mode === 'partial' ? 'partially edited' : 'fully edited',
+      status: 'edited', mode: input.mode, generatedText: 'edited',
+      ...(input.mode === 'partial' ? { replacementRange: { start: input.selectionStart, end: input.selectionEnd } } : {}),
+    };
+  }
   async schedule(input: { captionId: string; scheduledAt: string; imageUrls: string[] }) {
     if (this.failSchedule.has(input.captionId)) throw new Error('raw failure');
     this.scheduled.push(input);
+  }
+  async publishNow(input: { captionId: string; imageUrls: string[] }) {
+    if (this.failPublish.has(input.captionId)) throw new Error('raw publish failure');
+    this.published.push(input);
   }
 }
 
@@ -57,7 +71,12 @@ describe('QuickPublishingModule', () => {
 
     expect(client.commands).toHaveLength(4);
     expect(client.commands.find((item) => item.platform === 'facebook' && item.variantIndex === 0))
-      .toMatchObject({ promptId: 'prompt-1', platformPresetId: 'fb-preset', stylePresetId: 'none' });
+      .toMatchObject({
+        promptId: 'prompt-1', platformPresetId: 'fb-preset', stylePresetId: 'none',
+        presetMode: 'selected',
+      });
+    expect(client.commands.find((item) => item.platform === 'threads' && item.variantIndex === 0))
+      .toMatchObject({ presetMode: 'none' });
     expect(client.commands.find((item) => item.platform === 'threads' && item.variantIndex === 1)?.customPrompt)
       .toContain('Short (Yêu cầu nhanh: Thêm kêu gọi hành động)');
     expect(events).toContainEqual(expect.objectContaining({ type: 'caption-resolved', platform: 'facebook' }));
@@ -96,5 +115,44 @@ describe('QuickPublishingModule', () => {
       type: 'platform-schedule-failed', platform: 'threads',
       error: { code: 'SCHEDULE_FAILED', context: { platform: 'threads' } },
     });
+  });
+
+  it('uses the persisted regeneration interface for full and partial edits', async () => {
+    const client = new FakeClient();
+    const capacity = new QuickPublishingModule(client);
+    const events: QuickPublishingEvent[] = [];
+
+    await expect(capacity.regenerateCaption({
+      captionId: 'caption-1', platform: 'facebook', mode: 'full', presetMode: 'none',
+    }, (event) => events.push(event))).resolves.toMatchObject({ content: 'fully edited' });
+    await expect(capacity.regenerateCaption({
+      captionId: 'caption-1', platform: 'facebook', mode: 'partial', presetMode: 'none',
+      selectionStart: 1, selectionEnd: 4, selectedText: 'old', instruction: 'Rewrite',
+    }, (event) => events.push(event))).resolves.toMatchObject({
+      content: 'partially edited', replacementRange: { start: 1, end: 4 },
+    });
+    expect(events).toContainEqual(expect.objectContaining({
+      type: 'caption-regenerated', mode: 'partial', content: 'partially edited',
+    }));
+  });
+
+  it('publishes real drafts and reports partial multi-platform failure', async () => {
+    const client = new FakeClient();
+    client.failPublish.add('thread-draft');
+    const capacity = new QuickPublishingModule(client);
+    const events: QuickPublishingEvent[] = [];
+
+    await expect(capacity.publishNow({
+      connectedPlatforms: ['facebook', 'threads'], imageUrls: [],
+      platforms: [
+        { platform: 'facebook', draft: draft('facebook') },
+        { platform: 'threads', draft: draft('threads') },
+      ],
+    }, (event) => events.push(event))).rejects.toMatchObject({ code: 'PUBLISH_FAILED' });
+
+    expect(client.published).toEqual([{ captionId: 'facebook-draft', imageUrls: [] }]);
+    expect(events).toContainEqual(expect.objectContaining({
+      type: 'publish-completed', successful: ['facebook'], failed: ['threads'],
+    }));
   });
 });

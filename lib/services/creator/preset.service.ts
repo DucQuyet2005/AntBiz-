@@ -7,6 +7,7 @@ export interface Preset {
   platform: PlatformType;
   tags: string[];
   lastUpdated: string;
+  isSystem?: boolean;
 }
 
 export const presetService = {
@@ -34,6 +35,7 @@ export const presetService = {
           platform: item.platform,
           tags: tags.length > 0 ? tags : ['⭐ Văn phong tùy chỉnh'],
           lastUpdated: new Date(item.updated_at || item.created_at).toLocaleDateString('vi-VN'),
+          isSystem: Boolean(item.user_id === 'system' || !item.user_id || item.is_system),
         };
       });
       

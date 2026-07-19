@@ -4,6 +4,7 @@ import { ScheduledPublishingError } from './errors';
 import {
   normalizePlatform,
   parseBulkRescheduleInput,
+  parsePublishNowInput,
   parseRescheduleInput,
   parseScheduleInput,
   requireFutureIso,
@@ -12,6 +13,7 @@ import type {
   BulkRescheduleInput,
   RescheduleInput,
   ScheduleInput,
+  PublishNowInput,
 } from './scheduled-publishing-schemas';
 import type {
   CalendarFilters,
@@ -80,6 +82,74 @@ export class ScheduledPublishingModule {
       articleTitle: caption.articles?.title || unnamedArticle, post,
     });
     return { post, status: existing ? 200 : 201 };
+  }
+
+  async publishNow(actor: ScheduledPublishingActor, rawInput: PublishNowInput | unknown) {
+    const input = parsePublishNowInput(rawInput);
+    const now = this.now();
+    const caption = await this.repository.findCaption(input.captionId);
+    if (!caption) throw notFound('Không tìm thấy caption tương ứng');
+    if (actor.role !== 'admin' && caption.created_by !== actor.userId) {
+      throw new ScheduledPublishingError(
+        'FORBIDDEN', 403, 'Bạn không có quyền đăng caption này'
+      );
+    }
+    const platform = normalizePlatform(caption.platform);
+    if (!platform) throw validation('Nền tảng đăng bài không hợp lệ');
+
+    const message = caption.edited_content || caption.ai_content || '';
+    if (platform === 'thread' && message.length > 500) {
+      throw validation('Nội dung bài đăng Threads không được vượt quá 500 ký tự');
+    }
+    if (platform === 'instagram' && message.length > 2200) {
+      throw validation('Nội dung bài đăng Instagram không được vượt quá 2200 ký tự');
+    }
+    const imageUrls = input.imageUrls || (input.mediaUrl ? [input.mediaUrl] : []);
+    if (platform === 'instagram' && !isHttpUrl(imageUrls[0])) {
+      throw validation('Instagram yêu cầu một đường dẫn hình ảnh (mediaUrl) hợp lệ');
+    }
+
+    const linked = await this.repository.findLinkedAccount(actor.userId, platform);
+    if (!hasPublicationCredentials(platform, linked)) {
+      throw notFound(`Chưa kết nối tài khoản ${platformName(platform)}`);
+    }
+
+    const timestamp = now.toISOString();
+    const post = await this.repository.insert({
+      caption_id: input.captionId,
+      created_by: actor.userId,
+      platform,
+      status: 'pending',
+      scheduled_at: timestamp,
+      image_urls: imageUrls,
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
+    if (!await this.repository.claimPending(post.id, timestamp)) {
+      throw conflict('Bài đăng đã được xử lý bởi tiến trình khác');
+    }
+
+    const result = await this.publishClaimed({
+      ...post,
+      captions: caption,
+      users: { id: actor.userId },
+    }, linked);
+    if (!result.success) {
+      throw new ScheduledPublishingError(
+        'PUBLICATION_FAILED', 502, result.error
+      );
+    }
+    const persisted = await this.repository.findById(post.id);
+    return {
+      post: persisted || {
+        ...post,
+        status: 'posted' as const,
+        posted_at: timestamp,
+      },
+      externalPostId: result.postId,
+      platform,
+      publishedAt: timestamp,
+    };
   }
 
   async reschedule(
@@ -174,13 +244,16 @@ export class ScheduledPublishingModule {
     return { due: posts.length, processed };
   }
 
-  private async publishClaimed(post: ScheduledPostRecord) {
+  private async publishClaimed(
+    post: ScheduledPostRecord,
+    resolvedLinked?: Awaited<ReturnType<ScheduledPublishingRepository['findLinkedAccount']>>
+  ) {
     const caption = post.captions;
     const platform = normalizePlatform(post.platform || caption?.platform || 'facebook') || 'facebook';
     const userId = post.users?.id || post.created_by;
-    const linked = userId
+    const linked = resolvedLinked ?? (userId
       ? await this.repository.findLinkedAccount(userId, platform)
-      : null;
+      : null);
     let result: PublicationResult;
     try {
       result = await this.publisher.publish({
@@ -219,6 +292,7 @@ export class ScheduledPublishingModule {
       post,
       result,
     });
+    return result;
   }
 
   private async requirePost(id: string) {
@@ -276,4 +350,13 @@ function isHttpUrl(value?: string) {
 
 function platformName(platform: string) {
   return platform === 'facebook' ? 'Facebook' : platform === 'instagram' ? 'Instagram' : 'Threads';
+}
+
+function hasPublicationCredentials(
+  platform: string,
+  linked: { access_token?: string | null; account_id?: string | null } | null
+) {
+  if (!linked?.access_token) return false;
+  if (platform === 'facebook' || platform === 'instagram') return Boolean(linked.account_id);
+  return true;
 }

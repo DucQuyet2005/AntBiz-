@@ -128,31 +128,25 @@ describe('PlatformPresetModule', () => {
     expect(result.map((item) => item.id)).toEqual(['z', 'a', 'b']);
   });
 
-  it('auto-provisions system presets for an empty user list', async () => {
+  it('lists both user and system presets', async () => {
     const repository = new FakePlatformPresetRepository();
-    repository.presets = [preset({ id: 'system-1', user_id: null, is_default: true })];
+    repository.presets = [
+      preset({ id: 'user-p', platform: 'facebook', name: 'User Preset', is_default: false }),
+      preset({ id: 'system-p', user_id: null, platform: 'facebook', name: 'System Preset', is_default: true }),
+    ];
 
     const result = await new PlatformPresetModule(repository).list(owner, 'facebook');
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ user_id: owner.id, is_default: true, name: 'Editorial' });
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 'system-p', user_id: null });
+    expect(result[1]).toMatchObject({ id: 'user-p', user_id: owner.id });
   });
 
-  it('returns an empty list when system lookup fails', async () => {
+  it('throws when system lookup fails', async () => {
     const repository = new FakePlatformPresetRepository();
     repository.failSystemList = true;
-    vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await expect(new PlatformPresetModule(repository).list(owner, 'facebook')).resolves.toEqual([]);
-  });
-
-  it('returns an empty list when cloning system presets fails', async () => {
-    const repository = new FakePlatformPresetRepository();
-    repository.presets = [preset({ id: 'system-1', user_id: null })];
-    repository.failClone = true;
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    await expect(new PlatformPresetModule(repository).list(owner, 'facebook')).resolves.toEqual([]);
+    await expect(new PlatformPresetModule(repository).list(owner, 'facebook')).rejects.toThrow();
   });
 
   it('resets defaults within the normalized platform before upsert', async () => {

@@ -106,7 +106,7 @@ describe('PromptConfigModule', () => {
 
     const result = await new PromptConfigModule(repository).list(owner, 'instagram');
 
-    expect(result.map((item) => item.id)).toEqual(['config-2']);
+    expect(result.filter((item) => !item.is_system).map((item) => item.id)).toEqual(['config-2']);
   });
 
   it('trims names and resets the previous default on create', async () => {

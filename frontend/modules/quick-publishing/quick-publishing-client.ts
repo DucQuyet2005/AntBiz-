@@ -6,6 +6,8 @@ import type {
   QuickPublishingClient,
   QuickPublishingPlatform,
   QuickPublishingPreset,
+  RegenerateCaptionCommand,
+  RegenerateCaptionResult,
 } from './quick-publishing-types';
 
 export class BrowserQuickPublishingClient implements QuickPublishingClient {
@@ -83,12 +85,54 @@ export class BrowserQuickPublishingClient implements QuickPublishingClient {
     return data as { id: string; status?: string };
   }
 
+  async regenerateCaption(
+    id: string,
+    input: RegenerateCaptionCommand
+  ): Promise<RegenerateCaptionResult> {
+    const response = await this.request(`/api/captions/${id}/regenerate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    const body = await readJson(response);
+    if (!response.ok) throw regenerationError(response.status, input.mode);
+    const data = asRecord(body.data);
+    const caption = asRecord(data?.caption);
+    const content = caption?.edited_content ?? caption?.ai_content;
+    if (!data || !caption || typeof content !== 'string') {
+      throw new QuickPublishingError('CAPTION_REGENERATION_FAILED', { phase: 'response' });
+    }
+    const ranges = Array.isArray(data.replacementRanges) ? data.replacementRanges : undefined;
+    return {
+      captionId: typeof caption.id === 'string' ? caption.id : id,
+      content,
+      status: typeof caption.status === 'string' ? caption.status : undefined,
+      mode: data.mode === 'partial' ? 'partial' : 'full',
+      generatedText: typeof data.generatedText === 'string' ? data.generatedText : content,
+      ...(ranges
+        ? { replacementRanges: ranges as Array<{ start: number; end: number }> }
+        : {}),
+    };
+  }
+
   async schedule(input: { captionId: string; scheduledAt: string; imageUrls: string[] }) {
     const response = await this.request('/api/scheduled-posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
     if (!response.ok) throw new QuickPublishingError('SCHEDULE_FAILED', { status: response.status });
   }
+
+  async publishNow(input: { captionId: string; imageUrls: string[] }) {
+    const response = await this.request('/api/scheduled-posts/publish-now', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    if (!response.ok) throw new QuickPublishingError('PUBLISH_FAILED', { status: response.status });
+  }
+}
+
+function regenerationError(status: number, mode: RegenerateCaptionCommand['mode']) {
+  if (status === 409 && mode === 'partial') return new QuickPublishingError('CAPTION_STALE', { status });
+  if (status === 409) return new QuickPublishingError('CAPTION_LOCKED', { status });
+  if (status === 403) return new QuickPublishingError('CAPTION_LOCKED', { status });
+  return new QuickPublishingError('CAPTION_REGENERATION_FAILED', { status });
 }
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
