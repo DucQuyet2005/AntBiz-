@@ -155,18 +155,8 @@ export async function GET(request: NextRequest) {
         interactions = interactions[0];
       }
 
-      if (post.status === 'posted') {
-        if (isMigrationMissing || !interactions) {
-          const hash = post.id.split('-').reduce((acc: number, val: string) => acc + (parseInt(val, 16) || 0), 0);
-          interactions = {
-            likes: (hash % 491) + 10,
-            comments: (hash % 99) + 2,
-            shares: (hash % 46) + 5,
-            clicks: (hash % 191) + 10,
-            reach: (hash % 951) + 50,
-            impressions: (hash % 1901) + 100
-          };
-        }
+      if (post.status === 'posted' && interactions) {
+        // Use real interactions from database
       } else {
         interactions = { likes: 0, comments: 0, shares: 0, clicks: 0, reach: 0, impressions: 0 };
       }
@@ -197,16 +187,8 @@ export async function GET(request: NextRequest) {
       interactions = interactions[0];
     }
     if (post.status === 'posted') {
-      if (isMigrationMissing || !interactions) {
-        const hash = post.id.split('-').reduce((acc: number, val: string) => acc + (parseInt(val, 16) || 0), 0);
-        interactions = {
-          likes: (hash % 491) + 10,
-          comments: (hash % 99) + 2,
-          shares: (hash % 46) + 5,
-          clicks: (hash % 191) + 10,
-          reach: (hash % 951) + 50,
-          impressions: (hash % 1901) + 100
-        };
+      if (!interactions) {
+        interactions = { likes: 0, comments: 0, shares: 0, clicks: 0, reach: 0, impressions: 0 };
       }
       const dateObj = new Date(post.posted_at || post.scheduled_at);
       const dateStr = dateObj.toLocaleDateString('vi-VN', { month: '2-digit', day: '2-digit' });
@@ -436,18 +418,8 @@ export async function GET(request: NextRequest) {
         interactions = interactions[0];
       }
 
-      if (post.status === 'posted') {
-        if (isMigrationMissing || !interactions) {
-          const hash = post.id.split('-').reduce((acc: number, val: string) => acc + (parseInt(val, 16) || 0), 0);
-          interactions = {
-            likes: (hash % 491) + 10,
-            comments: (hash % 99) + 2,
-            shares: (hash % 46) + 5,
-            clicks: (hash % 191) + 10,
-            reach: (hash % 951) + 50,
-            impressions: (hash % 1901) + 100
-          };
-        }
+      if (post.status === 'posted' && interactions) {
+        // Use real interactions from database
       } else {
         interactions = { likes: 0, comments: 0, shares: 0, clicks: 0, reach: 0, impressions: 0 };
       }
