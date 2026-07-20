@@ -294,8 +294,10 @@ export function CreatorFlowProvider({
     if (presets) {
       dispatch({ type: 'SET_PRESETS', payload: presets });
       if (presets.length > 0 && !state.selectedPresetId) {
-        const defaultPreset = presets.find(p => p.isDefault) || presets.find(p => p.isSystem) || presets[0];
-        dispatch({ type: 'SET_SELECTED_PRESET', payload: defaultPreset.id });
+        const defaultPreset = presets.find(p => p.isDefault);
+        if (defaultPreset) {
+          dispatch({ type: 'SET_SELECTED_PRESET', payload: defaultPreset.id });
+        }
       }
     }
     dispatch({ type: 'SET_LOADING_PRESETS', payload: isLoadingPresets });

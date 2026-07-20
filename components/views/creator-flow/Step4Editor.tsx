@@ -602,6 +602,11 @@ export default function Step4Editor() {
                     return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
                   })
+                  .sort((a, b) => {
+                    if (a.id === state.selectedPresetId) return -1;
+                    if (b.id === state.selectedPresetId) return 1;
+                    return 0;
+                  })
                   .map((preset) => {
                     const isSelected = state.selectedPresetId === preset.id;
                     return (
