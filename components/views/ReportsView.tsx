@@ -119,18 +119,28 @@ export default function ReportsView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [scope, setScope] = useState<string>("all");
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Sort state for Top Posts table
   const [sortField, setSortField] = useState<string>("interactions.likes");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  // Load User Info for default reporter name
+  // Load User Info for default reporter name and role
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Marketer";
         setReporterName(fullName);
+
+        const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+        if (profile) {
+          setUserRole(profile.role);
+          if (profile.role === 'marketer_content') {
+            setScope('personal');
+          }
+        }
       }
     };
     fetchUser();
@@ -143,6 +153,7 @@ export default function ReportsView() {
       const queryParams = new URLSearchParams({
         timeframe,
         platform,
+        scope,
         ...(timeframe === "custom" && startDate ? { startDate } : {}),
         ...(timeframe === "custom" && endDate ? { endDate } : {}),
       });
@@ -162,7 +173,7 @@ export default function ReportsView() {
     if (timeframe !== "custom" || (startDate && endDate)) {
       loadStats();
     }
-  }, [timeframe, platform, startDate, endDate]);
+  }, [timeframe, platform, startDate, endDate, scope]);
 
   const handleExport = async () => {
     try {
@@ -170,6 +181,7 @@ export default function ReportsView() {
       const queryParams = new URLSearchParams({
         timeframe,
         platform,
+        scope,
         createdBy: reporterName || "Thành viên AntBiz",
         ...(timeframe === "custom" && startDate ? { startDate } : {}),
         ...(timeframe === "custom" && endDate ? { endDate } : {}),
@@ -350,6 +362,26 @@ export default function ReportsView() {
         
         {/* Left side: Timeframe & Custom Date Inputs */}
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-4 flex-1">
+          {/* Scope Selector */}
+          {userRole && userRole !== 'marketer_content' && (
+            <div className="flex flex-col gap-1.5 min-w-[160px]">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Phạm vi dữ liệu
+              </label>
+              <div className="relative">
+                <select
+                  value={scope}
+                  onChange={(e) => setScope(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200/60 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                >
+                  <option value="all">Toàn hệ thống</option>
+                  <option value="personal">Cá nhân tôi</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={16} />
+              </div>
+            </div>
+          )}
+
           {/* Timeframe selector */}
           <div className="flex flex-col gap-1.5 min-w-[200px]">
             <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">

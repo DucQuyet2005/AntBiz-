@@ -5,14 +5,18 @@ export async function GET(request: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development';
   const bypass = isDev && request.headers.get('x-bypass-auth') === 'true';
   let supabaseClient: any;
+  let user: any = null;
+  let role: string = 'admin';
 
   if (bypass) {
     const { createServiceRoleClient } = require('@/lib/api/auth');
     supabaseClient = createServiceRoleClient();
   } else {
-    const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
-    if (unauthorized) return unauthorized;
-    supabaseClient = supabase;
+    const authResult = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+    if (authResult.unauthorized) return authResult.unauthorized;
+    supabaseClient = authResult.supabase;
+    user = authResult.user;
+    role = authResult.role || 'marketer_content';
   }
 
   const { searchParams } = new URL(request.url);
@@ -20,6 +24,7 @@ export async function GET(request: NextRequest) {
   const platform = searchParams.get('platform') || 'all';
   const startDateParam = searchParams.get('startDate');
   const endDateParam = searchParams.get('endDate');
+  const scope = searchParams.get('scope') || 'all';
 
   // Resolve date range
   let start = new Date();
@@ -94,6 +99,11 @@ export async function GET(request: NextRequest) {
     query = query.eq('platform', dbPlatform);
   }
 
+  const isPersonalScope = role === 'marketer_content' || scope === 'personal';
+  if (isPersonalScope && user) {
+    query = query.eq('created_by', user.id);
+  }
+
   const { data: postsData, error: postsError } = await query;
 
   if (postsError) {
@@ -122,6 +132,10 @@ export async function GET(request: NextRequest) {
 
       if (dbPlatform !== 'all') {
         fallbackQuery = fallbackQuery.eq('platform', dbPlatform);
+      }
+
+      if (isPersonalScope && user) {
+        fallbackQuery = fallbackQuery.eq('created_by', user.id);
       }
 
       const { data: fallbackData, error: fallbackError } = await fallbackQuery;

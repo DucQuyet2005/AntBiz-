@@ -70,8 +70,8 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_PLATFORM': {
       const activePlatform = action.payload;
       const draft = activePlatform ? state.drafts[activePlatform] : null;
-      return { 
-        ...state, 
+      return {
+        ...state,
         selectedPlatform: activePlatform,
         postContent: draft ? draft.content : '',
         postId: draft ? draft.postId : null,
@@ -91,16 +91,16 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_ARTICLE_ID':
       return { ...state, articleId: action.payload };
     case 'SET_MANUAL_CONTENT':
-      return { 
-        ...state, 
-        manualTitle: action.payload.title, 
-        manualContent: action.payload.content 
+      return {
+        ...state,
+        manualTitle: action.payload.title,
+        manualContent: action.payload.content
       };
     case 'SET_CRAWL_JOB':
-      return { 
-        ...state, 
-        crawlJobId: action.payload.jobId, 
-        crawlStatus: action.payload.status 
+      return {
+        ...state,
+        crawlJobId: action.payload.jobId,
+        crawlStatus: action.payload.status
       };
     case 'SET_CRAWL_STATUS':
       return { ...state, crawlStatus: action.payload };
@@ -117,8 +117,8 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_LOADING_PRESETS':
       return { ...state, isLoadingPresets: action.payload };
     case 'SET_POST_CONTENT':
-      return { 
-        ...state, 
+      return {
+        ...state,
         postContent: action.payload,
         drafts: state.selectedPlatform ? {
           ...state.drafts,
@@ -161,8 +161,8 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
         } : {})
       };
     case 'SET_GENERATED_POST':
-      return { 
-        ...state, 
+      return {
+        ...state,
         generatedPost: action.payload,
         postId: action.payload ? action.payload.id : null,
         postContent: action.payload ? action.payload.content : '',
@@ -392,10 +392,10 @@ export function CreatorFlowProvider({
 
     try {
       const uploaded = await uploadCreatorSource(creatorClient, file);
-      
+
       let newTitle = uploaded.article.context.title;
       let newContent = uploaded.content;
-      
+
       if (state.manualContent && state.manualContent.trim().length > 0) {
         newTitle = state.manualTitle || newTitle;
         newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ ghi âm/tệp đính kèm]:\n${uploaded.content}`;
@@ -463,8 +463,8 @@ export function CreatorFlowProvider({
 
   // Step 4 content generator through the Quick Publishing interface.
   const generateAIContent = async () => {
-    const targetPlatforms = state.selectedPlatforms.length > 0 
-      ? state.selectedPlatforms 
+    const targetPlatforms = state.selectedPlatforms.length > 0
+      ? state.selectedPlatforms
       : (state.selectedPlatform ? [state.selectedPlatform] : []);
 
     if (targetPlatforms.length === 0 || !state.articleContext || !state.articleId) return;
@@ -606,10 +606,11 @@ export function CreatorFlowProvider({
       });
 
       // 2. Add AI Response Message to Chat Log
+      const hasReplacement = result.generatedText.trim().length > 0;
       const aiMsg: ChatMessage = {
         id: `msg_ai_${Math.random()}`,
         sender: 'ai',
-        text: `Đoạn viết mới: ${result.generatedText}`,
+        text: hasReplacement ? `Đoạn viết mới: ${result.generatedText}` : 'Đã xóa đoạn đã chọn thành công.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'Gemini 2.5 Flash',
       };
@@ -637,7 +638,7 @@ export function CreatorFlowProvider({
   // Assistant chatbot conversation (Gemini 3.1 Flash Lite)
   const sendAssistantChat = async (message: string) => {
     if (!message.trim()) return;
-    
+
     // User message
     const userMsg: ChatMessage = {
       id: `msg_user_${Math.random()}`,
@@ -664,8 +665,8 @@ export function CreatorFlowProvider({
   const confirmPostSchedule = async (
     requestedMode: 'now' | 'scheduled' = state.scheduleMode
   ): Promise<{ success: boolean; failed: PlatformType[] }> => {
-    const targetPlatforms = state.selectedPlatforms.length > 0 
-      ? state.selectedPlatforms 
+    const targetPlatforms = state.selectedPlatforms.length > 0
+      ? state.selectedPlatforms
       : (state.selectedPlatform ? [state.selectedPlatform] : []);
 
     if (targetPlatforms.length === 0) return { success: false, failed: [] };

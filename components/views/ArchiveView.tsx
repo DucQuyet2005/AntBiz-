@@ -48,6 +48,8 @@ export default function ArchiveView() {
   const [captions, setCaptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [scope, setScope] = useState<string>("all");
+  const [userId, setUserId] = useState<string>("");
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -88,9 +90,36 @@ export default function ArchiveView() {
   }, [currentPage]);
 
   useEffect(() => {
-    async function fetchCaptions() {
+    async function fetchUser() {
       try {
-        const { data, error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile) {
+            setUserRole(profile.role);
+            if (profile.role === 'marketer_content') {
+              setScope('personal');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    async function fetchCaptions() {
+      if (!userId) return;
+      setLoading(true);
+      try {
+        let query = supabase
           .from('captions')
           .select(`
             id,
@@ -114,8 +143,14 @@ export default function ArchiveView() {
               scheduled_at
             )
           `)
-          .neq('status', 'draft')
-          .order('created_at', { ascending: false });
+          .neq('status', 'draft');
+
+        const isPersonalScope = userRole === 'marketer_content' || scope === 'personal';
+        if (isPersonalScope) {
+          query = query.eq('created_by', userId);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
         if (!error && data) {
           setCaptions(data);
         }
@@ -126,35 +161,22 @@ export default function ArchiveView() {
       }
     }
     fetchCaptions();
-  }, []);
-
-  useEffect(() => {
-    async function fetchUserRole() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          if (profile) {
-            setUserRole(profile.role);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching user role:', err);
-      }
-    }
-    fetchUserRole();
-  }, []);
+  }, [userId, userRole, scope]);
 
   const fetchPreviewData = async () => {
+    if (!userId) return;
     setIsFetchingPreview(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('captions')
-        .select('id, platform, ai_content, status, created_at, articles (title)')
+        .select('id, platform, ai_content, status, created_at, articles (title)');
+
+      const isPersonalScope = userRole === 'marketer_content' || scope === 'personal';
+      if (isPersonalScope) {
+        query = query.eq('created_by', userId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(15);
       if (!error && data) {
@@ -188,7 +210,7 @@ export default function ArchiveView() {
     } else if (activeTab === 'history') {
       fetchExportJobs();
     }
-  }, [activeTab]);
+  }, [activeTab, userId, userRole, scope]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -426,6 +448,20 @@ export default function ArchiveView() {
 
             {/* Dropdowns */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              {/* Scope Filter */}
+              {userRole && userRole !== 'marketer_content' && (
+                <div className="relative">
+                  <select
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value)}
+                    className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0 appearance-none pr-10"
+                  >
+                    <option value="all">Toàn bộ kho</option>
+                    <option value="personal">Bài viết của tôi</option>
+                  </select>
+                  <ChevronDown size={16} className="text-text-muted absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              )}
 
               {/* Platform Filter */}
               <div className="relative">
