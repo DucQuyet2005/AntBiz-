@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   CreatorFlowProvider,
@@ -135,6 +135,28 @@ function AiCreatorContent() {
       nextStep();
     }
   };
+
+  // Hỗ trợ phím Enter để tiếp tục thay vì phải bấm nút
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        // Bỏ qua nếu bước hiện tại chưa hợp lệ hoặc đang xử lý
+        if (!isStepValid() || state.isScheduling || isSubmitting) return;
+        
+        // Bỏ qua nếu con trỏ đang ở trong textarea, button, hoặc vùng soạn thảo (contenteditable)
+        const activeElement = document.activeElement;
+        const tagName = activeElement?.tagName.toLowerCase();
+        if (tagName === 'textarea' || tagName === 'button') return;
+        if (activeElement?.getAttribute('contenteditable') === 'true') return;
+        
+        e.preventDefault();
+        handleContinue();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state, isStepValid, isSubmitting, handleContinue]);
 
   // Render active wizard page
   const renderStepContent = () => {

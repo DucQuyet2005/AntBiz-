@@ -195,20 +195,20 @@ export default function Step2Article({
   const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
   const [showPresetHint, setShowPresetHint] = useState(false);
 
-  // Auto show preset selection onboarding hint when step 2 is active/crawl is ready, then auto-hide after 5s
+  // Tự động hiển thị popup hướng dẫn chọn văn phong khi người dùng vào trang này
   useEffect(() => {
-    if (state.articleContext || state.crawlStatus === 'done') {
-      // Show hint popover
-      setShowPresetHint(true);
-      
-      // Auto dismiss after 5s (5000ms) to let user notice without blocking the screen
+    setShowPresetHint(true);
+  }, []);
+
+  // Tự động ẩn hint popover sau 5s mỗi khi nó được bật lên
+  useEffect(() => {
+    if (showPresetHint) {
       const hideTimer = setTimeout(() => {
         setShowPresetHint(false);
       }, 5000);
-
       return () => clearTimeout(hideTimer);
     }
-  }, [state.articleContext, state.crawlStatus]);
+  }, [showPresetHint]);
 
   // Active tab for uploaded files status - restricted to audio and document (manual is always visible below)
   const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document'>('audio');
@@ -311,6 +311,9 @@ export default function Step2Article({
     // Detect transition from 'crawling' → 'done'
     if (prev === 'crawling' && crawlStatus === 'done') {
       setIsCrawlingActive(false);
+      // Tự động hiển thị thông báo chọn văn phong khi crawl xong
+      setShowPresetHint(true);
+
       // ONLY auto-fill and show animation for web crawl sources. Manual sources (like Audio/File uploads) 
       // already handle their own state in useCreatorFlow to support appending.
       if (articleContext && sourceType !== 'manual') {
@@ -332,7 +335,7 @@ export default function Step2Article({
       setUploadError('Không thể thu thập bài viết. Vui lòng thử lại hoặc nhập thủ công.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [crawlStatus, articleContext]);
+  }, [crawlStatus, articleContext, dispatch, sourceType]);
 
   React.useEffect(() => {
     return () => {
@@ -470,6 +473,8 @@ export default function Step2Article({
     if (extension && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension)) {
       const url = URL.createObjectURL(file);
       setUploadedImages(prev => [...prev, { file, url }]);
+      // Tự động hiển thị thông báo chọn văn phong
+      setShowPresetHint(true);
       return;
     }
 
@@ -490,6 +495,8 @@ export default function Step2Article({
         setIsHighlighting(true);
         setTimeout(() => setIsHighlighting(false), 1500);
       }
+      // Tự động hiển thị thông báo chọn văn phong khi nhập file/ghi âm xong
+      setShowPresetHint(true);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Không thể xử lý tệp đã chọn');
     } finally {
@@ -502,6 +509,7 @@ export default function Step2Article({
     setIsUploading(true);
     try {
       await submitManual(state.manualTitle, state.manualContent);
+      setShowPresetHint(true);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Không thể lưu bài viết');
     } finally {
@@ -907,8 +915,8 @@ export default function Step2Article({
 
             {/* Combined Images Preview Row: crawled images + manually uploaded images */}
             {(() => {
-              // Build a unified list: crawled images (url-only) + user-uploaded images (File + url)
-              const crawledUrls = state.crawledImageUrls || [];
+              // Build a unified list: crawled images (url-only, excluding blob URLs synced from upload) + user-uploaded images (File + url)
+              const crawledUrls = (state.crawledImageUrls || []).filter(url => Boolean(url) && !url.startsWith('blob:'));
               const crawledItems = crawledUrls.map((url, idx) => ({ 
                 type: 'crawled' as const, 
                 url, 
@@ -1473,21 +1481,25 @@ export default function Step2Article({
             className="bg-white dark:bg-zinc-900 rounded-3xl p-6 max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-zinc-800"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-zinc-800">
-              <h3 className="text-base font-black text-text">Tất cả hình ảnh bài viết ({(state.crawledImageUrls || []).length + uploadedImages.length})</h3>
-              <button
-                type="button"
-                onClick={() => setShowAllImagesModal(false)}
-                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto py-4 flex-grow">
-              {[
-                ...(state.crawledImageUrls || []).map((url, idx) => ({ type: 'crawled' as const, url, name: `Ảnh bài báo ${idx + 1}` })),
-                ...uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name }))
-              ].map((item, idx) => (
+            {(() => {
+              const crawledUrls = (state.crawledImageUrls || []).filter(url => Boolean(url) && !url.startsWith('blob:'));
+              return (
+                <>
+                  <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-zinc-800">
+                    <h3 className="text-base font-black text-text">Tất cả hình ảnh bài viết ({crawledUrls.length + uploadedImages.length})</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAllImagesModal(false)}
+                      className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto py-4 flex-grow">
+                    {[
+                      ...crawledUrls.map((url, idx) => ({ type: 'crawled' as const, url, name: `Ảnh bài báo ${idx + 1}` })),
+                      ...uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name }))
+                    ].map((item, idx) => (
                 <div 
                   key={idx} 
                   onClick={() => {
@@ -1511,8 +1523,11 @@ export default function Step2Article({
                     <div className="absolute bottom-2 left-2 bg-amber-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">Crawl</div>
                   )}
                 </div>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>,
         document.body
