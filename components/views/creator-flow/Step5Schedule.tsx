@@ -24,6 +24,13 @@ export default function Step5Schedule() {
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
   const currentPlatform = state.selectedPlatform || 'facebook';
 
+  // Current time state for red line indicator
+  const [now, setNow] = useState(new Date());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Fetch dynamic golden hours for selected platform
   const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
@@ -48,17 +55,19 @@ export default function Step5Schedule() {
   });
 
   // DnD + Golden Hour hook (logic lives in frontend/modules/schedule-dnd)
-  const handleScheduleChange = useCallback((dayIdx: number, hour: number) => {
+  const handleScheduleChange = useCallback((dayIdx: number, hour: number, minute: number = 0) => {
     const targetDay = days.find(d => d.index === dayIdx);
     if (!targetDay) return;
 
-    const hourPad = `${hour.toString().padStart(2, '0')}:00`;
+    const hourStr = hour.toString().padStart(2, '0');
+    const minuteStr = minute.toString().padStart(2, '0');
+    const timePad = `${hourStr}:${minuteStr}`;
     
     // Prevent scheduling in the past
-    const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+    const targetDate = new Date(`${targetDay.fullDateStr}T${timePad}`);
     if (targetDate.getTime() < new Date().getTime()) return;
 
-    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${hourPad}` });
+    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   }, [dispatch, days]);
 
@@ -90,17 +99,23 @@ export default function Step5Schedule() {
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${datePart || ''}T${val}` });
   };
   // Helper when user clicks on an empty slot in the timeline grid
-  const handleCellClick = (dayIndex: number, hourStr: string) => {
+  const handleCellClick = (e: React.MouseEvent, dayIndex: number, hour: number) => {
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
-    const hourPad = hourStr.split(':')[0].padStart(2, '0') + ':00';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    let minute = Math.round((y / rect.height) * 60);
+    if (minute < 0) minute = 0;
+    if (minute >= 60) minute = 59;
+
+    const timePad = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     
     // Prevent past scheduling
-    const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+    const targetDate = new Date(`${targetDay.fullDateStr}T${timePad}`);
     if (targetDate.getTime() < new Date().getTime()) return;
 
-    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${hourPad}` });
+    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   };
 
@@ -187,7 +202,7 @@ export default function Step5Schedule() {
                 {hours.map((hour) => {
                   const hourVal = parseInt(hour);
                   return (
-                    <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 h-14 group">
+                    <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 h-24 group">
                       {/* Hour column */}
                       <div className="flex items-start justify-center pt-2 font-mono text-[9px] font-bold text-text-muted/80 border-r border-slate-100/50 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/10">
                         {hour}
@@ -224,15 +239,16 @@ export default function Step5Schedule() {
                         if (dayIdx === 0) {
                           tooltipAlignClass = "left-0";
                         }
+                        const isCurrentHourAndDay = targetDay.isToday && now.getHours() === hourVal;
 
                         return (
                           <div
                             key={dayIdx}
-                            onClick={() => !isPast && handleCellClick(dayIdx, hour)}
+                            onClick={(e) => !isPast && handleCellClick(e, dayIdx, hourVal)}
                             onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
                             onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
                             onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
-                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
+                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative transition-all duration-200 ${
                               isPast
                                 ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
                                 : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
@@ -247,6 +263,16 @@ export default function Step5Schedule() {
                               backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
                             } : undefined}
                           >
+                            {/* Current time indicator */}
+                            {isCurrentHourAndDay && (
+                              <div
+                                className="absolute left-0 right-0 h-[2px] bg-red-500 z-[60] pointer-events-none flex items-center"
+                                style={{ top: `${(now.getMinutes() / 60) * 100}%` }}
+                              >
+                                <div className="absolute left-[-3px] w-2 h-2 rounded-full bg-red-500" />
+                              </div>
+                            )}
+
                             {/* Golden Hour indicator */}
                             {showGolden && !isPast && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
@@ -268,7 +294,8 @@ export default function Step5Schedule() {
                                   label: `Bản thảo`,
                                 })}
                                 onDragEnd={dnd.handleDragEnd}
-                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
+                                style={{ top: `${(parseInt(timePart?.split(':')[1] || '0') / 60) * 100}%`, transform: 'translateY(-50%)', zIndex: 50 }}
+                                className={`absolute left-1 right-1 rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
                                   dnd.isDragging ? 'opacity-40' : 'animate-pulse'
                                 }`}
                               >
@@ -276,25 +303,29 @@ export default function Step5Schedule() {
                                   {getPlatformIcon(state.selectedPlatform || 'facebook')}
                                 </div>
                                 <span className="truncate">
-                                  Bản thảo
+                                  {timePart} Bản thảo
                                 </span>
                               </div>
                             )}
-                            {cellPosts.map((post) => (
-                              <div
-                                key={post.id}
-                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate shadow-sm border transition-all hover:scale-102 hover:shadow-md cursor-pointer ${getChipColorClass(
-                                  post.platform
-                                )}`}
-                              >
-                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                  {getPlatformIcon(post.platform)}
+                            {cellPosts.map((post) => {
+                              const postMinute = parseInt(post.time.split(':')[1]) || 0;
+                              return (
+                                <div
+                                  key={post.id}
+                                  style={{ top: `${(postMinute / 60) * 100}%`, transform: 'translateY(-50%)', zIndex: 40 }}
+                                  className={`absolute left-1 right-1 rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate shadow-sm border transition-all hover:scale-102 hover:shadow-md cursor-pointer ${getChipColorClass(
+                                    post.platform
+                                  )}`}
+                                >
+                                  <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                    {getPlatformIcon(post.platform)}
+                                  </div>
+                                  <span>
+                                    {post.time}
+                                  </span>
                                 </div>
-                                <span>
-                                  {post.time}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         );
                       })}

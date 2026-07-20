@@ -790,11 +790,11 @@ export default function Step2Article({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 opacity-95 dark:opacity-85" 
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvJ8KciIMLvReEBHnYlzWk5BOfT2GOG8lxu4IKb1OHQtTenSlm0YKFuhjKVqF_QA28KA5cVi9DRYlzisegqFHq-R2GXI9ZAcbzrN0ZCb1wr4pw5qOH3JoU6hjFayqua_m7CY3YxZ6BvwVNrgzX9B-vg7YDbdC64mW0D_aswaQ14L3ZbTWK6koHlXFVwLZtZj8DvU-Y7KM6PdB4yVlrNiNLkj-Apkf_l2AIgg5nSBOmKFa__x1npWU"
             alt="Gocnhinmoi background"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -819,11 +819,11 @@ export default function Step2Article({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 opacity-95 dark:opacity-85" 
             src="https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=60"
             alt="Tuoitre background"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -848,11 +848,11 @@ export default function Step2Article({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 opacity-95 dark:opacity-85" 
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzQ_bDckz_5eTLgBs9tEGpM7JxV3U5M8cLJAJ_4Wv_nfkOGTVFTaw9kPym9E51a0axHur2dgO7C-hnaoiNn-xIL0KJiOVoE4KUcwz6NLZKUiJpsja_rQwTEkbkR6cG73G4sxkb52Rwox3EzTs49LWb_UB6X2fpAMvXNIX0kXgtbKscE4umSG7GqKx6IFQk8EGeLm6TygMDkvopvWl6djx3aP3lIcVTbXkWiqkV_DvYZoRC3EDmMRA"
             alt="Dantri background"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
           
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -899,7 +899,7 @@ export default function Step2Article({
               } ${
                 isDragging 
                   ? 'border-amber-500 bg-amber-500/5' 
-                  : 'border-gray-250 dark:border-zinc-800 hover:border-amber-500 bg-gray-55 dark:bg-zinc-900/30'
+                  : 'border-gray-300 dark:border-zinc-650 hover:border-amber-500 dark:hover:border-amber-500 bg-gray-55 dark:bg-zinc-900/40'
               }`}
             >
               <input 
@@ -1085,7 +1085,7 @@ export default function Step2Article({
               {/* Uploaded File List / Empty State Container */}
               <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[120px] mb-4">
                 {uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
-                  <div className="text-[11px] text-text-muted py-6 text-center border border-dashed border-gray-250 dark:border-zinc-800 rounded-xl bg-gray-55 dark:bg-zinc-950/20 flex items-center justify-center min-h-[80px]">
+                  <div className="text-[11px] text-text-muted py-6 text-center border border-dashed border-gray-300 dark:border-zinc-650 rounded-xl bg-gray-55 dark:bg-zinc-950/40 flex items-center justify-center min-h-[80px]">
                     Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
                   </div>
                 ) : (

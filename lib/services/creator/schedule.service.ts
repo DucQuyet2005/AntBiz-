@@ -11,42 +11,8 @@ export interface ScheduledPostInfo {
 
 export const scheduleService = {
   async getTimeline(): Promise<ApiResponse<ScheduledPostInfo[]>> {
-    const mockPosts: ScheduledPostInfo[] = [
-      {
-        id: 'sp_1',
-        postId: 'p_1',
-        platform: 'facebook',
-        time: '09:00',
-        dayIndex: 0, // MON
-        title: 'Giới thiệu sản phẩm mới',
-      },
-      {
-        id: 'sp_2',
-        postId: 'p_2',
-        platform: 'threads',
-        time: '14:00',
-        dayIndex: 2, // WED
-        title: 'Q&A với khách hàng',
-      },
-      {
-        id: 'sp_3',
-        postId: 'p_3',
-        platform: 'instagram',
-        time: '20:00',
-        dayIndex: 4, // FRI
-        title: 'Hình ảnh văn phòng',
-      },
-      {
-        id: 'sp_4',
-        postId: 'p_4',
-        platform: 'facebook',
-        time: '10:00',
-        dayIndex: 3, // THU (today in mockup)
-        title: 'Báo cáo xu hướng công nghệ',
-      }
-    ];
-
-    return simulateRequest(mockPosts, 600);
+    const mockPosts: ScheduledPostInfo[] = [];
+    return simulateRequest(mockPosts, 200);
   },
 
   async publishNow(_postId: string): Promise<ApiResponse<{ success: boolean; publishedAt: string }>> {

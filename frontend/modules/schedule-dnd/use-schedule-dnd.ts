@@ -15,7 +15,7 @@ import type { GoldenHourData } from '@/frontend/modules/scheduled-publishing/use
  * - Tạo DnD payload và parse từ dataTransfer
  */
 export function useScheduleDragDrop(
-  onScheduleChange: (dayIdx: number, hour: number) => void,
+  onScheduleChange: (dayIdx: number, hour: number, minute: number) => void,
   dynamicGoldenHours: GoldenHourData[] = []
 ) {
   const [state, setState] = useState<ScheduleDndState>({
@@ -86,7 +86,16 @@ export function useScheduleDragDrop(
 
       // Chỉ xử lý bài nháp
       if (payload.type === 'draft') {
-        onScheduleChange(dayIdx, hour);
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        // Calculate exact minute based on vertical drop position
+        let minute = Math.round((y / rect.height) * 60);
+        
+        // Ensure minute is within bounds
+        if (minute < 0) minute = 0;
+        if (minute >= 60) minute = 59;
+        
+        onScheduleChange(dayIdx, hour, minute);
       }
     } catch (err) {
       console.error('[ScheduleDnD] Drop parse error:', err);
