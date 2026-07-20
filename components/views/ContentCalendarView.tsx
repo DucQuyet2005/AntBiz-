@@ -37,6 +37,7 @@ import PopupDialog, { PopupType } from '@/components/PopupDialog';
 import dynamic from 'next/dynamic';
 
 const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
+const ContentListView = dynamic(() => import('./ContentListView'), { ssr: false });
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string; key?: any }) => (
@@ -67,6 +68,7 @@ export default function ContentCalendarView() {
     'instagram',
     'threads'
   ]);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
   // 1. Sync from URL on mount & when URL search params change (Back/Forward button support)
   useEffect(() => {
@@ -90,6 +92,11 @@ export default function ContentCalendarView() {
         setSelectedPlatforms(['facebook', 'instagram', 'threads']);
       }
     }
+
+    const viewParam = searchParams.get('view');
+    if (viewParam === 'list' || viewParam === 'calendar') {
+      if (viewParam !== viewMode) setViewMode(viewParam);
+    }
   }, [searchParams]);
 
   // 2. Sync to URL when selectedPlatforms changes
@@ -111,9 +118,16 @@ export default function ContentCalendarView() {
       } else {
         params.set('platforms', urlPlatforms.join(','));
       }
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [selectedPlatforms, pathname, router]);
+    
+    if (viewMode === 'list') {
+      params.set('view', 'list');
+    } else {
+      params.delete('view');
+    }
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [selectedPlatforms, viewMode, pathname, router]);
   const [subscriptionUrl, setSubscriptionUrl] = useState<string>('');
 
   // Fetch Webcal subscription link
@@ -1051,7 +1065,34 @@ export default function ContentCalendarView() {
           </div>
         </div>
 
-        {/* Export Button */}
+        <div className="flex items-center gap-4 shrink-0">
+          {/* Calendar/List View Toggle */}
+          <div className="flex items-center bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 select-none">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center justify-center px-3 py-2 rounded-lg text-xs font-black transition-all cursor-pointer border-0 ${
+                viewMode === 'calendar'
+                  ? 'bg-white dark:bg-zinc-600 shadow text-primary dark:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+              title={language === 'vi' ? 'Chế độ Lịch' : 'Calendar View'}
+            >
+              <Calendar size={16} className={viewMode === 'calendar' ? 'stroke-[2.5]' : ''} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center justify-center px-3 py-2 rounded-lg text-xs font-black transition-all cursor-pointer border-0 ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-zinc-600 shadow text-primary dark:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+              title={language === 'vi' ? 'Chế độ Danh sách' : 'List View'}
+            >
+              <Repeat2 size={16} className={viewMode === 'list' ? 'stroke-[2.5]' : ''} />
+            </button>
+          </div>
+
+          {/* Export Button */}
         <button
           onClick={() => setShowExportModal(true)}
           className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 shrink-0"
@@ -1060,6 +1101,7 @@ export default function ContentCalendarView() {
           <span>{language === 'vi' ? 'Xuất lịch' : 'Export'}</span>
         </button>
       </div>
+    </div>
 
       {/* Main Split Grid (Sidebar & Calendar Grid) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -1244,29 +1286,43 @@ export default function ContentCalendarView() {
             </div>
           </div>
 
-          <CalendarComponent
-            ref={calendarRef}
-            initialView="timeGridWeek"
-            headerToolbar={false}
-            editable={true}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={true}
-            weekends={true}
-            locale={language === 'vi' ? 'vi' : 'en'}
-            events={fetchCalendarEvents}
-            eventClick={handleEventClick}
-            eventDrop={handleEventDrop}
-            eventContent={renderEventContent}
-            datesSet={handleDatesSet}
-            allDaySlot={false}
-            slotDuration="00:30:00"
-            snapDuration="00:01:00"
-            slotMinTime="00:00:00"
-            slotMaxTime="24:00:00"
-            height={700}
-            scrollTime="07:00:00"
-          />
+          {viewMode === 'list' ? (
+            <ContentListView 
+              selectedPlatforms={selectedPlatforms} 
+              searchQuery={searchQuery}
+              onPostClick={(post) => {
+                setSelectedCell({
+                  date: new Date(post.scheduled_at),
+                  hour: new Date(post.scheduled_at).getHours(),
+                  posts: [post]
+                });
+              }}
+            />
+          ) : (
+            <CalendarComponent
+              ref={calendarRef}
+              initialView="timeGridWeek"
+              headerToolbar={false}
+              editable={true}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              weekends={true}
+              locale={language === 'vi' ? 'vi' : 'en'}
+              events={fetchCalendarEvents}
+              eventClick={handleEventClick}
+              eventDrop={handleEventDrop}
+              eventContent={renderEventContent}
+              datesSet={handleDatesSet}
+              allDaySlot={false}
+              slotDuration="00:30:00"
+              snapDuration="00:01:00"
+              slotMinTime="00:00:00"
+              slotMaxTime="24:00:00"
+              height={700}
+              scrollTime="07:00:00"
+            />
+          )}
         </div>
 
         {/* Mobile Timeline List View */}

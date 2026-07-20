@@ -203,6 +203,7 @@ describe('ScheduledPublishingModule', () => {
 function makeRepository(): ScheduledPublishingRepository {
   return {
     list: vi.fn().mockResolvedValue([]),
+    listPaginated: vi.fn().mockResolvedValue({ data: [], count: 0 }),
     findCaption: vi.fn().mockResolvedValue(null),
     findPendingByCaption: vi.fn().mockResolvedValue(null),
     insert: vi.fn(), update: vi.fn(), findById: vi.fn().mockResolvedValue(null),

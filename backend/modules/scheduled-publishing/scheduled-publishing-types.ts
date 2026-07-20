@@ -43,6 +43,15 @@ export interface ScheduledPostRecord {
   users?: { id?: string; email?: string | null } | null;
 }
 
+export interface PaginatedScheduledPosts {
+  data: { date: string; posts: ScheduledPostRecord[] }[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
 export interface CalendarFilters {
   from?: string;
   to?: string;
@@ -94,6 +103,11 @@ export interface PublicationNotifier {
 
 export interface ScheduledPublishingRepository {
   list(): Promise<ScheduledPostRecord[]>;
+  listPaginated(
+    page: number,
+    limit: number,
+    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc' }
+  ): Promise<{ data: ScheduledPostRecord[]; count: number }>;
   findCaption(id: string): Promise<CaptionSummary | null>;
   findPendingByCaption(captionId: string): Promise<ScheduledPostRecord | null>;
   insert(input: Record<string, unknown>): Promise<ScheduledPostRecord>;
