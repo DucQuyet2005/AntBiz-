@@ -216,6 +216,17 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
         publishingSucceededPlatforms: action.payload.successful,
         publishingFailedPlatforms: action.payload.failed,
       };
+    case 'CLEAR_AI_GENERATED_STATE':
+      return {
+        ...state,
+        generatedPost: null,
+        postId: null,
+        postContent: '',
+        drafts: {},
+        chatMessages: [],
+        highlightSelections: [],
+        conversationalStep: 1,
+      };
     case 'RESET_FLOW':
       return { ...initialCreatorFlowState };
     default:
@@ -574,6 +585,16 @@ export function CreatorFlowProvider({
     dispatch({ type: 'SET_HIGHLIGHT_EDITING', payload: true });
 
     try {
+      // 1. Add User Message to Chat Log
+      const selectedTexts = state.highlightSelections.map(s => `"${s.text}"`).join(', ');
+      const userMsg: ChatMessage = {
+        id: `msg_user_${Math.random()}`,
+        sender: 'user',
+        text: `[Sửa đoạn: ${selectedTexts}]: ${instruction}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+
       const captionId = await quickPublishing.saveEdit(draft);
       const result = await quickPublishing.regenerateCaption({
         captionId,
@@ -583,6 +604,17 @@ export function CreatorFlowProvider({
         instruction,
         presetMode: 'auto',
       });
+
+      // 2. Add AI Response Message to Chat Log
+      const aiMsg: ChatMessage = {
+        id: `msg_ai_${Math.random()}`,
+        sender: 'ai',
+        text: `Đoạn viết mới: ${result.generatedText}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: 'Gemini 2.5 Flash',
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+
       dispatch({
         type: 'SET_DRAFT',
         payload: {

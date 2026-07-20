@@ -43,6 +43,6 @@ ${styleSection}**Cấu trúc bài viết:**
 - TUYỆT ĐỐI KHÔNG sử dụng các ký hiệu Markdown như ** (để in đậm) hoặc * (để in nghiêng hoặc gạch đầu dòng) trong văn bản.
 - Vì bài đăng này sẽ được hiển thị dưới dạng văn bản thuần (plain text) trên mạng xã hội (${platformLabel}) và nền tảng này không hỗ trợ Markdown, các ký tự như ** hay * sẽ bị hiển thị thô và làm bài viết trông bị lỗi.
 - Thay vào đó, hãy sử dụng các emoji/icon phù hợp hoặc xuống dòng để phân tách các phần hoặc làm nổi bật tiêu đề/ý chính.
-
-TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+- TUYỆT ĐỐI KHÔNG lặp lại toàn bộ nội dung bài viết hoặc lặp lại danh sách hashtag nhiều lần. Chỉ xuất ra một bài đăng hoàn chỉnh duy nhất, tránh tình trạng sinh hai bản sao lặp nhau.
+- TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
 }
