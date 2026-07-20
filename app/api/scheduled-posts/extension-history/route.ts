@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
           scheduledAt: post.scheduled_at,
           postedAt: post.posted_at,
           createdAt: post.created_at,
-          title: article ? article.title : 'Không có tiêu đề'
+          title: article ? article.title : 'Không có tiêu đề',
+          articleId: article ? article.id : null
         };
       });
 

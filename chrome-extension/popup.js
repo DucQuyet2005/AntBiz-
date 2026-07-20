@@ -465,6 +465,16 @@ function initEventListeners() {
           <div class="history-item-title" title="${item.title}">${item.title}</div>
           <div class="history-item-time">Lịch: ${timeStr}</div>
         `;
+        
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => {
+          if (item.articleId) {
+            chrome.tabs.create({ url: `${AntBizUrl}/archive/${item.articleId}` });
+          } else {
+            chrome.tabs.create({ url: `${AntBizUrl}/archive` });
+          }
+        });
+
         historyList.appendChild(div);
       });
     });
@@ -523,19 +533,8 @@ function initEventListeners() {
   }
 
   btnLogin.addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs && tabs[0]) {
-        const currentUrl = tabs[0].url;
-        // Nếu là trang hệ thống (chrome://, file://...) thì mở tab mới dự phòng
-        if (!currentUrl || (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://'))) {
-          const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent('/login/success')}`;
-          chrome.tabs.create({ url: loginUrl });
-        } else {
-          const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent(currentUrl)}`;
-          chrome.tabs.update(tabs[0].id, { url: loginUrl });
-        }
-      }
-    });
+    const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent('/login/success')}`;
+    chrome.tabs.create({ url: loginUrl });
   });
 
   // Hủy tiến trình khi về Home hoặc bấm lỗi

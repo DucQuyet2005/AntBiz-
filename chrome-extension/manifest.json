@@ -9,7 +9,8 @@
     "storage",
     "scripting",
     "tabs",
-    "audioCapture"
+    "audioCapture",
+    "sidePanel"
   ],
   "host_permissions": [
     "http://localhost/*",
@@ -19,8 +20,10 @@
   "background": {
     "service_worker": "background.js"
   },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
   "action": {
-    "default_popup": "popup.html",
     "default_title": "AntBiz Assistant",
     "default_icon": "icon.svg"
   },

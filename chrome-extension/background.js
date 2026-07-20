@@ -1,12 +1,16 @@
 // background.js - Service Worker cho AntBiz Assistant Extension
 
+// Bật chế độ mở extension thành Sidebar (không bị đóng khi chuyển tab)
+if (chrome.sidePanel) {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => console.error(error));
+}
 // Hàm lấy session đăng nhập Supabase từ cookie của AntBiz
-function getSupabaseSession() {
+function getSupabaseSession(forceCookieCheck = false) {
   return new Promise((resolve) => {
     // 1. Kiểm tra session trong chrome.storage.local trước
     chrome.storage.local.get('antbiz_local_session', (res) => {
       const stored = res.antbiz_local_session;
-      if (stored && Array.isArray(stored)) {
+      if (!forceCookieCheck && stored && Array.isArray(stored)) {
         return resolve({
           access_token: stored[0],
           refresh_token: stored[1],
@@ -27,52 +31,112 @@ function getSupabaseSession() {
           c.domain.includes('172.25.240.1')
         );
 
-        console.log('Quét tìm thấy các cookie:', cookies.map(c => `${c.domain}: ${c.name}`));
+        const debugInfo = { allFoundCookies: cookies.map(c => ({ name: c.name, domain: c.domain })) };
 
-        const sbCookies = cookies.filter(c => 
-          c.name.includes('nttnyvgprhbthsqmvyjp-auth-token') || 
-          c.name.includes('sb-local-auth-token')
-        );
-        if (sbCookies.length === 0) {
-          console.log('Không tìm thấy cookie Supabase nào khớp.');
-          return resolve(null);
-        }
-
-        sbCookies.sort((a, b) => {
-          const aParts = a.name.split('.');
-          const bParts = b.name.split('.');
-          const aIdx = aParts.length > 2 ? parseInt(aParts[aParts.length - 1], 10) : -1;
-          const bIdx = bParts.length > 2 ? parseInt(bParts[bParts.length - 1], 10) : -1;
-          return aIdx - bIdx;
+        const sbCookies = cookies.filter(c => {
+          // Chỉ lấy chính xác cookie chứa token (và các mảnh .0, .1 của nó), loại bỏ hoàn toàn -code-verifier hay các cookie phụ khác
+          return /^sb-.*-auth-token(?:\.\d+)?$/.test(c.name) || 
+                 /^nttnyvgprhbthsqmvyjp-auth-token(?:\.\d+)?$/.test(c.name);
         });
 
-        const rawValue = sbCookies.map(c => c.value).join('');
+        debugInfo.filteredSbCookies = sbCookies.map(c => ({ name: c.name }));
 
-        try {
-          const decodedValue = decodeURIComponent(rawValue);
-          const sessionData = JSON.parse(decodedValue);
+        // Nhóm các cookie. Tách biệt hoàn toàn cookie có đuôi .0 (chunked) và cookie không có đuôi (unchunked)
+        // để tránh ghép nhầm 2 phiên bản cũ/mới của cùng một dự án.
+        const groupedCookies = {};
+        sbCookies.forEach(c => {
+          const isChunked = /\.\d+$/.test(c.name);
+          const baseName = c.name.replace(/\.\d+$/, '');
+          const groupKey = isChunked ? `${baseName}_chunked` : `${baseName}_unchunked`;
+          
+          if (!groupedCookies[groupKey]) groupedCookies[groupKey] = [];
+          groupedCookies[groupKey].push(c);
+        });
 
-          if (Array.isArray(sessionData)) {
-            return resolve({
-              access_token: sessionData[0],
-              refresh_token: sessionData[1],
-              user: sessionData[4] || null
-            });
-          }
+        debugInfo.cookieGroups = Object.keys(groupedCookies);
 
-          if (sessionData && typeof sessionData === 'object') {
-            return resolve({
-              access_token: sessionData.access_token,
-              refresh_token: sessionData.refresh_token,
-              user: sessionData.user || null
-            });
-          }
-
-          resolve(null);
-        } catch (err) {
-          console.warn('Lỗi giải mã session cookie:', err);
-          resolve({ access_token: rawValue });
+        // Hàm phụ kiểm tra hạn của token
+        function checkTokenValid(token) {
+          if (!token) return false;
+          try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return false;
+            let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) base64 += '=';
+            const payload = JSON.parse(atob(base64));
+            if (payload && payload.exp) {
+              const now = Math.floor(Date.now() / 1000);
+              return payload.exp > now;
+            }
+          } catch (e) {}
+          return false;
         }
+
+        // Duyệt qua từng nhóm cookie để thử parse
+        for (const baseName in groupedCookies) {
+          const group = groupedCookies[baseName];
+          // Sắp xếp các mảnh theo đúng thứ tự (nếu có .0, .1)
+          group.sort((a, b) => {
+            const aMatch = a.name.match(/\.(\d+)$/);
+            const bMatch = b.name.match(/\.(\d+)$/);
+            const aIdx = aMatch ? parseInt(aMatch[1], 10) : -1;
+            const bIdx = bMatch ? parseInt(bMatch[1], 10) : -1;
+            return aIdx - bIdx;
+          });
+
+          const rawValue = group.map(c => c.value).join('');
+
+          try {
+            let sessionData;
+            try {
+              // Thử parse dạng URL-encoded
+              const decodedValue = decodeURIComponent(rawValue);
+              sessionData = JSON.parse(decodedValue);
+            } catch (e1) {
+              // Thử parse dạng Base64URL
+              let base64Str = rawValue;
+              if (base64Str.startsWith('base64-')) {
+                base64Str = base64Str.substring(7);
+              }
+              let base64 = base64Str.replace(/-/g, '+').replace(/_/g, '/');
+              while (base64.length % 4) {
+                base64 += '=';
+              }
+              const decoded = atob(base64);
+              const utf8Decoded = decodeURIComponent(escape(decoded));
+              sessionData = JSON.parse(utf8Decoded);
+            }
+
+            if (Array.isArray(sessionData) && sessionData[0] && checkTokenValid(sessionData[0])) {
+              fetch('http://localhost:3000/api/auth/debug', { method: 'POST', body: JSON.stringify({ msg: 'Success parse valid token', baseName, method: 'array' }) }).catch(()=>{});
+              return resolve({
+                access_token: sessionData[0],
+                refresh_token: sessionData[1],
+                user: sessionData[4] || null
+              });
+            } else if (Array.isArray(sessionData) && sessionData[0]) {
+              debugInfo[`expired_${baseName}`] = true;
+            }
+
+            if (sessionData && typeof sessionData === 'object' && sessionData.access_token && checkTokenValid(sessionData.access_token)) {
+              fetch('http://localhost:3000/api/auth/debug', { method: 'POST', body: JSON.stringify({ msg: 'Success parse valid token', baseName, method: 'object' }) }).catch(()=>{});
+              return resolve({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token,
+                user: sessionData.user || null
+              });
+            } else if (sessionData && typeof sessionData === 'object' && sessionData.access_token) {
+              debugInfo[`expired_${baseName}`] = true;
+            }
+          } catch (err) {
+            // Lỗi parse nhóm này, thử nhóm tiếp theo
+            debugInfo[`error_${baseName}`] = err.message || err.toString();
+          }
+        }
+
+        // Nếu tất cả các nhóm đều thất bại
+        fetch('http://localhost:3000/api/auth/debug', { method: 'POST', body: JSON.stringify({ msg: 'All groups failed', ...debugInfo }) }).catch(()=>{});
+        resolve(null);
       });
     });
   });
@@ -310,7 +374,7 @@ async function getPromptConfigsViaServer(token, host = 'http://localhost:3000') 
 // Lắng nghe các tin nhắn từ Popup UI hoặc Content Script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'get_session') {
-    getSupabaseSession()
+    getSupabaseSession(true)
       .then(session => sendResponse({ session }))
       .catch(error => sendResponse({ error: error.message || error }));
     return true; // Giữ kênh kết nối không đồng bộ
@@ -331,7 +395,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'api_get') {
-    getSupabaseSession().then(session => {
+    getSupabaseSession(false).then(session => {
       if (!session || !session.access_token) throw new Error('Unauthenticated');
       return fetchDataViaServer(message.endpoint, session.access_token);
     })
@@ -386,20 +450,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Tự động đóng tab đăng nhập thành công
+// Tự động đóng tab đăng nhập thành công + đồng bộ session vào storage
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
     try {
       const url = new URL(changeInfo.url);
       if (url.pathname === '/login/success') {
-        // Đợi 1 giây để người dùng thấy thông báo checkmark rồi đóng tab
-        setTimeout(() => {
+        // Đợi 2 giây để Supabase cookie được set xong hoàn toàn
+        setTimeout(async () => {
+          // Thử đọc cookie tối đa 3 lần, mỗi lần cách nhau 500ms
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const session = await getSupabaseSession(true);
+            if (session && session.access_token) {
+              const sessionData = [
+                session.access_token,
+                session.refresh_token,
+                null,
+                null,
+                session.user
+              ];
+              chrome.storage.local.set({ antbiz_local_session: sessionData }, () => {
+                console.log(`[Background] Đã đồng bộ session từ web login (lần ${attempt + 1}).`);
+              });
+              break;
+            }
+            // Chờ 500ms trước khi thử lại
+            await new Promise(r => setTimeout(r, 500));
+          }
+
+          // Đóng tab sau khi đã thử đồng bộ xong
           chrome.tabs.remove(tabId, () => {
             if (chrome.runtime.lastError) {
               console.warn('Lỗi khi đóng tab đăng nhập:', chrome.runtime.lastError);
             }
           });
-        }, 1000);
+        }, 2000);
       }
     } catch (e) {
       console.error('Lỗi phân tích URL trong onUpdated:', e);
