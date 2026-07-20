@@ -717,13 +717,13 @@ export default function Step4Editor() {
       >
         <button
           onClick={() => setIsPresetsOpen(true)}
-          className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
-          title="Chọn phong cách AI (Style Presets)"
+          className="h-12 w-12 hover:w-32 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in cursor-pointer"
+          title="Chọn văn phong thương hiệu (Style Presets)"
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <Bookmark className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6" />
             <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto text-[10px] font-black tracking-wider transition-all duration-300 whitespace-nowrap uppercase">
-              Presets
+              Văn phong
             </span>
           </div>
           {/* Badge indicator if a preset is selected */}

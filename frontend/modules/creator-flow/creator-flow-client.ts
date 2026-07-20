@@ -153,6 +153,23 @@ function normalizeArticle(value: Record<string, unknown>): IngestedCreatorArticl
     ? record.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
     : [];
   if (!articleId || !content) throw new Error('SOURCE_NOT_PERSISTED');
+
+  const rawImages = typeof record.imageUrl === 'string' ? record.imageUrl : '';
+  const imageUrls: string[] = rawImages
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.startsWith('http://') || s.startsWith('https://'));
+
+  if (Array.isArray((record as any).images)) {
+    for (const img of (record as any).images as Array<{ url?: unknown }>) {
+      if (typeof img?.url === 'string' && (img.url.startsWith('http://') || img.url.startsWith('https://'))) {
+        if (!imageUrls.includes(img.url)) imageUrls.push(img.url);
+      }
+    }
+  }
+
+  const thumbnail = imageUrls[0] || undefined;
+
   return {
     articleId,
     context: {
@@ -162,9 +179,10 @@ function normalizeArticle(value: Record<string, unknown>): IngestedCreatorArticl
       summary: typeof record.description === 'string' ? record.description : content.slice(0, 150),
       keywords: tags,
       entities: [],
-      thumbnail: typeof record.imageUrl === 'string' ? record.imageUrl : undefined,
+      thumbnail,
       author: typeof record.author === 'string' ? record.author : undefined,
-    },
+      imageUrls,
+    } as any,
   };
 }
 

@@ -4,6 +4,8 @@ import { requireUserWithRole } from '@/lib/api/auth';
 // Danh sách domain được phép truy cập qua proxy
 const ALLOWED_HOSTNAMES = [
   'gocnhinmoi.com.vn',
+  'gocnhinmoi.com',
+  'cdn.gocnhinmoi.com',
   'tuoitre.vn',
   'dantri.com.vn',
 ];
@@ -26,13 +28,8 @@ function isAllowedUrl(url: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const { unauthorized } = await requireUserWithRole([
-    'admin',
-    'marketer_full',
-    'marketer_content',
-  ]);
-  if (unauthorized) return unauthorized;
-
+  // Proxy GET request is restricted by ALLOWED_HOSTNAMES, so authentication is not strictly required here.
+  // This allows <img> tags to fetch images reliably without cookie/auth issues.
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
 
@@ -49,6 +46,9 @@ export async function GET(request: NextRequest) {
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const reqHeaders = new Headers();
+    const parsedTarget = new URL(targetUrl);
+    reqHeaders.set('Host', parsedTarget.host);
+    reqHeaders.set('Referer', targetUrl);
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
     reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8');
@@ -221,6 +221,13 @@ export async function GET(request: NextRequest) {
   }
   report();
 
+  /* ── Listen for navigation commands from parent window ── */
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'NAVIGATE_BACK') {
+      try { history.back(); } catch (_) {}
+    }
+  });
+
   function getAbsoluteUrl(urlStr) {
     try {
       var s = String(urlStr);
@@ -231,8 +238,8 @@ export async function GET(request: NextRequest) {
         var original = params.get('url');
         if (original) return original;
       }
-      /* Resolve relative to the TARGET ORIGIN (not the specific article URL) */
-      return new URL(s, TARGET_ORIGIN).href;
+      /* Resolve relative to the current active page URL */
+      return new URL(s, _currentTarget || TARGET).href;
     } catch(_) { return urlStr; }
   }
 
@@ -295,7 +302,7 @@ export async function GET(request: NextRequest) {
         window.location.href = new URL(href, window.location.origin).href;
         return;
       }
-      var abs = new URL(href, TARGET_ORIGIN).href;
+      var abs = new URL(href, _currentTarget || TARGET).href;
       window.location.href = PROXY + encodeURIComponent(abs);
     } catch (err) { console.error(err); }
   }, true);

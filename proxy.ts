@@ -50,6 +50,11 @@ export async function proxy(request: NextRequest) {
 
   // ── Xử lý định tuyến và viết lại yêu cầu cho Proxy Iframe ────────────────
   if (!isActualAntBizRoute(pathname)) {
+    // Chặn các request quảng cáo/tracker nội bộ của báo (như tuoitre native-content) để không gây rác log 400
+    if (pathname.includes('native-content') || pathname.includes('googlesyndication') || pathname.includes('doubleclick')) {
+      return new NextResponse(null, { status: 204 });
+    }
+
     const referer = request.headers.get('referer');
     let isProxyRequest = false;
     let targetOrigin: string | null = null;

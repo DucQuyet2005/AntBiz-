@@ -5,18 +5,17 @@ import {
 } from '@/frontend/modules/creator-flow/use-creator-flow';
 
 describe('Creator Flow state projection', () => {
-  it('keeps the exact UTF-16 selection range and clears it with the selection text', () => {
+  it('keeps the exact UTF-16 selection range and clears it', () => {
+    const item = { id: 'sel-1', text: '😀 text', start: 4, end: 11 };
     const selected = creatorFlowReducer(initialCreatorFlowState, {
-      type: 'SET_HIGHLIGHT_SELECTION',
-      payload: { text: '😀 text', start: 4, end: 11 },
+      type: 'ADD_HIGHLIGHT_SELECTION',
+      payload: item,
     });
-    expect(selected).toMatchObject({
-      highlightedText: '😀 text', highlightSelectionStart: 4, highlightSelectionEnd: 11,
-    });
+    expect(selected.highlightSelections).toEqual([item]);
 
-    expect(creatorFlowReducer(selected, { type: 'SET_HIGHLIGHT_TEXT', payload: '' }))
+    expect(creatorFlowReducer(selected, { type: 'CLEAR_HIGHLIGHT_SELECTIONS' }))
       .toMatchObject({
-        highlightedText: '', highlightSelectionStart: null, highlightSelectionEnd: null,
+        highlightSelections: [],
       });
   });
 
