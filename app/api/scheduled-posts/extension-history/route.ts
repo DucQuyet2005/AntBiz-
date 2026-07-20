@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, createServiceRoleClient } from '@/lib/api/auth';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/scheduled-posts/extension-history
  * 
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
     // 1. Get recent scheduled posts by user
     const { data: scheduledPosts, error: postError } = await adminSupabase
       .from('scheduled_posts')
-      .select('id, platform, status, scheduled_at, posted_at, created_at, caption_id')
+      .select('id, platform, status, scheduled_at, posted_at, created_at, caption_id, trigger_source')
       .eq('created_by', user.id)
       .order('created_at', { ascending: false })
       .limit(50); // Lấy 50 bài gần nhất để lọc
@@ -38,21 +40,23 @@ export async function GET(request: NextRequest) {
 
     const articleIds = captions.map(c => c.article_id).filter(Boolean);
 
-    // 3. Get articles that match the extension category
+    // 3. Get articles for these captions
     const { data: articles, error: artError } = await adminSupabase
       .from('articles')
-      .select('id, title')
-      .eq('category', '#Extension')
+      .select('id, title, category')
       .in('id', articleIds);
 
     if (artError) throw artError;
 
-    const validArticleIds = new Set(articles.map(a => a.id));
-    const validCaptionIds = new Set(captions.filter(c => validArticleIds.has(c.article_id)).map(c => c.id));
-
     // 4. Filter posts and format
     const history = scheduledPosts
-      .filter(post => validCaptionIds.has(post.caption_id))
+      .filter(post => {
+        if (post.trigger_source === 'extension') return true;
+        const caption = captions.find(c => c.id === post.caption_id);
+        if (!caption) return false;
+        const article = articles.find(a => a.id === caption.article_id);
+        return article && article.category === '#Extension';
+      })
       .slice(0, 10)
       .map(post => {
         const caption = captions.find(c => c.id === post.caption_id);

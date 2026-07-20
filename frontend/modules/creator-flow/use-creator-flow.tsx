@@ -291,7 +291,13 @@ export function CreatorFlowProvider({
   });
 
   useEffect(() => {
-    if (presets) dispatch({ type: 'SET_PRESETS', payload: presets });
+    if (presets) {
+      dispatch({ type: 'SET_PRESETS', payload: presets });
+      if (presets.length > 0 && !state.selectedPresetId) {
+        const defaultPreset = presets.find(p => p.isDefault) || presets.find(p => p.isSystem) || presets[0];
+        dispatch({ type: 'SET_SELECTED_PRESET', payload: defaultPreset.id });
+      }
+    }
     dispatch({ type: 'SET_LOADING_PRESETS', payload: isLoadingPresets });
   }, [presets, isLoadingPresets]);
 
@@ -383,9 +389,18 @@ export function CreatorFlowProvider({
 
     try {
       const uploaded = await uploadCreatorSource(creatorClient, file);
+      
+      let newTitle = uploaded.article.context.title;
+      let newContent = uploaded.content;
+      
+      if (state.manualContent && state.manualContent.trim().length > 0) {
+        newTitle = state.manualTitle || newTitle;
+        newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ ghi âm/tệp đính kèm]:\n${uploaded.content}`;
+      }
+
       dispatch({
         type: 'SET_MANUAL_CONTENT',
-        payload: { title: uploaded.article.context.title, content: uploaded.content },
+        payload: { title: newTitle, content: newContent },
       });
       completeSourceIngestion(uploaded.article);
       return uploaded;
