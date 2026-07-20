@@ -1405,8 +1405,23 @@ export default function ContentCalendarView() {
               </button>
             </div>
           </div>
-          {/* Custom Calendar Grid */}
-          <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
+          {/* View Mode: List vs Calendar Grid */}
+          {viewMode === 'list' ? (
+            <div className="flex-1 mt-4">
+              <ContentListView 
+                selectedPlatforms={selectedPlatforms} 
+                searchQuery={searchQuery}
+                onPostClick={(post) => {
+                  setSelectedCell({
+                    date: new Date(post.scheduled_at),
+                    hour: new Date(post.scheduled_at).getHours(),
+                    posts: [post]
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
             <div className="min-w-[700px] h-full relative">
               {/* Header Row */}
               <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-100 dark:border-zinc-850 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-30 shadow-sm">
@@ -1573,6 +1588,7 @@ export default function ContentCalendarView() {
               </div>
             </div>
           </div>
+          )}
 
         </div>
 
