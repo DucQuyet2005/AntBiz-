@@ -216,6 +216,17 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
         publishingSucceededPlatforms: action.payload.successful,
         publishingFailedPlatforms: action.payload.failed,
       };
+    case 'CLEAR_AI_GENERATED_STATE':
+      return {
+        ...state,
+        generatedPost: null,
+        postId: null,
+        postContent: '',
+        drafts: {},
+        chatMessages: [],
+        highlightSelections: [],
+        conversationalStep: 1,
+      };
     case 'RESET_FLOW':
       return { ...initialCreatorFlowState };
     default:

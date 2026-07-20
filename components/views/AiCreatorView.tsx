@@ -13,7 +13,7 @@ import Step2Article from './creator-flow/Step2Article';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
@@ -32,6 +32,33 @@ function AiCreatorContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Back confirmation dialog states
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [targetStep, setTargetStep] = useState<number | null>(null);
+
+  const handleBack = () => {
+    if (state.currentStep === 3) {
+      setTargetStep(2);
+      setShowBackConfirm(true);
+    } else {
+      prevStep();
+    }
+  };
+
+  const handleConfirmBack = () => {
+    if (targetStep !== null) {
+      dispatch({ type: 'CLEAR_AI_GENERATED_STATE' });
+      goToStep(targetStep);
+    }
+    setShowBackConfirm(false);
+    setTargetStep(null);
+  };
+
+  const handleCancelBack = () => {
+    setShowBackConfirm(false);
+    setTargetStep(null);
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
@@ -61,7 +88,12 @@ function AiCreatorContent() {
 
   const handleStepChange = (targetStep: number) => {
     if (targetStep < state.currentStep) {
-      goToStep(targetStep);
+      if (state.currentStep === 3 && targetStep < 3) {
+        setTargetStep(targetStep);
+        setShowBackConfirm(true);
+      } else {
+        goToStep(targetStep);
+      }
     } else {
       // Validate intermediate steps
       let valid = true;
@@ -229,11 +261,66 @@ function AiCreatorContent() {
           currentStep={state.currentStep}
           isValid={isStepValid()}
           isLoading={state.isScheduling || isSubmitting}
-          onBack={prevStep}
+          onBack={handleBack}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}
         />
       </div>
+
+      {/* Confirmation Dialog when navigating back from Step 3 */}
+      <AnimatePresence>
+        {showBackConfirm && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCancelBack}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Centered Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[10000] overflow-hidden font-sans"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-text leading-snug">
+                    Xác nhận quay lại?
+                  </h3>
+                  <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
+                    Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex items-center justify-end gap-3 select-none">
+                <button
+                  type="button"
+                  onClick={handleCancelBack}
+                  className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBack}
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating high-fidelity Toast Alert Banner */}
       <AnimatePresence>
