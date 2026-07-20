@@ -8,6 +8,15 @@ import {
 } from './notification-schemas';
 import type { NotificationRepository } from './notification-types';
 
+interface NotificationMailInput {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message?: string;
+  created_at?: string;
+}
+
 export class NotificationModule {
   constructor(private readonly repository: NotificationRepository) {}
 
@@ -59,19 +68,45 @@ export class NotificationModule {
     return notifications;
   }
 
-  private async handleInstantEmail(notif: any) {
+  private async handleInstantEmail(notif: NotificationMailInput) {
     if (notif.type !== 'post_success' && notif.type !== 'post_failed') {
       return;
     }
 
     try {
-      const settings = await this.repository.getUserSettings(notif.user_id);
+      let settings: Record<string, any> | null = await this.repository.getUserSettings(notif.user_id);
+
+      // Check request cookies if available in Next.js Server environment
+      try {
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const cookieDigest = cookieStore.get('notif_email_digest_enabled')?.value;
+        const cookieSuccess = cookieStore.get('notif_email_on_success')?.value;
+        const cookieFailed = cookieStore.get('notif_email_on_failure')?.value;
+
+        if (cookieDigest !== undefined) {
+          settings = settings || {};
+          settings.email_digest_enabled = cookieDigest === 'true';
+        }
+        if (cookieSuccess !== undefined) {
+          settings = settings || {};
+          settings.email_on_success = cookieSuccess === 'true';
+        }
+        if (cookieFailed !== undefined) {
+          settings = settings || {};
+          settings.email_on_failure = cookieFailed === 'true';
+        }
+      } catch {
+        // cookies() not available outside request context (e.g. cron tasks)
+      }
+
       if (!settings || !settings.email) {
         return;
       }
 
       // If user enabled daily digest, we skip sending instant emails (they will receive daily digest summary)
       if (settings.email_digest_enabled) {
+        console.log(`[NotificationModule] Daily digest is enabled for user ${notif.user_id}. Skipping instant email.`);
         return;
       }
 
@@ -198,51 +233,36 @@ export class NotificationModule {
           </div>
       `;
 
-      if (successCount > 0) {
+      if (unsent.length > 0) {
         htmlContent += `
-          <h3 style="color: #166534; margin-top: 25px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">✓ Bài viết đăng thành công (${successCount})</h3>
+          <h3 style="color: #4f46e5; margin-top: 25px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">Danh sách bài đăng (${unsent.length})</h3>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
             <thead>
               <tr style="background-color: #f8fafc; text-align: left; font-size: 13px;">
-                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Tiêu đề bài viết</th>
-                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Thời gian</th>
+                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Tên bài đăng</th>
+                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Thời gian đăng</th>
+                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Trạng thái đăng</th>
               </tr>
             </thead>
             <tbody>
         `;
-        for (const post of successPosts) {
+        
+        for (const post of unsent) {
           const time = new Date(post.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          const isSuccess = post.type === 'post_success';
+          const statusText = isSuccess ? 'Thành công' : 'Thất bại';
+          const statusColor = isSuccess ? '#166534' : '#b91c1c';
+          const details = !isSuccess && post.message ? `<br/><span style="font-size: 11px; color: #64748b;">Lý do: ${post.message}</span>` : '';
+          
           htmlContent += `
             <tr style="font-size: 13px;">
-              <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${post.title}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${post.title}${details}</td>
               <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #64748b;">${time}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: ${statusColor}; font-weight: 600;">${statusText}</td>
             </tr>
           `;
         }
-        htmlContent += `</tbody></table>`;
-      }
-
-      if (failedCount > 0) {
-        htmlContent += `
-          <h3 style="color: #991b1b; margin-top: 25px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">✗ Bài viết đăng thất bại (${failedCount})</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #f8fafc; text-align: left; font-size: 13px;">
-                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Tiêu đề bài viết</th>
-                <th style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Lý do thất bại</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-        for (const post of failedPosts) {
-          const reason = post.message || 'Không có lý do chi tiết';
-          htmlContent += `
-            <tr style="font-size: 13px;">
-              <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${post.title}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #b91c1c;">${reason}</td>
-            </tr>
-          `;
-        }
+        
         htmlContent += `</tbody></table>`;
       }
 

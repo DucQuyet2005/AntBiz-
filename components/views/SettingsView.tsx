@@ -107,29 +107,72 @@ export default function SettingsView() {
     }, 0);
   }, []);
 
-  // Load email notification settings
+  // Helper functions for Cookie management
+  const getCookie = (name: string): string | null => {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+    return null;
+  };
+
+  const setCookie = (name: string, value: string, days = 365) => {
+    if (typeof document === 'undefined') return;
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = `; expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/; SameSite=Lax`;
+  };
+
+  // Load email notification settings from Cookies (and sync DB)
   useEffect(() => {
+    // 1. Immediately read from Cookies and LocalStorage for zero-delay UI load
+    const savedSuccess = getCookie('notif_email_on_success') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_on_success') : null);
+    const savedFailed = getCookie('notif_email_on_failure') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_on_failure') : null);
+    const savedDigest = getCookie('notif_email_digest_enabled') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_digest_enabled') : null);
+    const savedTime = getCookie('notif_email_digest_time') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_digest_time') : null);
+
+    if (savedSuccess !== null) setEmailPostSuccess(savedSuccess === 'true');
+    if (savedFailed !== null) setEmailPostFailed(savedFailed === 'true');
+    if (savedDigest !== null) setEmailDailyDigest(savedDigest === 'true');
+    if (savedTime !== null) setDigestTime(savedTime);
+
+    // 2. Fetch from DB API if logged in to keep server updated
     const fetchSettings = async () => {
       setNotifSettingsLoading(true);
       try {
         const res = await fetch('/api/notifications/settings');
         if (res.ok) {
           const json = await res.json();
-          if (json && json.data) {
-            setEmailPostSuccess(json.data.email_post_success ?? true);
-            setEmailPostFailed(json.data.email_post_failed ?? true);
-            setEmailDailyDigest(json.data.email_daily_digest ?? false);
-            setDigestTime(json.data.digest_time ?? '08:00');
+          const settingsData = json?.data || json;
+          if (settingsData && settingsData.email_digest_enabled !== undefined) {
+            setEmailPostSuccess(settingsData.email_on_success ?? true);
+            setEmailPostFailed(settingsData.email_on_failure ?? true);
+            setEmailDailyDigest(settingsData.email_digest_enabled ?? false);
+            setDigestTime(settingsData.email_digest_time ?? '08:00');
+
+            // Save synced values back to Cookies & LocalStorage
+            setCookie('notif_email_on_success', String(settingsData.email_on_success ?? true));
+            setCookie('notif_email_on_failure', String(settingsData.email_on_failure ?? true));
+            setCookie('notif_email_digest_enabled', String(settingsData.email_digest_enabled ?? false));
+            setCookie('notif_email_digest_time', settingsData.email_digest_time ?? '08:00');
+            localStorage.setItem('notif_email_on_success', String(settingsData.email_on_success ?? true));
+            localStorage.setItem('notif_email_on_failure', String(settingsData.email_on_failure ?? true));
+            localStorage.setItem('notif_email_digest_enabled', String(settingsData.email_digest_enabled ?? false));
+            localStorage.setItem('notif_email_digest_time', settingsData.email_digest_time ?? '08:00');
           }
         }
       } catch (err) {
-        console.error('Error fetching notification settings:', err);
+        console.warn('Error fetching DB notification settings, using local cookies:', err);
       } finally {
         setNotifSettingsLoading(false);
       }
     };
+
     if (userId) {
       fetchSettings();
+    } else {
+      setNotifSettingsLoading(false);
     }
   }, [userId]);
 
@@ -139,20 +182,41 @@ export default function SettingsView() {
     dailyDigest: boolean,
     time: string
   ) => {
+    // Save to Cookies & LocalStorage INSTANTLY
+    setCookie('notif_email_on_success', String(postSuccess));
+    setCookie('notif_email_on_failure', String(postFailed));
+    setCookie('notif_email_digest_enabled', String(dailyDigest));
+    setCookie('notif_email_digest_time', time);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notif_email_on_success', String(postSuccess));
+      localStorage.setItem('notif_email_on_failure', String(postFailed));
+      localStorage.setItem('notif_email_digest_enabled', String(dailyDigest));
+      localStorage.setItem('notif_email_digest_time', time);
+    }
+
+    // Inform terminal console
+    console.log('[Notification Settings Cookie] Saved settings to browser cookie & localStorage:', {
+      email_on_success: postSuccess,
+      email_on_failure: postFailed,
+      email_digest_enabled: dailyDigest,
+      email_digest_time: time,
+    });
+
     setNotifSettingsSaving(true);
     try {
       const res = await fetch('/api/notifications/settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          emailPostSuccess: postSuccess,
-          emailPostFailed: postFailed,
-          emailDailyDigest: dailyDigest,
-          digestTime: time,
+          email_on_success: postSuccess,
+          email_on_failure: postFailed,
+          email_digest_enabled: dailyDigest,
+          email_digest_time: time,
         }),
       });
+
       if (res.ok) {
         window.dispatchEvent(
           new CustomEvent('show-notification-toast', {
@@ -164,9 +228,32 @@ export default function SettingsView() {
             }
           })
         );
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.warn('DB update returned non-200 status, using local cookies:', res.status, errorData);
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? 'Đã lưu cấu hình thông báo vào Cookies thành công!' 
+                : 'Notification settings saved to Cookies successfully!',
+              type: 'success',
+            }
+          })
+        );
       }
     } catch (err) {
-      console.error('Error saving notification settings:', err);
+      console.warn('Error connecting to API, saved locally in cookies:', err);
+      window.dispatchEvent(
+        new CustomEvent('show-notification-toast', {
+          detail: {
+            message: language === 'vi' 
+              ? 'Đã lưu cấu hình thông báo vào Cookies thành công!' 
+              : 'Notification settings saved to Cookies successfully!',
+            type: 'success',
+          }
+        })
+      );
     } finally {
       setNotifSettingsSaving(false);
     }

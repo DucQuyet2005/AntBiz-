@@ -290,11 +290,20 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
     setupRealtime();
 
+    const handleNotificationRefetch = () => {
+      fetchNotifications(true);
+    };
+
+    window.addEventListener('notification-updated', handleNotificationRefetch);
+    window.addEventListener('show-notification-toast', handleNotificationRefetch);
+
     const interval = setInterval(() => fetchNotifications(true), 30000); // silent fetch
 
     return () => {
       active = false;
       clearInterval(interval);
+      window.removeEventListener('notification-updated', handleNotificationRefetch);
+      window.removeEventListener('show-notification-toast', handleNotificationRefetch);
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
