@@ -5,7 +5,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   RefreshCw, Send, Sparkles,
   Cpu, Facebook, Instagram, X, Loader2, Globe,
-  Bookmark, Check, Search
+  Bookmark, Check, Search, EyeOff, MoreHorizontal,
+  ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
+  Repeat2, CheckCircle2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { createPortal } from 'react-dom';
@@ -33,10 +35,14 @@ export default function Step4Editor() {
   const [presetSearch, setPresetSearch] = useState('');
   const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
 
-  // Determine active post preview image (prefer custom uploaded/crawled list first, then thumbnail fallback)
-  const postImage = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
-    ? state.crawledImageUrls[0]
-    : state.articleContext?.thumbnail;
+  // Default fallback image when no article/crawled image exists
+  const fallbackImage = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000';
+
+  // Determine active post preview images (prefer custom uploaded/crawled list first, then thumbnail fallback)
+  const postImages: string[] = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
+    ? state.crawledImageUrls
+    : state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : [fallbackImage];
+  const postImage = postImages[0] || fallbackImage;
 
   const getTagColorClass = (tag: string) => {
     const text = tag.toLowerCase();
@@ -51,7 +57,251 @@ export default function Step4Editor() {
   // Local states
   const [editableTitle, setEditableTitle] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
-  const [imageError, setImageError] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [igImageIndex, setIgImageIndex] = useState<number>(0);
+
+  // Formatting variables for preview cards
+  const currentPlatform = state.selectedPlatform || 'facebook';
+  const postContentText = state.postContent || '';
+  const contentLength = postContentText.length;
+  const wordCount = postContentText.trim() ? postContentText.trim().split(/\s+/).length : 0;
+  
+  const isLongContent = contentLength > 500;
+  const displayedContent = (isLongContent && !isExpanded)
+    ? postContentText.slice(0, 500) + '...'
+    : postContentText;
+
+  const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
+  const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
+
+  const validKeywords = (state.articleContext?.keywords || []).filter(
+    k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
+  );
+
+  const categoryTag = (validKeywords[0] && validKeywords[0].toLowerCase() !== 'manual')
+    ? `[${validKeywords[0]}]`
+    : '';
+
+  const authorName = state.articleContext?.author || 'Ngọc Linh';
+  const hashtags = validKeywords
+    .map(k => '#' + (k.startsWith('#') ? k.slice(1) : k).replace(/\s+/g, ''))
+    .filter(h => h.toLowerCase() !== '#manual');
+
+  const renderMultiImageGrid = (images: string[]) => {
+    const displayImages = (images && images.length > 0) ? images : [fallbackImage];
+
+    if (displayImages.length === 1) {
+      return (
+        <div className="w-full overflow-hidden select-none mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displayImages[0]}
+            alt="Post media"
+            className="w-full max-h-[480px] object-cover rounded-2xl border border-slate-100 dark:border-zinc-800"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
+          />
+        </div>
+      );
+    }
+
+    if (displayImages.length === 2) {
+      return (
+        <div className="w-full grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 select-none mb-3 h-[320px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={displayImages[0]} alt="Media 1" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={displayImages[1]} alt="Media 2" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+        </div>
+      );
+    }
+
+    if (displayImages.length === 3) {
+      return (
+        <div className="w-full grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 select-none mb-3 h-[360px]">
+          {/* Left half: 1 image full height */}
+          <div className="h-full overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={displayImages[0]} alt="Media 1" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+          </div>
+          {/* Right half: 2 images split top and bottom */}
+          <div className="flex flex-col gap-1 h-full overflow-hidden">
+            <div className="h-1/2 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={displayImages[1]} alt="Media 2" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+            </div>
+            <div className="h-1/2 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={displayImages[2]} alt="Media 3" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 4 or more images
+    const remainingCount = displayImages.length - 4;
+    return (
+      <div className="w-full grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 select-none mb-3 h-[400px]">
+        {/* Left half: 1 image */}
+        <div className="h-full overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={displayImages[0]} alt="Media 1" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+        </div>
+        {/* Right half: 3 images stacked */}
+        <div className="flex flex-col gap-1 h-full overflow-hidden">
+          <div className="h-1/3 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={displayImages[1]} alt="Media 2" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+          </div>
+          <div className="h-1/3 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={displayImages[2]} alt="Media 3" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+          </div>
+          <div className="h-1/3 overflow-hidden relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={displayImages[3]} alt="Media 4" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }} />
+            {remainingCount > 0 && (
+              <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center text-white font-extrabold text-xl">
+                +{remainingCount}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderInstagramCarousel = (images: string[]) => {
+    const displayImages = (images && images.length > 0) ? images : [fallbackImage];
+
+    if (displayImages.length === 1) {
+      return (
+        <div className="w-full border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displayImages[0]}
+            alt="Instagram Post Media"
+            className="w-full aspect-square max-h-[500px] object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
+          />
+        </div>
+      );
+    }
+
+    const safeIndex = Math.min(igImageIndex, displayImages.length - 1);
+
+    return (
+      <div className="w-full select-none flex flex-col items-center">
+        {/* Main Carousel Image Container */}
+        <div className="w-full relative border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden bg-black aspect-square max-h-[500px]">
+          {/* Horizontal Sliding Track */}
+          <div
+            className="flex w-full h-full transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${safeIndex * 100}%)` }}
+          >
+            {displayImages.map((img, idx) => (
+              <div key={idx} className="w-full h-full shrink-0 flex-none relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img}
+                  alt={`Instagram Post Media ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Left Arrow Button */}
+          {safeIndex > 0 && (
+            <button
+              type="button"
+              onClick={() => setIgImageIndex(prev => Math.max(0, prev - 1))}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-md text-slate-800 dark:text-white flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black transition-all border-0 cursor-pointer z-10 active:scale-95"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          )}
+
+          {/* Right Arrow Button */}
+          {safeIndex < displayImages.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setIgImageIndex(prev => Math.min(displayImages.length - 1, prev + 1))}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-md text-slate-800 dark:text-white flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black transition-all border-0 cursor-pointer z-10 active:scale-95"
+              aria-label="Next image"
+            >
+              <ChevronRight size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Bullet Pagination Dots Below Image */}
+        <div className="flex items-center justify-center gap-1.5 py-3">
+          {displayImages.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setIgImageIndex(idx)}
+              className={`rounded-full transition-all duration-200 border-0 p-0 cursor-pointer ${
+                idx === safeIndex
+                  ? 'w-2 h-2 bg-[#1877F2] scale-110'
+                  : 'w-1.5 h-1.5 bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderThreadsCarousel = (images: string[]) => {
+    const displayImages = (images && images.length > 0) ? images : [fallbackImage];
+
+    if (displayImages.length === 1) {
+      return (
+        <div className="w-full rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 select-none mb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displayImages[0]}
+            alt="Threads post media"
+            className="w-full max-h-[480px] object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full select-none mb-4">
+        <div
+          ref={threadsScrollRef}
+          onMouseDown={handleThreadsMouseDown}
+          onMouseLeave={handleThreadsMouseLeave}
+          onMouseUp={handleThreadsMouseUp}
+          onMouseMove={handleThreadsMouseMove}
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none"
+        >
+          {displayImages.map((img, idx) => (
+            <div
+              key={idx}
+              className="w-[200px] sm:w-[240px] h-[260px] sm:h-[290px] shrink-0 rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 snap-align-start relative shadow-sm"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img}
+                alt={`Threads image ${idx + 1}`}
+                className="w-full h-full object-cover pointer-events-none select-none"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
   
   // Highlighting popover state
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -70,18 +320,52 @@ export default function Step4Editor() {
   // Mobile layout mode switcher: 'canvas' | 'chat'
   const [mobileMode, setMobileMode] = useState<'canvas' | 'chat'>('canvas');
 
-  // Trigger initial generation once context is ready on mount
+  // Mouse drag scrolling state for Threads Carousel
+  const threadsScrollRef = useRef<HTMLDivElement>(null);
+  const isMouseDownRef = useRef<boolean>(false);
+  const startXRef = useRef<number>(0);
+  const scrollLeftRef = useRef<number>(0);
+
+  const handleThreadsMouseDown = (e: React.MouseEvent) => {
+    isMouseDownRef.current = true;
+    if (threadsScrollRef.current) {
+      startXRef.current = e.pageX - threadsScrollRef.current.offsetLeft;
+      scrollLeftRef.current = threadsScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleThreadsMouseLeave = () => {
+    isMouseDownRef.current = false;
+  };
+
+  const handleThreadsMouseUp = () => {
+    isMouseDownRef.current = false;
+  };
+
+  const handleThreadsMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDownRef.current || !threadsScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - threadsScrollRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    threadsScrollRef.current.scrollLeft = scrollLeftRef.current - walk;
+  };
+
+  // Ref to track if generation was already triggered for initial mount
+  const hasMountGeneratedRef = useRef<boolean>(false);
+
+  // Trigger initial generation ONCE on mount if no draft exists yet
   useEffect(() => {
-    if (state.articleContext && !state.generatedPost && !state.isGeneratingPost) {
+    if (!state.articleContext || !state.articleId || state.isGeneratingPost) return;
+
+    const activePlatform = state.selectedPlatform || 'facebook';
+    const hasDraft = !!state.drafts[activePlatform]?.content;
+
+    if (!hasDraft && !hasMountGeneratedRef.current) {
+      hasMountGeneratedRef.current = true;
       generateAIContent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Reset image error state when active post image changes
-  useEffect(() => {
-    setImageError(false);
-  }, [postImage]);
 
   // Update title sync
   useEffect(() => {
@@ -107,16 +391,20 @@ export default function Step4Editor() {
     }
   }, [state.postContent]);
 
+  // Keep contentEditable innerText in sync with displayedContent when not active
+  useEffect(() => {
+    if (editorRef.current && document.activeElement !== editorRef.current) {
+      editorRef.current.innerText = displayedContent;
+    }
+  }, [displayedContent, isExpanded]);
+
   const handleSelectionCheck = () => {
     const selection = window.getSelection();
     if (!selection) return;
 
     const text = selection.toString();
-    if (!text.trim() || text.trim().length < 3) {
-      setShowPopover(false);
-      setCurrentSelection(null);
-      return;
-    }
+    const cleanText = text.trim();
+    if (!cleanText || cleanText.length < 2) return;
 
     // Verify selection is within the editor
     if (editorRef.current && editorRef.current.contains(selection.anchorNode)) {
@@ -126,22 +414,60 @@ export default function Step4Editor() {
       prefix.setEnd(range.startContainer, range.startOffset);
       const selectionStart = prefix.toString().length;
       const selectionEnd = selectionStart + text.length;
-      const rect = range.getBoundingClientRect();
-      
-      // Calculate coordinates relative to viewport for fixed positioning
-      setPopoverPos({
-        top: rect.top - 55,
-        left: rect.left + (rect.width / 2),
-      });
-      
-      const newSelection = { id: `sel_${Date.now()}`, text, start: selectionStart, end: selectionEnd };
-      setCurrentSelection(newSelection);
-      dispatch({
-        type: 'ADD_HIGHLIGHT_SELECTION',
-        payload: newSelection
-      });
-      
-      setShowPopover(true);
+
+      const existing = state.highlightSelections || [];
+
+      // 1. Check for exact match (same text or same start/end bounds)
+      const exactMatch = existing.find(s => 
+        s.text.trim() === cleanText ||
+        (Math.abs(s.start - selectionStart) <= 1 && Math.abs(s.end - selectionEnd) <= 1)
+      );
+
+      if (exactMatch) {
+        // Exact match: REMOVE that highlight segment!
+        dispatch({
+          type: 'REMOVE_HIGHLIGHT_SELECTION',
+          payload: exactMatch.id
+        });
+      } else {
+        // 2. Check for subset or overlap with an existing highlight
+        const overlapping = existing.find(s =>
+          (selectionStart >= s.start && selectionEnd <= s.end) || // subset inside existing
+          (selectionStart < s.end && selectionEnd > s.start)      // partial overlap
+        );
+
+        if (overlapping) {
+          // Subset or overlapping: group/merge with the larger highlight segment
+          const mergedStart = Math.min(overlapping.start, selectionStart);
+          const mergedEnd = Math.max(overlapping.end, selectionEnd);
+          const fullPostText = state.postContent || '';
+          const mergedText = fullPostText.slice(mergedStart, mergedEnd) || overlapping.text;
+
+          dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: overlapping.id });
+          dispatch({
+            type: 'ADD_HIGHLIGHT_SELECTION',
+            payload: {
+              id: overlapping.id,
+              text: mergedText,
+              start: mergedStart,
+              end: mergedEnd,
+            }
+          });
+        } else {
+          // 3. New independent highlight segment
+          const newSelection = {
+            id: `sel_${Date.now()}`,
+            text,
+            start: selectionStart,
+            end: selectionEnd,
+          };
+          dispatch({
+            type: 'ADD_HIGHLIGHT_SELECTION',
+            payload: newSelection
+          });
+        }
+      }
+
       window.getSelection()?.removeAllRanges();
     }
   };
@@ -271,7 +597,13 @@ export default function Step4Editor() {
             return (
               <button
                 key={platform}
-                onClick={() => dispatch({ type: 'SET_PLATFORM', payload: platform })}
+                onClick={() => {
+                  dispatch({ type: 'SET_PLATFORM', payload: platform });
+                  const hasDraft = !!state.drafts[platform]?.content;
+                  if (!hasDraft && !state.isGeneratingPost && state.articleContext && state.articleId) {
+                    generateAIContent();
+                  }
+                }}
                 className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${
                   isActive 
                     ? 'border-primary text-primary' 
@@ -288,11 +620,13 @@ export default function Step4Editor() {
 
         {/* Canvas Post Preview Area */}
         <div 
-          className="flex-grow overflow-y-auto p-6 md:p-10 bg-gray-55 dark:bg-zinc-950/20 select-text relative"
+          className="flex-grow overflow-y-auto p-4 md:p-8 bg-gray-55 dark:bg-zinc-950/20 select-text relative"
           onMouseUp={handleSelectionCheck}
         >
+
+
           {state.isGeneratingPost ? (
-            <div className="max-w-3xl mx-auto space-y-6 pt-10">
+            <div className="max-w-3xl mx-auto space-y-6 pt-6">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 <span className="text-sm font-bold text-text animate-pulse">Gemini 2.5 Flash đang tạo bài viết...</span>
@@ -305,120 +639,363 @@ export default function Step4Editor() {
               </div>
             </div>
           ) : (
-            <div 
-              className={`max-w-3xl mx-auto bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-150 dark:border-zinc-800 transition-all overflow-hidden ${
-                flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
-              }`}
-            >
-              {/* Fake post header */}
-              <div className="p-6 pb-3 flex items-center justify-between select-none">
-                <div className="flex items-center gap-3">
-                  {/* Platform Avatar */}
-                  {(() => {
-                    const p = state.selectedPlatform || 'facebook';
-                    if (p === 'facebook') {
-                      return (
-                        <div className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-extrabold text-lg select-none">
-                          f
-                        </div>
-                      );
-                    }
-                    if (p === 'instagram') {
-                      return (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FFB900] via-[#D11874] to-[#7100A5] text-white flex items-center justify-center select-none">
-                          <Instagram className="w-5 h-5" />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="w-10 h-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center select-none">
-                        <ThreadsIcon size={18} />
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <div className="text-sm font-bold text-text">
-                      {state.articleContext?.author || "Ngọc Linh"}
-                    </div>
-                    <div className="text-[10px] text-text-muted flex items-center gap-1 mt-0.5">
-                      Bây giờ • <Globe className="w-3 h-3 text-text-muted inline-block align-middle" />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Character Counter */}
-                <span className="text-xs text-text-muted font-bold bg-gray-100 dark:bg-zinc-850 px-2.5 py-1 rounded-lg border border-gray-250 dark:border-zinc-800">
-                  {state.postContent ? state.postContent.length.toLocaleString() : 0} / {
-                    state.selectedPlatform === 'threads' ? '500' : state.selectedPlatform === 'instagram' ? '2.200' : '63.206'
-                  } ký tự
-                </span>
-              </div>
+            <div className="max-w-3xl mx-auto space-y-4">
 
-              {/* Fake post media thumbnail - spans full-width with 4:3 ratio */}
-              {postImage && !imageError && (
-                <div className="w-full border-t border-b border-gray-100 dark:border-zinc-850 select-none overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={postImage}
-                    alt="Post media thumbnail"
-                    className="w-full aspect-[4/3] object-cover"
-                    onError={() => setImageError(true)}
-                  />
+              {/* FACEBOOK PREVIEW */}
+              {currentPlatform === 'facebook' && (
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${
+                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                }`}>
+                  {/* Post Header */}
+                  <div className="p-6 pb-3 flex items-center justify-between select-none">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
+                        A
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1">
+                          <span>AntBiz Official</span>
+                          <CheckCircle2 className="w-4 h-4 text-[#1877F2] fill-[#1877F2] inline-block shrink-0" />
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                          <span>7 giờ</span>
+                          <span>•</span>
+                          <Globe className="w-3 h-3 text-slate-400 inline-block" />
+                        </div>
+                      </div>
+                    </div>
+                    <MoreHorizontal className="w-5 h-5 text-slate-400 cursor-pointer" />
+                  </div>
+
+                  {/* Post Body Content */}
+                  <div className="px-6 py-2 select-text">
+                    <div className="mb-2">
+                      <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                        {editableTitle || state.articleContext?.title}
+                      </h3>
+                    </div>
+
+                    {/* Post Text Editor */}
+                    <div className="relative min-h-[120px] my-3">
+                      <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                        {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
+                      </div>
+                      <div
+                        key={isExpanded ? 'expanded' : 'collapsed'}
+                        ref={editorRef}
+                        contentEditable={!state.isGeneratingPost}
+                        suppressContentEditableWarning
+                        onBlur={(e) => {
+                          dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                        }}
+                        className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                      >
+                        {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                      </div>
+                    </div>
+
+                    {isLongContent && (
+                      <button
+                        type="button"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                      >
+                        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                      </button>
+                    )}
+
+                    {/* Dashed Separator & Char Count */}
+                    <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                    <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
+                      {formattedCounter}
+                    </div>
+
+                    {/* Author & Hashtags */}
+                    <div className="text-xs text-slate-500 font-medium mb-2">
+                      Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                    </div>
+
+                    {hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-4">
+                        {hashtags.map((h, i) => (
+                          <span key={i}>{h}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Multi-Image Grid for Facebook */}
+                  {renderMultiImageGrid(postImages)}
+
+                  {/* Post Footer Action Bar */}
+                  <div className="border-t border-slate-150 dark:border-zinc-800 py-2.5 px-4 grid grid-cols-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300 select-none">
+                    <button className="flex items-center justify-center gap-2 hover:bg-slate-100 dark:hover:bg-zinc-800 py-2 rounded-xl transition-colors cursor-pointer border-0 bg-transparent">
+                      <ThumbsUp size={16} />
+                      <span>Thích</span>
+                    </button>
+                    <button className="flex items-center justify-center gap-2 hover:bg-slate-100 dark:hover:bg-zinc-800 py-2 rounded-xl transition-colors cursor-pointer border-0 bg-transparent">
+                      <MessageSquare size={16} />
+                      <span>Bình luận</span>
+                    </button>
+                    <button className="flex items-center justify-center gap-2 hover:bg-slate-100 dark:hover:bg-zinc-800 py-2 rounded-xl transition-colors cursor-pointer border-0 bg-transparent">
+                      <Share2 size={16} />
+                      <span>Chia sẻ</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Editable Text Area Wrapper */}
-              <div className="p-6 pt-4 relative min-h-[300px]">
-                {/* Backdrop for highlights */}
-                <div 
-                  className="absolute inset-0 p-6 pt-4 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden"
-                >
-                  {renderHighlightedBackdrop(state.postContent, state.highlightSelections)}
+              {/* THREADS PREVIEW */}
+              {currentPlatform === 'threads' && (
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 transition-all space-y-4 ${
+                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                }`}>
+                  {/* MAIN POST 1 BLOCK */}
+                  <div className="flex gap-4">
+                    {/* Left Column: Avatar 1 + Connecting Line */}
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
+                          A
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black border-2 border-white dark:border-zinc-900">
+                          +
+                        </div>
+                      </div>
+
+                      {/* Vertical Thread Line running to bottom of Post 1 */}
+                      <div className="w-0.5 flex-grow bg-slate-200 dark:bg-zinc-700 mt-2 -mb-5 rounded-full min-h-[40px]" />
+                    </div>
+
+                    {/* Right Content 1 */}
+                    <div className="flex-1 min-w-0 select-text pb-4">
+                      <div className="flex items-center justify-between select-none mb-2">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span>1 giờ trước</span>
+                          <MoreHorizontal className="w-4 h-4 cursor-pointer" />
+                        </div>
+                      </div>
+
+                      <div className="mb-2">
+                        <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                          {editableTitle || state.articleContext?.title}
+                        </h3>
+                      </div>
+
+                      {/* Editor Text Area */}
+                      <div className="relative min-h-[120px] my-3">
+                        <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                          {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
+                        </div>
+                        <div
+                          key={isExpanded ? 'expanded' : 'collapsed'}
+                          ref={editorRef}
+                          contentEditable={!state.isGeneratingPost}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                          }}
+                          className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                        >
+                          {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                        </div>
+                      </div>
+
+                      {isLongContent && (
+                        <button
+                          type="button"
+                          onClick={() => setIsExpanded(!isExpanded)}
+                          className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                        >
+                          {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                        </button>
+                      )}
+
+                      {/* Dashed Separator & Right Aligned Char Counter */}
+                      <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                      <div className="text-[11px] font-bold text-slate-400 text-right mb-2">
+                        {formattedCounter}
+                      </div>
+
+                      {/* 1/2 Badge */}
+                      <div className="mb-3">
+                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-md">1/2</span>
+                      </div>
+
+                      {/* Author & Hashtags */}
+                      <div className="text-xs text-slate-500 font-medium mb-2">
+                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                      </div>
+
+                      {hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-4">
+                          {hashtags.map((h, i) => (
+                            <span key={i}>{h}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Horizontal Draggable Carousel for Threads */}
+                      {renderThreadsCarousel(postImages)}
+
+                      {/* Action icons */}
+                      <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300 pt-1">
+                        <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
+                        <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
+                        <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
+                        <Send size={18} className="cursor-pointer hover:text-primary transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* THREAD REPLY POST 2 BLOCK */}
+                  <div className="flex gap-4 pt-4 border-t border-slate-100 dark:border-zinc-800/80">
+                    {/* Left Column: Avatar 2 */}
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
+                          A
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black border-2 border-white dark:border-zinc-900">
+                          +
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Content 2 */}
+                    <div className="flex-1 min-w-0 select-text">
+                      <div className="flex items-center justify-between select-none mb-2">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span>1 giờ trước</span>
+                          <MoreHorizontal className="w-4 h-4 cursor-pointer" />
+                        </div>
+                      </div>
+
+                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400 truncate flex items-center gap-2 mb-3">
+                        <span className="text-slate-700 dark:text-slate-300 font-bold shrink-0">&gt;&gt;&gt; Xem chi tiết:</span>
+                        <span className="underline truncate">{state.articleContext?.sourceUrl || 'https://gocnhinmoi.com.vn/tay-...'}</span>
+                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0">2/2</span>
+                      </div>
+
+                      <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300">
+                        <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
+                        <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
+                        <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
+                        <Send size={18} className="cursor-pointer hover:text-primary transition-colors" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                {/* Actual Editor */}
-                <div 
-                  ref={editorRef}
-                  contentEditable={!state.isGeneratingPost}
-                  suppressContentEditableWarning
-                  onBlur={(e) => {
-                    dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
-                  }}
-                  className="text-sm md:text-[15px] text-text leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[300px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                >
-                  {state.postContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+              )}
+
+              {/* INSTAGRAM PREVIEW */}
+              {currentPlatform === 'instagram' && (
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${
+                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                }`}>
+                  {/* Post Header */}
+                  <div className="p-4 flex items-center justify-between select-none">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
+                        A
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1">
+                          <span>antbiz_official</span>
+                          <CheckCircle2 className="w-4 h-4 text-[#1877F2] fill-[#1877F2] inline-block shrink-0" />
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium">
+                          Hồ Chí Minh
+                        </div>
+                      </div>
+                    </div>
+                    <MoreHorizontal className="w-5 h-5 text-slate-400 cursor-pointer" />
+                  </div>
+
+                  {/* MEDIA IMAGES CAROUSEL FOR INSTAGRAM */}
+                  {renderInstagramCarousel(postImages)}
+
+                  {/* Instagram Action Icons & Likes */}
+                  <div className="p-4 pb-6 select-none">
+                    <div className="flex items-center gap-4 text-slate-800 dark:text-white mb-3">
+                      <Heart size={22} className="cursor-pointer hover:text-red-500 transition-colors" />
+                      <MessageCircle size={22} className="cursor-pointer hover:text-blue-500 transition-colors" />
+                      <Send size={22} className="cursor-pointer hover:text-primary transition-colors" />
+                    </div>
+
+                    <div className="text-xs font-black text-slate-900 dark:text-white mb-3 select-text">
+                      Liked by <span className="font-extrabold">john_doe</span> and <span className="font-extrabold">42 others</span>
+                    </div>
+
+                    {/* Body Content */}
+                    <div className="select-text">
+                      <div className="mb-2">
+                        <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                          {editableTitle || state.articleContext?.title}
+                        </h3>
+                      </div>
+
+                      <div className="font-black text-slate-900 dark:text-white text-sm mt-3 mb-2">
+                        antbiz_official
+                      </div>
+
+                      <div className="relative min-h-[100px] my-2">
+                        <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                          {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
+                        </div>
+                        <div
+                          key={isExpanded ? 'expanded' : 'collapsed'}
+                          ref={editorRef}
+                          contentEditable={!state.isGeneratingPost}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                          }}
+                          className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                        >
+                          {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                        </div>
+                      </div>
+
+                      {isLongContent && (
+                        <button
+                          type="button"
+                          onClick={() => setIsExpanded(!isExpanded)}
+                          className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                        >
+                          {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                        </button>
+                      )}
+
+                      {/* Dashed separator & Counter */}
+                      <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                      <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
+                        {formattedCounter}
+                      </div>
+
+                      {/* Author & Hashtags */}
+                      <div className="text-xs text-slate-500 font-medium mb-2">
+                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                      </div>
+
+                      {hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-2">
+                          {hashtags.map((h, i) => (
+                            <span key={i}>{h}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
             </div>
           )}
 
-          {/* Inline Selection Highlight popover */}
-          {showPopover && (
-            <div
-              className="fixed z-50 bg-zinc-950 text-white rounded-xl shadow-2xl flex items-center gap-2 p-1.5 animate-scale-up border border-zinc-800"
-              style={{
-                top: `${popoverPos.top}px`,
-                left: `${popoverPos.left}px`,
-                transform: 'translateX(-50%)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleSendHighlightEdit}
-                className="bg-[#ff6b00] hover:bg-[#ff6b00]/90 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#ff6b00]/25 transition-all active:scale-95 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Gửi AI sửa</span>
-              </button>
-              <div className="w-px h-5 bg-zinc-800" />
-              <button
-                type="button"
-                onClick={handleCancelSelection}
-                className="text-zinc-400 hover:text-white px-2 py-1.5 text-xs font-bold transition-all hover:bg-zinc-900 rounded-lg cursor-pointer"
-              >
-                Hủy
-              </button>
-            </div>
-          )}
+
         </div>
       </section>
 

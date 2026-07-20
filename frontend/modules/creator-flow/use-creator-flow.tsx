@@ -105,7 +105,7 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_CRAWL_STATUS':
       return { ...state, crawlStatus: action.payload };
     case 'SET_ARTICLE_CONTEXT':
-      return { ...state, articleContext: action.payload };
+      return { ...state, articleContext: action.payload, drafts: {}, postContent: '' };
     case 'SET_CRAWLED_IMAGES':
       return { ...state, crawledImageUrls: action.payload };
     case 'SET_PRESETS':
@@ -182,17 +182,9 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_CHAT_SENDING':
       return { ...state, isChatSending: action.payload };
     case 'ADD_HIGHLIGHT_SELECTION':
-      // Prevent overlapping or duplicate ranges
-      if (state.highlightSelections.some(s => 
-        (action.payload.start >= s.start && action.payload.start < s.end) ||
-        (action.payload.end > s.start && action.payload.end <= s.end) ||
-        (action.payload.start <= s.start && action.payload.end >= s.end)
-      )) {
-        return state;
-      }
       return {
         ...state,
-        highlightSelections: [...state.highlightSelections, action.payload].sort((a, b) => a.start - b.start),
+        highlightSelections: [...state.highlightSelections.filter(s => s.id !== action.payload.id), action.payload].sort((a, b) => a.start - b.start),
       };
     case 'REMOVE_HIGHLIGHT_SELECTION':
       return {
@@ -450,9 +442,11 @@ export function CreatorFlowProvider({
     if (targetPlatforms.length === 0 || !state.articleContext || !state.articleId) return;
     dispatch({ type: 'SET_GENERATING_POST', payload: true });
 
-    // Set first platform as active
+    // Set first platform as active if not already selected
     const firstPlatform = targetPlatforms[0];
-    dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
+    if (firstPlatform && state.selectedPlatform !== firstPlatform) {
+      dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
+    }
 
     const contents = new Map<PlatformType, string>();
     const captionIds = new Map<PlatformType, string>();

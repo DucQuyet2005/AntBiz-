@@ -427,10 +427,8 @@ export default function ContentCalendarView() {
     const rect = gridContainer.getBoundingClientRect();
     const offsetY = e.clientY - rect.top; // in pixels
 
-    // 1 minute = 1 pixel
-    let totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
-    // Round to nearest 15 minutes
-    totalMinutes = Math.round(totalMinutes / 15) * 15;
+    // 1 minute = 1 pixel (accurate to exact minute)
+    const totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
 
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -462,10 +460,8 @@ export default function ContentCalendarView() {
     const rect = gridContainer.getBoundingClientRect();
     const offsetY = e.clientY - rect.top; // in pixels
 
-    // 1 minute = 1 pixel
-    let totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
-    // Round to nearest 15 minutes
-    totalMinutes = Math.round(totalMinutes / 15) * 15;
+    // 1 minute = 1 pixel (accurate to exact minute)
+    const totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
 
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -1319,6 +1315,17 @@ export default function ContentCalendarView() {
               snapDuration="00:01:00"
               slotMinTime="00:00:00"
               slotMaxTime="24:00:00"
+              eventTimeFormat={{
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: false,
+                hour12: false
+              }}
+              slotLabelFormat={{
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              }}
               height={700}
               scrollTime="07:00:00"
             />
