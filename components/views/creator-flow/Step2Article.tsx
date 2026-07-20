@@ -568,6 +568,7 @@ export default function Step2Article({
     const site = activeBrowserSite;
     setActiveBrowserSite(null);
     setIsCrawlingActive(true);
+    handleResetAllFields();
     startCrawl(url, site);
   };
 
