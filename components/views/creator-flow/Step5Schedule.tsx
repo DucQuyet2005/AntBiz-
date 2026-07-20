@@ -31,6 +31,27 @@ export default function Step5Schedule() {
     return () => clearInterval(timer);
   }, []);
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleContainerDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!scrollContainerRef.current) return;
+
+    const container = scrollContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    const threshold = 60; // 60px edge threshold
+    const distanceFromTop = e.clientY - rect.top;
+    const distanceFromBottom = rect.bottom - e.clientY;
+
+    if (distanceFromTop > 0 && distanceFromTop < threshold) {
+      const intensity = (threshold - distanceFromTop) / threshold;
+      container.scrollTop -= Math.ceil(intensity * 16);
+    } else if (distanceFromBottom > 0 && distanceFromBottom < threshold) {
+      const intensity = (threshold - distanceFromBottom) / threshold;
+      container.scrollTop += Math.ceil(intensity * 16);
+    }
+  }, []);
+
   // Fetch dynamic golden hours for selected platform
   const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
@@ -194,6 +215,8 @@ export default function Step5Schedule() {
 
             {/* Scrollable hourly rows */}
             <div 
+              ref={scrollContainerRef}
+              onDragOver={handleContainerDragOver}
               style={{ scrollbarGutter: 'stable' }}
               className="h-[350px] overflow-y-auto bg-white dark:bg-zinc-900 relative scrollbar-thin scrollbar-thumb-gray-250 dark:scrollbar-thumb-zinc-800"
             >
