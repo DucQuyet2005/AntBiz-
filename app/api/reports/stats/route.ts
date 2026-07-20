@@ -173,20 +173,8 @@ export async function GET(request: NextRequest) {
         interactions = interactions[0];
       }
       
-      // If migration is missing or record is missing, mock some data for posted posts (only in local fallback/development)
-      if (post.status === 'posted') {
-        if (isMigrationMissing || !interactions) {
-          // Deterministic mock values based on post.id hash so they are stable
-          const hash = post.id.split('-').reduce((acc: number, val: string) => acc + (parseInt(val, 16) || 0), 0);
-          interactions = {
-            likes: (hash % 491) + 10,
-            comments: (hash % 99) + 2,
-            shares: (hash % 46) + 5,
-            clicks: (hash % 191) + 10,
-            reach: (hash % 951) + 50,
-            impressions: (hash % 1901) + 100
-          };
-        }
+      if (post.status === 'posted' && interactions) {
+        // Use real interactions from database
       } else {
         interactions = { likes: 0, comments: 0, shares: 0, clicks: 0, reach: 0, impressions: 0 };
       }

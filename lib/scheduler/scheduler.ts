@@ -1,8 +1,13 @@
 import { createServiceRoleClient } from '@/lib/api/auth';
 import { createScheduledPublishingModule } from '@/backend/modules/scheduled-publishing/scheduled-publishing-factory';
+import { createPostPerformanceModule } from '@/backend/modules/post-performance/post-performance-factory';
 
 export async function runSchedulerCycle() {
   return createScheduledPublishingModule(createServiceRoleClient()).runPublicationCycle();
+}
+
+export async function runPerformanceSyncCycle() {
+  return createPostPerformanceModule(createServiceRoleClient()).syncFacebookPerformance();
 }
 
 export function initScheduler() {
@@ -17,3 +22,4 @@ export function initScheduler() {
   }, 60_000);
   globalRef.isSchedulerInitialized = true;
 }
+
