@@ -93,7 +93,7 @@ export interface PublicationNotifier {
 }
 
 export interface ScheduledPublishingRepository {
-  list(): Promise<ScheduledPostRecord[]>;
+  list(filters?: { triggerSource?: string; limit?: number; creatorId?: string }): Promise<ScheduledPostRecord[]>;
   findCaption(id: string): Promise<CaptionSummary | null>;
   findPendingByCaption(captionId: string): Promise<ScheduledPostRecord | null>;
   insert(input: Record<string, unknown>): Promise<ScheduledPostRecord>;

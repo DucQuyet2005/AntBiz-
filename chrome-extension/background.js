@@ -258,6 +258,23 @@ async function getPromptConfigsViaServer(token, host = 'http://localhost:3000') 
   return await response.json();
 }
 
+// Hàm lấy lịch sử các bài đăng được tạo từ Extension qua server
+async function getHistoryViaServer(token, host = 'http://localhost:3000') {
+  const response = await fetch(`${host}/api/scheduled-posts?trigger_source=extension&limit=10`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errJson = await response.json().catch(() => ({}));
+    throw new Error(errJson.error || `Lỗi tải lịch sử bài đăng: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 // Lắng nghe các tin nhắn từ Popup UI hoặc Content Script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'get_session') {
@@ -269,6 +286,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'get_prompt_configs') {
     getPromptConfigsViaServer(message.token, message.host)
+      .then(data => sendResponse({ success: true, data }))
+      .catch(error => sendResponse({ success: false, error: error.message || error }));
+    return true;
+  }
+
+  if (message.action === 'get_history') {
+    getHistoryViaServer(message.token, message.host)
       .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error.message || error }));
     return true;

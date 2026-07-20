@@ -6,11 +6,20 @@ import {
   SCHEDULED_PUBLISHING_ROLES,
 } from './_adapter';
 
-export async function GET(_request?: NextRequest) {
-  const { supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
+export async function GET(request: NextRequest) {
+  const { user, supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
   if (unauthorized) return unauthorized;
   try {
-    return NextResponse.json({ data: await buildScheduledPublishingModule(supabase).list() });
+    const triggerSource = request.nextUrl.searchParams.get('trigger_source') || undefined;
+    const limitParam = request.nextUrl.searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+
+    const data = await buildScheduledPublishingModule(supabase).list({
+      triggerSource,
+      limit,
+      creatorId: triggerSource === 'extension' ? user.id : undefined,
+    });
+    return NextResponse.json({ data });
   } catch (error) {
     return scheduledPublishingErrorResponse(error, '[GET /api/scheduled-posts]');
   }
