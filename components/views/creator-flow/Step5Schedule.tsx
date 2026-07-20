@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Calendar, Clock, Facebook, Instagram, 
-  Settings
+  Zap, Info, Settings, Star 
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
+import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
@@ -19,6 +22,10 @@ export default function Step5Schedule() {
   
   // Local state for week pagination
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
+  const currentPlatform = state.selectedPlatform || 'facebook';
+
+  // Fetch dynamic golden hours for selected platform
+  const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
   const today = new Date();
   const currentDayOfWeek = today.getDay(); // 0 is Sun, 1 is Mon...
@@ -39,6 +46,23 @@ export default function Step5Schedule() {
       fullDateStr: d.toISOString().split('T')[0]
     };
   });
+
+  // DnD + Golden Hour hook (logic lives in frontend/modules/schedule-dnd)
+  const handleScheduleChange = useCallback((dayIdx: number, hour: number) => {
+    const targetDay = days.find(d => d.index === dayIdx);
+    if (!targetDay) return;
+
+    const hourPad = `${hour.toString().padStart(2, '0')}:00`;
+    
+    // Prevent scheduling in the past
+    const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+    if (targetDate.getTime() < new Date().getTime()) return;
+
+    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${hourPad}` });
+    dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
+  }, [dispatch, days]);
+
+  const dnd = useScheduleDragDrop(handleScheduleChange, dynamicGoldenHours);
 
   // Hours mapping for vertical list: 7:00 to 22:00
   const hours = Array.from({ length: 16 }, (_, i) => `${i + 7}:00`);
@@ -65,13 +89,17 @@ export default function Step5Schedule() {
   const handleTimeChange = (val: string) => {
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${datePart || ''}T${val}` });
   };
-
   // Helper when user clicks on an empty slot in the timeline grid
   const handleCellClick = (dayIndex: number, hourStr: string) => {
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
     const hourPad = hourStr.split(':')[0].padStart(2, '0') + ':00';
+    
+    // Prevent past scheduling
+    const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+    if (targetDate.getTime() < new Date().getTime()) return;
+
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${hourPad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   };
@@ -178,21 +206,73 @@ export default function Step5Schedule() {
                           currentPostDayIndex === dayIdx && 
                           currentPostHourVal === hourVal;
 
+                        const targetDay = days.find(d => d.index === dayIdx);
+                        if (!targetDay) return null;
+                        const hourPad = `${hourVal.toString().padStart(2, '0')}:00`;
+                        const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
+                        const isPast = targetDate.getTime() < new Date().getTime();
+                        
                         const isHighlighted = dayIdx === currentPostDayIndex;
+
+                        const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal);
+                        const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
+                        const isCellHover = dnd.isCellHovered(dayIdx, hourVal);
+                        const showGolden = isDefaultGolden || isDragGolden;
+                        const goldenStyle = showGolden ? dnd.getGoldenHourStyle(currentPlatform) : null;
+
+                        let tooltipAlignClass = "right-0";
+                        if (dayIdx === 0) {
+                          tooltipAlignClass = "left-0";
+                        }
 
                         return (
                           <div
                             key={dayIdx}
-                            onClick={() => handleCellClick(dayIdx, hour)}
-                            className={`border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative hover:bg-primary/4 dark:hover:bg-primary/8 transition-colors cursor-crosshair flex flex-col justify-center gap-1 overflow-hidden ${
-                              isHighlighted ? 'bg-primary/[0.01]' : ''
+                            onClick={() => !isPast && handleCellClick(dayIdx, hour)}
+                            onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
+                            onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
+                            onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
+                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
+                              isPast
+                                ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
+                                : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
+                            } ${
+                              isCellHover && !isPast
+                                ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
+                                : 'z-0 hover:z-10'
+                            } ${
+                              isHighlighted ? 'bg-primary/[0.02]' : ''
                             }`}
+                            style={showGolden && !isPast ? {
+                              backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
+                            } : undefined}
                           >
+                            {/* Golden Hour indicator */}
+                            {showGolden && !isPast && (
+                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
+                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
+                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/golden:opacity-100'}`} />
+                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                    Giờ Vàng {currentPlatform}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
                             {isCurrentPostInCell && (
                               <div
-                                className="rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-primary bg-primary/5 dark:bg-primary/10 text-primary animate-pulse shadow-sm"
+                                draggable
+                                onDragStart={(e) => dnd.handleDragStart(e, {
+                                  type: 'draft',
+                                  platform: state.selectedPlatform || 'facebook',
+                                  label: `Bản thảo`,
+                                })}
+                                onDragEnd={dnd.handleDragEnd}
+                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
+                                  dnd.isDragging ? 'opacity-40' : 'animate-pulse'
+                                }`}
                               >
-                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-primary/35">
+                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
                                   {getPlatformIcon(state.selectedPlatform || 'facebook')}
                                 </div>
                                 <span className="truncate">
@@ -287,9 +367,9 @@ export default function Step5Schedule() {
               <div className="bg-primary/5 dark:bg-primary/10 border border-primary/25 rounded-xl p-3.5 flex items-center justify-between text-xs text-text font-bold">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm">
-                    {getPlatformIcon(state.selectedPlatform || 'facebook')}
+                    {getPlatformIcon(currentPlatform)}
                   </div>
-                  <span className="capitalize">{state.selectedPlatform || 'Facebook'}</span>
+                  <span className="capitalize">{currentPlatform}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-text font-black">

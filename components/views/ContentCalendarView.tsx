@@ -27,7 +27,9 @@ import {
   Sliders,
   Send,
   Download,
-  X
+  X,
+  Layers,
+  Star
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -38,6 +40,8 @@ import dynamic from 'next/dynamic';
 
 const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
 const ContentListView = dynamic(() => import('./ContentListView'), { ssr: false });
+import { STATIC_GOLDEN_HOURS } from '@/frontend/modules/scheduled-publishing/golden-hour';
+
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string; key?: any }) => (
@@ -163,6 +167,7 @@ export default function ContentCalendarView() {
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(() => new Date());
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
+  const [draggedPlatforms, setDraggedPlatforms] = useState<string[]>([]);
   const [dragOverTime, setDragOverTime] = useState<{ dayIndex: number; timeStr: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -409,31 +414,36 @@ export default function ContentCalendarView() {
   }, [fetchPosts, showPopup, language, clearCache]);
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, postId: string) => {
-    e.dataTransfer.setData('text/plain', postId);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'single', postId, offsetY }));
     e.dataTransfer.effectAllowed = 'move';
     setDraggedPostId(postId);
-  }, []);
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      setDraggedPlatforms([post.platform === 'thread' ? 'threads' : post.platform]);
+    }
+  }, [posts]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedPostId(null);
     setDragOverTime(null);
+    setDraggedPlatforms([]);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, dayIdx: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, dayIdx: number, targetHour: number) => {
     e.preventDefault();
-    const gridContainer = gridContainerRef.current;
-    if (!gridContainer) return;
+    const cellRect = e.currentTarget.getBoundingClientRect();
+    const localOffsetY = e.clientY - cellRect.top;
+    
+    // Mỗi ô cao 120px tương ứng 60 phút => 2px = 1 phút
+    let minutes = Math.floor(localOffsetY / 2);
+    minutes = Math.max(0, Math.min(59, minutes));
+    minutes = Math.round(minutes / 15) * 15;
+    if (minutes === 60) minutes = 45; // Tránh tràn sang giờ tiếp theo
 
-    const rect = gridContainer.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top; // in pixels
 
-    // 1 minute = 1 pixel (accurate to exact minute)
-    const totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-
+    const timeStr = `${targetHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     setDragOverTime({ dayIndex: dayIdx, timeStr });
   }, []);
 
@@ -441,36 +451,120 @@ export default function ContentCalendarView() {
     setDragOverTime(null);
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>, dayIdx: number, date: Date) => {
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>, dayIdx: number, date: Date, targetHour: number) => {
     e.preventDefault();
     setDraggedPostId(null);
     setDragOverTime(null);
-    const postId = e.dataTransfer.getData('text/plain');
-    if (!postId) return;
+    setDraggedPlatforms([]);
+    const dataStr = e.dataTransfer.getData('text/plain');
+    if (!dataStr) return;
 
-    // Prevent dragging/moving if the post is already published
-    const draggedPost = posts.find(p => p.id === postId);
-    if (draggedPost && draggedPost.status === 'posted') {
+    let draggedIds: string[] = [];
+    let dragOffsetY = 0;
+    try {
+      if (dataStr.startsWith('{')) {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.type === 'single') {
+          draggedIds = [parsed.postId];
+          dragOffsetY = parsed.offsetY || 0;
+        } else {
+          draggedIds = parsed.postIds || [];
+          dragOffsetY = parsed.offsetY || 0;
+        }
+      } else {
+        draggedIds = [dataStr];
+      }
+    } catch {
+      draggedIds = [dataStr];
+    }
+
+    if (draggedIds.length === 0) return;
+
+    // Lọc ra các bài chưa đăng
+    const draggedPosts = posts.filter(p => draggedIds.includes(p.id) && p.status === 'pending');
+    if (draggedPosts.length === 0) return;
+
+    const cellRect = e.currentTarget.getBoundingClientRect();
+    let localOffsetY = e.clientY - cellRect.top - dragOffsetY;
+    if (localOffsetY < 0) localOffsetY = 0;
+    
+    let minutes = Math.floor(localOffsetY / 2);
+    minutes = Math.max(0, Math.min(59, minutes));
+    minutes = Math.round(minutes / 15) * 15;
+    if (minutes === 60) minutes = 45;
+
+    const newScheduledDate = new Date(date);
+    newScheduledDate.setHours(targetHour, minutes, 0, 0);
+
+    if (newScheduledDate < new Date()) {
+      showPopup(
+        language === 'vi'
+          ? 'Không thể dời lịch đăng bài viết về thời gian trong quá khứ.'
+          : 'Cannot reschedule a post to a past date/time.',
+        'error'
+      );
       return;
     }
 
-    const gridContainer = gridContainerRef.current;
-    if (!gridContainer) return;
+    const firstPost = draggedPosts[0];
+    
+    // Bỏ qua nếu kéo về đúng vị trí (thời gian) cũ
+    const originalDate = new Date(firstPost.scheduled_at);
+    if (
+      newScheduledDate.getFullYear() === originalDate.getFullYear() &&
+      newScheduledDate.getMonth() === originalDate.getMonth() &&
+      newScheduledDate.getDate() === originalDate.getDate() &&
+      newScheduledDate.getHours() === originalDate.getHours() &&
+      newScheduledDate.getMinutes() === originalDate.getMinutes()
+    ) {
+      return;
+    }
 
-    const rect = gridContainer.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top; // in pixels
+    const title = draggedPosts.length > 1 
+        ? (language === 'vi' ? `${draggedPosts.length} bài viết` : `${draggedPosts.length} posts`) 
+        : (firstPost.captions?.articles?.title || firstPost.captions?.edited_content || 'Bài viết');
 
-    // 1 minute = 1 pixel (accurate to exact minute)
-    const totalMinutes = Math.max(0, Math.min(1439, Math.round(offsetY)));
+    setConfirmDrop({
+      isOpen: true,
+      isMultiple: draggedPosts.length > 1,
+      posts: draggedPosts,
+      selectedPostIds: draggedPosts.map(p => p.id),
+      eventId: firstPost.id,
+      newStart: newScheduledDate.toISOString(),
+      oldStart: firstPost.scheduled_at,
+      title: title,
+      revert: () => {}, // Không cần revert UI vì HTML Drag Drop không tự đổi DOM
+      commit: async (selectedIds?: string[]) => {
+        const idsToUpdate = selectedIds || draggedPosts.map(p => p.id);
+        if (idsToUpdate.length === 0) return;
 
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
 
-    const newScheduledDate = new Date(date);
-    newScheduledDate.setHours(hours, minutes, 0, 0);
-
-    await handleReschedule(postId, newScheduledDate.toISOString());
-  }, [handleReschedule, posts]);
+        if (idsToUpdate.length === 1) {
+          await handleReschedule(idsToUpdate[0], newScheduledDate.toISOString());
+        } else {
+          setActionLoadingId('bulk');
+          try {
+            const res = await fetch('/api/scheduled-posts/bulk-reschedule', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids: idsToUpdate, scheduledAt: newScheduledDate.toISOString() }),
+            });
+            if (res.ok) {
+              showPopup(language === 'vi' ? 'Đã dời lịch các bài đăng thành công!' : 'Successfully rescheduled posts!', 'success');
+              clearCache();
+              await fetchPosts();
+            } else {
+              showPopup(language === 'vi' ? 'Lỗi khi thay đổi lịch đăng bài' : 'Error rescheduling posts', 'error');
+            }
+          } catch (err) {
+            showPopup(language === 'vi' ? 'Lỗi kết nối khi dời lịch đăng bài' : 'Connection error', 'error');
+          } finally {
+            setActionLoadingId(null);
+          }
+        }
+      }
+    });
+  }, [handleReschedule, posts, language, showPopup, clearCache, fetchPosts]);
 
   // Check if today is within current week
   const isCurrentWeekToday = () => {
@@ -491,11 +585,19 @@ export default function ContentCalendarView() {
   });
 
   const handlePrevWeek = useCallback(() => {
-    calendarRef.current?.getApi()?.prev();
+    setCurrentWeekStart(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 7);
+      return d;
+    });
   }, []);
 
   const handleNextWeek = useCallback(() => {
-    calendarRef.current?.getApi()?.next();
+    setCurrentWeekStart(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 7);
+      return d;
+    });
   }, []);
 
   const handleToday = useCallback(() => {
@@ -506,7 +608,6 @@ export default function ContentCalendarView() {
     sunday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(sunday);
     setHighlightedDate(new Date());
-    calendarRef.current?.getApi()?.today();
   }, []);
 
   const handleViewChange = useCallback((viewType: string) => {
@@ -624,40 +725,62 @@ export default function ContentCalendarView() {
   const renderEventContent = useCallback((eventInfo: any) => {
     const { platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
 
+    const isGoldenHour = (postPlatform: string, scheduledAt: string) => {
+      const hour = new Date(scheduledAt).getHours();
+      const platHours = STATIC_GOLDEN_HOURS[postPlatform as keyof typeof STATIC_GOLDEN_HOURS] || [];
+      return platHours.some(gh => gh.hour === hour);
+    };
+
     if (isMultiple) {
       const postsCount = posts ? posts.length : 0;
       const uniquePlatforms = platforms || [];
 
       return (
-        <div className="relative w-full h-full select-none cursor-pointer">
-          {/* Deepest card background */}
-          <div className="absolute inset-0 translate-x-1.5 -translate-y-1.5 rounded-xl border border-blue-200/50 bg-[#EDF3FF]/40 dark:bg-blue-950/10 -z-20 h-full w-full" />
-          {/* Mid card background */}
-          <div className="absolute inset-0 translate-x-0.5 -translate-y-0.5 rounded-xl border border-blue-200/80 bg-[#EDF3FF]/70 dark:bg-blue-950/20 -z-10 h-full w-full" />
-          {/* Front card */}
-          <div className="w-full h-full rounded-xl border border-blue-300 dark:border-blue-900 bg-[#EDF3FF] dark:bg-blue-950/45 p-2 flex flex-col justify-between shadow-sm overflow-hidden min-h-[55px]">
-            <div className="flex justify-between items-center w-full">
-              <span className="bg-[#DCE6FF] dark:bg-blue-900/60 text-[#1E40AF] dark:text-blue-300 text-[9px] font-black px-2 py-0.5 rounded-full select-none">
-                {postsCount} bài
-              </span>
-              <div className="flex gap-0.5 items-center">
-                {uniquePlatforms.map((plat: string, idx: number) => {
-                  if (plat === 'facebook') return <Facebook key={idx} size={11} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
-                  if (plat === 'instagram') return <Instagram key={idx} size={11} className="text-[#E4405F] shrink-0" />;
-                  if (plat === 'threads') return <ThreadsIcon key={idx} size={11} className="text-black dark:text-white shrink-0" />;
-                  return <Globe key={idx} size={11} className="text-emerald-700 shrink-0" />;
-                })}
+        <div className="w-full h-auto bg-[#EDF3FF] dark:bg-blue-950/40 rounded-xl overflow-hidden cursor-pointer shadow-sm select-none border border-blue-100 dark:border-blue-900/30">
+          <div className="flex items-center justify-between px-1.5 py-1 bg-[#E2EAFB] dark:bg-blue-900/40 border-b border-blue-200/50 dark:border-blue-900/50">
+            <div className="flex items-center gap-1 text-[#1E40AF] dark:text-blue-300 font-black min-w-0">
+              <Layers size={12} className="stroke-[2.5] shrink-0" />
+              <div className="flex flex-col leading-none text-center justify-center pt-0.5 shrink-0">
+                <span className="text-[11px] leading-none">{postsCount}</span>
+                <span className="text-[8px] leading-none mt-[1px]">bài</span>
               </div>
             </div>
-            <div className="text-center font-extrabold text-[#3B82F6] dark:text-blue-400 text-[10px] tracking-wide mt-1 select-none">
-              BẤM ĐỂ XEM
+            <div className="flex items-center gap-0.5 shrink-0">
+              {uniquePlatforms.map((plat: string, idx: number) => {
+                if (plat === 'facebook') return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+                if (plat === 'instagram') return <Instagram key={idx} size={10} className="text-[#E4405F] shrink-0" />;
+                if (plat === 'threads') return <ThreadsIcon key={idx} size={10} className="text-black dark:text-white shrink-0" />;
+                return <Globe key={idx} size={10} className="text-emerald-700 shrink-0" />;
+              })}
             </div>
+          </div>
+          <div className="flex flex-col">
+            {(posts || []).map((post: any, i: number) => {
+              const platform = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
+              const title = post.captions?.articles?.title || post.captions?.ai_content || 'Bài viết...';
+              const isGolden = isGoldenHour(platform, post.scheduled_at);
+              
+              let barColor = 'bg-emerald-500';
+              if (platform === 'facebook') barColor = 'bg-[#1877F2]';
+              else if (platform === 'instagram') barColor = 'bg-[#E4405F]';
+              else if (platform === 'threads') barColor = 'bg-black dark:bg-white';
+
+              return (
+                <div key={post.id} className="flex items-center gap-1 px-1.5 py-1 border-b border-blue-100/50 dark:border-blue-900/30 last:border-0 hover:bg-white/40 dark:hover:bg-blue-900/20 transition-colors overflow-hidden w-full">
+                  <div className={`w-0.5 h-2.5 rounded-full shrink-0 ${barColor}`} />
+                  {isGolden ? <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
+                  <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300 truncate flex-1 min-w-0">{title}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
     } else {
       const time = new Date(eventInfo.event.start).toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       const title = eventInfo.event.title;
+      const post = eventInfo.event.extendedProps.post;
+      const isGolden = post ? isGoldenHour(platform, post.scheduled_at) : false;
 
       let bgClass = '';
       let borderClass = '';
@@ -688,25 +811,26 @@ export default function ContentCalendarView() {
 
       let statusIcon = null;
       if (status === 'failed') {
-        statusIcon = <AlertTriangle size={12} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
+        statusIcon = <AlertTriangle size={10} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
       } else if (status === 'cancelled') {
-        statusIcon = <X size={12} className="text-slate-500 shrink-0 font-bold" />;
+        statusIcon = <X size={10} className="text-slate-500 shrink-0 font-bold" />;
       } else if (status === 'posted') {
-        statusIcon = <CheckCircle2 size={12} className="text-emerald-500 fill-emerald-100 shrink-0" />;
+        statusIcon = <CheckCircle2 size={10} className="text-emerald-500 fill-emerald-100 shrink-0" />;
       }
 
       return (
-        <div className={`w-full h-full rounded-xl border ${borderClass} ${bgClass} p-2 flex flex-col justify-between overflow-hidden cursor-pointer min-h-[55px]`}>
-          <div className="flex items-center justify-between gap-1 w-full">
-            <div className="flex items-center gap-1.5 min-w-0">
+        <div className={`w-full h-full rounded-xl border ${borderClass} ${bgClass} p-1.5 flex flex-col justify-between overflow-hidden cursor-pointer min-h-[45px]`}>
+          <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
+            <div className="flex items-center gap-1 min-w-0 flex-1">
               {icon}
-              <span className={`text-[10px] font-black font-mono truncate ${textClass}`}>
+              <span className={`text-[9px] font-black font-mono truncate ${textClass}`}>
                 {time}
               </span>
+              {isGolden && <Star size={10} className="text-amber-500 fill-amber-400 shrink-0 ml-0.5" />}
             </div>
             {statusIcon}
           </div>
-          <div className={`text-[10px] font-black truncate leading-tight mt-1 ${textClass}`}>
+          <div className={`text-[9px] font-black truncate leading-tight mt-1 w-full ${textClass}`}>
             {title}
           </div>
         </div>
@@ -1281,55 +1405,175 @@ export default function ContentCalendarView() {
               </button>
             </div>
           </div>
+          {/* Custom Calendar Grid */}
+          <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
+            <div className="min-w-[700px] h-full relative">
+              {/* Header Row */}
+              <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-100 dark:border-zinc-850 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-30 shadow-sm">
+                <div className="p-3 flex items-center justify-center border-r border-slate-100 dark:border-zinc-850">
+                  {/* Empty corner */}
+                </div>
+                {weekDates.map((date, idx) => {
+                  const isTodayDate = isToday(date);
+                  return (
+                    <div key={idx} className="p-3 text-center border-r border-slate-100 dark:border-zinc-850 last:border-0 flex flex-col items-center justify-center gap-1">
+                      <span className={`text-[11px] font-black uppercase tracking-wider ${isTodayDate ? 'text-primary' : 'text-slate-500 dark:text-zinc-400'}`}>
+                        {getDayLabel(date)} {date.getDate()}/{date.getMonth() + 1}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
-          {viewMode === 'list' ? (
-            <ContentListView 
-              selectedPlatforms={selectedPlatforms} 
-              searchQuery={searchQuery}
-              onPostClick={(post) => {
-                setSelectedCell({
-                  date: new Date(post.scheduled_at),
-                  hour: new Date(post.scheduled_at).getHours(),
-                  posts: [post]
-                });
-              }}
-            />
-          ) : (
-            <CalendarComponent
-              ref={calendarRef}
-              initialView="timeGridWeek"
-              headerToolbar={false}
-              editable={true}
-              selectable={true}
-              selectMirror={true}
-              dayMaxEvents={true}
-              weekends={true}
-              locale={language === 'vi' ? 'vi' : 'en'}
-              events={fetchCalendarEvents}
-              eventClick={handleEventClick}
-              eventDrop={handleEventDrop}
-              eventContent={renderEventContent}
-              datesSet={handleDatesSet}
-              allDaySlot={false}
-              slotDuration="00:30:00"
-              snapDuration="00:01:00"
-              slotMinTime="00:00:00"
-              slotMaxTime="24:00:00"
-              eventTimeFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                meridiem: false,
-                hour12: false
-              }}
-              slotLabelFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              }}
-              height={700}
-              scrollTime="07:00:00"
-            />
-          )}
+              {/* Grid Body */}
+              <div className="relative">
+                {hoursArray.map(hour => (
+                  <div key={hour} className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-50 dark:border-zinc-800/50 min-h-[120px] group relative">
+                    <div className="border-r border-slate-100 dark:border-zinc-850 p-2 text-right relative bg-white dark:bg-slate-900 z-10">
+                      <span className="text-[10px] font-bold text-slate-400 absolute -top-2.5 right-2 bg-white dark:bg-slate-900 px-1">
+                        {hour.toString().padStart(2, '0')} giờ
+                      </span>
+                    </div>
+                    {/* Day Columns */}
+                    {Array.from({ length: 7 }).map((_, colIdx) => {
+                      // Lọc các bài viết
+                      const cellPosts = filteredPosts.filter(post => {
+                        const dayPos = getDayAndPosition(post.scheduled_at, currentWeekStart);
+                        return dayPos && dayPos.dayIndex === colIdx && dayPos.hours === hour;
+                      }).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+                      // Tính toán Golden Hours
+                      const platformsToCheck = draggedPlatforms.length > 0 ? draggedPlatforms : selectedPlatforms;
+                      const goldenPlatformsForHour = platformsToCheck.filter(plat => {
+                        const platHours = STATIC_GOLDEN_HOURS[plat as keyof typeof STATIC_GOLDEN_HOURS] || [];
+                        return platHours.some(gh => gh.hour === hour);
+                      });
+
+                      return (
+                        <div
+                          key={colIdx}
+                          className="border-r border-slate-50 dark:border-zinc-800/50 last:border-0 relative hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-crosshair group/cell"
+                          onDragOver={(e) => handleDragOver(e, colIdx, hour)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, colIdx, weekDates[colIdx], hour)}
+                        >
+                          {/* Golden Hours Background Indicator */}
+                          {goldenPlatformsForHour.length > 0 && dragOverTime && dragOverTime.dayIndex === colIdx && (
+                            <div className="absolute inset-1 rounded-lg border border-dashed pointer-events-none z-0 flex flex-col p-1.5 opacity-40 dark:opacity-20"
+                                 style={{
+                                   backgroundColor: goldenPlatformsForHour.length > 1 ? '#fffbeb' :
+                                                    goldenPlatformsForHour[0] === 'facebook' ? '#eff6ff' :
+                                                    goldenPlatformsForHour[0] === 'instagram' ? '#fdf2f8' :
+                                                    '#f8fafc',
+                                   borderColor: goldenPlatformsForHour.length > 1 ? '#fcd34d' :
+                                                goldenPlatformsForHour[0] === 'facebook' ? '#93c5fd' :
+                                                goldenPlatformsForHour[0] === 'instagram' ? '#f9a8d4' :
+                                                '#cbd5e1'
+                                 }}>
+                              <div className="flex gap-1 justify-end opacity-100">
+                                {goldenPlatformsForHour.includes('facebook') && <Facebook size={12} className="text-blue-600" />}
+                                {goldenPlatformsForHour.includes('instagram') && <Instagram size={12} className="text-pink-600" />}
+                                {goldenPlatformsForHour.includes('threads') && <ThreadsIcon size={12} className="text-slate-900 dark:text-white" />}
+                              </div>
+                              <span className="text-[9px] font-bold text-right mt-0.5 opacity-100"
+                                    style={{
+                                      color: goldenPlatformsForHour.length > 1 ? '#b45309' :
+                                             goldenPlatformsForHour[0] === 'facebook' ? '#1d4ed8' :
+                                             goldenPlatformsForHour[0] === 'instagram' ? '#be185d' :
+                                             '#334155'
+                                    }}>
+                                Giờ vàng
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Drag Over Indicator */}
+                          {dragOverTime && dragOverTime.dayIndex === colIdx && (
+                            <div className="absolute left-0 right-0 h-0.5 bg-primary/50 z-20 pointer-events-none" style={{ top: `${parseInt(dragOverTime.timeStr.split(':')[1])}px` }} />
+                          )}
+                          
+                          {/* Render Events */}
+                          {cellPosts.length > 0 && (
+                            <div className="relative w-full h-full px-1 py-1 z-20 flex flex-col">
+                              {(() => {
+                                // Group logic matching backend
+                                if (cellPosts.length === 1) {
+                                  const post = cellPosts[0];
+                                  const minutes = new Date(post.scheduled_at).getMinutes();
+                                  const topOffset = (minutes / 60) * 65; // Max offset 65px for a 120px cell
+
+                                  
+                                  const eventInfo = {
+                                    event: {
+                                      start: post.scheduled_at,
+                                      title: post.captions?.articles?.title || post.captions?.edited_content || post.captions?.ai_content || 'Bài viết không tên',
+                                      extendedProps: {
+                                        platform: post.platform === 'thread' ? 'threads' : post.platform,
+                                        status: post.status,
+                                        post: post,
+                                        isMultiple: false
+                                      }
+                                    }
+                                  };
+                                  return (
+                                    <div 
+                                      className="w-full"
+                                      style={{ marginTop: `${topOffset}px` }}
+                                      draggable={post.status === 'pending'}
+                                      onDragStart={(e) => handleDragStart(e, post.id)}
+                                      onDragEnd={handleDragEnd}
+                                      onClick={(e) => { e.stopPropagation(); setSelectedCell({ date: new Date(post.scheduled_at), hour, posts: [post] }); }}
+                                    >
+                                      {renderEventContent(eventInfo)}
+                                    </div>
+                                  );
+                                } else {
+                                  // Multiple events
+                                  const uniquePlatforms = Array.from(new Set(cellPosts.map(p => p.platform === 'thread' ? 'threads' : p.platform)));
+                                  const eventInfo = {
+                                    event: {
+                                      start: cellPosts[0].scheduled_at,
+                                      extendedProps: {
+                                        platform: 'multiple',
+                                        platforms: uniquePlatforms,
+                                        posts: cellPosts,
+                                        isMultiple: true
+                                      }
+                                    }
+                                  };
+                                  return (
+                                    <div 
+                                      className="w-full"
+                                      draggable={cellPosts.some(p => p.status === 'pending')}
+                                      onDragStart={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const offsetY = e.clientY - rect.top;
+                                        const pendingPosts = cellPosts.filter(p => p.status === 'pending');
+                                        const pendingIds = pendingPosts.map(p => p.id);
+                                        const platforms = Array.from(new Set(pendingPosts.map(p => p.platform === 'thread' ? 'threads' : p.platform)));
+                                        e.dataTransfer.setData('text/plain', JSON.stringify({ isMultiple: true, postIds: pendingIds, offsetY }));
+                                        e.dataTransfer.effectAllowed = 'move';
+                                        setDraggedPlatforms(platforms);
+                                      }}
+                                      onDragEnd={handleDragEnd}
+                                      onClick={(e) => { e.stopPropagation(); setSelectedCell({ date: new Date(cellPosts[0].scheduled_at), hour, posts: cellPosts }); }}
+                                    >
+                                      {renderEventContent(eventInfo)}
+                                    </div>
+                                  );
+                                }
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* Mobile Timeline List View */}

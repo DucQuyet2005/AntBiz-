@@ -85,6 +85,8 @@ Tiêu đề nguồn: ${input.article.title || ''}
 Nội dung nguồn: ${articleContent}
 Toàn bộ caption hiện tại: ${input.currentContent}
 Đoạn được chọn: ${selectedText}${presetSection}${instruction}
+
+LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần.
 Chỉ trả về đoạn thay thế, không giải thích, không thêm dấu ngoặc hay lời dẫn.`;
   }
 
@@ -93,5 +95,7 @@ Chỉ trả về đoạn thay thế, không giải thích, không thêm dấu ng
 Tiêu đề nguồn: ${input.article.title || ''}
 Nội dung nguồn: ${articleContent}
 Caption hiện tại: ${input.currentContent}${presetSection}${instruction}
+
+LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần.
 Trả về trực tiếp caption hoàn chỉnh, không giải thích hay thêm lời dẫn.`;
 }

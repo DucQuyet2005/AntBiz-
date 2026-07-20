@@ -107,7 +107,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         await page.route('**/*', (route) => {
           const type = route.request().resourceType();
           const reqUrl = route.request().url().toLowerCase();
-          const blockTypes = ['image', 'stylesheet', 'media', 'font'];
+          const blockTypes = ['stylesheet', 'media', 'font'];
           const blockDomains = [
             'google-analytics', 'googletagmanager', 'facebook', 'connect.facebook',
             'doubleclick', 'adnxs', 'pubmatic', 'adsystem', 'analytics', 'ads'

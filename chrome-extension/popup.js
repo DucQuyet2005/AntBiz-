@@ -9,6 +9,13 @@ const stateHome = document.getElementById('state-home');
 const stateError = document.getElementById('state-error');
 const stateExtracted = document.getElementById('state-extracted');
 const stateSuccess = document.getElementById('state-success');
+const stateHistory = document.getElementById('state-history');
+
+// Lịch sử
+const btnShowHistory = document.getElementById('btn-show-history');
+const btnCloseHistory = document.getElementById('btn-close-history');
+const historyList = document.getElementById('history-list');
+const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
 
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
@@ -69,11 +76,14 @@ const btnCreatePost = document.getElementById('btn-create-post');
 
 // Bước 3 Form
 const inputCaption = document.getElementById('input-caption');
-const schedulePickerBox = document.getElementById('schedule-picker-box');
-const inputScheduleTime = document.getElementById('input-schedule-time');
 const btnBackToSocial = document.getElementById('btn-back-to-social');
 const btnPublishNow = document.getElementById('btn-publish-now');
 const btnSchedulePost = document.getElementById('btn-schedule-post');
+
+// Bước 4 Form (Lên lịch)
+const stepScheduleConfig = document.getElementById('step-schedule-config');
+const inputScheduleTime = document.getElementById('input-schedule-time');
+const btnBackToPreview = document.getElementById('btn-back-to-preview');
 const btnConfirmSchedule = document.getElementById('btn-confirm-schedule');
 
 // Facebook Post Preview elements
@@ -110,6 +120,7 @@ function showState(stateEl, message = '') {
   stateSuccess.classList.add('hidden');
   if (stateRecording) stateRecording.classList.add('hidden');
   if (stateVoiceConfirm) stateVoiceConfirm.classList.add('hidden');
+  if (stateHistory) stateHistory.classList.add('hidden');
 
   if (stateEl === stateLoading && message) {
     loadingText.textContent = message;
@@ -122,6 +133,7 @@ function showSubStep(stepEl) {
   stepArticleInfo.classList.add('hidden');
   stepSocialConfig.classList.add('hidden');
   stepPostPreview.classList.add('hidden');
+  if (stepScheduleConfig) stepScheduleConfig.classList.add('hidden');
 
   stepEl.classList.remove('hidden');
 }
@@ -388,6 +400,87 @@ function initEventListeners() {
     }
   });
 
+  // Sự kiện nút Lịch sử và thông tin tài khoản
+  if (userProfile) {
+    userProfile.style.cursor = 'pointer';
+    userProfile.addEventListener('click', () => {
+      // Nếu đang mở rồi thì đóng lại
+      if (!stateHistory.classList.contains('hidden')) {
+        showState(stateHome);
+      } else {
+        // Nếu chưa mở thì mở lên
+        showState(stateHistory);
+        fetchExtensionHistory();
+      }
+    });
+  }
+
+  if (btnCloseHistory) {
+    btnCloseHistory.addEventListener('click', () => {
+      showState(stateHome);
+    });
+  }
+
+  if (btnOpenAntbiz) {
+    btnOpenAntbiz.addEventListener('click', (e) => {
+      e.preventDefault();
+      const antbizUrl = `${AntBizUrl}/archive`;
+      chrome.tabs.create({ url: antbizUrl });
+    });
+  }
+
+  function fetchExtensionHistory() {
+    historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
+    
+    chrome.runtime.sendMessage({ action: 'api_get', endpoint: '/api/scheduled-posts/extension-history' }, (response) => {
+      if (chrome.runtime.lastError || !response || response.error) {
+        historyList.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 12px; padding: 20px 0;">Lỗi tải dữ liệu.</div>`;
+        return;
+      }
+
+      const items = response.history || [];
+      if (items.length === 0) {
+        historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Chưa có bài đăng nào từ Extension.</div>';
+        return;
+      }
+
+      historyList.innerHTML = '';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        
+        let statusName = item.status;
+        if (item.status === 'pending') statusName = 'Chờ duyệt';
+        if (item.status === 'scheduled') statusName = 'Đã lên lịch';
+        if (item.status === 'posted') statusName = 'Thành công';
+        if (item.status === 'failed') statusName = 'Thất bại';
+
+        const date = new Date(item.scheduledAt || item.createdAt);
+        const timeStr = date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        div.innerHTML = `
+          <div class="history-item-header">
+            <span class="history-item-platform">${item.platform || 'Unknown'}</span>
+            <span class="history-item-status status-${item.status}">${statusName}</span>
+          </div>
+          <div class="history-item-title" title="${item.title}">${item.title}</div>
+          <div class="history-item-time">Lịch: ${timeStr}</div>
+        `;
+        
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => {
+          if (item.articleId) {
+            chrome.tabs.create({ url: `${AntBizUrl}/archive/${item.articleId}` });
+          } else {
+            chrome.tabs.create({ url: `${AntBizUrl}/archive` });
+          }
+        });
+
+        historyList.appendChild(div);
+      });
+    });
+  }
+
   // Đăng nhập trực tiếp từ Extension
   if (btnLoginSubmit) {
     btnLoginSubmit.addEventListener('click', () => {
@@ -441,19 +534,8 @@ function initEventListeners() {
   }
 
   btnLogin.addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs && tabs[0]) {
-        const currentUrl = tabs[0].url;
-        // Nếu là trang hệ thống (chrome://, file://...) thì mở tab mới dự phòng
-        if (!currentUrl || (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://'))) {
-          const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent('/login/success')}`;
-          chrome.tabs.create({ url: loginUrl });
-        } else {
-          const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent(currentUrl)}`;
-          chrome.tabs.update(tabs[0].id, { url: loginUrl });
-        }
-      }
-    });
+    const loginUrl = `${AntBizUrl}/login?next=${encodeURIComponent('/login/success')}`;
+    chrome.tabs.create({ url: loginUrl });
   });
 
   // Hủy tiến trình khi về Home hoặc bấm lỗi
@@ -747,28 +829,90 @@ Yêu cầu định dạng:
   });
 
   btnSchedulePost.addEventListener('click', () => {
-    if (schedulePickerBox.classList.contains('hidden')) {
-      schedulePickerBox.classList.remove('hidden');
+    showSubStep(stepScheduleConfig);
 
-      // Gán mặc định là 1 tiếng sau
-      const now = new Date();
-      now.setHours(now.getHours() + 1);
-      now.setMinutes(0);
-      now.setSeconds(0);
+    // Gán mặc định là 1 tiếng sau
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    now.setMinutes(0);
+    now.setSeconds(0);
 
-      const pad = (n) => n < 10 ? '0' + n : n;
-      const localIso = now.getFullYear() + '-' +
-        pad(now.getMonth() + 1) + '-' +
-        pad(now.getDate()) + 'T' +
-        pad(now.getHours()) + ':' +
-        pad(now.getMinutes());
+    const pad = (n) => n < 10 ? '0' + n : n;
+    const localIso = now.getFullYear() + '-' +
+      pad(now.getMonth() + 1) + '-' +
+      pad(now.getDate()) + 'T' +
+      pad(now.getHours()) + ':' +
+      pad(now.getMinutes());
 
-      inputScheduleTime.value = localIso;
-    } else {
-      schedulePickerBox.classList.add('hidden');
-    }
+    inputScheduleTime.value = localIso;
+    renderGoldenHours();
     saveCurrentState();
   });
+
+  btnBackToPreview.addEventListener('click', () => {
+    showSubStep(stepPostPreview);
+    saveCurrentState();
+  });
+
+  // Render Golden Hours function
+  function renderGoldenHours() {
+    const platform = selectPlatform.value || 'facebook';
+    let hours = [];
+    if (platform === 'facebook') {
+      hours = [7, 9, 11, 15, 20];
+    } else if (platform === 'instagram') {
+      hours = [11, 15, 20];
+    } else if (platform === 'thread' || platform === 'threads') {
+      hours = [8, 11, 15, 20];
+    }
+
+    const container = document.getElementById('golden-hour-chips');
+    const wrapper = document.getElementById('golden-hour-suggestions');
+    if (!container || !wrapper) return;
+
+    container.innerHTML = '';
+    if (hours.length === 0) {
+      wrapper.style.display = 'none';
+      return;
+    }
+    
+    wrapper.style.display = 'block';
+    hours.forEach(hour => {
+      const chip = document.createElement('div');
+      const hourStr = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+      chip.textContent = hourStr;
+      chip.style.cssText = 'padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;';
+      
+      chip.onmouseover = () => {
+        chip.style.background = '#fef3c7';
+        chip.style.borderColor = '#f59e0b';
+      };
+      chip.onmouseout = () => {
+        chip.style.background = '#fffbeb';
+        chip.style.borderColor = '#fcd34d';
+      };
+
+      chip.onclick = () => {
+        const d = new Date();
+        if (d.getHours() >= hour) {
+          d.setDate(d.getDate() + 1);
+        }
+        d.setHours(hour, 0, 0, 0);
+        
+        const pad = (n) => n < 10 ? '0' + n : n;
+        const localIso = d.getFullYear() + '-' +
+          pad(d.getMonth() + 1) + '-' +
+          pad(d.getDate()) + 'T' +
+          pad(d.getHours()) + ':' +
+          pad(d.getMinutes());
+        
+        inputScheduleTime.value = localIso;
+        saveCurrentState();
+      };
+      
+      container.appendChild(chip);
+    });
+  }
 
   btnConfirmSchedule.addEventListener('click', () => {
     const platform = selectPlatform.value;
@@ -1452,7 +1596,7 @@ function getActiveStateId() {
 
 // Lấy ID bước wizard hiện tại
 function getActiveStepId() {
-  const steps = [stepArticleInfo, stepSocialConfig, stepPostPreview];
+  const steps = [stepArticleInfo, stepSocialConfig, stepPostPreview, stepScheduleConfig];
   for (const st of steps) {
     if (st && !st.classList.contains('hidden')) {
       return st.id;

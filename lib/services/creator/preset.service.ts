@@ -8,6 +8,7 @@ export interface Preset {
   tags: string[];
   lastUpdated: string;
   isSystem?: boolean;
+  isDefault?: boolean;
 }
 
 export const presetService = {
@@ -21,7 +22,6 @@ export const presetService = {
       const json = await res.json();
       const data = json.data || [];
       
-      // Map PromptConfigRecord to Preset for the Creator Flow
       const presets: Preset[] = data.map((item: any) => {
         // Build tags from params if available
         const tags: string[] = [];
@@ -29,13 +29,16 @@ export const presetService = {
           tags.push(`🎯 ${item.params.objective}`);
         }
         
+        const isSystem = Boolean(item.user_id === 'system' || !item.user_id || item.is_system);
+
         return {
           id: item.id,
           name: item.name,
           platform: item.platform,
-          tags: tags.length > 0 ? tags : ['⭐ Văn phong tùy chỉnh'],
+          tags: tags.length > 0 ? tags : (isSystem ? ['Hệ thống'] : ['⭐ Văn phong tùy chỉnh']),
           lastUpdated: new Date(item.updated_at || item.created_at).toLocaleDateString('vi-VN'),
-          isSystem: Boolean(item.user_id === 'system' || !item.user_id || item.is_system),
+          isSystem,
+          isDefault: Boolean(item.is_default),
         };
       });
       

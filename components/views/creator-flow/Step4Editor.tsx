@@ -7,7 +7,8 @@ import {
   Cpu, Facebook, Instagram, X, Loader2, Globe,
   Bookmark, Check, Search, EyeOff, MoreHorizontal,
   ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
-  Repeat2, CheckCircle2, ChevronLeft, ChevronRight
+  Repeat2, CheckCircle2, ChevronLeft, ChevronRight, Wand2
+
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { createPortal } from 'react-dom';
@@ -51,6 +52,7 @@ export default function Step4Editor() {
     if (text.includes('chuyên gia') || text.includes('uy quyền')) return 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-900/30';
     if (text.includes('kiến thức') || text.includes('sáng tạo')) return 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30';
     if (text.includes('bán')) return 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30';
+    if (text.includes('hệ thống')) return 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30';
     return 'bg-gray-55 dark:bg-zinc-800 text-gray-700 dark:text-gray-400 border border-gray-100 dark:border-zinc-700/50';
   };
 
@@ -1167,31 +1169,7 @@ export default function Step4Editor() {
                 />
               </div>
 
-              {/* System / Personal Tabs */}
-              <div className="flex gap-1 bg-gray-100 dark:bg-zinc-900 p-1 rounded-xl border border-gray-250/20 dark:border-zinc-800 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setPresetTab('system')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    presetTab === 'system'
-                      ? 'bg-white dark:bg-zinc-950 text-primary shadow-sm'
-                      : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Presets hệ thống
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPresetTab('personal')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    presetTab === 'personal'
-                      ? 'bg-white dark:bg-zinc-950 text-primary shadow-sm'
-                      : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Presets cá nhân
-                </button>
-              </div>
+
             </div>
 
             {/* Presets List */}
@@ -1199,11 +1177,8 @@ export default function Step4Editor() {
               <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
                 {state.presets
                   .filter((preset) => {
-                    const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
+                    return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                    const isSystem = Boolean(preset.isSystem);
-                    const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
-                    return matchesSearch && matchesTab;
                   })
                   .map((preset) => {
                     const isSelected = state.selectedPresetId === preset.id;
@@ -1294,13 +1269,13 @@ export default function Step4Editor() {
       >
         <button
           onClick={() => setIsPresetsOpen(true)}
-          className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
-          title="Chọn phong cách AI (Style Presets)"
+          className="h-12 w-12 hover:w-32 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in cursor-pointer"
+          title="Chọn văn phong thương hiệu (Style Presets)"
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <Bookmark className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6" />
             <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto text-[10px] font-black tracking-wider transition-all duration-300 whitespace-nowrap uppercase">
-              Presets
+              Văn phong
             </span>
           </div>
           {/* Badge indicator if a preset is selected */}

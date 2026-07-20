@@ -80,6 +80,7 @@ function AiCreatorContent() {
     const result = await confirmPostSchedule('now');
     if (result.success) {
       showToast(t('creator.step5.successToast'), 'success');
+      window.dispatchEvent(new CustomEvent('notification-updated'));
       setTimeout(() => {
         dispatch({ type: 'RESET_FLOW' });
         router.push('/content-calendar');
@@ -87,6 +88,7 @@ function AiCreatorContent() {
     } else {
       const failed = result.failed.join(', ');
       showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+      window.dispatchEvent(new CustomEvent('notification-updated'));
     }
   };
 
@@ -96,7 +98,7 @@ function AiCreatorContent() {
       if (state.manualTitle.trim() && state.manualContent.trim()) {
         const isDirty = !state.articleId || 
           state.manualTitle !== state.articleContext?.title || 
-          state.manualContent !== state.articleContext?.description; // or content
+          state.manualContent !== (state.articleContext?.content || state.articleContext?.summary);
         
         if (isDirty) {
           setIsSubmitting(true);
@@ -119,6 +121,7 @@ function AiCreatorContent() {
       const result = await confirmPostSchedule('scheduled');
       if (result.success) {
         showToast(t('creator.step5.successToast'), 'success');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
           router.push('/content-calendar');
@@ -126,6 +129,7 @@ function AiCreatorContent() {
       } else {
         const failed = result.failed.join(', ');
         showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
       }
     } else {
       nextStep();
@@ -238,7 +242,7 @@ function AiCreatorContent() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-24 right-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
+            className={`fixed bottom-24 left-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
               : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
               }`}
