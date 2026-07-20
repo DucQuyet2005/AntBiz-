@@ -193,7 +193,6 @@ export async function POST(request: NextRequest) {
           trigger_source: 'extension',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          trigger_source: 'extension',
         })
         .select()
         .single();
