@@ -406,8 +406,8 @@ export default function Step2Article({
           return;
         }
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        const file = new File([audioBlob], `Ghi-am-${Date.now()}.wav`, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], `Ghi-am-${Date.now()}.webm`, { type: 'audio/webm' });
         await processUploadedFile(file);
       };
       
