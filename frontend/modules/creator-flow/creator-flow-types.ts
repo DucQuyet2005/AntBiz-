@@ -90,4 +90,5 @@ export type CreatorFlowAction =
   | { type: 'SET_LOADING_TIMELINE'; payload: boolean }
   | { type: 'SET_SCHEDULING'; payload: boolean }
   | { type: 'SET_PUBLISHING_RESULT'; payload: { successful: PlatformType[]; failed: PlatformType[] } }
+  | { type: 'CLEAR_AI_GENERATED_STATE' }
   | { type: 'RESET_FLOW' };

@@ -105,7 +105,7 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_CRAWL_STATUS':
       return { ...state, crawlStatus: action.payload };
     case 'SET_ARTICLE_CONTEXT':
-      return { ...state, articleContext: action.payload };
+      return { ...state, articleContext: action.payload, drafts: {}, postContent: '' };
     case 'SET_CRAWLED_IMAGES':
       return { ...state, crawledImageUrls: action.payload };
     case 'SET_PRESETS':
@@ -182,17 +182,9 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_CHAT_SENDING':
       return { ...state, isChatSending: action.payload };
     case 'ADD_HIGHLIGHT_SELECTION':
-      // Prevent overlapping or duplicate ranges
-      if (state.highlightSelections.some(s => 
-        (action.payload.start >= s.start && action.payload.start < s.end) ||
-        (action.payload.end > s.start && action.payload.end <= s.end) ||
-        (action.payload.start <= s.start && action.payload.end >= s.end)
-      )) {
-        return state;
-      }
       return {
         ...state,
-        highlightSelections: [...state.highlightSelections, action.payload].sort((a, b) => a.start - b.start),
+        highlightSelections: [...state.highlightSelections.filter(s => s.id !== action.payload.id), action.payload].sort((a, b) => a.start - b.start),
       };
     case 'REMOVE_HIGHLIGHT_SELECTION':
       return {
@@ -223,6 +215,17 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
         ...state,
         publishingSucceededPlatforms: action.payload.successful,
         publishingFailedPlatforms: action.payload.failed,
+      };
+    case 'CLEAR_AI_GENERATED_STATE':
+      return {
+        ...state,
+        generatedPost: null,
+        postId: null,
+        postContent: '',
+        drafts: {},
+        chatMessages: [],
+        highlightSelections: [],
+        conversationalStep: 1,
       };
     case 'RESET_FLOW':
       return { ...initialCreatorFlowState };
@@ -467,9 +470,11 @@ export function CreatorFlowProvider({
     if (targetPlatforms.length === 0 || !state.articleContext || !state.articleId) return;
     dispatch({ type: 'SET_GENERATING_POST', payload: true });
 
-    // Set first platform as active
+    // Set first platform as active if not already selected
     const firstPlatform = targetPlatforms[0];
-    dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
+    if (firstPlatform && state.selectedPlatform !== firstPlatform) {
+      dispatch({ type: 'SET_PLATFORM', payload: firstPlatform });
+    }
 
     const contents = new Map<PlatformType, string>();
     const captionIds = new Map<PlatformType, string>();
@@ -580,6 +585,16 @@ export function CreatorFlowProvider({
     dispatch({ type: 'SET_HIGHLIGHT_EDITING', payload: true });
 
     try {
+      // 1. Add User Message to Chat Log
+      const selectedTexts = state.highlightSelections.map(s => `"${s.text}"`).join(', ');
+      const userMsg: ChatMessage = {
+        id: `msg_user_${Math.random()}`,
+        sender: 'user',
+        text: `[Sửa đoạn: ${selectedTexts}]: ${instruction}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+
       const captionId = await quickPublishing.saveEdit(draft);
       const result = await quickPublishing.regenerateCaption({
         captionId,
@@ -589,6 +604,17 @@ export function CreatorFlowProvider({
         instruction,
         presetMode: 'auto',
       });
+
+      // 2. Add AI Response Message to Chat Log
+      const aiMsg: ChatMessage = {
+        id: `msg_ai_${Math.random()}`,
+        sender: 'ai',
+        text: `Đoạn viết mới: ${result.generatedText}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: 'Gemini 2.5 Flash',
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+
       dispatch({
         type: 'SET_DRAFT',
         payload: {

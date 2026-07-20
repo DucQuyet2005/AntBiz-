@@ -22,6 +22,33 @@ export class SupabaseScheduledPublishingRepository implements ScheduledPublishin
     return (data || []) as ScheduledPostRecord[];
   }
 
+  async listPaginated(
+    page: number,
+    limit: number,
+    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc' }
+  ) {
+    let query = this.supabase
+      .from('scheduled_posts')
+      .select(listSelection, { count: 'exact' });
+
+    if (filters?.platforms?.length) {
+      query = query.in('platform', filters.platforms);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    const sortOrder = filters?.sortOrder || 'asc';
+    query = query.order('scheduled_at', { ascending: sortOrder === 'asc' });
+
+    const offset = (page - 1) * limit;
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, count, error } = await query;
+    if (error) throw this.failure('listPaginated', error);
+    return { data: (data || []) as ScheduledPostRecord[], count: count || 0 };
+  }
+
   async findCaption(id: string) {
     const { data, error } = await this.supabase
       .from('captions').select('*, articles(title)').eq('id', id).maybeSingle();

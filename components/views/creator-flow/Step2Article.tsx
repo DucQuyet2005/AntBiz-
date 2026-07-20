@@ -6,8 +6,9 @@ import {
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, ExternalLink, X,
   Search, Check, Bookmark, Facebook, Instagram,
-  ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2,
+  ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2, RotateCcw,
   Sparkles, ArrowRight, Wand2
+
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
@@ -227,9 +228,9 @@ export default function Step2Article({
     if (typeof window === 'undefined') return [];
     const initialUrls = state.crawledImageUrls || [];
     return initialUrls
-      .filter(url => url.startsWith('blob:'))
-      .map(url => {
-        const dummyFile = new File([], "anh_tai_len.png", { type: "image/png" });
+      .filter(url => url.startsWith('blob:') || url.startsWith('data:'))
+      .map((url, idx) => {
+        const dummyFile = new File([], `Anh_${idx + 1}.png`, { type: "image/png" });
         return { file: dummyFile, url };
       });
   });
@@ -284,7 +285,8 @@ export default function Step2Article({
     uploadedImagesRef.current = uploadedImages;
 
     // Sync manually uploaded images to global state.crawledImageUrls
-    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:'));
+    const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
+    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const uploadedUrls = uploadedImages.map(img => img.url);
     const combined = [...crawledOnly, ...uploadedUrls];
     
@@ -294,6 +296,24 @@ export default function Step2Article({
       dispatch({ type: 'SET_CRAWLED_IMAGES', payload: combined });
     }
   }, [uploadedImages, state.crawledImageUrls, dispatch]);
+
+  const getAllItems = React.useCallback(() => {
+    const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
+    const crawledUrls = (state.crawledImageUrls || []).filter(url => !uploadedUrlsSet.has(url));
+    const crawledItems = crawledUrls.map((url, index) => ({
+      type: 'crawled' as const,
+      url,
+      name: `Ảnh bài báo ${index + 1}`,
+    }));
+    const uploadedItems = uploadedImages.map((img, index) => ({
+      type: 'uploaded' as const,
+      url: img.url,
+      name: img.file.name || `Ảnh ${index + 1}`,
+      file: img.file,
+      index,
+    }));
+    return [...crawledItems, ...uploadedItems];
+  }, [state.crawledImageUrls, uploadedImages]);
 
   // Crawl success popup and content flow animation states
   const [isCrawlingActive, setIsCrawlingActive] = useState(false);
@@ -347,7 +367,11 @@ export default function Step2Article({
 
   React.useEffect(() => {
     return () => {
-      uploadedImagesRef.current.forEach(img => URL.revokeObjectURL(img.url));
+      uploadedImagesRef.current.forEach(img => {
+        if (img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
     };
   }, []);
 
@@ -471,8 +495,18 @@ export default function Step2Article({
     setUploadError('');
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension)) {
-      const url = URL.createObjectURL(file);
-      setUploadedImages(prev => [...prev, { file, url }]);
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setUploadedImages(prev => [...prev, { file, url: dataUrl }]);
+      } catch {
+        const objectUrl = URL.createObjectURL(file);
+        setUploadedImages(prev => [...prev, { file, url: objectUrl }]);
+      }
       // Tự động hiển thị thông báo chọn văn phong
       setShowPresetHint(true);
       return;
@@ -515,6 +549,26 @@ export default function Step2Article({
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleResetAllFields = () => {
+    // 1. Clear local uploaded images
+    setUploadedImages([]);
+    // 2. Clear uploaded files (audio/documents)
+    setUploadedFiles([]);
+    setAudioUrls({});
+    if (audioPlaybackRef.current) {
+      audioPlaybackRef.current.pause();
+    }
+    setPlayingAudio(null);
+    // 3. Clear title and content in global state & context
+    dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+    dispatch({ type: 'SET_ARTICLE_ID', payload: null });
+    dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: null });
+    dispatch({ type: 'SET_CRAWLED_IMAGES', payload: [] });
+    dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
+    dispatch({ type: 'SET_CRAWL_STATUS', payload: 'idle' });
+    setUploadError('');
   };
 
   const handleSelectArticle = (url: string) => {
@@ -827,7 +881,17 @@ export default function Step2Article({
 
       {/* File Upload Area */}
       <div ref={uploadSectionRef} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 border border-gray-250 dark:border-zinc-800 shadow-md font-sans">
-        <h2 className="text-sm font-bold text-text mb-4">Hoặc tải lên tệp tin của bạn</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-text">Hoặc tải lên tệp tin của bạn</h2>
+          <button
+            type="button"
+            onClick={handleResetAllFields}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800/50 rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Tạo lại</span>
+          </button>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch min-h-[380px]">
           {/* Left Column: Dropzone & Direct Recording */}
@@ -924,6 +988,7 @@ export default function Step2Article({
               }));
               const uploadedItems = uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name, file: img.file, index: uploadedImages.indexOf(img) }));
               const allItems = [...crawledItems, ...uploadedItems];
+
               if (allItems.length === 0) return null;
               return (
                 <div className="grid grid-cols-5 gap-3.5 mt-2 animate-fade-in select-none w-full">
@@ -953,14 +1018,15 @@ export default function Step2Article({
                             onClick={(e) => {
                               e.stopPropagation();
                               setUploadedImages(prev => prev.filter((_, i) => i !== (item as typeof uploadedItems[0]).index));
-                              URL.revokeObjectURL(item.url);
+                              if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
                             }}
-                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm"
+                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm cursor-pointer"
                             title="Xóa ảnh"
                           >
                             <X className="w-2.5 h-2.5" />
                           </button>
                         )}
+
                       </div>
                       <span className="text-[10px] text-text-muted text-center w-full truncate font-semibold mt-1">
                         {item.name.split('.')[0]}
@@ -1326,7 +1392,7 @@ export default function Step2Article({
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-text">Tất cả ảnh đã tải lên ({uploadedImages.length})</h3>
+                <h3 className="text-sm font-bold text-text">Tất cả ảnh ({getAllItems().length})</h3>
                 <p className="text-[10px] text-text-muted">Xem và quản lý tất cả các ảnh nguồn</p>
               </div>
               <button 
@@ -1340,21 +1406,28 @@ export default function Step2Article({
             {/* Grid of Images */}
             <div className="p-6 overflow-y-auto flex-grow bg-gray-55 dark:bg-zinc-950/20">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {uploadedImages.map((img, index) => (
+                {getAllItems().map((item, index) => (
                   <div key={index} className="flex flex-col items-center gap-1.5 group relative select-none">
                     <div 
-                      onClick={() => setActiveLightboxImage(img.url)}
+                      onClick={() => setActiveLightboxImage(item.url)}
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.url} alt={img.file.name} className="w-full h-full object-cover select-none" />
+                      <img src={item.url} alt={item.name} className="w-full h-full object-cover select-none" />
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setUploadedImages(prev => prev.filter((_, i) => i !== index));
-                          URL.revokeObjectURL(img.url);
-                          if (uploadedImages.length <= 1) {
+                          if (item.type === 'uploaded') {
+                            setUploadedImages(prev => prev.filter((_, i) => i !== item.index));
+                            if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+                          } else {
+                            dispatch({
+                              type: 'SET_CRAWLED_IMAGES',
+                              payload: (state.crawledImageUrls || []).filter(u => u !== item.url)
+                            });
+                          }
+                          if (getAllItems().length <= 1) {
                             setShowAllImagesModal(false);
                           }
                         }}
@@ -1365,7 +1438,7 @@ export default function Step2Article({
                       </button>
                     </div>
                     <span className="text-[10px] text-text-muted text-center w-full truncate font-semibold px-1 mt-1">
-                      {img.file.name.split('.')[0]}
+                      {item.name.split('.')[0]}
                     </span>
                   </div>
                 ))}

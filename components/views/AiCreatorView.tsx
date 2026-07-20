@@ -13,7 +13,7 @@ import Step2Article from './creator-flow/Step2Article';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
@@ -22,6 +22,7 @@ function AiCreatorContent() {
   const {
     state, dispatch, nextStep, prevStep, goToStep,
     startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
+    editHighlighted,
   } = useCreatorFlow();
 
   // Custom Toast notification states
@@ -32,6 +33,33 @@ function AiCreatorContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Back confirmation dialog states
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [targetStep, setTargetStep] = useState<number | null>(null);
+
+  const handleBack = () => {
+    if (state.currentStep === 3) {
+      setTargetStep(2);
+      setShowBackConfirm(true);
+    } else {
+      prevStep();
+    }
+  };
+
+  const handleConfirmBack = () => {
+    if (targetStep !== null) {
+      dispatch({ type: 'CLEAR_AI_GENERATED_STATE' });
+      goToStep(targetStep);
+    }
+    setShowBackConfirm(false);
+    setTargetStep(null);
+  };
+
+  const handleCancelBack = () => {
+    setShowBackConfirm(false);
+    setTargetStep(null);
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
@@ -61,7 +89,12 @@ function AiCreatorContent() {
 
   const handleStepChange = (targetStep: number) => {
     if (targetStep < state.currentStep) {
-      goToStep(targetStep);
+      if (state.currentStep === 3 && targetStep < 3) {
+        setTargetStep(targetStep);
+        setShowBackConfirm(true);
+      } else {
+        goToStep(targetStep);
+      }
     } else {
       // Validate intermediate steps
       let valid = true;
@@ -139,15 +172,51 @@ function AiCreatorContent() {
   // Hỗ trợ phím Enter để tiếp tục thay vì phải bấm nút
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const tagName = activeElement?.tagName.toLowerCase();
+      
+      // Xóa đoạn đã bôi đen khi nhấn Backspace hoặc Delete
+      if ((e.key === 'Backspace' || e.key === 'Delete') && state.currentStep === 3) {
+        if (tagName === 'textarea' || tagName === 'input' || tagName === 'button') return;
+
+        if (state.highlightSelections && state.highlightSelections.length > 0) {
+          e.preventDefault();
+          let currentText = state.postContent || '';
+          const sortedSelections = [...state.highlightSelections].sort((a, b) => b.start - a.start);
+          
+          for (const sel of sortedSelections) {
+            currentText = currentText.slice(0, sel.start) + currentText.slice(sel.end);
+          }
+          
+          dispatch({ type: 'SET_POST_CONTENT', payload: currentText });
+          dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' });
+          return;
+        }
+      }
+
       if (e.key === 'Enter') {
+        // Bỏ qua nếu con trỏ đang ở trong textarea, button
+        if (tagName === 'textarea' || tagName === 'button') return;
+
+        // Nếu có nội dung bôi đen ở Step 3, ấn enter sẽ sửa đoạn đó thay vì next step
+        if (state.currentStep === 3 && state.highlightSelections && state.highlightSelections.length > 0) {
+          e.preventDefault();
+          if (!state.isHighlightEditing && !state.isGeneratingPost) {
+            editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
+          }
+          return;
+        }
+
+        // Nếu không có nội dung bôi đen mà đang focus vào contenteditable thì bỏ qua (để tạo dòng mới bình thường)
+        if (activeElement?.getAttribute('contenteditable') === 'true') return;
+
+        // Khi ở bước 3 trở đi, bắt buộc phải tự bấm nút Lên lịch/Đăng ngay chứ không cho Enter nữa
+        if (state.currentStep >= 3) {
+          return;
+        }
+
         // Bỏ qua nếu bước hiện tại chưa hợp lệ hoặc đang xử lý
         if (!isStepValid() || state.isScheduling || isSubmitting) return;
-        
-        // Bỏ qua nếu con trỏ đang ở trong textarea, button, hoặc vùng soạn thảo (contenteditable)
-        const activeElement = document.activeElement;
-        const tagName = activeElement?.tagName.toLowerCase();
-        if (tagName === 'textarea' || tagName === 'button') return;
-        if (activeElement?.getAttribute('contenteditable') === 'true') return;
         
         e.preventDefault();
         handleContinue();
@@ -156,7 +225,7 @@ function AiCreatorContent() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, isStepValid, isSubmitting, handleContinue]);
+  }, [state, isStepValid, isSubmitting, handleContinue, editHighlighted]);
 
   // Render active wizard page
   const renderStepContent = () => {
@@ -251,11 +320,66 @@ function AiCreatorContent() {
           currentStep={state.currentStep}
           isValid={isStepValid()}
           isLoading={state.isScheduling || isSubmitting}
-          onBack={prevStep}
+          onBack={handleBack}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}
         />
       </div>
+
+      {/* Confirmation Dialog when navigating back from Step 3 */}
+      <AnimatePresence>
+        {showBackConfirm && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCancelBack}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Centered Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[10000] overflow-hidden font-sans"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-text leading-snug">
+                    Xác nhận quay lại?
+                  </h3>
+                  <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
+                    Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex items-center justify-end gap-3 select-none">
+                <button
+                  type="button"
+                  onClick={handleCancelBack}
+                  className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBack}
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating high-fidelity Toast Alert Banner */}
       <AnimatePresence>
