@@ -181,6 +181,7 @@ CREATE TABLE public.scheduled_posts (
   fb_post_id      TEXT,
   post_result     JSONB,
   image_urls      TEXT[]          NOT NULL DEFAULT '{}',   -- link áº£nh gá»‘c, khĂ´ng upload trÆ°á»›c
+  trigger_source  TEXT,                                    -- nguá»“n kĂ­ch hoáº¡t ('extension', v.v.)
   created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
 );

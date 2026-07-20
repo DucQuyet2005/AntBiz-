@@ -15,9 +15,27 @@ const runnerSelection = '*, captions(id, platform, ai_content, edited_content, a
 export class SupabaseScheduledPublishingRepository implements ScheduledPublishingRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async list() {
-    const { data, error } = await this.supabase
-      .from('scheduled_posts').select(listSelection).order('scheduled_at', { ascending: true });
+  async list(filters?: { triggerSource?: string; limit?: number; creatorId?: string }) {
+    let query = this.supabase.from('scheduled_posts').select(listSelection);
+
+    if (filters?.triggerSource) {
+      query = query.eq('trigger_source', filters.triggerSource);
+    }
+    if (filters?.creatorId) {
+      query = query.eq('created_by', filters.creatorId);
+    }
+
+    if (filters?.triggerSource) {
+      query = query.order('created_at', { ascending: false });
+    } else {
+      query = query.order('scheduled_at', { ascending: true });
+    }
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    const { data, error } = await query;
     if (error) throw this.failure('list', error);
     return (data || []) as ScheduledPostRecord[];
   }

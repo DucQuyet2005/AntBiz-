@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
           image_urls: imageUrl
             ? imageUrl.split('\n').map((u: string) => u.trim()).filter(Boolean)
             : [],
+          trigger_source: 'extension',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           trigger_source: 'extension',

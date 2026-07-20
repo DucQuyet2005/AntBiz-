@@ -35,8 +35,8 @@ export class ScheduledPublishingModule {
     private readonly now: () => Date = () => new Date()
   ) {}
 
-  list() {
-    return this.repository.list();
+  list(filters?: { triggerSource?: string; limit?: number; creatorId?: string }) {
+    return this.repository.list(filters);
   }
 
   async listPaginated(
