@@ -86,8 +86,8 @@ Nội dung nguồn: ${articleContent}
 Toàn bộ caption hiện tại: ${input.currentContent}
 Đoạn được chọn: ${selectedText}${presetSection}${instruction}
 
-LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần.
-Chỉ trả về đoạn thay thế, không giải thích, không thêm dấu ngoặc hay lời dẫn.`;
+    LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần.
+    Chỉ trả về đoạn thay thế, không giải thích, không thêm dấu ngoặc, không lặp lại toàn bộ bài viết hay các phần khác, không thêm lời dẫn.`;
   }
 
   return `Bạn là Content Marketer chuyên nghiệp. Hãy viết lại toàn bộ caption cho nền tảng ${input.platform}.
@@ -96,6 +96,6 @@ Tiêu đề nguồn: ${input.article.title || ''}
 Nội dung nguồn: ${articleContent}
 Caption hiện tại: ${input.currentContent}${presetSection}${instruction}
 
-LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần.
-Trả về trực tiếp caption hoàn chỉnh, không giải thích hay thêm lời dẫn.`;
+LƯU Ý: Tuyệt đối KHÔNG sử dụng các định dạng Markdown như ** (in đậm) hoặc * (in nghiêng/liệt kê) trong câu trả lời. Hãy dùng emoji hoặc xuống dòng để nhấn mạnh nếu cần. Tuyệt đối không lặp lại toàn bộ nội dung bài viết hay phần hashtag nhiều lần.
+Trả về trực tiếp bài viết hoàn chỉnh duy nhất, không giải thích hay thêm lời dẫn.`;
 }

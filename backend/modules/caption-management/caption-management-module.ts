@@ -193,18 +193,30 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
 
     const usesEditedContent = existing.edited_content !== null
       && existing.edited_content !== undefined;
-    const currentContent = usesEditedContent ? existing.edited_content! : existing.ai_content;
+    let currentContent = usesEditedContent ? existing.edited_content! : existing.ai_content;
+    currentContent = currentContent.replace(/\r\n/g, '\n');
     let replacementRanges: Array<{ start: number; end: number }> | undefined;
 
     if (input.mode === 'partial') {
       input.selections.sort((a, b) => a.start - b.start);
       for (const sel of input.selections) {
+        const cleanSelText = sel.text.replace(/\r\n/g, '\n');
         if (sel.end > currentContent.length) {
           throw new CaptionManagementError(
             'CAPTION_SELECTION_INVALID', 400, 'Vùng chọn vượt quá nội dung caption'
           );
         }
-        if (currentContent.slice(sel.start, sel.end) !== sel.text) {
+        const sliced = currentContent.slice(sel.start, sel.end);
+        if (sliced !== cleanSelText) {
+          console.error('[Regenerate 409 Conflict Debug]:', {
+            start: sel.start,
+            end: sel.end,
+            slicedLength: sliced.length,
+            slicedText: JSON.stringify(sliced),
+            expectedLength: cleanSelText.length,
+            expectedText: JSON.stringify(cleanSelText),
+            currentContentLength: currentContent.length,
+          });
           throw new CaptionManagementError(
             'CAPTION_STALE', 409, 'Nội dung caption đã thay đổi, vui lòng chọn lại đoạn cần sửa'
           );
