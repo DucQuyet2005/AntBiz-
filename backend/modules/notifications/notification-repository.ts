@@ -83,16 +83,48 @@ export class SupabaseNotificationRepository implements NotificationRepository {
       .eq('id', userId)
       .maybeSingle();
     if (error) throw this.failure('getUserSettings', error);
-    return data as any;
+    if (!data) {
+      return {
+        email_on_success: true,
+        email_on_failure: true,
+        email_digest_enabled: false,
+        email_digest_time: '08:00',
+      };
+    }
+    return {
+      email: data.email,
+      email_on_success: data.email_on_success ?? true,
+      email_on_failure: data.email_on_failure ?? true,
+      email_digest_enabled: data.email_digest_enabled ?? false,
+      email_digest_time: data.email_digest_time ?? '08:00',
+    };
   }
 
   async updateUserSettings(userId: string, settings: any) {
-    const { data, error } = await this.supabase
+    const updateQuery = this.supabase
       .from('users')
       .update(settings)
       .eq('id', userId)
-      .select('email_on_success, email_on_failure, email_digest_enabled, email_digest_time')
-      .single();
+      .select('email_on_success, email_on_failure, email_digest_enabled, email_digest_time');
+
+    let { data, error } = typeof (updateQuery as any).maybeSingle === 'function'
+      ? await (updateQuery as any).maybeSingle()
+      : await (updateQuery as any).single();
+
+    if (!data && !error) {
+      const upsertQuery = this.supabase
+        .from('users')
+        .upsert({ id: userId, ...settings }, { onConflict: 'id' })
+        .select('email_on_success, email_on_failure, email_digest_enabled, email_digest_time');
+
+      const upsertRes = typeof (upsertQuery as any).maybeSingle === 'function'
+        ? await (upsertQuery as any).maybeSingle()
+        : await (upsertQuery as any).single();
+
+      data = upsertRes.data;
+      error = upsertRes.error;
+    }
+
     if (error) throw this.failure('updateUserSettings', error);
     return data as any;
   }
