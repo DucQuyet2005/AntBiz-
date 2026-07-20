@@ -25,8 +25,8 @@ cron.schedule('* * * * *', async () => {
   }
 });
 
-// Chạy mỗi 2 giờ để cập nhật số liệu tương tác (Facebook/Instagram/Threads)
-cron.schedule('0 */2 * * *', async () => {
+// Chạy mỗi 10 phút để cập nhật số liệu tương tác (Facebook/Instagram/Threads)
+cron.schedule('*/10 * * * *', async () => {
   try {
     console.log('[Worker] Bắt đầu chu kỳ đồng bộ số liệu tương tác...');
     const result = await runPerformanceSyncCycle();
