@@ -97,6 +97,15 @@ function cleanText(text: string): string {
   return decodeHtmlEntities(text.replace(/\s+/g, ' ').trim());
 }
 
+function resolveUrl(src: string, baseUrl: string): string {
+  if (!src) return '';
+  try {
+    return new URL(src, baseUrl).href;
+  } catch {
+    return src;
+  }
+}
+
 function isInvalidImage(src: string, alt?: string, title?: string): boolean {
   if (!src) return true;
   
@@ -109,15 +118,10 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
     'logo', 'no-data', 'track-view', 'author', 'avatar', 'icon', 'banner', 'ads', 
     'loading', 'placeholder', 'pixel', 'gif', 'spacer', 'facebook', 'twitter', 
     'instagram', 'youtube', 'google-news', 'googlenews', 'google_news', 'news-google',
-    'rating', 'star', 'star-rating', 'widget', 'gift', 'avatar'
+    'rating', 'star', 'star-rating', 'widget', 'gift'
   ];
 
   if (invalidUrlPatterns.some(pattern => lowerSrc.includes(pattern))) {
-    return true;
-  }
-
-  // Check relative paths (often local icons/logos)
-  if (src.startsWith('/') && !src.startsWith('//')) {
     return true;
   }
 
@@ -840,11 +844,14 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
         const level = block.attr('data-level') || '2';
         if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
       } else if (btype === 'image') {
-        const imgUrl = block.attr('data-url') || '';
-        const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+        let imgUrl = block.attr('data-url') || block.attr('data-src') || block.attr('src') || '';
         if (imgUrl) {
-          images.push({ url: imgUrl, caption });
-          bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+          imgUrl = resolveUrl(imgUrl, raw.url);
+          const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+          if (!isInvalidImage(imgUrl, caption)) {
+            images.push({ url: imgUrl, caption });
+            bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+          }
         }
       }
     });
@@ -939,11 +946,14 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
           const level = block.attr('data-level') || '2';
           if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
         } else if (btype === 'image') {
-          const imgUrl = block.attr('data-url') || '';
-          const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+          let imgUrl = block.attr('data-url') || block.attr('data-src') || block.attr('src') || '';
           if (imgUrl) {
-            images.push({ url: imgUrl, caption });
-            bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+            imgUrl = resolveUrl(imgUrl, raw.url);
+            const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+            if (!isInvalidImage(imgUrl, caption)) {
+              images.push({ url: imgUrl, caption });
+              bodyBlocks.push({ type: 'image', url: imgUrl, caption });
+            }
           }
         }
       });
@@ -1055,11 +1065,12 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
 
   // ── Fallback image from og:image if no body images found ─────────────
   if (images.length === 0) {
-    let ogImg = $('meta[property="og:image"]').attr('content');
+    let ogImg = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content');
     if (!ogImg && raw.metadata?.['og:image']) {
       ogImg = raw.metadata['og:image'];
     }
     if (ogImg) {
+      ogImg = resolveUrl(ogImg, raw.url);
       images.push({ url: ogImg, caption: title });
       console.log('   📸 Dùng og:image làm ảnh đại diện');
     }

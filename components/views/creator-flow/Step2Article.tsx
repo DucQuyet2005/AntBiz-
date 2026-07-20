@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Loader2, Music, FileSpreadsheet, 
   UploadCloud, Trash2, ExternalLink, X,
   Search, Check, Bookmark, Facebook, Instagram,
-  ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2
+  ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2,
+  Sparkles, ArrowRight
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
@@ -148,9 +149,9 @@ export default function Step2Article({
   const handleGoBack = () => {
     if (iframeRef.current?.contentWindow) {
       try {
-        iframeRef.current.contentWindow.history.back();
+        iframeRef.current.contentWindow.postMessage({ type: 'NAVIGATE_BACK' }, '*');
       } catch (err) {
-        console.error('Failed to navigate back:', err);
+        // Ignore cross-origin postMessage error if iframe is detached or unaccessible
       }
     }
   };
@@ -188,10 +189,26 @@ export default function Step2Article({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLDivElement>(null);
 
-  // Floating presets drawer states
+  // Floating presets drawer & hint popover states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
   const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
+  const [showPresetHint, setShowPresetHint] = useState(false);
+
+  // Auto show preset selection onboarding hint when step 2 is active/crawl is ready, then auto-hide after 5s
+  useEffect(() => {
+    if (state.articleContext || state.crawlStatus === 'done') {
+      // Show hint popover
+      setShowPresetHint(true);
+      
+      // Auto dismiss after 5s (5000ms) to let user notice without blocking the screen
+      const hideTimer = setTimeout(() => {
+        setShowPresetHint(false);
+      }, 5000);
+
+      return () => clearTimeout(hideTimer);
+    }
+  }, [state.articleContext, state.crawlStatus]);
 
   // Active tab for uploaded files status - restricted to audio and document (manual is always visible below)
   const [activeFileTab, setActiveFileTab] = useState<'audio' | 'document'>('audio');
@@ -511,24 +528,65 @@ export default function Step2Article({
         <h1 className="text-2xl md:text-3xl font-black text-text tracking-tight">Lựa chọn nguồn nhập bài viết</h1>
       </div>
 
-      {/* Floating Style Presets Trigger Button */}
+      {/* Floating Style Presets Trigger Button & Onboarding Popover Hint */}
       <div 
         className="fixed right-6 bottom-24 z-40 select-none"
       >
+        {/* Onboarding hint popover tooltip next to button */}
+        <AnimatePresence>
+          {showPresetHint && !isPresetsOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="absolute right-0 bottom-16 mb-2 w-64 sm:w-72 bg-white dark:bg-zinc-900 border border-primary/40 dark:border-primary/50 rounded-2xl p-3.5 shadow-2xl z-50 font-sans text-left"
+            >
+              {/* Arrow indicator pointing down right towards button */}
+              <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white dark:bg-zinc-900 border-r border-b border-primary/40 dark:border-primary/50 rotate-45" />
+
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 text-primary font-bold text-xs sm:text-sm">
+                  <Sparkles className="w-4 h-4 text-amber-500 animate-bounce flex-shrink-0" />
+                  <span>Nút chọn Văn phong</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPresetHint(false)}
+                  className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  title="Đóng thông báo"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
+                Bạn có thể bấm vào đây để chọn <strong>văn phong thương hiệu</strong> phù hợp cho bài viết bất kỳ lúc nào.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <button
-          onClick={() => setIsPresetsOpen(true)}
-          className="h-12 w-12 hover:w-28 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in"
-          title="Chọn phong cách AI (Style Presets)"
+          onClick={() => {
+            setShowPresetHint(false);
+            setIsPresetsOpen(true);
+          }}
+          className="h-12 w-12 hover:w-32 rounded-full bg-primary hover:bg-primary/95 text-white flex items-center justify-start pl-3.5 shadow-lg transition-all duration-300 ease-out active:scale-95 group relative animate-fade-in cursor-pointer"
+          title="Chọn văn phong thương hiệu (Style Presets)"
         >
-          <div className="flex items-center gap-2 overflow-hidden">
+          {showPresetHint && (
+            <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping pointer-events-none" />
+          )}
+          <div className="flex items-center gap-2 overflow-hidden relative z-10">
             <Bookmark className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6" />
             <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto text-[10px] font-black tracking-wider transition-all duration-300 whitespace-nowrap uppercase">
-              Presets
+              Văn phong
             </span>
           </div>
           {/* Badge indicator if a preset is selected */}
           {state.selectedPresetId !== null && (
-            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-emerald-500 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-white shadow-md z-10">
+            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-emerald-500 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-white shadow-md z-20">
               ✓
             </span>
           )}
@@ -879,7 +937,11 @@ export default function Step2Article({
             {(() => {
               // Build a unified list: crawled images (url-only) + user-uploaded images (File + url)
               const crawledUrls = state.crawledImageUrls || [];
-              const crawledItems = crawledUrls.map(url => ({ type: 'crawled' as const, url, name: 'Ảnh bài báo' }));
+              const crawledItems = crawledUrls.map((url, idx) => ({ 
+                type: 'crawled' as const, 
+                url, 
+                name: `Ảnh bài báo ${idx + 1}` 
+              }));
               const uploadedItems = uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name, file: img.file, index: uploadedImages.indexOf(img) }));
               const allItems = [...crawledItems, ...uploadedItems];
               if (allItems.length === 0) return null;
@@ -889,12 +951,22 @@ export default function Step2Article({
                     <div key={idx} className="flex flex-col items-center w-full group relative select-none">
                       <div
                         onClick={() => setActiveLightboxImage(item.url)}
+                        title={item.url} // Add URL as tooltip for debugging
                         className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md transition-all duration-200 cursor-zoom-in"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.url} alt={item.name} className="w-full h-full object-cover select-none" />
+                        <img
+                          src={item.type === 'crawled' ? `/api/proxy?url=${encodeURIComponent(item.url)}` : item.url}
+                          alt={item.name}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).onerror = null;
+                            (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                          }}
+                          className="w-full h-full object-cover select-none"
+                        />
                         {item.type === 'crawled' ? (
-                          <div className="absolute bottom-1 left-1 bg-amber-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">Crawl</div>
+                          <div className="absolute bottom-1 left-1 bg-amber-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide shadow-sm">Crawl</div>
                         ) : (
                           <button
                             type="button"
@@ -923,7 +995,16 @@ export default function Step2Article({
                         className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden relative shadow-sm cursor-pointer hover:brightness-110 transition-all"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={allItems[4].url} alt={allItems[4].name} className="w-full h-full object-cover brightness-[0.4] select-none" />
+                        <img
+                          src={allItems[4].type === 'crawled' ? `/api/proxy?url=${encodeURIComponent(allItems[4].url)}` : allItems[4].url}
+                          alt={allItems[4].name}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).onerror = null;
+                            (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                          }}
+                          className="w-full h-full object-cover brightness-[0.4] select-none"
+                        />
                         <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-black">
                           +{allItems.length - 4}
                         </div>
@@ -1108,9 +1189,22 @@ export default function Step2Article({
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <div className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-4 py-1.5 text-xs text-text-muted border border-gray-200 dark:border-zinc-800 select-all truncate font-semibold">
-                {currentBrowserUrl}
-              </div>
+              <input
+                type="text"
+                value={currentBrowserUrl}
+                onChange={(e) => setCurrentBrowserUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && currentBrowserUrl.trim() && iframeRef.current) {
+                    let target = currentBrowserUrl.trim();
+                    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+                      target = 'https://' + target;
+                    }
+                    iframeRef.current.src = `/api/proxy?url=${encodeURIComponent(target)}`;
+                  }
+                }}
+                className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-3 py-1.5 text-xs text-text border border-gray-200 dark:border-zinc-800 font-semibold focus:ring-1 focus:ring-primary outline-none"
+                placeholder="Nhập hoặc dán liên kết bài viết tại đây..."
+              />
               
               <button
                 type="button"
@@ -1367,6 +1461,88 @@ export default function Step2Article({
             <X className="w-4 h-4" />
           </button>
         </motion.div>,
+        document.body
+      )}
+
+      {/* Lightbox Modal for Full Image View */}
+      {activeLightboxImage && typeof window !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setActiveLightboxImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setActiveLightboxImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={activeLightboxImage.startsWith('http') && !activeLightboxImage.includes('localhost') ? `/api/proxy?url=${encodeURIComponent(activeLightboxImage)}` : activeLightboxImage} 
+              alt="Ảnh phóng to" 
+              referrerPolicy="no-referrer"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal displaying all extracted article images */}
+      {showAllImagesModal && typeof window !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[600] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans select-text"
+          onClick={() => setShowAllImagesModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-zinc-900 rounded-3xl p-6 max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-zinc-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-zinc-800">
+              <h3 className="text-base font-black text-text">Tất cả hình ảnh bài viết ({(state.crawledImageUrls || []).length + uploadedImages.length})</h3>
+              <button
+                type="button"
+                onClick={() => setShowAllImagesModal(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto py-4 flex-grow">
+              {[
+                ...(state.crawledImageUrls || []).map((url, idx) => ({ type: 'crawled' as const, url, name: `Ảnh bài báo ${idx + 1}` })),
+                ...uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name }))
+              ].map((item, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={() => {
+                    setShowAllImagesModal(false);
+                    setActiveLightboxImage(item.url);
+                  }}
+                  className="aspect-square rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 relative group cursor-pointer hover:shadow-lg transition-all bg-white dark:bg-zinc-950"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={item.type === 'crawled' ? `/api/proxy?url=${encodeURIComponent(item.url)}` : item.url} 
+                    alt={item.name} 
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).onerror = null;
+                      (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                    }}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {item.type === 'crawled' && (
+                    <div className="absolute bottom-2 left-2 bg-amber-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">Crawl</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
         document.body
       )}
 

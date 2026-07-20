@@ -61,6 +61,7 @@ export class ArticleIngestionModule implements ArticleIngestionModuleInterface {
       description: normalized.description,
       full_text: normalized.fullText,
       imageUrl: normalized.imageUrl,
+      images: normalized.images,
       author: normalized.author,
       category: normalized.category,
       tags: normalized.tagsString,
@@ -110,6 +111,7 @@ export class ArticleIngestionModule implements ArticleIngestionModuleInterface {
       views: '0',
       url,
       imageUrl: input.imageUrl || '',
+      images,
       body: [{ type: 'paragraph', text: input.full_text }],
     };
   }
@@ -136,13 +138,31 @@ function normalizeCrawledArticle(article: ArticleSourceResult) {
   const category = article.category
     ? article.category.startsWith('#') ? article.category : `#${article.category}`
     : '';
-  const images = article.images || [];
+  
+  const images: Array<{ url: string; caption?: string }> = [...(article.images || [])];
+  if (Array.isArray(article.body)) {
+    for (const block of article.body) {
+      if (block && block.type === 'image' && typeof block.url === 'string' && block.url.trim()) {
+        const cleanUrl = block.url.trim();
+        if (!images.some((img) => img.url === cleanUrl)) {
+          images.push({ url: cleanUrl, caption: block.caption });
+        }
+      }
+    }
+  }
+
   const tags = article.tags || [];
   const fullText = article.full_text || description;
   const publishedAt = article.published_at || '';
   const views = article.views || '';
+  
+  console.log(`[Scrape API] Đã crawl được ${images.length} hình ảnh từ bài viết.`);
+  if (images.length > 0) {
+    console.log(`[Scrape API] Danh sách URL ảnh:`, images.map(i => i.url));
+  }
+
   return {
-    title, description, author, category, fullText, publishedAt, views,
+    title, description, author, category, fullText, publishedAt, views, images,
     imageUrl: images.map((image) => image.url).join('\n'),
     tagsString: tags.join(', '),
     persistence: {

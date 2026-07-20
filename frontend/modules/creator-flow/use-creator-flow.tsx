@@ -352,9 +352,11 @@ export function CreatorFlowProvider({
       dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
       dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
       // Collect all images from article context for use in Step 3+ publish
-      const crawledImages: string[] = [];
-      if (result.context.thumbnail) crawledImages.push(result.context.thumbnail);
-      dispatch({ type: 'SET_CRAWLED_IMAGES', payload: crawledImages });
+      const rawUrls = (result.context as any).imageUrls || (result.context.thumbnail ? [result.context.thumbnail] : []);
+      const crawledImages: string[] = rawUrls.filter(
+        (u: unknown) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))
+      );
+      dispatch({ type: 'SET_CRAWLED_IMAGES', payload: Array.from(new Set(crawledImages)) });
       dispatch({ type: 'SET_CRAWL_STATUS', payload: 'done' });
     } catch {
       dispatch({ type: 'SET_CRAWL_STATUS', payload: 'error' });
