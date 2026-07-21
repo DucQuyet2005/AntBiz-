@@ -270,31 +270,61 @@ export async function GET(request: NextRequest) {
 
     let html = await res.text();
 
-    // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
+    // ── 1. Rewrite relative src to appropriate destination ───────────────
+    const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
+    const needsImageProxy = parsedTarget.hostname.includes('dantri.com.vn');
+    
     html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
+      const lowerPath = path.split('?')[0].toLowerCase();
+      const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
+      if (isImage && needsImageProxy) {
+        // Only Dantri images go through proxy to bypass hotlink protection
+        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+      }
+      // Everything else goes direct to origin
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
+    
     html = html.replace(/(\bsrcset\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, srcset) => {
       const rewritten = srcset.replace(
         /(^|,\s*)(\/[^\s,]+)/g,
-        (_s: string, sep: string, p: string) => `${sep}${targetOrigin}${p}`,
+        (_s: string, sep: string, p: string) => {
+          if (needsImageProxy) {
+            return `${sep}/api/proxy?url=${encodeURIComponent(targetOrigin + p)}`;
+          }
+          return `${sep}${targetOrigin}${p}`;
+        },
       );
       return `${attr}${q}${rewritten}${q}`;
     });
 
-    // 1.5 Rewrite absolute src / data-src / data-original to proxy (bypasses hotlink protection)
-    html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])(https?:\/\/[^'"]+)\2/gi, (_m, attr, q, urlStr) => {
-      try {
-        const parsed = new URL(urlStr);
-        const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
-          (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-        );
-        if (isSameAllowedDomain && !urlStr.includes('/api/proxy?')) {
-          return `${attr}${q}/api/proxy?url=${encodeURIComponent(urlStr)}${q}`;
-        }
-      } catch (_) {}
-      return _m;
-    });
+    // 1.5 Rewrite absolute src / data-src / data-original for images to proxy (Dantri hotlink protection)
+    if (needsImageProxy) {
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])(https?:\/\/[^'"]+)\2/gi, (_m, attr, q, urlStr) => {
+        if (urlStr.includes('/api/proxy?')) return _m; // Already proxied
+        try {
+          const parsed = new URL(urlStr);
+          const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
+            (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
+          );
+          if (isSameAllowedDomain) {
+            const lowerPath = parsed.pathname.split('?')[0].toLowerCase();
+            const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
+            if (isImage) {
+              return `${attr}${q}/api/proxy?url=${encodeURIComponent(urlStr)}${q}`;
+            }
+          }
+        } catch (_) {}
+        return _m;
+      });
+    }
+
+    // 1.6 Rewrite relative data-src / data-original (lazy-loaded images, used by Dantri)
+    if (needsImageProxy) {
+      html = html.replace(/(\b(?:data-src|data-original)\s*=\s*)(['"])\/([^'"]*)\2/gi, (_m, attr, q, path) => {
+        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+      });
+    }
 
     // ── 2. Rewrite all href attributes ───────────────────────────────────────
     const staticExts = [
@@ -338,9 +368,9 @@ export async function GET(request: NextRequest) {
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // Disable Dantri's SPA scripts to prevent the client-side router from overriding the page with a 404 OOPS screen
-    if (parsedTarget.hostname.includes('dantri.com.vn')) {
-      // Dantri uses inline scripts to dynamically inject Webpack chunks.
+    // Disable SPA scripts for sites that use client-side rendering frameworks
+    // (Dantri uses Webpack SPA, Gocnhinmoi uses Next.js) to prevent hydration errors in iframe proxy
+    if (parsedTarget.hostname.includes('dantri.com.vn') || parsedTarget.hostname.includes('gocnhinmoi.com')) {
       // Strip ALL scripts to guarantee the SPA router never executes.
       html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '<!-- script blocked -->');
     }
