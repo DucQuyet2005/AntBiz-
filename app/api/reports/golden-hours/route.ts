@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
-import { InstagramGoldenHoursCalculator } from '@/backend/modules/post-performance';
+import { requireUserWithRole } from '@/lib/api/auth';
+import { GoldenHoursCalculator } from '@/backend/modules/post-performance';
 
 export async function GET(request: NextRequest) {
+  const isDev = process.env.NODE_ENV === 'development';
+  const bypass = isDev && request.headers.get('x-bypass-auth') === 'true';
+  let supabaseClient: any;
+  let userId: string | null = null;
+
+  if (bypass) {
+    const { createServiceRoleClient } = require('@/lib/api/auth');
+    supabaseClient = createServiceRoleClient();
+  } else {
+    const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+    if (unauthorized) return unauthorized;
+    supabaseClient = supabase;
+    userId = user?.id || null;
+  }
+
   try {
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const platform = searchParams.get('platform') || 'all';
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Truy vấn các bài đăng Instagram của user đi kèm chỉ số tương tác
-    const { data: postsData, error } = await supabase
+    let query = supabaseClient
       .from('scheduled_posts')
       .select(`
         id,
@@ -27,12 +37,20 @@ export async function GET(request: NextRequest) {
           impressions
         )
       `)
-      .eq('created_by', user.id)
-      .eq('platform', 'instagram')
       .eq('status', 'posted')
       .not('posted_at', 'is', null)
       .order('posted_at', { ascending: false })
-      .limit(100);
+      .limit(150);
+
+    if (userId) {
+      query = query.eq('created_by', userId);
+    }
+
+    if (platform !== 'all') {
+      query = query.eq('platform', platform);
+    }
+
+    const { data: postsData, error } = await query;
 
     if (error) {
       console.error('[API Golden Hours] Lỗi khi đọc scheduled_posts:', error);
@@ -58,11 +76,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const result = InstagramGoldenHoursCalculator.calculateGoldenHours(posts);
+    const result = GoldenHoursCalculator.calculateGoldenHours(posts, platform);
 
     return NextResponse.json({
       success: true,
-      platform: 'instagram',
+      platform: platform,
+      platformName: result.platformName,
       totalPostsAnalyzed: posts.length,
       recommendation: result.recommendedBestTimeText,
       topSlots: result.topOptimalSlots,

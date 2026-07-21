@@ -13,9 +13,14 @@ interface GoldenSlot {
   isOptimal: boolean;
 }
 
-export function InstagramGoldenHoursCard() {
+interface Props {
+  platform?: string;
+}
+
+export function InstagramGoldenHoursCard({ platform = "all" }: Props) {
   const [loading, setLoading] = useState(true);
   const [recommendation, setRecommendation] = useState("");
+  const [platformName, setPlatformName] = useState("");
   const [topSlots, setTopSlots] = useState<GoldenSlot[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,12 +28,13 @@ export function InstagramGoldenHoursCard() {
     async function fetchGoldenHours() {
       try {
         setLoading(true);
-        const res = await fetch("/api/reports/golden-hours");
+        const res = await fetch(`/api/reports/golden-hours?platform=${platform}`);
         if (!res.ok) {
           throw new Error("Không thể tải dữ liệu Khung Giờ Vàng");
         }
         const data = await res.json();
         setRecommendation(data.recommendation || "");
+        setPlatformName(data.platformName || "Mạng xã hội");
         setTopSlots(data.topSlots || []);
       } catch (err: any) {
         setError(err.message || "Lỗi khi kết nối API");
@@ -38,7 +44,7 @@ export function InstagramGoldenHoursCard() {
     }
 
     fetchGoldenHours();
-  }, []);
+  }, [platform]);
 
   return (
     <div className="rounded-2xl border border-pink-500/20 bg-gradient-to-br from-pink-950/30 via-purple-950/20 to-slate-900/60 p-6 backdrop-blur-xl shadow-xl">
@@ -49,13 +55,13 @@ export function InstagramGoldenHoursCard() {
           </div>
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              Khung Giờ Vàng Instagram
+              Khung Giờ Vàng ({platformName})
               <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
                 <Clock className="h-3 w-3" /> AI Gợi Ý
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Phân tích từ tương tác thực tế của các bài đăng Instagram đã qua
+              Phân tích thời điểm tương tác cao nhất dựa trên dữ liệu thật
             </p>
           </div>
         </div>
@@ -64,7 +70,7 @@ export function InstagramGoldenHoursCard() {
       {loading ? (
         <div className="flex h-32 items-center justify-center space-x-2 text-slate-400">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-pink-500 border-t-transparent"></div>
-          <span className="text-sm">Đang phân tích thời điểm tương tác cao nhất...</span>
+          <span className="text-sm">Đang tính toán khung giờ tương tác cao nhất...</span>
         </div>
       ) : error ? (
         <div className="flex items-center gap-2 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
