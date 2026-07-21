@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       supabase,
       request.nextUrl.origin
     ).refresh(user.id, platform);
-    return NextResponse.json({ success: true, ...result });
+    return NextResponse.json(result);
   } catch (error) {
     return socialConnectionJsonErrorResponse(error);
   }

@@ -17,7 +17,7 @@ const ThreadsIcon = ({ className = '' }: { className?: string }) => (
 interface Step1PlatformProps {
   selectedPlatforms: PlatformType[];
   onSelect: (platforms: PlatformType[]) => void;
-  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean }>;
+  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }>;
   isLoadingPlatforms?: boolean;
 }
 
@@ -29,7 +29,7 @@ export default function Step1Platform({
 }: Step1PlatformProps) {
   const { t, language } = useLanguage();
 
-  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean }> = [];
+  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }> = [];
   let contextIsLoading = false;
   try {
     const flow = useCreatorFlow();
@@ -174,7 +174,7 @@ export default function Step1Platform({
                   const initials = actualAccountName
                     .split(' ')
                     .filter(Boolean)
-                    .map((n) => n[0])
+                    .map((n: string) => n[0])
                     .join('')
                     .substring(0, 2)
                     .toUpperCase() || 'AB';
