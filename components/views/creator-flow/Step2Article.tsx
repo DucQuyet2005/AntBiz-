@@ -706,6 +706,11 @@ export default function Step2Article({
                     return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
                       preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
                   })
+                  .sort((a, b) => {
+                    if (a.id === state.selectedPresetId) return -1;
+                    if (b.id === state.selectedPresetId) return 1;
+                    return 0;
+                  })
                   .map((preset) => {
                     const isSelected = state.selectedPresetId === preset.id;
                     return (
@@ -1164,6 +1169,7 @@ export default function Step2Article({
                                   });
                                 }
                                 setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
+                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
                               }}
                               className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
                               title="Xóa"

@@ -3,6 +3,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Plus,
@@ -104,12 +105,14 @@ function PresetCard({
   onEdit,
   onDelete,
   onSelect,
+  onSetDefault,
 }: {
   preset: PromptConfigRecord;
   language: string;
   onEdit: (p: PromptConfigRecord) => void;
   onDelete: (id: string) => void;
   onSelect: (p: PromptConfigRecord) => void;
+  onSetDefault: (preset: PromptConfigRecord) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -247,6 +250,18 @@ function PresetCard({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {/* Set Default Button */}
+            {!preset.is_default && (
+              <button
+                type="button"
+                onClick={() => onSetDefault(preset)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all cursor-pointer border-0 bg-transparent"
+                title={language === "vi" ? "Đặt làm mặc định" : "Set as default"}
+              >
+                ⭐
+              </button>
+            )}
+
             {/* Kebab menu */}
             {!preset.is_system && (
               <div className="relative" ref={menuRef}>
@@ -1305,6 +1320,7 @@ export default function PresetsView() {
   const { language, t } = useLanguage();
   const lang = language;
 
+  const queryClient = useQueryClient();
   const [presets, setPresets] = useState<PromptConfigRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -1313,35 +1329,78 @@ export default function PresetsView() {
   const [viewingPreset, setViewingPreset] = useState<PromptConfigRecord | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
-  const fetchPresets = useCallback(async () => {
-    setLoading(true);
+  const fetchPresets = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/prompt-configs");
       if (res.ok) {
         const json = await res.json();
-        setPresets(json.data || []);
+        let fetchedPresets: PromptConfigRecord[] = json.data || [];
+        
+        const sysDefaultId = localStorage.getItem('systemDefaultPreset');
+        if (sysDefaultId) {
+          const hasUserDefault = fetchedPresets.some(p => p.is_default && !p.is_system);
+          if (!hasUserDefault) {
+            fetchedPresets = fetchedPresets.map(p => ({
+               ...p,
+               is_default: p.id === sysDefaultId ? true : (p.is_system ? false : p.is_default)
+            }));
+          } else {
+             localStorage.removeItem('systemDefaultPreset');
+          }
+        }
+        
+        setPresets(fetchedPresets);
+        queryClient.removeQueries({ queryKey: ['creatorPlatformPresets'] });
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     fetchPresets();
   }, [fetchPresets]);
 
   const displayed = useMemo(() => {
-    let list = presets;
-    if (!search.trim()) return list;
-    return list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.rules && p.rules.toLowerCase().includes(search.toLowerCase()))
-    );
+    let list = [...presets];
+    
+    // Sort so default is always first, then user presets, then system presets
+    list.sort((a, b) => {
+      if (a.is_default && !b.is_default) return -1;
+      if (!a.is_default && b.is_default) return 1;
+      const aIsSys = !!a.is_system;
+      const bIsSys = !!b.is_system;
+      if (!aIsSys && bIsSys) return -1;
+      if (aIsSys && !bIsSys) return 1;
+      return 0;
+    });
+
+    if (search.trim()) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          (p.rules && p.rules.toLowerCase().includes(search.toLowerCase()))
+      );
+    }
+    return list;
   }, [presets, search]);
+
+  // Reset to page 1 on search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const totalPages = Math.ceil(displayed.length / ITEMS_PER_PAGE);
+  const paginatedDisplayed = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return displayed.slice(start, start + ITEMS_PER_PAGE);
+  }, [displayed, currentPage]);
 
   useEffect(() => {
     const handleGlobalSearch = (e: Event) => {
@@ -1369,6 +1428,53 @@ export default function PresetsView() {
     } finally {
       setIsDeleting(false);
       setDeleteConfirmId(null);
+    }
+  };
+
+  const handleSetDefault = async (preset: PromptConfigRecord) => {
+    try {
+      if (preset.is_system) {
+        // Find current user default
+        const currentUserDefault = presets.find(p => p.is_default && !p.is_system);
+        
+        // Optimistic update using local storage
+        localStorage.setItem('systemDefaultPreset', preset.id);
+        setPresets(prev => prev.map(p => ({
+          ...p,
+          is_default: p.id === preset.id
+        })));
+
+        if (currentUserDefault) {
+          // Unset the user default in DB
+          await fetch(`/api/prompt-configs/${currentUserDefault.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_default: false }),
+          });
+        }
+        fetchPresets(true);
+      } else {
+        localStorage.removeItem('systemDefaultPreset');
+        // Optimistic update for user preset
+        setPresets(prev => prev.map(p => ({
+          ...p,
+          is_default: p.id === preset.id ? true : false
+        })));
+        
+        const res = await fetch(`/api/prompt-configs/${preset.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_default: true }),
+        });
+        if (res.ok) {
+          fetchPresets(true);
+        } else {
+          // Rollback on fail
+          fetchPresets(true);
+        }
+      }
+    } catch {
+      fetchPresets(true);
     }
   };
 
@@ -1430,9 +1536,9 @@ export default function PresetsView() {
           )}
         </motion.div>
       ) : (
-        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <AnimatePresence>
-            {displayed.map((preset) => (
+        <>
+          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {paginatedDisplayed.map((preset) => (
               <PresetCard
                 key={preset.id}
                 preset={preset}
@@ -1440,10 +1546,48 @@ export default function PresetsView() {
                 onEdit={handleEdit}
                 onDelete={(id) => setDeleteConfirmId(id)}
                 onSelect={(p) => setViewingPreset(p)}
+                onSetDefault={handleSetDefault}
               />
             ))}
-          </AnimatePresence>
-        </motion.div>
+          </motion.div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-3 mt-8 pb-4">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all cursor-pointer"
+              >
+                &lt;
+              </button>
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                      currentPage === i + 1 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all cursor-pointer"
+              >
+                &gt;
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete Confirm Modal */}
