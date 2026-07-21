@@ -127,6 +127,23 @@ export default function Step4Editor() {
     };
   }, [state.highlightSelections, state.articleContext?.title]);
 
+  // Auto-trigger AI content generation on mount if no post content/draft exists yet
+  const hasTriggeredInitialGenRef = useRef(false);
+  useEffect(() => {
+    if (hasTriggeredInitialGenRef.current) return;
+
+    const targetPlatforms = state.selectedPlatforms.length > 0
+      ? state.selectedPlatforms
+      : (state.selectedPlatform ? [state.selectedPlatform] : []);
+
+    const hasAnyDraft = targetPlatforms.some(p => !!state.drafts[p]?.content);
+
+    if (!hasAnyDraft && !state.isGeneratingPost && state.articleId && state.articleContext) {
+      hasTriggeredInitialGenRef.current = true;
+      generateAIContent();
+    }
+  }, [state.articleId, state.articleContext, state.selectedPlatforms, state.selectedPlatform, state.drafts, state.isGeneratingPost, generateAIContent]);
+
   // Add initial AI suggestion message on mount if no initial message exists
   useEffect(() => {
     const hasInitMsg = state.chatMessages.some(m => m.id.startsWith('msg_ai_init'));

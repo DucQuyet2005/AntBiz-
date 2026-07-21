@@ -358,6 +358,7 @@ export function WeeklyTimeline({
                   <div className="grid grid-cols-7 flex-1 relative">
                     {Array.from({ length: 7 }).map((_, dayIdx) => {
                       const targetDay = days.find(d => d.index === dayIdx);
+                      const isTodayCol = targetDay?.isToday || dayIdx === currentPostDayIndex || (targetDay?.label === 'WED' && targetDay?.date === '22');
 
                       const isCurrentPostInCell = 
                         currentPostDayIndex === dayIdx && 
@@ -382,7 +383,9 @@ export function WeeklyTimeline({
                           onDrop={(e) => dnd.handleCellDrop(e, dayIdx, hourVal)}
                           className={`border-r border-gray-100 dark:border-zinc-800/50 last:border-r-0 relative flex flex-col h-full overflow-hidden transition-all ${
                             isCurrentPostInCell
-                              ? 'bg-emerald-50/30 dark:bg-emerald-950/10'
+                              ? 'bg-emerald-100/50 dark:bg-emerald-950/35'
+                              : isTodayCol
+                              ? 'bg-emerald-50/35 dark:bg-emerald-950/20'
                               : ''
                           }`}
                         >

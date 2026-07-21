@@ -23,7 +23,7 @@ function AiCreatorContent() {
   const {
     state, dispatch, nextStep, prevStep, goToStep,
     startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
-    editHighlighted,
+    editHighlighted, generateAIContent,
   } = useCreatorFlow();
 
   // Custom Toast notification states
@@ -163,6 +163,7 @@ function AiCreatorContent() {
         }
       }
       nextStep();
+      generateAIContent();
     } else if (state.currentStep === 3) {
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
       nextStep();
