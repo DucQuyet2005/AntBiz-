@@ -42,19 +42,21 @@ describe('POST /api/captions/[id]/regenerate', () => {
   it('returns 400 for malformed or invalid partial commands', async () => {
     expect((await POST(request('{'), context)).status).toBe(400);
     expect((await POST(request({
-      mode: 'partial', selectionStart: 4, selectionEnd: 2,
-      selectedText: 'x', instruction: 'Rewrite',
+      mode: 'partial',
+      selections: [{ start: 4, end: 2, text: 'x' }],
+      instruction: 'Rewrite',
     }), context)).status).toBe(400);
   });
 
   it('passes the actor, caption ID, and validated command to the module', async () => {
     mocks.regenerate.mockResolvedValue({
       caption: { id: 'caption-1', edited_content: 'New' },
-      mode: 'partial', generatedText: 'New', replacementRange: { start: 0, end: 3 },
+      mode: 'partial', generatedText: 'New', replacementRanges: [{ start: 0, end: 3 }],
     });
     const response = await POST(request({
-      mode: 'partial', selectionStart: 0, selectionEnd: 3,
-      selectedText: 'Old', instruction: 'Rewrite', presetMode: 'none',
+      mode: 'partial',
+      selections: [{ start: 0, end: 3, text: 'Old' }],
+      instruction: 'Rewrite', presetMode: 'none',
     }), context);
 
     expect(response.status).toBe(200);

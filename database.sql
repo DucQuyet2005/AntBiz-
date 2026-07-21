@@ -181,6 +181,7 @@ CREATE TABLE public.scheduled_posts (
   fb_post_id      TEXT,
   post_result     JSONB,
   image_urls      TEXT[]          NOT NULL DEFAULT '{}',   -- link áº£nh gá»‘c, khĂ´ng upload trÆ°á»›c
+  trigger_source  TEXT,                                    -- nguá»“n kĂ­ch hoáº¡t ('extension', v.v.)
   created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
 );
@@ -370,7 +371,13 @@ CREATE POLICY "utm_configs: owner or admin modify"
 -- CAPTIONS: má»i ngÆ°á»i Ä‘á»c, owner sá»­a
 CREATE POLICY "captions: authenticated read"
   ON public.captions FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (
+    created_by = auth.uid() OR 
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE users.id = auth.uid() AND users.role IN ('admin', 'marketer_full')
+    )
+  );
 
 CREATE POLICY "captions: authenticated insert"
   ON public.captions FOR INSERT
@@ -384,7 +391,17 @@ CREATE POLICY "captions: owner or admin update"
 -- CAPTION_VERSIONS: authenticated Ä‘á»c
 CREATE POLICY "caption_versions: authenticated read"
   ON public.caption_versions FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.captions c
+      WHERE c.id = caption_versions.caption_id 
+        AND (c.created_by = auth.uid() OR 
+             EXISTS (
+               SELECT 1 FROM public.users u 
+               WHERE u.id = auth.uid() AND u.role IN ('admin', 'marketer_full')
+             ))
+    )
+  );
 
 CREATE POLICY "caption_versions: authenticated insert"
   ON public.caption_versions FOR INSERT
@@ -394,7 +411,13 @@ CREATE POLICY "caption_versions: authenticated insert"
 -- SCHEDULED_POSTS: authenticated Ä‘á»c, owner/admin sá»­a
 CREATE POLICY "scheduled_posts: authenticated read"
   ON public.scheduled_posts FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (
+    created_by = auth.uid() OR 
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE users.id = auth.uid() AND users.role IN ('admin', 'marketer_full')
+    )
+  );
 
 CREATE POLICY "scheduled_posts: authenticated insert"
   ON public.scheduled_posts FOR INSERT

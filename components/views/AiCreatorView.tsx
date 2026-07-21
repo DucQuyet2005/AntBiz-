@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   CreatorFlowProvider,
@@ -33,6 +34,12 @@ function AiCreatorContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Back confirmation dialog states
   const [showBackConfirm, setShowBackConfirm] = useState(false);
@@ -129,10 +136,10 @@ function AiCreatorContent() {
     if (state.currentStep === 2) {
       // Auto-submit manual article if manual title and content are entered and not yet matching the saved article
       if (state.manualTitle.trim() && state.manualContent.trim()) {
-        const isDirty = !state.articleId || 
-          state.manualTitle !== state.articleContext?.title || 
+        const isDirty = !state.articleId ||
+          state.manualTitle !== state.articleContext?.title ||
           state.manualContent !== (state.articleContext?.content || state.articleContext?.summary);
-        
+
         if (isDirty) {
           setIsSubmitting(true);
           try {
@@ -174,7 +181,7 @@ function AiCreatorContent() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
       const tagName = activeElement?.tagName.toLowerCase();
-      
+
       // Xóa đoạn đã bôi đen khi nhấn Backspace hoặc Delete
       if ((e.key === 'Backspace' || e.key === 'Delete') && state.currentStep === 3) {
         if (tagName === 'textarea' || tagName === 'input' || tagName === 'button') return;
@@ -183,11 +190,11 @@ function AiCreatorContent() {
           e.preventDefault();
           let currentText = state.postContent || '';
           const sortedSelections = [...state.highlightSelections].sort((a, b) => b.start - a.start);
-          
+
           for (const sel of sortedSelections) {
             currentText = currentText.slice(0, sel.start) + currentText.slice(sel.end);
           }
-          
+
           dispatch({ type: 'SET_POST_CONTENT', payload: currentText });
           dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' });
           return;
@@ -217,7 +224,7 @@ function AiCreatorContent() {
 
         // Bỏ qua nếu bước hiện tại chưa hợp lệ hoặc đang xử lý
         if (!isStepValid() || state.isScheduling || isSubmitting) return;
-        
+
         e.preventDefault();
         handleContinue();
       }
@@ -327,59 +334,62 @@ function AiCreatorContent() {
       </div>
 
       {/* Confirmation Dialog when navigating back from Step 3 */}
-      <AnimatePresence>
-        {showBackConfirm && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleCancelBack}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            {/* Centered Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', duration: 0.3 }}
-              className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[10000] overflow-hidden font-sans"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+      {mounted && typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showBackConfirm && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={handleCancelBack}
+                className="fixed inset-0 bg-black/60 backdrop-blur-md"
+              />
+              {/* Centered Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', duration: 0.3 }}
+                className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[100000] overflow-hidden font-sans"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-black text-text leading-snug">
+                      Xác nhận quay lại?
+                    </h3>
+                    <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
+                      Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-text leading-snug">
-                    Xác nhận quay lại?
-                  </h3>
-                  <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
-                    Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
-                  </p>
+
+                <div className="mt-6 flex items-center justify-end gap-3 select-none">
+                  <button
+                    type="button"
+                    onClick={handleCancelBack}
+                    className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmBack}
+                    className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
+                  >
+                    Xác nhận
+                  </button>
                 </div>
-              </div>
-              
-              <div className="mt-6 flex items-center justify-end gap-3 select-none">
-                <button
-                  type="button"
-                  onClick={handleCancelBack}
-                  className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmBack}
-                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
-                >
-                  Xác nhận
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Floating high-fidelity Toast Alert Banner */}
       <AnimatePresence>
