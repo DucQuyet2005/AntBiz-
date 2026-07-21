@@ -178,9 +178,29 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_GENERATING_POST':
       return { ...state, isGeneratingPost: action.payload };
     case 'ADD_CHAT_MESSAGE':
+      if (action.payload.id.startsWith('msg_ai_init') && state.chatMessages.some(m => m.id.startsWith('msg_ai_init'))) {
+        return state;
+      }
       return { ...state, chatMessages: [...state.chatMessages, action.payload] };
     case 'SET_CHAT_SENDING':
       return { ...state, isChatSending: action.payload };
+    case 'RESTORE_CHAT_STATE': {
+      const { messageIndex, postContent } = action.payload;
+      const truncatedMessages = state.chatMessages.slice(0, messageIndex);
+      return {
+        ...state,
+        chatMessages: truncatedMessages,
+        postContent,
+        drafts: state.selectedPlatform ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            ...(state.drafts[state.selectedPlatform] || { content: '', postId: null, generatedPost: null }),
+            content: postContent,
+          }
+        } : state.drafts,
+      };
+    }
+
     case 'ADD_HIGHLIGHT_SELECTION':
       return {
         ...state,
@@ -250,6 +270,7 @@ interface CreatorFlowContextProps {
   regeneratePostContent: (presetId?: string | null) => Promise<void>;
   editHighlighted: (instruction: string) => Promise<void>;
   sendAssistantChat: (message: string) => Promise<void>;
+  restoreChatState: (messageIndex: number, overrideContent?: string) => { userPrompt?: string; quotedText?: string; restoredContent?: string };
   confirmPostSchedule: (mode?: 'now' | 'scheduled') => Promise<{
     success: boolean;
     failed: PlatformType[];
@@ -277,9 +298,16 @@ export function CreatorFlowProvider({
   });
 
   useEffect(() => {
-    if (platforms) dispatch({ type: 'SET_PLATFORMS', payload: platforms });
+    if (platforms) {
+      dispatch({ type: 'SET_PLATFORMS', payload: platforms });
+      const connectedIds = new Set(platforms.filter((p) => p.connected).map((p) => p.id));
+      const validSelected = state.selectedPlatforms.filter((id) => connectedIds.has(id));
+      if (validSelected.length !== state.selectedPlatforms.length) {
+        dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: validSelected });
+      }
+    }
     dispatch({ type: 'SET_LOADING_PLATFORMS', payload: isLoadingPlatforms });
-  }, [platforms, isLoadingPlatforms]);
+  }, [platforms, isLoadingPlatforms, state.selectedPlatforms]);
 
   // 2. Fetch presets
   const { data: presets, isLoading: isLoadingPresets } = useQuery({
@@ -588,12 +616,14 @@ export function CreatorFlowProvider({
 
     try {
       // 1. Add User Message to Chat Log
-      const selectedTexts = state.highlightSelections.map(s => `"${s.text}"`).join(', ');
+      const selectedTexts = state.highlightSelections.map(s => s.text).join('\n---\n');
       const userMsg: ChatMessage = {
         id: `msg_user_${Math.random()}`,
         sender: 'user',
-        text: `[Sửa đoạn: ${selectedTexts}]: ${instruction}`,
+        text: instruction,
+        quotedText: selectedTexts,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        postContentSnapshot: state.postContent,
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
@@ -615,6 +645,7 @@ export function CreatorFlowProvider({
         text: hasReplacement ? `Đoạn viết mới: ${result.generatedText}` : 'Đã xóa đoạn đã chọn thành công.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'Gemini 2.5 Flash',
+        postContentSnapshot: result.content,
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
 
@@ -647,6 +678,7 @@ export function CreatorFlowProvider({
       sender: 'user',
       text: message,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      postContentSnapshot: state.postContent,
     };
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
@@ -658,12 +690,53 @@ export function CreatorFlowProvider({
     );
 
     if (response.status === 'success' && response.data) {
-      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: response.data });
+      dispatch({
+        type: 'ADD_CHAT_MESSAGE',
+        payload: {
+          ...response.data,
+          postContentSnapshot: state.postContent,
+        },
+      });
     }
     dispatch({ type: 'SET_CHAT_SENDING', payload: false });
   };
 
-  // Persist every Caption, then publish now or schedule through Quick Publishing.
+  const restoreChatState = (messageIndex: number, overrideContent?: string) => {
+    const targetMsg = state.chatMessages[messageIndex];
+    let restoredContent = overrideContent;
+    if (!restoredContent) {
+      for (let i = messageIndex; i >= 0; i--) {
+        if (state.chatMessages[i]?.postContentSnapshot) {
+          restoredContent = state.chatMessages[i].postContentSnapshot;
+          break;
+        }
+      }
+    }
+    restoredContent = restoredContent ?? state.postContent;
+
+    let quotedText = targetMsg?.quotedText;
+    let userPrompt = targetMsg?.text;
+
+    if (!quotedText && userPrompt?.startsWith('[Sửa đoạn:')) {
+      const match = userPrompt.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+      if (match) {
+        quotedText = match[1];
+        userPrompt = match[2];
+      }
+    }
+
+    dispatch({
+      type: 'RESTORE_CHAT_STATE',
+      payload: { messageIndex, postContent: restoredContent },
+    });
+
+    return {
+      userPrompt: targetMsg?.sender === 'user' ? userPrompt : undefined,
+      quotedText,
+      restoredContent,
+    };
+  };
+
   const confirmPostSchedule = async (
     requestedMode: 'now' | 'scheduled' = state.scheduleMode
   ): Promise<{ success: boolean; failed: PlatformType[] }> => {
@@ -764,6 +837,7 @@ export function CreatorFlowProvider({
         regeneratePostContent,
         editHighlighted,
         sendAssistantChat,
+        restoreChatState,
         confirmPostSchedule,
         updateScheduledTime,
       }}

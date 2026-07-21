@@ -24,14 +24,16 @@ function isAllowedHost(hostname: string): boolean {
 function isActualAntBizRoute(pathname: string): boolean {
   if (pathname === '/') return true;
 
-  const ANTBIZ_ROUTES = new Set([
+  const ANTBIZ_ROUTES = [
     '/login', '/register', '/forgot-password', '/reset-password',
     '/overview', '/ai-creator', '/archive', '/content-calendar',
     '/faq', '/notifications', '/presets', '/profile', '/prompts',
-    '/search', '/settings', '/admin',
-  ]);
+    '/reports', '/search', '/settings', '/admin',
+  ];
 
-  if (ANTBIZ_ROUTES.has(pathname)) return true;
+  if (ANTBIZ_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+    return true;
+  }
 
   if (pathname.startsWith('/api/')) {
     const segment = pathname.split('/')[2];

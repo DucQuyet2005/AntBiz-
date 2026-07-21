@@ -79,6 +79,7 @@ export type CreatorFlowAction =
   | { type: 'SET_GENERATING_POST'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'SET_CHAT_SENDING'; payload: boolean }
+  | { type: 'RESTORE_CHAT_STATE'; payload: { messageIndex: number; postContent: string } }
   | { type: 'ADD_HIGHLIGHT_SELECTION'; payload: { id: string; text: string; start: number; end: number } }
   | { type: 'REMOVE_HIGHLIGHT_SELECTION'; payload: string }
   | { type: 'CLEAR_HIGHLIGHT_SELECTIONS' }
