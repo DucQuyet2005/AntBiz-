@@ -44,33 +44,47 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
     }
 
     // 2. Fetch insights metrics (impressions, reach, clicks)
-    const metricsToFetch = ['post_impressions', 'post_impressions_unique', 'post_clicks'];
-    for (const metric of metricsToFetch) {
-      try {
-        const insightsUrl = `${baseUrl}/insights?metric=${metric}&access_token=${accessToken}`;
-        const response = await this.fetchImplementation(insightsUrl);
+    // We map target metric names to a list of Facebook API metrics to try (in order of preference)
+    const metricMappings = {
+      impressions: ['post_impressions', 'post_media_view'],
+      reach: ['post_impressions_unique', 'post_total_media_view_unique'],
+      clicks: ['post_clicks', 'post_clicks_by_type'],
+    };
 
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data?.data) && data.data.length > 0) {
-            const value = data.data[0].values?.[0]?.value ?? 0;
-            if (metric === 'post_impressions') {
-              impressions = value;
-            } else if (metric === 'post_impressions_unique') {
-              reach = value;
-            } else if (metric === 'post_clicks') {
-              clicks = value;
+    for (const [key, apiMetrics] of Object.entries(metricMappings)) {
+      let value = 0;
+      let fetched = false;
+
+      for (const apiMetric of apiMetrics) {
+        try {
+          const insightsUrl = `${baseUrl}/insights?metric=${apiMetric}&access_token=${accessToken}`;
+          const response = await this.fetchImplementation(insightsUrl);
+
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data?.data) && data.data.length > 0) {
+              // Some metrics use 'value', others use 'values' array
+              const item = data.data[0];
+              value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+              fetched = true;
+              break; // Success, stop trying other fallback metrics for this key
             }
+          } else {
+            const errorJson = await response.json().catch(() => ({}));
+            console.warn(
+              `[Facebook Performance Collector] Thất bại khi lấy metric '${apiMetric}' cho post ${externalPostId}:`,
+              errorJson?.error?.message || response.statusText
+            );
           }
-        } else {
-          const errorJson = await response.json().catch(() => ({}));
-          console.warn(
-            `[Facebook Performance Collector] Thất bại khi lấy metric '${metric}' cho post ${externalPostId}:`,
-            errorJson?.error?.message || response.statusText
-          );
+        } catch (err: any) {
+          console.warn(`[Facebook Performance Collector] Lỗi khi gọi insights API cho metric '${apiMetric}' của post ${externalPostId}:`, err.message);
         }
-      } catch (err: any) {
-        console.warn(`[Facebook Performance Collector] Lỗi khi gọi insights API cho metric '${metric}' của post ${externalPostId}:`, err.message);
+      }
+
+      if (fetched) {
+        if (key === 'impressions') impressions = value;
+        else if (key === 'reach') reach = value;
+        else if (key === 'clicks') clicks = value;
       }
     }
 
