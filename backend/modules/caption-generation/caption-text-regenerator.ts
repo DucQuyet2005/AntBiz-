@@ -13,7 +13,7 @@ export class GeminiCaptionTextRegenerator implements CaptionTextRegenerator {
   constructor(
     private readonly repository: CaptionGenerationRepository,
     private readonly gemini: GeminiCaptionGateway
-  ) {}
+  ) { }
 
   async generate(input: Parameters<CaptionTextRegenerator['generate']>[0]) {
     let platformRules: string | null;
@@ -43,7 +43,7 @@ export class GeminiCaptionTextRegenerator implements CaptionTextRegenerator {
     let generatedText = '';
     for await (const fragment of fragments) generatedText += fragment;
     generatedText = generatedText.trim();
-    if (!generatedText) {
+    if (!generatedText && input.mode === 'full') {
       throw new CaptionManagementError(
         'CAPTION_REGENERATION_FAILED', 500, 'AI không trả về nội dung'
       );

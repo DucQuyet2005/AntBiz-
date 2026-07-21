@@ -142,10 +142,11 @@ function normalizeCrawledArticle(article: ArticleSourceResult) {
   const images: Array<{ url: string; caption?: string }> = [...(article.images || [])];
   if (Array.isArray(article.body)) {
     for (const block of article.body) {
-      if (block && block.type === 'image' && typeof block.url === 'string' && block.url.trim()) {
-        const cleanUrl = block.url.trim();
+      const b = block as any;
+      if (b && b.type === 'image' && typeof b.url === 'string' && b.url.trim()) {
+        const cleanUrl = b.url.trim();
         if (!images.some((img) => img.url === cleanUrl)) {
-          images.push({ url: cleanUrl, caption: block.caption });
+          images.push({ url: cleanUrl, caption: b.caption });
         }
       }
     }

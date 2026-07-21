@@ -4,7 +4,7 @@ import ExcelJS from 'exceljs';
 import path from 'path';
 
 export async function GET(request: NextRequest) {
-  const { user, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
   const { searchParams } = new URL(request.url);
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const startDateParam = searchParams.get('startDate');
   const endDateParam = searchParams.get('endDate');
   const createdBy = searchParams.get('createdBy') || 'Thành viên AntBiz';
+  const scope = searchParams.get('scope') || 'all';
 
   // Resolve date range
   let start = new Date();
@@ -87,6 +88,11 @@ export async function GET(request: NextRequest) {
     .gte('scheduled_at', start.toISOString())
     .lte('scheduled_at', end.toISOString());
 
+  const isPersonalScope = role === 'marketer_content' || scope === 'personal';
+  if (isPersonalScope && user) {
+    query = query.eq('created_by', user.id);
+  }
+
   const { data: postsData, error: postsError } = await query;
 
   if (postsError) {
@@ -111,6 +117,10 @@ export async function GET(request: NextRequest) {
         `)
         .gte('scheduled_at', start.toISOString())
         .lte('scheduled_at', end.toISOString());
+
+      if (isPersonalScope && user) {
+        fallbackQuery = fallbackQuery.eq('created_by', user.id);
+      }
 
       const { data: fallbackData, error: fallbackError } = await fallbackQuery;
       if (fallbackError) {
