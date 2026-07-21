@@ -63,6 +63,12 @@ export class ThreadsPerformanceCollector implements PerformanceCollector {
             }
           }
         }
+      } else {
+        const errorJson = await response.json().catch(() => ({}));
+        console.warn(
+          `[Threads Performance Collector] Thất bại khi lấy insights cho post ${externalPostId}:`,
+          errorJson?.error?.message || response.statusText
+        );
       }
     } catch (err: any) {
       console.warn(`[Threads Performance Collector] Lỗi khi lấy insights bài đăng ${externalPostId}:`, err.message);
