@@ -58,7 +58,11 @@ export class SocialAccountConnectionsModule implements SocialAccountConnectionsM
 
     const outcomes: boolean[] = [];
     for (const candidate of discovery.candidates) {
-      outcomes.push(await this.repository.upsert(input.userId, candidate));
+      if (candidate.platform === verified.intent) {
+        outcomes.push(await this.repository.upsert(input.userId, candidate));
+      } else {
+        outcomes.push(false);
+      }
     }
 
     const requestedIndexes = discovery.candidates.flatMap((candidate, index) =>

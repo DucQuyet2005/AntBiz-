@@ -266,15 +266,6 @@ export async function GET(request: NextRequest) {
       })
       .slice(0, 10);
 
-    if (topPosts.length > 0) {
-      console.log('\n=======================================');
-      console.log('🚀 TOP 1 BÀI VIẾT CÓ TƯƠNG TÁC CAO NHẤT:');
-      console.log('Tiêu đề:', topPosts[0].title);
-      console.log('Nền tảng:', topPosts[0].platform);
-      console.log('Chỉ số tương tác:', JSON.stringify(topPosts[0].interactions, null, 2));
-      console.log('=======================================\n');
-    }
-
     return NextResponse.json({
       summary: {
         totalPosts,
