@@ -19,7 +19,7 @@ export class ThreadsConnectionAdapter implements ThreadsConnectionProvider {
   constructor(
     private readonly fetchImplementation: typeof fetch = fetch,
     private readonly configProvider: ConfigProvider = defaultConfig
-  ) {}
+  ) { }
 
   buildAuthorizationUrl(state: string) {
     const config = this.requireConfig();
@@ -27,7 +27,7 @@ export class ThreadsConnectionAdapter implements ThreadsConnectionProvider {
     url.search = new URLSearchParams({
       client_id: config.appId,
       redirect_uri: config.redirectUri,
-      scope: 'threads_basic,threads_content_publish',
+      scope: 'threads_basic,threads_content_publish,threads_manage_insights',
       response_type: 'code',
       state,
     }).toString();

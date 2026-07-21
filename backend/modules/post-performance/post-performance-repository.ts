@@ -37,17 +37,29 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
   }
 
   async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
-    let query = this.supabase
+    const baseQuery = this.supabase
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
       .eq('platform', platform);
 
     if (accountId) {
-      query = query.eq('account_id', accountId);
+      // For facebook/instagram, accountId might be in format {page_id}_{post_id}
+      const actualAccountId = accountId.includes('_') ? accountId.split('_')[0] : accountId;
+      const { data, error } = await baseQuery.eq('account_id', actualAccountId).maybeSingle();
+      if (!error && data?.access_token) {
+        return data.access_token;
+      }
     }
 
-    const { data, error } = await query.maybeSingle();
+    // Fallback: get any token for this user and platform
+    const { data, error } = await this.supabase
+      .from('linked_accounts')
+      .select('access_token')
+      .eq('user_id', userId)
+      .eq('platform', platform)
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       console.error(`[PostPerformanceRepository] Lỗi khi lấy access token cho platform ${platform}:`, error);
