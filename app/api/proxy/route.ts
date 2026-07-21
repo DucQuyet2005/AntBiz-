@@ -47,7 +47,17 @@ export async function GET(request: NextRequest) {
 
     const reqHeaders = new Headers();
     const parsedTarget = new URL(targetUrl);
-    reqHeaders.set('Referer', parsedTarget.origin + '/');
+    
+    let spoofReferer = parsedTarget.origin + '/';
+    if (spoofReferer.includes('dantri.com.vn')) {
+      spoofReferer = 'https://dantri.com.vn/';
+    } else if (spoofReferer.includes('tuoitre.vn')) {
+      spoofReferer = 'https://tuoitre.vn/';
+    } else if (spoofReferer.includes('gocnhinmoi.com.vn') || spoofReferer.includes('gocnhinmoi.com')) {
+      spoofReferer = 'https://gocnhinmoi.com.vn/';
+    }
+    
+    reqHeaders.set('Referer', spoofReferer);
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
     reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8');
     reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7');
@@ -243,8 +253,7 @@ export async function GET(request: NextRequest) {
     const isHtml = contentType.toLowerCase().includes('text/html');
 
     if (!isHtml) {
-      const rawData = await res.arrayBuffer();
-      const response = new NextResponse(rawData, {
+      const response = new NextResponse(res.body, {
         status: res.status,
         headers: {
           'Content-Type': contentType,
