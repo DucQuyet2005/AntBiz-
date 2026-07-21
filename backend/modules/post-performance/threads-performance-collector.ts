@@ -28,6 +28,7 @@ export class ThreadsPerformanceCollector implements PerformanceCollector {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`[Threads Performance Collector] Raw Insights for post ${externalPostId}:`, JSON.stringify(data));
         if (Array.isArray(data?.data)) {
           for (const item of data.data) {
             const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
