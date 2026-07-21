@@ -23,6 +23,7 @@ function AiCreatorContent() {
   const {
     state, dispatch, nextStep, prevStep, goToStep,
     startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
+    editHighlighted,
   } = useCreatorFlow();
 
   // Custom Toast notification states
@@ -174,6 +175,64 @@ function AiCreatorContent() {
       nextStep();
     }
   };
+
+  // Hỗ trợ phím Enter để tiếp tục thay vì phải bấm nút
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const tagName = activeElement?.tagName.toLowerCase();
+
+      // Xóa đoạn đã bôi đen khi nhấn Backspace hoặc Delete
+      if ((e.key === 'Backspace' || e.key === 'Delete') && state.currentStep === 3) {
+        if (tagName === 'textarea' || tagName === 'input' || tagName === 'button') return;
+
+        if (state.highlightSelections && state.highlightSelections.length > 0) {
+          e.preventDefault();
+          let currentText = state.postContent || '';
+          const sortedSelections = [...state.highlightSelections].sort((a, b) => b.start - a.start);
+
+          for (const sel of sortedSelections) {
+            currentText = currentText.slice(0, sel.start) + currentText.slice(sel.end);
+          }
+
+          dispatch({ type: 'SET_POST_CONTENT', payload: currentText });
+          dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' });
+          return;
+        }
+      }
+
+      if (e.key === 'Enter') {
+        // Bỏ qua nếu con trỏ đang ở trong textarea, button
+        if (tagName === 'textarea' || tagName === 'button') return;
+
+        // Nếu có nội dung bôi đen ở Step 3, ấn enter sẽ sửa đoạn đó thay vì next step
+        if (state.currentStep === 3 && state.highlightSelections && state.highlightSelections.length > 0) {
+          e.preventDefault();
+          if (!state.isHighlightEditing && !state.isGeneratingPost) {
+            editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
+          }
+          return;
+        }
+
+        // Nếu không có nội dung bôi đen mà đang focus vào contenteditable thì bỏ qua (để tạo dòng mới bình thường)
+        if (activeElement?.getAttribute('contenteditable') === 'true') return;
+
+        // Khi ở bước 3 trở đi, bắt buộc phải tự bấm nút Lên lịch/Đăng ngay chứ không cho Enter nữa
+        if (state.currentStep >= 3) {
+          return;
+        }
+
+        // Bỏ qua nếu bước hiện tại chưa hợp lệ hoặc đang xử lý
+        if (!isStepValid() || state.isScheduling || isSubmitting) return;
+
+        e.preventDefault();
+        handleContinue();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state, isStepValid, isSubmitting, handleContinue, editHighlighted]);
 
   // Render active wizard page
   const renderStepContent = () => {

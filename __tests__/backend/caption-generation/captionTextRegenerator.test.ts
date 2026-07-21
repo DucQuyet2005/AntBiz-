@@ -44,7 +44,7 @@ describe('GeminiCaptionTextRegenerator', () => {
     const result = await new GeminiCaptionTextRegenerator(repository, gemini).generate({
       ...baseInput,
       mode: 'partial',
-      selectedText: 'caption',
+      selections: [{ start: 9, end: 16, text: 'caption' }],
     });
 
     expect(result).toBe('Rewritten section');

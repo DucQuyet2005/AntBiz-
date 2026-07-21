@@ -31,7 +31,7 @@ class FakeClient implements QuickPublishingClient {
     return {
       captionId: id, content: input.mode === 'partial' ? 'partially edited' : 'fully edited',
       status: 'edited', mode: input.mode, generatedText: 'edited',
-      ...(input.mode === 'partial' ? { replacementRange: { start: input.selectionStart, end: input.selectionEnd } } : {}),
+      ...(input.mode === 'partial' ? { replacementRanges: input.selections.map(s => ({ start: s.start, end: s.end })) } : {}),
     };
   }
   async schedule(input: { captionId: string; scheduledAt: string; imageUrls: string[] }) {
@@ -127,9 +127,9 @@ describe('QuickPublishingModule', () => {
     }, (event) => events.push(event))).resolves.toMatchObject({ content: 'fully edited' });
     await expect(capacity.regenerateCaption({
       captionId: 'caption-1', platform: 'facebook', mode: 'partial', presetMode: 'none',
-      selectionStart: 1, selectionEnd: 4, selectedText: 'old', instruction: 'Rewrite',
+      selections: [{ start: 1, end: 4, text: 'old' }], instruction: 'Rewrite',
     }, (event) => events.push(event))).resolves.toMatchObject({
-      content: 'partially edited', replacementRange: { start: 1, end: 4 },
+      content: 'partially edited', replacementRanges: [{ start: 1, end: 4 }],
     });
     expect(events).toContainEqual(expect.objectContaining({
       type: 'caption-regenerated', mode: 'partial', content: 'partially edited',

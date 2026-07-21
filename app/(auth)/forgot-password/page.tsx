@@ -99,15 +99,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-      <AnimatePresence>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={hideToast}
-          />
-        )}
-      </AnimatePresence>
       {/* Left Side - Image/Graphic */}
       <div className="hidden md:flex md:w-1/2 bg-[#3F40E8] p-3">
         <div className="relative w-full h-full rounded-xl overflow-hidden bg-black flex flex-col justify-end p-8 min-h-[600px]">
