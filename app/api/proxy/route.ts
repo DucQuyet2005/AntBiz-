@@ -333,7 +333,7 @@ export async function GET(request: NextRequest) {
 
     // ── 3. Inject navigation interceptor into <head> BEFORE any JS ───────────
 
-    const interceptorScript = `
+    const navigationScript = `
 <script>
 (function() {
   var TARGET = ${JSON.stringify(targetUrl)};
@@ -405,7 +405,7 @@ export async function GET(request: NextRequest) {
     // Do NOT inject <base href>. It breaks client-side routing and lazy-loading
     // because JS resolves paths to the real origin instead of the proxy.
     // The active_proxy_origin cookie and proxy.ts middleware already handle relative requests.
-    const fullHeaderInjection = interceptorScript;
+    const fullHeaderInjection = interceptorScript + navigationScript;
 
     // Insert into <head> — before any other scripts
     if (/<head[\s>]/i.test(html)) {
