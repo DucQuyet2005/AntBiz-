@@ -62,6 +62,12 @@ export class ThreadsConnectionAdapter implements ThreadsConnectionProvider {
       'long_token'
     );
     const longToken = requireString(longTokenData, 'access_token', 'long_token');
+    const expiresIn = typeof longTokenData === 'object' && longTokenData !== null
+      ? (longTokenData as any).expires_in
+      : undefined;
+    const expiresAt = typeof expiresIn === 'number'
+      ? new Date(Date.now() + expiresIn * 1000).toISOString()
+      : null;
 
     const profileData = await this.requestJson(
       `${THREADS_GRAPH_URL}/v1.0/me?fields=id,username&access_token=${encodeURIComponent(longToken)}`,
@@ -75,6 +81,33 @@ export class ThreadsConnectionAdapter implements ThreadsConnectionProvider {
       accountId,
       accountName,
       accessToken: longToken,
+      expiresAt,
+    };
+  }
+
+  async refreshAccessToken(accessToken: string): Promise<{ accessToken: string; expiresAt: string }> {
+    const refreshData = await this.requestJson(
+      `https://graph.threads.net/refresh_access_token?${new URLSearchParams({
+        grant_type: 'th_refresh_token',
+        access_token: accessToken,
+      })}`,
+      'refresh_token'
+    );
+    const newAccessToken = requireString(refreshData, 'access_token', 'refresh_token');
+    const expiresIn = typeof refreshData === 'object' && refreshData !== null
+      ? (refreshData as any).expires_in
+      : undefined;
+    if (typeof expiresIn !== 'number') {
+      throw new SocialAccountConnectionsError(
+        'provider_unavailable',
+        502,
+        'Threads API không trả về thời gian hết hạn mới'
+      );
+    }
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+    return {
+      accessToken: newAccessToken,
+      expiresAt,
     };
   }
 

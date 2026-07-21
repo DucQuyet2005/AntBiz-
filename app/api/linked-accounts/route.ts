@@ -33,3 +33,19 @@ export async function DELETE(request: NextRequest) {
     return socialConnectionJsonErrorResponse(error);
   }
 }
+
+export async function POST(request: NextRequest) {
+  const { user, supabase, unauthorized } = await requireUserWithRole(SOCIAL_CONNECTION_ROLES);
+  if (unauthorized) return unauthorized;
+  try {
+    const { searchParams } = new URL(request.url);
+    const platform = searchParams.get('platform') || 'threads';
+    const result = await buildLinkedAccountConnectionsModule(
+      supabase,
+      request.nextUrl.origin
+    ).refresh(user.id, platform);
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    return socialConnectionJsonErrorResponse(error);
+  }
+}
