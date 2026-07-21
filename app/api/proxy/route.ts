@@ -47,7 +47,17 @@ export async function GET(request: NextRequest) {
 
     const reqHeaders = new Headers();
     const parsedTarget = new URL(targetUrl);
-    reqHeaders.set('Referer', parsedTarget.origin + '/');
+    
+    let spoofReferer = parsedTarget.origin + '/';
+    if (spoofReferer.includes('dantri.com.vn')) {
+      spoofReferer = 'https://dantri.com.vn/';
+    } else if (spoofReferer.includes('tuoitre.vn')) {
+      spoofReferer = 'https://tuoitre.vn/';
+    } else if (spoofReferer.includes('gocnhinmoi.com.vn') || spoofReferer.includes('gocnhinmoi.com')) {
+      spoofReferer = 'https://gocnhinmoi.com.vn/';
+    }
+    
+    reqHeaders.set('Referer', spoofReferer);
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
     reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8');
     reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7');
@@ -243,8 +253,8 @@ export async function GET(request: NextRequest) {
     const isHtml = contentType.toLowerCase().includes('text/html');
 
     if (!isHtml) {
-      const rawData = await res.arrayBuffer();
-      const response = new NextResponse(rawData, {
+      const buffer = await res.arrayBuffer();
+      const response = new NextResponse(buffer, {
         status: res.status,
         headers: {
           'Content-Type': contentType,
@@ -261,77 +271,159 @@ export async function GET(request: NextRequest) {
 
     let html = await res.text();
 
-    // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
+    // ── 1. Rewrite relative src to appropriate destination ───────────────
+    const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
+    const needsImageProxy = parsedTarget.hostname.includes('dantri.com.vn');
+    
     html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
+      const lowerPath = path.split('?')[0].toLowerCase();
+      const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
+      if (isImage && needsImageProxy) {
+        // Only Dantri images go through proxy to bypass hotlink protection
+        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+      }
+      // Everything else goes direct to origin
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
-    html = html.replace(/(\bsrcset\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, srcset) => {
-      const rewritten = srcset.replace(
-        /(^|,\s*)(\/[^\s,]+)/g,
-        (_s: string, sep: string, p: string) => `${sep}${targetOrigin}${p}`,
-      );
-      return `${attr}${q}${rewritten}${q}`;
-    });
+    
 
-    // ── 2. Rewrite all href attributes ───────────────────────────────────────
-    const staticExts = [
-      '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp',
-      '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map',
-    ];
+    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri
+    if (needsImageProxy) {
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
+        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
+        if (urlStr.includes('/api/proxy?')) return _m;
 
-    html = html.replace(/(\bhref\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, href) => {
-      if (href.includes('/api/proxy?')) return `${attr}${q}${href}${q}`;
-      if (
-        href.startsWith('#') ||
-        href.startsWith('mailto:') ||
-        href.startsWith('tel:') ||
-        href.startsWith('javascript:')
-      ) {
-        return `${attr}${q}${href}${q}`;
-      }
+        try {
+          const absolute = new URL(urlStr, targetUrl).href;
+          const u = new URL(absolute);
+          if (u.hostname.includes('dantri.com.vn')) {
+            return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
+          }
+          return `${attr}${q}${absolute}${q}`;
+        } catch(e) {}
+        return _m;
+      });
 
-      let absolute: string;
-      try {
-        absolute = new URL(href, targetUrl).href;
-      } catch {
-        return `${attr}${q}${href}${q}`;
-      }
+      // Rewrite srcset and data-srcset
+      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, srcset) => {
+        const rewritten = srcset.replace(
+          /(^|,\s*)([^\s,]+)/g,
+          (_s: string, sep: string, urlStr: string) => {
+            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
+              return _s;
+            }
+            try {
+              const absolute = new URL(urlStr, targetUrl).href;
+              const u = new URL(absolute);
+              if (u.hostname.includes('dantri.com.vn')) {
+                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
+              }
+              return `${sep}${absolute}`;
+            } catch(e) {
+              return _s;
+            }
+          }
+        );
+        return `${attr}${q}${rewritten}${q}`;
+      });
+    }
 
-      const isStatic = staticExts.some((ext) => absolute.split('?')[0].endsWith(ext));
-      if (isStatic) return `${attr}${q}${absolute}${q}`;
-
-      const parsed = new URL(absolute);
-      const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
-        (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-      );
-      if (isSameAllowedDomain) {
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
-      }
-
-      return `${attr}${q}${absolute}${q}`;
-    });
-
-    // ── 3. Remove framing restrictions and SPA routers ───────────────────────────────
+    // ── 2. Remove framing restrictions ───────────────────────────────
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // Disable Dantri's SPA scripts to prevent the client-side router from overriding the page with a 404 OOPS screen
-    if (parsedTarget.hostname.includes('dantri.com.vn')) {
-      // Dantri uses inline scripts to dynamically inject Webpack chunks.
-      // Strip ALL scripts to guarantee the SPA router never executes.
-      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '<!-- script blocked -->');
+    // ── 3. Inject navigation interceptor into <head> BEFORE any JS ───────────
+
+    const navigationScript = `
+<script>
+(function() {
+  var TARGET = ${JSON.stringify(targetUrl)};
+  var ALLOWED = ${JSON.stringify(ALLOWED_HOSTNAMES)};
+  
+  // ── 1. Fix SPA Routers (Dantri) ──
+  // SPA routers read window.location.pathname to determine the page to render.
+  try {
+    var _parsedTarget = new URL(TARGET);
+    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
+    if (window.location.pathname !== _parsedTarget.pathname) {
+      window.history.replaceState(null, '', window.location.origin + _targetPath);
     }
+  } catch(_e) {}
 
-    // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
+  // ── 2. Intercept Absolute Clicks ──
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (a && a.href) {
+      try {
+        var u = new URL(a.href);
+        var isAllowed = ALLOWED.some(function(h) { return u.hostname === h || u.hostname.endsWith('.' + h); });
+        // If it's an allowed absolute URL, route it through proxy
+        if (isAllowed && u.origin !== window.location.origin) {
+          e.preventDefault();
+          window.location.href = '/api/proxy?url=' + encodeURIComponent(a.href);
+        }
+      } catch(ex) {}
+    }
+  }, true);
 
-    const baseTag = `<base href="${targetOrigin}/">`;
-    const fullHeaderInjection = baseTag + interceptorScript;
+  // ── 3. Intercept Fetch for Next.js Data ──
+  // Intercept relative fetches (like /_next/data/...) to ensure they go through proxy middleware
+  // We rewrite them to the absolute proxy URL directly to bypass middleware's ignore rules
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+    if (url && typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+      try {
+        var _parsedTarget2 = new URL(TARGET);
+        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget2.origin + url);
+        if (typeof input === 'string') {
+          input = url;
+        } else {
+          input = new Request(url, init);
+        }
+      } catch(e) {}
+    }
+    return _fetch.call(window, input, init);
+  };
 
-    // Insert into <head> — before any other scripts
-    if (/<head[\s>]/i.test(html)) {
-      html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + fullHeaderInjection);
-    } else {
-      html = fullHeaderInjection + html;
+  // ── 4. Intercept XMLHttpRequest ──
+  var _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+      try {
+        var _parsedTarget3 = new URL(TARGET);
+        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget3.origin + url);
+      } catch(e) {}
+    }
+    var args = Array.prototype.slice.call(arguments);
+    args[1] = url;
+    return _open.apply(this, args);
+  };
+})();
+</script>
+`;
+
+    // Do NOT inject <base href>. It breaks client-side routing and lazy-loading
+    // because JS resolves paths to the real origin instead of the proxy.
+    // The active_proxy_origin cookie and proxy.ts middleware already handle relative requests.
+    const fullHeaderInjection = interceptorScript + navigationScript;
+
+    // Only inject interceptors into full HTML pages, NOT fragments (e.g. AJAX responses)
+    // Injecting into fragments causes the script to run when the fragment is inserted into the DOM,
+    // which triggers false URL_CHANGE events and breaks the iframe.
+    const hasHead = /<head[\s>]/i.test(html);
+    const hasHtml = /<html[\s>]/i.test(html);
+    const hasDoctype = /<!DOCTYPE/i.test(html);
+    const isFullPage = hasHead || hasHtml || hasDoctype;
+
+    if (isFullPage) {
+      if (hasHead) {
+        html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + fullHeaderInjection);
+      } else if (hasHtml) {
+        html = html.replace(/(<html[\s>][^>]*>|<html>)/i, (m: string) => m + fullHeaderInjection);
+      } else {
+        html = fullHeaderInjection + html;
+      }
     }
 
     const response = new NextResponse(html, {
