@@ -251,16 +251,6 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-      <AnimatePresence>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={hideToast}
-          />
-        )}
-      </AnimatePresence>
-
       {/* 🔴 Account Locked Dialog Overlay */}
       <AnimatePresence>
         {bannedReason && (
