@@ -111,6 +111,26 @@ const MIGRATIONS = [
       ON CONFLICT (post_id) DO NOTHING;
     `,
   },
+  {
+    id: 'add_notification_settings',
+    description: 'Thêm cài đặt thông báo và email cho người dùng (email_on_success, email_sent)',
+    checkSql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email_on_success') as exists`,
+    migrationSql: `
+      ALTER TABLE public.users 
+        ADD COLUMN IF NOT EXISTS email_on_success BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS email_on_failure BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS email_digest_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS email_digest_time VARCHAR(5) NOT NULL DEFAULT '18:00',
+        ADD COLUMN IF NOT EXISTS last_digest_sent_at TIMESTAMPTZ DEFAULT NULL;
+
+      ALTER TABLE public.notifications 
+        ADD COLUMN IF NOT EXISTS email_sent BOOLEAN NOT NULL DEFAULT FALSE;
+
+      CREATE INDEX IF NOT EXISTS idx_notifications_email_sent 
+        ON public.notifications(user_id, email_sent) 
+        WHERE email_sent = FALSE;
+    `,
+  },
 ];
 
 /**
@@ -186,22 +206,35 @@ export async function GET() {
     const status: Array<{ id: string; description: string; exists: boolean }> = [];
 
     for (const migration of MIGRATIONS) {
-      let tableName = '';
-      if (migration.id === 'us2_09_author_profiles') tableName = 'author_profiles';
-      else if (migration.id === 'platform_presets') tableName = 'platform_presets';
-      else if (migration.id === 'post_interactions') tableName = 'post_interactions';
+      let exists = false;
+      if (migration.id === 'add_notification_settings') {
+        const { data } = await supabase
+          .from('information_schema.columns' as any)
+          .select('column_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', 'users')
+          .eq('column_name', 'email_on_success')
+          .maybeSingle();
+        exists = !!data;
+      } else {
+        let tableName = '';
+        if (migration.id === 'us2_09_author_profiles') tableName = 'author_profiles';
+        else if (migration.id === 'platform_presets') tableName = 'platform_presets';
+        else if (migration.id === 'post_interactions') tableName = 'post_interactions';
 
-      const { data } = await supabase
-        .from('information_schema.tables' as any)
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .eq('table_name', tableName)
-        .maybeSingle();
+        const { data } = await supabase
+          .from('information_schema.tables' as any)
+          .select('table_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', tableName)
+          .maybeSingle();
+        exists = !!data;
+      }
 
       status.push({
         id: migration.id,
         description: migration.description,
-        exists: !!data,
+        exists,
       });
     }
 

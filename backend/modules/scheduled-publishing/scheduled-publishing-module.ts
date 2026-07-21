@@ -39,6 +39,39 @@ export class ScheduledPublishingModule {
     return this.repository.list();
   }
 
+  async listPaginated(
+    page: number = 1,
+    limit: number = 20,
+    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc' }
+  ) {
+    const { data: rawData, count } = await this.repository.listPaginated(page, limit, filters);
+    
+    // Group by day (YYYY-MM-DD)
+    const groupedMap = new Map<string, ScheduledPostRecord[]>();
+    for (const post of rawData) {
+      if (!post.scheduled_at) continue;
+      const dateStr = post.scheduled_at.split('T')[0];
+      if (!groupedMap.has(dateStr)) {
+        groupedMap.set(dateStr, []);
+      }
+      groupedMap.get(dateStr)!.push(post);
+    }
+
+    const groupedData = Array.from(groupedMap.entries()).map(([date, posts]) => ({
+      date,
+      posts
+    }));
+
+    return {
+      data: groupedData,
+      meta: {
+        total: count,
+        page,
+        limit
+      }
+    };
+  }
+
   async schedule(actor: ScheduledPublishingActor, rawInput: ScheduleInput | unknown) {
     const input = parseScheduleInput(rawInput);
     const now = this.now();

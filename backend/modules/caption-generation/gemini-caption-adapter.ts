@@ -22,6 +22,7 @@ export class GeminiCaptionAdapter implements GeminiCaptionGateway {
     prompt: string;
     temperature: number;
   }): Promise<AsyncIterable<string>> {
+    console.log('[Gemini API Request] Prompt:', input.prompt);
     const response = await this.capacityExecutor(
       { title: input.title, content: input.content },
       async (key, modelName) => {
@@ -38,6 +39,7 @@ export class GeminiCaptionAdapter implements GeminiCaptionGateway {
 
         if (!result.ok) {
           const errorText = await result.text();
+          console.error('[Gemini API Error Response]:', errorText);
           throw new Error(`[Gemini API Error] Status: ${result.status}, Body: ${errorText}`);
         }
         return result;
@@ -75,7 +77,9 @@ export class GeminiCaptionAdapter implements GeminiCaptionGateway {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, { stream: true });
+      console.log('[Gemini API Chunk Received]:', chunk);
+      buffer += chunk;
 
       const regex = /"text":\s*"((?:[^"\\]|\\.)*)"/g;
       let match: RegExpExecArray | null;

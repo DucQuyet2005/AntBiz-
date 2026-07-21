@@ -113,7 +113,7 @@ function PresetCard({
   onEdit: (p: PromptConfigRecord) => void;
   onDelete: (id: string) => void;
   onSelect: (p: PromptConfigRecord) => void;
-  onSetDefault: (preset: PromptConfigRecord) => void;
+  onSetDefault: (preset: PromptConfigRecord) => void | Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -1446,14 +1446,13 @@ export default function PresetsView() {
         })));
 
         if (currentUserDefault) {
-          // Unset the user default in DB
           await fetch(`/api/prompt-configs/${currentUserDefault.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ is_default: false }),
           });
         }
-        fetchPresets(true);
+        // fetchPresets(true); // Removed to prevent race condition on rapid clicks
       } else {
         localStorage.removeItem('systemDefaultPreset');
         // Optimistic update for user preset
@@ -1467,12 +1466,9 @@ export default function PresetsView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_default: true }),
         });
-        if (res.ok) {
-          fetchPresets(true);
-        } else {
-          const errText = await res.text();
-          alert("URL: /api/prompt-configs/" + preset.id + " | HTTP " + res.status + ": " + errText.substring(0, 200));
+        if (!res.ok) {
           // Rollback on fail
+          alert(lang === "vi" ? "Lỗi khi lưu cài đặt" : "Error saving config");
           fetchPresets(true);
         }
       }

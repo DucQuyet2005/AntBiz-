@@ -24,6 +24,9 @@ import {
   ArrowUpDown
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { InstagramGoldenHoursCard } from "./reports/InstagramGoldenHoursCard";
+import { FacebookMetricsCard } from "./reports/FacebookMetricsCard";
+import { ThreadsMetricsCard } from "./reports/ThreadsMetricsCard";
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -550,6 +553,17 @@ export default function ReportsView() {
                 </div>
 
               </div>
+
+              {/* Platform specific Cards */}
+              {platform === "facebook" && (
+                <FacebookMetricsCard data={reportData.platformBreakdown?.facebook || reportData.summary} />
+              )}
+              {platform === "threads" && (
+                <ThreadsMetricsCard data={reportData.platformBreakdown?.threads || reportData.summary} />
+              )}
+
+              {/* AI Golden Hours Analytics Card */}
+              <InstagramGoldenHoursCard platform={platform} />
 
               {/* Interactions Breakdown Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-zinc-950 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-inner">
