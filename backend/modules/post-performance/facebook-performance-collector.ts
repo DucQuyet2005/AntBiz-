@@ -44,34 +44,34 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
     }
 
     // 2. Fetch insights metrics (impressions, reach, clicks)
-    try {
-      const insightsUrl = `${baseUrl}/insights?metric=post_impressions,post_impressions_unique,post_clicks&access_token=${accessToken}`;
-      const response = await this.fetchImplementation(insightsUrl);
+    const metricsToFetch = ['post_impressions', 'post_impressions_unique', 'post_clicks'];
+    for (const metric of metricsToFetch) {
+      try {
+        const insightsUrl = `${baseUrl}/insights?metric=${metric}&access_token=${accessToken}`;
+        const response = await this.fetchImplementation(insightsUrl);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data?.data)) {
-          for (const item of data.data) {
-            const value = item.values?.[0]?.value ?? 0;
-            if (item.name === 'post_impressions') {
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data?.data) && data.data.length > 0) {
+            const value = data.data[0].values?.[0]?.value ?? 0;
+            if (metric === 'post_impressions') {
               impressions = value;
-            } else if (item.name === 'post_impressions_unique') {
+            } else if (metric === 'post_impressions_unique') {
               reach = value;
-            } else if (item.name === 'post_clicks') {
+            } else if (metric === 'post_clicks') {
               clicks = value;
             }
           }
+        } else {
+          const errorJson = await response.json().catch(() => ({}));
+          console.warn(
+            `[Facebook Performance Collector] Thất bại khi lấy metric '${metric}' cho post ${externalPostId}:`,
+            errorJson?.error?.message || response.statusText
+          );
         }
-      } else {
-        // Có thể thiếu quyền read_insights, suy thoái an toàn (graceful degradation)
-        const errorJson = await response.json().catch(() => ({}));
-        console.warn(
-          `[Facebook Performance Collector] Thất bại khi lấy insights cho post ${externalPostId} (Có thể thiếu read_insights):`,
-          errorJson?.error?.message || response.statusText
-        );
+      } catch (err: any) {
+        console.warn(`[Facebook Performance Collector] Lỗi khi gọi insights API cho metric '${metric}' của post ${externalPostId}:`, err.message);
       }
-    } catch (err: any) {
-      console.warn(`[Facebook Performance Collector] Lỗi khi gọi insights API cho post ${externalPostId}:`, err.message);
     }
 
     return {
