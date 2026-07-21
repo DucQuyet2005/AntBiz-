@@ -5,6 +5,7 @@ export interface PerformanceMetrics {
   clicks: number;
   reach: number;
   impressions: number;
+  saved?: number;
 }
 
 export interface PerformanceCollector {

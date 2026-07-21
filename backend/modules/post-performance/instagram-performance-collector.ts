@@ -20,6 +20,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
     let clicks = 0;
     let reach = 0;
     let impressions = 0;
+    let saved = 0;
 
     // 1. Lấy chỉ số công khai từ Instagram Graph API (like_count, comments_count)
     try {
@@ -40,9 +41,10 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
       console.warn(`[Instagram Performance Collector] Không thể lấy public metrics cho post ${externalPostId}:`, err.message);
     }
 
-    // 2. Lấy chỉ số Insights từ Instagram Graph API (reach, impressions, saved, shares)
+    // 2. Lấy chỉ số Insights từ Instagram Graph API (reach, saved, shares)
+    // Lưu ý: Meta đã deprecate chỉ số 'impressions' trên v19.0+/v22.0+, nếu gọi sẽ bị lỗi (#100)/(#10).
     try {
-      const insightsUrl = `${baseUrl}/insights?metric=reach,impressions,saved,shares&access_token=${accessToken}`;
+      const insightsUrl = `${baseUrl}/insights?metric=reach,saved,shares&access_token=${accessToken}`;
       const response = await this.fetchImplementation(insightsUrl);
 
       if (response.ok) {
@@ -55,10 +57,13 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
             } else if (item.name === 'impressions') {
               impressions = value;
             } else if (item.name === 'saved') {
-              shares += value;
+              saved = value;
             } else if (item.name === 'shares') {
               shares += value;
             }
+          }
+          if (impressions === 0 && reach > 0) {
+            impressions = reach; // Fallback: Mỗi lượt reach tương ứng ít nhất 1 lượt hiển thị
           }
         }
       } else {
@@ -79,6 +84,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
       clicks,
       reach,
       impressions,
+      saved,
     };
   }
 

@@ -260,11 +260,20 @@ export async function GET(request: NextRequest) {
     const topPosts = [...processedPosts]
       .filter(p => p.status === 'posted')
       .sort((a, b) => {
-        const scoreA = a.interactions.likes + a.interactions.comments + a.interactions.shares + a.interactions.clicks;
-        const scoreB = b.interactions.likes + b.interactions.comments + b.interactions.shares + b.interactions.clicks;
-        return scoreB - scoreA;
+        const scoreA = (a.interactions?.likes || 0) + (a.interactions?.comments || 0) + (a.interactions?.shares || 0) + (a.interactions?.clicks || 0);
+        const scoreB = (b.interactions?.likes || 0) + (b.interactions?.comments || 0) + (b.interactions?.shares || 0) + (b.interactions?.clicks || 0);
+        return scoreB - scoreA; // Giảm dần
       })
       .slice(0, 10);
+
+    if (topPosts.length > 0) {
+      console.log('\n=======================================');
+      console.log('🚀 TOP 1 BÀI VIẾT CÓ TƯƠNG TÁC CAO NHẤT:');
+      console.log('Tiêu đề:', topPosts[0].title);
+      console.log('Nền tảng:', topPosts[0].platform);
+      console.log('Chỉ số tương tác:', JSON.stringify(topPosts[0].interactions, null, 2));
+      console.log('=======================================\n');
+    }
 
     return NextResponse.json({
       summary: {
