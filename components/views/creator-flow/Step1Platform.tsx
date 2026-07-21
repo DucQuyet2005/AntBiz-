@@ -179,29 +179,16 @@ export default function Step1Platform({
                     .substring(0, 2)
                     .toUpperCase() || 'AB';
 
-                  // Hash based follower generation
-                  let hash = 0;
-                  for (let i = 0; i < actualAccountName.length; i++) {
-                    hash = actualAccountName.charCodeAt(i) + ((hash << 5) - hash);
-                  }
-                  hash = Math.abs(hash);
-
                   let platformLabel = 'Fanpage';
-                  let followerCount = '';
                   if (platform.id === 'instagram') {
                     platformLabel = 'Instagram';
-                    followerCount = `${10 + (hash % 81)}.${hash % 10}K`;
                   } else if (platform.id === 'threads') {
                     platformLabel = 'Threads';
-                    followerCount = `${2 + (hash % 14)}.${hash % 10}K`;
                   } else {
                     platformLabel = 'Fanpage';
-                    followerCount = `${50 + (hash % 101)}.${hash % 10}K`;
                   }
 
-                  const subtitleText = language === 'vi'
-                    ? `${platformLabel} • ${followerCount} người theo dõi`
-                    : `${platformLabel} • ${followerCount} followers`;
+                  const subtitleText = platformLabel;
 
                   return (
                     <>
