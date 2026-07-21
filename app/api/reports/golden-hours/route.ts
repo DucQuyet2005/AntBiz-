@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createClient } from '@/utils/supabase/server';
 import { InstagramGoldenHoursCalculator } from '@/backend/modules/post-performance';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
