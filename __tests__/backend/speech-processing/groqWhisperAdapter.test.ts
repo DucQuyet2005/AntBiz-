@@ -21,9 +21,10 @@ describe('GroqWhisperAdapter', () => {
     );
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect(body.get('file')).toBe(file);
-    expect(body.get('model')).toBe('whisper-large-v3-turbo');
+    expect(body.get('model')).toBe('whisper-large-v3');
     expect(body.get('language')).toBe('vi');
     expect(body.get('response_format')).toBe('text');
+    expect(body.get('prompt')).toContain('Chào bạn, đây là bản ghi âm');
   });
 
   it('checks configuration only when transcription is invoked', async () => {

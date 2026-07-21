@@ -113,7 +113,7 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
     }
     const rewritten = stringValue(body.rewritten_post);
     const transcript = stringValue(body.transcript);
-    const text = transcript || rewritten;
+    const text = rewritten || transcript;
     if (!text) {
       throw new CreatorFlowError(
         'EMPTY_SPEECH_RESULT',

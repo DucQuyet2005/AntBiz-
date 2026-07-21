@@ -1169,7 +1169,21 @@ export default function Step2Article({
                                   });
                                 }
                                 setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
-                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+                                const suffixString = `\n\n[Nội dung bổ sung từ ghi âm/tệp đính kèm]:\n${file.content}`;
+                                let currentContent = state.manualContent || '';
+                                if (currentContent.includes(suffixString)) {
+                                  currentContent = currentContent.replace(suffixString, '');
+                                } else if (currentContent.includes(file.content)) {
+                                  currentContent = currentContent.replace(file.content, '');
+                                }
+                                currentContent = currentContent.trim();
+                                dispatch({ 
+                                  type: 'SET_MANUAL_CONTENT', 
+                                  payload: { 
+                                    title: currentContent ? (state.manualTitle || '') : '', 
+                                    content: currentContent 
+                                  } 
+                                });
                               }}
                               className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
                               title="Xóa"
