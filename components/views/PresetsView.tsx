@@ -202,9 +202,12 @@ function PresetCard({
   }, [preset, language]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
       onClick={() => onSelect(preset)}
-      className={`relative group bg-white dark:bg-zinc-900 border rounded-2xl p-4 sm:p-5 shadow-2xs transition-colors duration-150 flex flex-col justify-between cursor-pointer select-none ${
+      className={`relative group bg-white dark:bg-zinc-900 border rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-lg hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between cursor-pointer select-none ${
         preset.is_default 
           ? "border-emerald-400 dark:border-emerald-700/70 ring-1 ring-emerald-500/20" 
           : "border-gray-200 dark:border-zinc-800/80 hover:border-emerald-300 dark:hover:border-emerald-700"
@@ -344,7 +347,7 @@ function PresetCard({
           <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform duration-200" />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1624,8 +1627,9 @@ export default function PresetsView() {
         </motion.div>
       ) : (
         <>
+        <div className="flex flex-col justify-between">
           {/* Active Preset Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[456px] content-start">
             {paginatedDisplayed.map((preset) => (
               <PresetCard
                 key={preset.id}
@@ -1680,6 +1684,7 @@ export default function PresetsView() {
               </div>
             </div>
           )}
+        </div>
         </>
       )}
 
