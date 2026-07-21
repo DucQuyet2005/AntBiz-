@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   CreatorFlowProvider,
@@ -33,6 +34,11 @@ function AiCreatorContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Back confirmation dialog states
   const [showBackConfirm, setShowBackConfirm] = useState(false);
@@ -327,87 +333,93 @@ function AiCreatorContent() {
       </div>
 
       {/* Confirmation Dialog when navigating back from Step 3 */}
-      <AnimatePresence>
-        {showBackConfirm && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleCancelBack}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            {/* Centered Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', duration: 0.3 }}
-              className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[10000] overflow-hidden font-sans"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showBackConfirm && (
+            <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 font-sans select-none">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={handleCancelBack}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999999]"
+              />
+              {/* Centered Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', duration: 0.3 }}
+                className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col z-[1000000] overflow-hidden font-sans"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/30 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-black text-text leading-snug">
+                      Xác nhận quay lại?
+                    </h3>
+                    <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
+                      Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-text leading-snug">
-                    Xác nhận quay lại?
-                  </h3>
-                  <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
-                    Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
-                  </p>
+                
+                <div className="mt-6 flex items-center justify-end gap-3 select-none">
+                  <button
+                    type="button"
+                    onClick={handleCancelBack}
+                    className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmBack}
+                    className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
+                  >
+                    Xác nhận
+                  </button>
                 </div>
-              </div>
-              
-              <div className="mt-6 flex items-center justify-end gap-3 select-none">
-                <button
-                  type="button"
-                  onClick={handleCancelBack}
-                  className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmBack}
-                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
-                >
-                  Xác nhận
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Floating high-fidelity Toast Alert Banner */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-24 left-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
-              : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
-              }`}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-red-650" />
-            )}
-            <span className="text-sm font-bold">{toast.message}</span>
-            <button
-              onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-              className="text-text-muted hover:text-text ml-2 p-0.5"
+      {mounted && createPortal(
+        <AnimatePresence>
+          {toast.show && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className={`fixed bottom-24 left-6 z-[999999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
+                : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
+                }`}
             >
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-650" />
+              )}
+              <span className="text-sm font-bold">{toast.message}</span>
+              <button
+                onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+                className="text-text-muted hover:text-text ml-2 p-0.5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

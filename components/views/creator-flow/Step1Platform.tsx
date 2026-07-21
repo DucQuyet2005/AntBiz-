@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Facebook, Instagram, Check } from 'lucide-react';
+import { Facebook, Instagram, Check, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { PlatformType } from '@/lib/services/creator/platform.service';
+import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '' }: { className?: string }) => (
@@ -15,10 +17,32 @@ const ThreadsIcon = ({ className = '' }: { className?: string }) => (
 interface Step1PlatformProps {
   selectedPlatforms: PlatformType[];
   onSelect: (platforms: PlatformType[]) => void;
+  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean }>;
+  isLoadingPlatforms?: boolean;
 }
 
-export default function Step1Platform({ selectedPlatforms, onSelect }: Step1PlatformProps) {
+export default function Step1Platform({
+  selectedPlatforms,
+  onSelect,
+  platformsList,
+  isLoadingPlatforms: isLoadingProp,
+}: Step1PlatformProps) {
   const { t } = useLanguage();
+
+  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean }> = [];
+  let contextIsLoading = false;
+  try {
+    const flow = useCreatorFlow();
+    contextPlatforms = flow.state.platforms;
+    contextIsLoading = flow.state.isLoadingPlatforms;
+  } catch {
+    // Standalone mode fallback if not inside CreatorFlowProvider
+  }
+
+  const platformsState = platformsList ?? contextPlatforms;
+  const isLoading = isLoadingProp ?? contextIsLoading;
+
+  const connectedMap = new Map(platformsState.map((p) => [p.id, p.connected]));
 
   const platforms = [
     {
@@ -47,9 +71,11 @@ export default function Step1Platform({ selectedPlatforms, onSelect }: Step1Plat
     },
   ];
 
+  const hasAnyConnection = platforms.some((p) => connectedMap.get(p.id) === true);
+
   return (
     <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-center py-6 px-4">
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <h1 className="text-3xl font-extrabold text-text tracking-tight mb-3">
           {t('creator.step1.title')}
         </h1>
@@ -58,37 +84,74 @@ export default function Step1Platform({ selectedPlatforms, onSelect }: Step1Plat
         </p>
       </div>
 
+      {!isLoading && !hasAnyConnection && (
+        <div className="mb-8 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-250 dark:border-amber-900/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0" />
+            <p className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Bạn chưa kết nối tài khoản nền tảng nào. Vui lòng vào Cài đặt để kết nối tài khoản trước khi tiếp tục.
+            </p>
+          </div>
+          <Link
+            href="/settings"
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <span>Đến Cài đặt</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {platforms.map((platform) => {
           const IconComponent = platform.icon;
           const isSelected = selectedPlatforms.includes(platform.id);
+          const isConnected = isLoading ? true : (connectedMap.get(platform.id) ?? false);
 
           return (
             <div
               key={platform.id}
               onClick={() => {
-                onSelect([platform.id]);
+                if (isConnected) {
+                  onSelect([platform.id]);
+                }
               }}
-              className={`group relative flex flex-col items-center text-center p-8 rounded-3xl cursor-pointer border-2 transition-all duration-300 transform select-none ${
-                isSelected
-                  ? 'bg-white dark:bg-zinc-900 border-primary ring-2 ring-primary ring-offset-2 dark:ring-offset-black shadow-lg scale-105'
-                  : 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-gray-200 dark:border-zinc-800 hover:-translate-y-1 hover:bg-white dark:hover:bg-zinc-900 hover:shadow-xl hover:border-gray-300 dark:hover:border-zinc-700'
+              className={`group relative flex flex-col items-center text-center p-8 rounded-3xl transition-all duration-300 transform select-none ${
+                !isConnected
+                  ? 'grayscale opacity-60 bg-gray-100/80 dark:bg-zinc-900/40 border-2 border-dashed border-gray-300 dark:border-zinc-800 cursor-not-allowed'
+                  : isSelected
+                  ? 'bg-white dark:bg-zinc-900 border-2 border-primary ring-2 ring-primary ring-offset-2 dark:ring-offset-black shadow-lg scale-105 cursor-pointer'
+                  : 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-2 border-gray-200 dark:border-zinc-800 hover:-translate-y-1 hover:bg-white dark:hover:bg-zinc-900 hover:shadow-xl hover:border-gray-300 dark:hover:border-zinc-700 cursor-pointer'
               }`}
             >
-              {/* Selected Checkmark indicator at corner */}
-              <div
-                className={`absolute top-4 right-4 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center transition-all duration-200 transform ${
-                  isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
-                }`}
-              >
-                <Check className="w-3.5 h-3.5" />
+              {/* Top right status badge */}
+              <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                {isLoading ? (
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-semibold text-text-muted">
+                    <Loader2 className="w-3 h-3 animate-spin text-text-muted" />
+                    <span>Đang tải...</span>
+                  </div>
+                ) : isConnected ? (
+                  <div
+                    className={`w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center transition-all duration-200 transform ${
+                      isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50 group-hover:opacity-60 group-hover:scale-75'
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200/80 dark:bg-zinc-800/80 text-[11px] font-bold text-gray-500 dark:text-zinc-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-zinc-500" />
+                    Chưa kết nối
+                  </span>
+                )}
               </div>
 
               {/* Platform Icon with Circular background */}
               <div
                 className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-transform duration-300 ${
                   platform.bgClass
-                } ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`}
+                } ${isSelected ? 'scale-110' : isConnected ? 'group-hover:scale-105' : ''}`}
               >
                 {platform.id === 'threads' ? (
                   <ThreadsIcon className={`w-10 h-10 ${platform.colorClass}`} />
@@ -98,12 +161,26 @@ export default function Step1Platform({ selectedPlatforms, onSelect }: Step1Plat
               </div>
 
               {/* Title & Description */}
-              <h3 className="text-xl font-bold text-text mb-2 group-hover:text-primary transition-colors">
+              <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                isConnected ? 'text-text group-hover:text-primary' : 'text-gray-500 dark:text-zinc-400'
+              }`}>
                 {platform.name}
               </h3>
-              <p className="text-sm text-text-muted leading-relaxed">
+              <p className="text-sm text-text-muted leading-relaxed mb-4">
                 {platform.description}
               </p>
+
+              {/* Connection status action hint for unconnected items */}
+              {!isLoading && !isConnected && (
+                <Link
+                  href="/settings"
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-auto inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                >
+                  <span>Kết nối trong Cài đặt</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              )}
             </div>
           );
         })}

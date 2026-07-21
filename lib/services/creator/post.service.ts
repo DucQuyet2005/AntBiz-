@@ -4,8 +4,11 @@ export interface ChatMessage {
   id: string;
   sender: 'ai' | 'user';
   text: string;
+  quotedText?: string;
   timestamp: string;
   modelUsed?: 'Gemini 2.5 Flash' | 'Gemini 3.1 Flash Lite';
+  postContentSnapshot?: string;
+  isSavedState?: boolean;
 }
 
 export interface GeneratedPost {

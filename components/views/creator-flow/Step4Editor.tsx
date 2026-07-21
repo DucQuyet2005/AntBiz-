@@ -13,6 +13,7 @@ import {
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 16 }: { className?: string; size?: number }) => (
@@ -20,6 +21,22 @@ const ThreadsIcon = ({ className = '', size = 16 }: { className?: string; size?:
     <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" />
   </svg>
 );
+
+function QuotedTextBubble({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div
+      onClick={() => setIsExpanded(prev => !prev)}
+      className="w-full bg-[#F4F5F9] dark:bg-zinc-800 text-slate-700 dark:text-slate-300 text-xs p-3.5 rounded-2xl rounded-bl-xs border border-slate-200/60 dark:border-zinc-700/60 leading-relaxed shadow-xs cursor-pointer hover:border-slate-300 dark:hover:border-zinc-600 transition-all select-text"
+      title={isExpanded ? "Bấm để thu gọn" : "Bấm để xem đầy đủ"}
+    >
+      <p className={isExpanded ? "whitespace-pre-wrap" : "line-clamp-2 whitespace-pre-wrap"}>
+        {text}
+      </p>
+    </div>
+  );
+}
 
 export default function Step4Editor() {
   const { t } = useLanguage();
@@ -29,7 +46,8 @@ export default function Step4Editor() {
     generateAIContent, 
     regeneratePostContent, 
     sendAssistantChat,
-    editHighlighted
+    editHighlighted,
+    restoreChatState,
   } = useCreatorFlow();
 
   // Style Presets states
@@ -63,82 +81,30 @@ export default function Step4Editor() {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [igImageIndex, setIgImageIndex] = useState<number>(0);
 
-  // Version Control and Sidebar state
-  const [sidebarTab, setSidebarTab] = useState<'chat' | 'history'>('chat');
-  const [versions, setVersions] = useState<any[]>([]);
-  const [revertingVersion, setRevertingVersion] = useState<number | null>(null);
-  const supabase = createClient();
+  // Add initial AI suggestion message on mount if no initial message exists
+  useEffect(() => {
+    const hasInitMsg = state.chatMessages.some(m => m.id.startsWith('msg_ai_init'));
+    if (!hasInitMsg && state.chatMessages.length === 0) {
+      const initialAiMsg: ChatMessage = {
+        id: `msg_ai_init_${Date.now()}`,
+        sender: 'ai',
+        text: `Bài viết đã được khởi tạo thành công! ✨\nHãy bôi đen đoạn văn hoặc nhắn yêu cầu để mình hỗ trợ nhé.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: initialAiMsg });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Formatting variables for preview cards
   const currentPlatform = state.selectedPlatform || 'facebook';
-
-  const captionId = state.drafts[currentPlatform]?.postId;
-
-  const fetchVersions = async () => {
-    if (!captionId) return;
-    try {
-      const { data: dbVersions, error } = await supabase
-        .from('caption_versions')
-        .select('*')
-        .eq('caption_id', captionId)
-        .order('version_number', { ascending: false });
-      if (error) throw error;
-      setVersions(dbVersions || []);
-    } catch (err) {
-      console.error('Error fetching caption versions:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchVersions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [captionId, state.postContent]);
-
-  const handleRollback = async (versionNumber: number, contentToRestore: string) => {
-    if (!captionId) return;
-    setRevertingVersion(versionNumber);
-    try {
-      // 1. Update the database caption's edited_content
-      const { error: updateErr } = await supabase
-        .from('captions')
-        .update({ edited_content: contentToRestore, updated_at: new Date().toISOString() })
-        .eq('id', captionId);
-      if (updateErr) throw updateErr;
-
-      // 2. Delete all versions with version_number > versionNumber
-      const { error: deleteErr } = await supabase
-        .from('caption_versions')
-        .delete()
-        .eq('caption_id', captionId)
-        .gt('version_number', versionNumber);
-      if (deleteErr) throw deleteErr;
-
-      // 3. Update the frontend state
-      dispatch({
-        type: 'SET_POST_CONTENT',
-        payload: contentToRestore
-      });
-
-      // 4. Clear highlight selections
-      dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' });
-
-      // Refresh the version list
-      await fetchVersions();
-    } catch (err) {
-      console.error('Error rolling back version:', err);
-    } finally {
-      setRevertingVersion(null);
-    }
-  };
 
   const postContentText = state.postContent || '';
   const contentLength = postContentText.length;
   const wordCount = postContentText.trim() ? postContentText.trim().split(/\s+/).length : 0;
   
   const isLongContent = contentLength > 500;
-  const displayedContent = (isLongContent && !isExpanded)
-    ? postContentText.slice(0, 500) + '...'
-    : postContentText;
+  const displayedContent = postContentText;
 
   const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
   const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
@@ -155,6 +121,39 @@ export default function Step4Editor() {
   const hashtags = validKeywords
     .map(k => '#' + (k.startsWith('#') ? k.slice(1) : k).replace(/\s+/g, ''))
     .filter(h => h.toLowerCase() !== '#manual');
+
+  const handleRestore = (idx: number) => {
+    const result = restoreChatState(idx);
+
+    if (result.userPrompt) {
+      setChatInput(result.userPrompt);
+      setTimeout(() => {
+        chatInputRef.current?.focus({ preventScroll: true });
+      }, 50);
+    }
+
+    if (result.quotedText) {
+      const fullText = result.restoredContent ?? state.postContent ?? '';
+      const quotes = result.quotedText.split('\n---\n');
+      quotes.forEach((quoteText) => {
+        const trimmedQuote = quoteText.trim();
+        if (!trimmedQuote) return;
+        const start = fullText.indexOf(trimmedQuote);
+        if (start !== -1) {
+          const end = start + trimmedQuote.length;
+          dispatch({
+            type: 'ADD_HIGHLIGHT_SELECTION',
+            payload: {
+              id: `sel_${Date.now()}_${Math.random()}`,
+              text: trimmedQuote,
+              start,
+              end,
+            },
+          });
+        }
+      });
+    }
+  };
 
   const renderMultiImageGrid = (images: string[]) => {
     const displayImages = (images && images.length > 0) ? images : [fallbackImage];
@@ -383,7 +382,6 @@ export default function Step4Editor() {
 
   // References
   const editorRef = useRef<HTMLDivElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Mobile layout mode switcher: 'canvas' | 'chat'
@@ -444,11 +442,6 @@ export default function Step4Editor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.articleContext]);
-
-  // Scroll chat to bottom
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [state.chatMessages]);
 
   // Flash highlight effect when post content updates (simulating AI modification flash)
   useEffect(() => {
@@ -762,36 +755,39 @@ export default function Step4Editor() {
                   {/* Post Body Content */}
                   <div className="px-6 py-2 select-text">
                     <div className="mb-2">
-                      <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                      <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
                         {editableTitle || state.articleContext?.title}
                       </h3>
                     </div>
 
                     {/* Post Text Editor */}
-                    <div className="relative min-h-[120px] my-3">
+                    <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
                       {state.isHighlightEditing && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-20 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                        <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
                           <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
                             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                             <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
                           </div>
                         </div>
                       )}
-                      <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                      <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
                         {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                       </div>
                       <div
-                        key={isExpanded ? 'expanded' : 'collapsed'}
+                        key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
                         ref={editorRef}
                         contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                         }}
-                        className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                        className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                       >
                         {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
                       </div>
+                      {isLongContent && !isExpanded && (
+                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                      )}
                     </div>
 
                     {isLongContent && (
@@ -878,36 +874,39 @@ export default function Step4Editor() {
                       </div>
 
                       <div className="mb-2">
-                        <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                        <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
                           {editableTitle || state.articleContext?.title}
                         </h3>
                       </div>
 
                       {/* Editor Text Area */}
-                      <div className="relative min-h-[120px] my-3">
+                      <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
                         {state.isHighlightEditing && (
-                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-20 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
                             <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
                               <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                               <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
                             </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                        <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
                           {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                         </div>
                         <div
-                          key={isExpanded ? 'expanded' : 'collapsed'}
+                          key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
                           ref={editorRef}
                           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                           }}
-                          className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                          className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                         >
                           {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
                         </div>
+                        {isLongContent && !isExpanded && (
+                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                        )}
                       </div>
 
                       {isLongContent && (
@@ -1040,7 +1039,7 @@ export default function Step4Editor() {
                     {/* Body Content */}
                     <div className="select-text">
                       <div className="mb-2">
-                        <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg inline-block leading-snug">
+                        <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
                           {editableTitle || state.articleContext?.title}
                         </h3>
                       </div>
@@ -1049,30 +1048,33 @@ export default function Step4Editor() {
                         antbiz_official
                       </div>
 
-                      <div className="relative min-h-[100px] my-2">
+                      <div className={`relative min-h-[100px] my-2 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
                         {state.isHighlightEditing && (
-                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-20 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
                             <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
                               <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                               <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
                             </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                        <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
                           {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                         </div>
                         <div
-                          key={isExpanded ? 'expanded' : 'collapsed'}
+                          key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
                           ref={editorRef}
                           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                           }}
-                          className="text-sm md:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                          className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                         >
                           {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
                         </div>
+                        {isLongContent && !isExpanded && (
+                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                        )}
                       </div>
 
                       {isLongContent && (
@@ -1123,237 +1125,242 @@ export default function Step4Editor() {
       >
         {/* Chat sidebar header */}
         <div className="px-4 h-[72px] flex items-center justify-between border-b border-gray-150/10 dark:border-zinc-800/10 bg-white/50 dark:bg-zinc-900/50 flex-shrink-0 select-none">
-          <div className="flex bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl text-xs font-bold border border-slate-200/40 dark:border-zinc-800">
-            <button
-              onClick={() => setSidebarTab('chat')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                sidebarTab === 'chat'
-                  ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span>AI Trợ lý</span>
-            </button>
-            <button
-              onClick={() => setSidebarTab('history')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                sidebarTab === 'history'
-                  ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Lịch sử ({versions.length})</span>
-            </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-text">AI Trợ lý</h3>
+              <p className="text-[10px] text-text-muted">Hỗ trợ biên tập & tinh chỉnh bài viết</p>
+            </div>
           </div>
         </div>
 
-        {sidebarTab === 'chat' ? (
-          /* Chat bubble logs */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {state.chatMessages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-text-muted text-xs gap-2 select-none">
-                <Cpu className="w-8 h-8 opacity-45" />
-                <span>Nhập yêu cầu để bắt đầu chat hoặc bôi đen văn bản để sửa nhanh.</span>
-              </div>
-            )}
-            {state.chatMessages.map((msg) => {
+        {/* Chat bubble logs */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {state.chatMessages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-text-muted text-xs gap-2 select-none">
+              <Cpu className="w-8 h-8 opacity-45" />
+              <span>Nhập yêu cầu để bắt đầu chat hoặc bôi đen văn bản để sửa nhanh.</span>
+            </div>
+          )}
+          <AnimatePresence initial={false}>
+            {state.chatMessages.map((msg, idx) => {
               const isAI = msg.sender === 'ai';
+
+              let quotedText = msg.quotedText;
+              let userPrompt = msg.text;
+
+              if (!quotedText && msg.text.startsWith('[Sửa đoạn:')) {
+                const match = msg.text.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+                if (match) {
+                  quotedText = match[1];
+                  userPrompt = match[2];
+                }
+              }
+
+              if (!isAI && quotedText) {
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -10, transition: { duration: 0.2 } }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="flex flex-col items-end space-y-0 relative w-[90%] ml-auto select-text group"
+                  >
+                    {/* Top Quoted Bubble */}
+                    <QuotedTextBubble text={quotedText} />
+                    {/* Bottom User Instruction Bubble */}
+                    <div className="-mt-2.5 w-[82%] bg-primary text-white text-sm font-medium p-3.5 rounded-2xl rounded-tr-xs shadow-md leading-relaxed whitespace-pre-wrap z-10 flex flex-col gap-1.5">
+                      <div>{userPrompt}</div>
+                      <div className="flex items-center justify-end gap-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-0.5 select-none">
+                        {msg.timestamp && <span>{msg.timestamp}</span>}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRestore(idx);
+                          }}
+                          className="p-1 rounded-md hover:bg-white/20 active:scale-95 text-white transition-all cursor-pointer border border-white/20 shadow-xs shrink-0"
+                          title="Khôi phục bài viết về mốc này"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              }
+
               return (
-                <div 
+                <motion.div 
                   key={msg.id} 
-                  className={`flex gap-3 max-w-[85%] ${isAI ? 'mr-auto' : 'ml-auto flex-row-reverse'}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -10, transition: { duration: 0.2 } }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className={`group relative flex gap-3 ${isAI ? 'max-w-[88%] mr-auto' : 'w-[75%] ml-auto flex-row-reverse'}`}
                 >
                   {isAI && (
                     <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Cpu className="w-4 h-4" />
                     </div>
                   )}
-                  <div className="flex flex-col">
-                    <div className={`rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
+                  <div className="flex flex-col min-w-0 w-full">
+                    <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
                       isAI 
                         ? 'bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-tl-none border border-gray-100 dark:border-zinc-800/55 whitespace-pre-wrap' 
-                        : 'bg-primary text-white rounded-tr-none'
+                        : 'bg-primary text-white rounded-tr-none whitespace-pre-wrap flex flex-col gap-1.5 w-full'
                     }`}>
-                      {msg.text}
+                      {isAI ? (
+                        msg.text
+                      ) : (
+                        <>
+                          <div>{msg.text}</div>
+                          <div className="flex items-center justify-end gap-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-0.5 select-none">
+                            {msg.timestamp && <span>{msg.timestamp}</span>}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRestore(idx);
+                              }}
+                              className="p-1 rounded-md hover:bg-white/20 active:scale-95 text-white transition-all cursor-pointer border border-white/20 shadow-xs shrink-0"
+                              title="Khôi phục bài viết về mốc này"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                     
-                    {/* Model tag and metadata below AI speech bubbles */}
                     {isAI && msg.modelUsed && (
-                      <span className="text-[9px] font-bold text-text-muted/70 flex items-center gap-1.5 mt-1.5 ml-1 uppercase tracking-wider select-none">
-                        <Sparkles className="w-2.5 h-2.5 text-yellow-500" />
-                        <span>Powered by {msg.modelUsed}</span>
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-1.5 px-1 select-none">
+                        <span className="text-[9px] font-bold text-text-muted/70 flex items-center gap-1 uppercase tracking-wider">
+                          <Sparkles className="w-2.5 h-2.5 text-yellow-500" />
+                          <span>Powered by {msg.modelUsed}</span>
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-            {state.isChatSending && (
-              <div className="flex gap-3 mr-auto max-w-[85%]">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 animate-pulse">
-                  <Cpu className="w-4 h-4" />
-                </div>
-                <div className="bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-2xl rounded-tl-none p-4 text-sm border border-gray-100 dark:border-zinc-800 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span className="animate-pulse text-xs text-text-muted">Gemini 3.1 Flash Lite đang trả lời...</span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-        ) : (
-          /* Version History list */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {versions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-text-muted text-xs gap-2 select-none">
-                <History className="w-8 h-8 opacity-45" />
-                <span>Chưa có lịch sử chỉnh sửa cho bài đăng này.</span>
-              </div>
-            ) : (
-              <div className="relative border-l border-gray-200 dark:border-zinc-800 ml-4 pl-6 space-y-6">
-                {versions.map((ver, idx) => {
-                  const isLatest = idx === 0;
-                  const displayVerNum = ver.version_number;
-                  const displayTime = new Date(ver.created_at).toLocaleString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit',
-                  });
-                  return (
-                    <div key={ver.id} className="relative group select-none">
-                      {/* Timeline dot */}
-                      <span className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-2 bg-white dark:bg-zinc-950 flex items-center justify-center transition-all ${
-                        isLatest
-                          ? 'border-primary ring-4 ring-primary/10'
-                          : 'border-gray-300 dark:border-zinc-800'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isLatest ? 'bg-primary' : 'bg-transparent'}`} />
-                      </span>
-                      
-                      {/* Version Card */}
-                      <div className="bg-white dark:bg-zinc-900 border border-gray-150 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-text">Phiên bản v{displayVerNum}</span>
-                            {isLatest && (
-                              <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                                Hiện tại
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-bold text-text-muted">{displayTime}</span>
-                        </div>
-                        
-                        <p className="text-xs text-text-muted line-clamp-3 leading-relaxed whitespace-pre-wrap">
-                          {ver.content}
-                        </p>
-                        
-                        <div className="flex items-center gap-2.5 justify-end">
-                          {/* Rollback button */}
-                          {!isLatest && (
-                            <button
-                              disabled={revertingVersion !== null}
-                              onClick={() => handleRollback(displayVerNum, ver.content)}
-                              className="text-[10px] font-black bg-primary/10 text-primary hover:bg-primary hover:text-white px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                            >
-                              {revertingVersion === displayVerNum ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <RotateCcw className="w-3 h-3" />
-                              )}
-                              <span>Khôi phục về đây</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Chat input footer */}
-        {sidebarTab === 'chat' && (
-          <div className="p-4 border-t border-gray-150 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md">
-            {state.highlightSelections.length > 0 && (
-              <div className="mb-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl p-2.5 flex flex-col gap-2 text-xs animate-fade-in select-none">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
-                    <span className="text-text font-semibold">
-                      Đang sửa {state.highlightSelections.length} đoạn
+            {/* AI Thinking Animation State */}
+            {(state.isChatSending || state.isHighlightEditing) && (
+              <motion.div
+                key="thinking-state"
+                initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9, y: -5, transition: { duration: 0.15 } }}
+                transition={{ duration: 0.2 }}
+                className="group relative flex gap-3 max-w-[88%] mr-auto select-none"
+              >
+                <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-primary/20 via-primary/10 to-amber-500/20 text-primary flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/20 shadow-xs">
+                  <Cpu className="w-4 h-4 animate-pulse text-primary" />
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                  </span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-2xl rounded-tl-none p-4 text-sm border border-gray-100 dark:border-zinc-800/55 shadow-xs flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-0.5">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-2 h-2 rounded-full bg-primary/80 animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce"></span>
+                    </div>
+                    <span className="text-xs font-medium text-text-muted animate-pulse">
+                      {state.isHighlightEditing ? "AI đang phân tích & tinh chỉnh đoạn văn..." : "AI đang suy nghĩ & biên tập..."}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' })}
-                    className="text-text-muted hover:text-text p-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-full transition-colors shrink-0"
-                    title="Xóa tất cả"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-                <div className="flex flex-col gap-1 max-h-24 overflow-y-auto pr-1">
-                  {state.highlightSelections.map(sel => (
-                    <div key={sel.id} className="flex items-center justify-between gap-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                      <span className="italic text-text-muted truncate">"{sel.text}"</span>
-                      <button 
-                        onClick={() => dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: sel.id })} 
-                        className="text-text-muted hover:text-red-500 shrink-0 transition-colors"
-                        title="Xóa đoạn này"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </motion.div>
             )}
-            <form onSubmit={handleSendChat} className="relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden">
-              <textarea
-                ref={chatInputRef}
-                disabled={state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
-                className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-sm p-4 resize-none h-20 text-text placeholder-text-muted/65 pr-14 disabled:opacity-60"
-                placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)"}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendChat(e);
-                  }
-                }}
-              />
-              <button 
-                type="submit"
-                disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
-                onClick={(e) => {
-                  if (state.highlightSelections.length > 0 && !chatInput.trim()) {
-                    e.preventDefault();
-                    editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
-                  }
-                }}
-                className={`absolute bottom-3.5 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${
-                  state.highlightSelections.length > 0 && !chatInput.trim()
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
-                    : 'bg-primary/10 hover:bg-primary text-primary hover:text-white disabled:opacity-40 disabled:hover:bg-primary/10 disabled:hover:text-primary'
-                }`}
-                title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
-              >
-                {state.highlightSelections.length > 0 && !chatInput.trim() ? (
-                  <Sparkles className="w-4.5 h-4.5" />
-                ) : (
-                  <Send className="w-4.5 h-4.5" />
-                )}
-              </button>
-            </form>
-          </div>
-        )}
+          </AnimatePresence>
+          {/* End of chat messages container */}
+        </div>
+
+        {/* Chat input footer */}
+        <div className="p-4 border-t border-gray-150 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md space-y-2">
+          {state.highlightSelections.length > 0 && (
+            <div className="mb-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl p-2.5 flex flex-col gap-2 text-xs animate-fade-in select-none">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
+                  <span className="text-text font-semibold">
+                    Đang sửa {state.highlightSelections.length} đoạn
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'CLEAR_HIGHLIGHT_SELECTIONS' })}
+                  className="text-text-muted hover:text-text p-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-full transition-colors shrink-0"
+                  title="Xóa tất cả"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-1 max-h-24 overflow-y-auto pr-1">
+                {state.highlightSelections.map(sel => (
+                  <div key={sel.id} className="flex items-center justify-between gap-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                    <span className="italic text-text-muted truncate">"{sel.text}"</span>
+                    <button 
+                      onClick={() => dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: sel.id })} 
+                      className="text-text-muted hover:text-red-500 shrink-0 transition-colors"
+                      title="Xóa đoạn này"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <form onSubmit={handleSendChat} className="relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden">
+            <textarea
+              ref={chatInputRef}
+              disabled={state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
+              className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-sm p-4 resize-none h-20 text-text placeholder-text-muted/65 pr-14 disabled:opacity-60"
+              placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)"}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendChat(e);
+                }
+              }}
+            />
+            <button 
+              type="submit"
+              disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
+              onClick={(e) => {
+                if (state.highlightSelections.length > 0 && !chatInput.trim()) {
+                  e.preventDefault();
+                  editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
+                }
+              }}
+              className={`absolute bottom-3.5 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${
+                state.highlightSelections.length > 0 && !chatInput.trim()
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
+                  : 'bg-primary/10 hover:bg-primary text-primary hover:text-white disabled:opacity-40 disabled:hover:bg-primary/10 disabled:hover:text-primary'
+              }`}
+              title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
+            >
+              {state.highlightSelections.length > 0 && !chatInput.trim() ? (
+                <Sparkles className="w-4.5 h-4.5" />
+              ) : (
+                <Send className="w-4.5 h-4.5" />
+              )}
+            </button>
+          </form>
+        </div>
       </aside>
 
 
