@@ -145,35 +145,56 @@ export default function Step2Article({
   // Active site simulated browser modal
   const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
   const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
+  const [browserHistory, setBrowserHistory] = useState<string[]>([]);
+  const [iframeKey, setIframeKey] = useState(0); // Force iframe remount when needed
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const getBaseUrl = (site: string | null) => {
+    if (site === 'gocnhinmoi') return 'https://gocnhinmoi.com.vn';
+    if (site === 'tuoitre') return 'https://tuoitre.vn';
+    if (site === 'dantri') return 'https://dantri.com.vn';
+    return '';
+  };
+
   const handleGoBack = () => {
-    if (iframeRef.current?.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.postMessage({ type: 'NAVIGATE_BACK' }, '*');
-      } catch (err) {
-        // Ignore cross-origin postMessage error if iframe is detached or unaccessible
-      }
+    if (browserHistory.length > 1) {
+      // Pop the current URL and go to the previous one
+      const prevUrl = browserHistory[browserHistory.length - 2];
+      setBrowserHistory(prev => prev.slice(0, -1));
+      setCurrentBrowserUrl(prevUrl);
+      // Force remount the iframe to guarantee navigation works even after ad redirects
+      setIframeKey(k => k + 1);
+    } else if (activeBrowserSite) {
+      // Fallback: even if history is empty/broken, go back to the site homepage
+      const baseUrl = getBaseUrl(activeBrowserSite);
+      setCurrentBrowserUrl(baseUrl);
+      setBrowserHistory([baseUrl]);
+      setIframeKey(k => k + 1);
     }
   };
 
   React.useEffect(() => {
     if (activeBrowserSite) {
-      const baseUrl = activeBrowserSite === 'gocnhinmoi'
-        ? 'https://gocnhinmoi.com.vn'
-        : activeBrowserSite === 'tuoitre'
-          ? 'https://tuoitre.vn'
-          : 'https://dantri.com.vn';
+      const baseUrl = getBaseUrl(activeBrowserSite);
       setCurrentBrowserUrl(baseUrl);
+      setBrowserHistory([baseUrl]);
     } else {
       setCurrentBrowserUrl('');
+      setBrowserHistory([]);
     }
   }, [activeBrowserSite]);
 
   React.useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'URL_CHANGE' && typeof event.data?.url === 'string') {
-        setCurrentBrowserUrl(event.data.url);
+        const newUrl = event.data.url;
+        setCurrentBrowserUrl(newUrl);
+        setBrowserHistory(prev => {
+          if (prev.length === 0 || prev[prev.length - 1] !== newUrl) {
+            return [...prev, newUrl];
+          }
+          return prev;
+        });
       }
     };
     window.addEventListener('message', handleMessage);
@@ -582,6 +603,21 @@ export default function Step2Article({
 
   const handleSelectArticle = (url: string) => {
     if (!activeBrowserSite) return;
+    if (crawlStatus === 'crawling' || isCrawlingActive) return;
+
+    // Lọc bỏ bài cào cũ để chuẩn bị thay bằng bài cào mới
+    let previousManualOnly = state.manualContent;
+    const markerIndex = previousManualOnly.indexOf('[Nội dung bổ sung từ nguồn dữ liệu]:');
+    if (markerIndex !== -1) {
+      previousManualOnly = previousManualOnly.substring(0, markerIndex).trim();
+      
+      // Update the manual content to remove the old crawl
+      dispatch({
+        type: 'SET_MANUAL_CONTENT',
+        payload: { title: previousManualOnly ? state.manualTitle : '', content: previousManualOnly }
+      });
+    }
+
     const site = activeBrowserSite;
     setActiveBrowserSite(null);
     setIsCrawlingActive(true);
@@ -806,8 +842,14 @@ export default function Step2Article({
         
         {/* Card 1: Gocnhinmoi */}
         <div 
-          onClick={() => setActiveBrowserSite('gocnhinmoi')}
-          className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
+          onClick={() => {
+            if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('gocnhinmoi');
+          }}
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
+            crawlStatus === 'crawling' || isCrawlingActive 
+              ? 'cursor-not-allowed opacity-70' 
+              : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
+          }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
@@ -835,8 +877,14 @@ export default function Step2Article({
 
         {/* Card 2: Tuoi Tre */}
         <div 
-          onClick={() => setActiveBrowserSite('tuoitre')}
-          className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
+          onClick={() => {
+            if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('tuoitre');
+          }}
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
+            crawlStatus === 'crawling' || isCrawlingActive 
+              ? 'cursor-not-allowed opacity-70' 
+              : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
+          }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
@@ -864,8 +912,14 @@ export default function Step2Article({
 
         {/* Card 3: Dan Tri */}
         <div 
-          onClick={() => setActiveBrowserSite('dantri')}
-          className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 transition-all duration-300 shadow-md hover:shadow-xl relative aspect-[16/9]"
+          onClick={() => {
+            if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('dantri');
+          }}
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
+            crawlStatus === 'crawling' || isCrawlingActive 
+              ? 'cursor-not-allowed opacity-70' 
+              : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
+          }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
@@ -993,15 +1047,7 @@ export default function Step2Article({
 
             {/* Combined Images Preview Row: crawled images + manually uploaded images */}
             {(() => {
-              // Build a unified list: crawled images (url-only, excluding blob URLs synced from upload) + user-uploaded images (File + url)
-              const crawledUrls = (state.crawledImageUrls || []).filter(url => Boolean(url) && !url.startsWith('blob:'));
-              const crawledItems = crawledUrls.map((url, idx) => ({ 
-                type: 'crawled' as const, 
-                url, 
-                name: `Ảnh bài báo ${idx + 1}` 
-              }));
-              const uploadedItems = uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name, file: img.file, index: uploadedImages.indexOf(img) }));
-              const allItems = [...crawledItems, ...uploadedItems];
+              const allItems = getAllItems();
 
               if (allItems.length === 0) return null;
               return (
@@ -1031,7 +1077,7 @@ export default function Step2Article({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setUploadedImages(prev => prev.filter((_, i) => i !== (item as typeof uploadedItems[0]).index));
+                              setUploadedImages(prev => prev.filter((_, i) => i !== (item as any).index));
                               if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
                             }}
                             className="absolute top-1 right-1 bg-red-500 hover:bg-red-650 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm cursor-pointer"
@@ -1298,16 +1344,11 @@ export default function Step2Article({
               
               <div className="w-full flex-grow relative bg-white rounded-2xl overflow-hidden border border-gray-250 dark:border-zinc-850 h-[50vh]">
                 <iframe
+                  key={iframeKey}
                   ref={iframeRef}
-                  src={`/api/proxy?url=${encodeURIComponent(
-                    activeBrowserSite === 'gocnhinmoi' 
-                      ? 'https://gocnhinmoi.com.vn' 
-                      : activeBrowserSite === 'tuoitre' 
-                        ? 'https://tuoitre.vn' 
-                        : 'https://dantri.com.vn'
-                  )}`}
+                  src={`/api/proxy?url=${encodeURIComponent(currentBrowserUrl || getBaseUrl(activeBrowserSite))}`}
                   className="w-full h-full border-none"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                  sandbox="allow-same-origin allow-scripts allow-forms"
                 />
               </div>
             </div>
@@ -1559,67 +1600,7 @@ export default function Step2Article({
         document.body
       )}
 
-      {/* Modal displaying all extracted article images */}
-      {showAllImagesModal && typeof window !== 'undefined' && createPortal(
-        <div 
-          className="fixed inset-0 z-[600] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans select-text"
-          onClick={() => setShowAllImagesModal(false)}
-        >
-          <div 
-            className="bg-white dark:bg-zinc-900 rounded-3xl p-6 max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-zinc-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {(() => {
-              const crawledUrls = (state.crawledImageUrls || []).filter(url => Boolean(url) && !url.startsWith('blob:'));
-              return (
-                <>
-                  <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-zinc-800">
-                    <h3 className="text-base font-black text-text">Tất cả hình ảnh bài viết ({crawledUrls.length + uploadedImages.length})</h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowAllImagesModal(false)}
-                      className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto py-4 flex-grow">
-                    {[
-                      ...crawledUrls.map((url, idx) => ({ type: 'crawled' as const, url, name: `Ảnh bài báo ${idx + 1}` })),
-                      ...uploadedImages.map(img => ({ type: 'uploaded' as const, url: img.url, name: img.file.name }))
-                    ].map((item, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => {
-                    setShowAllImagesModal(false);
-                    setActiveLightboxImage(item.url);
-                  }}
-                  className="aspect-square rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 relative group cursor-pointer hover:shadow-lg transition-all bg-white dark:bg-zinc-950"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={item.type === 'crawled' ? `/api/proxy?url=${encodeURIComponent(item.url)}` : item.url} 
-                    alt={item.name} 
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).onerror = null;
-                      (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
-                    }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {item.type === 'crawled' && (
-                    <div className="absolute bottom-2 left-2 bg-amber-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">Crawl</div>
-                  )}
-                </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>,
-        document.body
-      )}
+
 
     </div>
   );

@@ -167,7 +167,7 @@ function AiCreatorContent() {
           router.push('/content-calendar');
         }, 1500);
       } else {
-        if (result.errors && Object.keys(result.errors).length > 0) {
+        if ('errors' in result && result.errors && Object.keys(result.errors).length > 0) {
           const msgs = Object.entries(result.errors).map(([plat, msg]) => `${plat}: ${msg}`).join(' | ');
           showToast(`Lỗi: ${msgs}`, 'error');
         } else {

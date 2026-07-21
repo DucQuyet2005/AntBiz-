@@ -47,19 +47,18 @@ export async function GET(request: NextRequest) {
 
     const reqHeaders = new Headers();
     const parsedTarget = new URL(targetUrl);
-    reqHeaders.set('Host', parsedTarget.host);
-    reqHeaders.set('Referer', targetUrl);
-    reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
-    reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8');
+    reqHeaders.set('Referer', parsedTarget.origin + '/');
+    reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
+    reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8');
+    reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7');
+    reqHeaders.set('Sec-Fetch-Dest', 'document');
+    reqHeaders.set('Sec-Fetch-Mode', 'navigate');
+    reqHeaders.set('Sec-Fetch-Site', 'none');
+    reqHeaders.set('Sec-Fetch-User', '?1');
+    reqHeaders.set('Upgrade-Insecure-Requests', '1');
     
     const headersToForward = [
-      'cache-control',
       'content-type',
-      'rsc',
-      'next-router-state-tree',
-      'next-router-prefetch',
-      'next-url'
     ];
     for (const h of headersToForward) {
       const val = request.headers.get(h);
@@ -76,95 +75,9 @@ export async function GET(request: NextRequest) {
 
     clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      return new NextResponse(`Failed to fetch: ${res.statusText}`, { status: res.status });
-    }
+    console.log(`[Proxy] Fetched ${targetUrl} -> Status: ${res.status}`);
 
-    const contentType = res.headers.get('content-type') || '';
-    const isHtml = contentType.toLowerCase().includes('text/html');
     const targetOrigin = new URL(targetUrl).origin;
-
-    if (!isHtml) {
-      const rawData = await res.arrayBuffer();
-      const response = new NextResponse(rawData, {
-        status: res.status,
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': res.headers.get('cache-control') || 'no-store',
-        },
-      });
-      response.cookies.set('active_proxy_origin', targetOrigin, {
-        path: '/',
-        maxAge: 3600,
-        sameSite: 'lax',
-      });
-      return response;
-    }
-
-    let html = await res.text();
-
-    // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
-    // Match src="/..." attributes and make them absolute
-    html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
-      return `${attr}${q}${targetOrigin}/${path}${q}`;
-    });
-    html = html.replace(/(\bsrcset\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, srcset) => {
-      const rewritten = srcset.replace(
-        /(^|,\s*)(\/[^\s,]+)/g,
-        (_s: string, sep: string, p: string) => `${sep}${targetOrigin}${p}`,
-      );
-      return `${attr}${q}${rewritten}${q}`;
-    });
-
-    // ── 2. Rewrite all href attributes ───────────────────────────────────────
-    const staticExts = [
-      '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp',
-      '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map',
-    ];
-
-    html = html.replace(/(\bhref\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, href) => {
-      // Already proxied — leave alone
-      if (href.includes('/api/proxy?')) return `${attr}${q}${href}${q}`;
-
-      // Special schemes — leave alone
-      if (
-        href.startsWith('#') ||
-        href.startsWith('mailto:') ||
-        href.startsWith('tel:') ||
-        href.startsWith('javascript:')
-      ) {
-        return `${attr}${q}${href}${q}`;
-      }
-
-      let absolute: string;
-      try {
-        absolute = new URL(href, targetUrl).href;
-      } catch {
-        return `${attr}${q}${href}${q}`;
-      }
-
-      // Static assets → keep absolute (CSS, images, fonts load directly from CDN)
-      const isStatic = staticExts.some((ext) => absolute.split('?')[0].endsWith(ext));
-      if (isStatic) return `${attr}${q}${absolute}${q}`;
-
-      // Only proxy allowed domain page URLs
-      const parsed = new URL(absolute);
-      const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
-        (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-      );
-      if (isSameAllowedDomain) {
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
-      }
-
-      // External link → leave as absolute
-      return `${attr}${q}${absolute}${q}`;
-    });
-
-    // ── 3. Remove framing restrictions ───────────────────────────────────────
-    html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
-    html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
-
-    // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
     const forwardedHost = request.headers ? request.headers.get('x-forwarded-host') : null;
     const forwardedProto = (request.headers ? request.headers.get('x-forwarded-proto') : null) || 'http';
     const host = request.headers ? request.headers.get('host') : null;
@@ -205,6 +118,21 @@ export async function GET(request: NextRequest) {
   var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
   var ALLOWED_HOSTNAMES = ${JSON.stringify(ALLOWED_HOSTNAMES)};
 
+  // ── Fix SPA Routers (Dantri) ──
+  // SPA routers read window.location.pathname to determine the page to render.
+  // We cannot spoof window.location via Object.defineProperty because it's non-configurable.
+  // Instead, we use the History API to actually change the browser's URL path to match the target.
+  try {
+    var _parsedTarget = new URL(TARGET);
+    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
+    if (window.location.pathname !== _parsedTarget.pathname) {
+      // Must use window.location.origin to bypass the <base> tag resolution, otherwise SecurityError
+      window.history.replaceState(null, '', window.location.origin + _targetPath);
+    }
+  } catch(_e) {
+    console.error('[Proxy] Failed to rewrite history state:', _e);
+  }
+
   function isAllowedHost(url) {
     try {
       var h = new URL(url).hostname;
@@ -212,16 +140,15 @@ export async function GET(request: NextRequest) {
     } catch(_) { return false; }
   }
 
-  /* ── Track the "real" URL (updated when Next.js does soft navigation) ── */
   var _currentTarget = TARGET;
-
-  /* ── Report current page URL to parent AntBiz window ── */
   function report() {
     try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*'); } catch (_) {}
   }
   report();
 
-  /* ── Listen for navigation commands from parent window ── */
+  // Block window.open (ads use this for popup redirects)
+  window.open = function() { return null; };
+
   window.addEventListener('message', function (e) {
     if (e.data && e.data.type === 'NAVIGATE_BACK') {
       try { history.back(); } catch (_) {}
@@ -231,46 +158,25 @@ export async function GET(request: NextRequest) {
   function getAbsoluteUrl(urlStr) {
     try {
       var s = String(urlStr);
-      /* Already a proxied URL — unwrap it */
       var idx = s.indexOf('/api/proxy?url=');
       if (idx !== -1) {
         var params = new URLSearchParams(s.substring(idx).split('?')[1]);
         var original = params.get('url');
         if (original) return original;
       }
-      /* Resolve relative to the current active page URL */
       return new URL(s, _currentTarget || TARGET).href;
     } catch(_) { return urlStr; }
   }
 
-  /* ── Utility: navigate iframe to proxied URL ── */
-  function navigateViaProxy(absUrl) {
-    try {
-      window.location.replace(PROXY + encodeURIComponent(absUrl));
-    } catch(_) {}
-  }
-
-  /* ── Override history.pushState / replaceState ──────────────────────────────
-   * Strategy: track _currentTarget for address-bar reporting but do NOT call
-   * navigateViaProxy() (that caused infinite full-page reload loops).
-   * We DO let _origPush/_origReplace run so Next.js App Router registers that
-   * the URL changed and stops retrying navigation (blocking pushState caused
-   * ~500ms polling loops). Leaked RSC requests from the new URL are handled by
-   * proxy.ts middleware (204 for non-AntBiz RSC), and leaked ?url= navigations
-   * are caught by the recovery redirect in proxy.ts.
-   * ─────────────────────────────────────────────────────────────────────────── */
   var _origPush = history.pushState.bind(history);
   history.pushState = function (state, title, url) {
     if (url) {
       try {
         var abs = getAbsoluteUrl(String(url));
-        if (isAllowedHost(abs)) {
-          _currentTarget = abs;
-          report();
-        }
+        if (isAllowedHost(abs)) { _currentTarget = abs; report(); }
       } catch (_) {}
     }
-    return _origPush(state, title, url); /* allow URL to change so Next.js doesn't retry */
+    return _origPush(state, title, url);
   };
 
   var _origReplace = history.replaceState.bind(history);
@@ -278,23 +184,18 @@ export async function GET(request: NextRequest) {
     if (url) {
       try {
         var abs = getAbsoluteUrl(String(url));
-        if (isAllowedHost(abs)) {
-          _currentTarget = abs;
-          report();
-        }
+        if (isAllowedHost(abs)) { _currentTarget = abs; report(); }
       } catch (_) {}
     }
-    return _origReplace(state, title, url); /* allow URL to change so Next.js doesn't retry */
+    return _origReplace(state, title, url);
   };
 
-  /* ── Capture-phase click interceptor ── */
   document.addEventListener('click', function (e) {
     var el = e.target;
     while (el && el.tagName !== 'A') el = el.parentElement;
     if (!el) return;
     var href = el.getAttribute('href');
-    if (!href) return;
-    if (href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+    if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     try {
@@ -303,11 +204,125 @@ export async function GET(request: NextRequest) {
         return;
       }
       var abs = new URL(href, _currentTarget || TARGET).href;
+      if (!isAllowedHost(abs)) return; // Block navigation to non-allowed hosts (ads, trackers)
       window.location.href = PROXY + encodeURIComponent(abs);
-    } catch (err) { console.error(err); }
+    } catch (err) {}
   }, true);
+
+  // Remove ad iframes/scripts injected dynamically by ad networks
+  if (typeof MutationObserver !== 'undefined') {
+    var adPatterns = /doubleclick|googlesyndication|googleadservices|adnxs|facebook\\.net\\/signals|ads\\.|tracker|analytics/i;
+    new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType !== 1) return;
+          var tag = node.tagName;
+          if (tag === 'IFRAME' || tag === 'SCRIPT') {
+            var src = node.getAttribute('src') || '';
+            if (adPatterns.test(src)) {
+              node.remove();
+            }
+          }
+        });
+      });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();
 </script>`;
+
+    if (!res.ok) {
+      // Return a basic HTML page with the script injected so the back button still works
+      const errorHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">${interceptorScript}</head><body style="font-family:sans-serif;padding:20px;text-align:center;"><h2>Proxy Fetch Error</h2><p>Failed to fetch: ${res.statusText} (${res.status})</p></body></html>`;
+      return new NextResponse(errorHtml, { 
+        status: res.status,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    const isHtml = contentType.toLowerCase().includes('text/html');
+
+    if (!isHtml) {
+      const rawData = await res.arrayBuffer();
+      const response = new NextResponse(rawData, {
+        status: res.status,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': res.headers.get('cache-control') || 'no-store',
+        },
+      });
+      response.cookies.set('active_proxy_origin', targetOrigin, {
+        path: '/',
+        maxAge: 3600,
+        sameSite: 'lax',
+      });
+      return response;
+    }
+
+    let html = await res.text();
+
+    // ── 1. Rewrite relative src / srcset to absolute CDN paths ───────────────
+    html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
+      return `${attr}${q}${targetOrigin}/${path}${q}`;
+    });
+    html = html.replace(/(\bsrcset\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, srcset) => {
+      const rewritten = srcset.replace(
+        /(^|,\s*)(\/[^\s,]+)/g,
+        (_s: string, sep: string, p: string) => `${sep}${targetOrigin}${p}`,
+      );
+      return `${attr}${q}${rewritten}${q}`;
+    });
+
+    // ── 2. Rewrite all href attributes ───────────────────────────────────────
+    const staticExts = [
+      '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp',
+      '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map',
+    ];
+
+    html = html.replace(/(\bhref\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, href) => {
+      if (href.includes('/api/proxy?')) return `${attr}${q}${href}${q}`;
+      if (
+        href.startsWith('#') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('tel:') ||
+        href.startsWith('javascript:')
+      ) {
+        return `${attr}${q}${href}${q}`;
+      }
+
+      let absolute: string;
+      try {
+        absolute = new URL(href, targetUrl).href;
+      } catch {
+        return `${attr}${q}${href}${q}`;
+      }
+
+      const isStatic = staticExts.some((ext) => absolute.split('?')[0].endsWith(ext));
+      if (isStatic) return `${attr}${q}${absolute}${q}`;
+
+      const parsed = new URL(absolute);
+      const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
+        (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
+      );
+      if (isSameAllowedDomain) {
+        return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
+      }
+
+      return `${attr}${q}${absolute}${q}`;
+    });
+
+    // ── 3. Remove framing restrictions and SPA routers ───────────────────────────────
+    html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
+    html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
+
+    // Disable Dantri's SPA scripts to prevent the client-side router from overriding the page with a 404 OOPS screen
+    if (parsedTarget.hostname.includes('dantri.com.vn')) {
+      // Dantri uses inline scripts to dynamically inject Webpack chunks.
+      // Strip ALL scripts to guarantee the SPA router never executes.
+      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '<!-- script blocked -->');
+    }
+
+    // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
 
     const baseTag = `<base href="${targetOrigin}/">`;
     const fullHeaderInjection = baseTag + interceptorScript;

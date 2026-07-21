@@ -15,7 +15,7 @@ export const scheduleService = {
     try {
       const res = await fetch('/api/scheduled-posts');
       if (!res.ok) {
-        return { status: 'error', message: 'Failed to fetch timeline', data: [] };
+        return { status: 'error', error: 'Failed to fetch timeline', data: [] };
       }
       const json = await res.json();
       const posts: any[] = json.data || [];
@@ -52,7 +52,7 @@ export const scheduleService = {
       return { status: 'success', data: timelinePosts };
     } catch (e) {
       console.error('Error fetching timeline:', e);
-      return { status: 'error', message: 'Lỗi tải timeline', data: [] };
+      return { status: 'error', error: 'Lỗi tải timeline', data: [] };
     }
   },
 
