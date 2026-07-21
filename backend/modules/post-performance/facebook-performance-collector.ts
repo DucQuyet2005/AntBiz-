@@ -1,6 +1,8 @@
 import type { PerformanceCollector, PerformanceMetrics } from './post-performance-types';
 
 export class FacebookPerformanceCollector implements PerformanceCollector {
+  readonly platform = 'facebook' as const;
+
   constructor(
     private readonly fetchImplementation: typeof fetch = fetch,
     private readonly graphVersion: string = 'v19.0'

@@ -216,14 +216,15 @@ describe('CaptionManagementModule', () => {
       actor,
       'caption-1',
       {
-        mode: 'partial', selectionStart: 9, selectionEnd: 14, selectedText: 'world',
+        mode: 'partial',
+        selections: [{ start: 9, end: 14, text: 'world' }],
         instruction: 'Use a synonym', presetMode: 'auto',
       }
     );
 
     expect(repository.updatedPayload).toMatchObject({ edited_content: 'Hello 😀 planet' });
     expect(result).toMatchObject({
-      mode: 'partial', generatedText: 'planet', replacementRange: { start: 9, end: 14 },
+      mode: 'partial', generatedText: 'planet', replacementRanges: [{ start: 9, end: 14 }],
     });
   });
 
@@ -234,7 +235,8 @@ describe('CaptionManagementModule', () => {
       actor,
       'caption-1',
       {
-        mode: 'partial', selectionStart: 0, selectionEnd: 2, selectedText: 'stale',
+        mode: 'partial',
+        selections: [{ start: 0, end: 2, text: 'stale' }],
         instruction: 'Rewrite', presetMode: 'auto',
       }
     )).rejects.toMatchObject({ code: 'CAPTION_STALE', status: 409 });

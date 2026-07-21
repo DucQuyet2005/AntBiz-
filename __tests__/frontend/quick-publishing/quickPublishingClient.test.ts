@@ -73,7 +73,7 @@ describe('BrowserQuickPublishingClient', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: 'caption-1', status: 'draft' } }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: {
         caption: { id: 'caption-1', edited_content: 'New content', status: 'edited' },
-        mode: 'partial', generatedText: 'New', replacementRange: { start: 0, end: 3 },
+        mode: 'partial', generatedText: 'New', replacementRanges: [{ start: 0, end: 3 }],
       } }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 201 }));
@@ -81,7 +81,8 @@ describe('BrowserQuickPublishingClient', () => {
 
     await client.updateCaption('caption-1', { edited_content: 'Edited', status: 'draft' });
     await expect(client.regenerateCaption('caption-1', {
-      mode: 'partial', selectionStart: 0, selectionEnd: 3, selectedText: 'Old',
+      mode: 'partial',
+      selections: [{ start: 0, end: 3, text: 'Old' }],
       instruction: 'Rewrite', presetMode: 'none',
     })).resolves.toMatchObject({ content: 'New content', mode: 'partial' });
     await client.publishNow({ captionId: 'caption-1', imageUrls: [] });

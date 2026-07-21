@@ -5,9 +5,11 @@ export interface PerformanceMetrics {
   clicks: number;
   reach: number;
   impressions: number;
+  saved?: number;
 }
 
 export interface PerformanceCollector {
+  readonly platform: 'facebook' | 'instagram' | 'threads';
   fetchPostMetrics(
     externalPostId: string,
     accessToken: string
@@ -17,12 +19,21 @@ export interface PerformanceCollector {
 export interface PostToUpdate {
   id: string; // id của scheduled_posts
   platform: string;
-  externalPostId: string; // ví dụ: fb_post_id
+  externalPostId: string; // ví dụ: fb_post_id hoặc ig_media_id
   userId: string;
 }
 
 export interface PostPerformanceRepository {
-  findRecentPostedPosts(limit: number, daysAgo?: number): Promise<PostToUpdate[]>;
-  findPageAccessToken(userId: string, accountId: string): Promise<string | null>;
+  findRecentPostedPosts(limit: number, daysAgo?: number, platform?: string): Promise<PostToUpdate[]>;
+  findPageAccessToken(userId: string, platform: string, accountId?: string): Promise<string | null>;
   upsertInteractions(postId: string, metrics: PerformanceMetrics): Promise<boolean>;
+}
+
+export interface GoldenHourSlot {
+  dayOfWeek: number; // 0 (Chủ nhật) -> 6 (Thứ 7)
+  dayName: string;   // Ví dụ: "Thứ Hai", "Thứ Ba"...
+  hourOfDay: number; // 0 -> 23
+  avgEngagementRate: number;
+  totalPosts: number;
+  isOptimal: boolean;
 }

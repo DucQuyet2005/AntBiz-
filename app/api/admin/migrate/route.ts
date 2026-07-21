@@ -112,6 +112,14 @@ const MIGRATIONS = [
     `,
   },
   {
+    id: 'add_trigger_source_to_scheduled_posts',
+    description: 'Bổ sung cột trigger_source vào bảng scheduled_posts',
+    checkSql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'scheduled_posts' AND column_name = 'trigger_source') as exists`,
+    migrationSql: `
+      ALTER TABLE public.scheduled_posts ADD COLUMN IF NOT EXISTS trigger_source TEXT;
+    `,
+  },
+  {
     id: 'add_notification_settings',
     description: 'Thêm cài đặt thông báo và email cho người dùng (email_on_success, email_sent)',
     checkSql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email_on_success') as exists`,

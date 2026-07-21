@@ -7,7 +7,7 @@ import {
 } from './_adapter';
 
 export async function GET(request: NextRequest) {
-  const { supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
   if (unauthorized) return unauthorized;
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -23,15 +23,32 @@ export async function GET(request: NextRequest) {
       const status = searchParams.get('status') || undefined;
       const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'asc';
 
+      const isPersonal = role === 'marketer_content';
       const result = await buildScheduledPublishingModule(supabase).listPaginated(
         page, 
         limit, 
-        { platforms, status, sortOrder }
+        { 
+          platforms, 
+          status, 
+          sortOrder,
+          ...(isPersonal ? { creatorId: user.id } : {})
+        }
       );
       return NextResponse.json(result);
     } else {
-      // Original logic for Calendar View
-      return NextResponse.json({ data: await buildScheduledPublishingModule(supabase).list() });
+      const triggerSource = searchParams.get('trigger_source') || undefined;
+      const limitParam = searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+
+      const isPersonal = role === 'marketer_content';
+      const creatorId = isPersonal ? user.id : (triggerSource === 'extension' ? user.id : undefined);
+
+      const data = await buildScheduledPublishingModule(supabase).list({
+        triggerSource,
+        limit,
+        creatorId,
+      });
+      return NextResponse.json({ data });
     }
   } catch (error) {
     return scheduledPublishingErrorResponse(error, '[GET /api/scheduled-posts]');

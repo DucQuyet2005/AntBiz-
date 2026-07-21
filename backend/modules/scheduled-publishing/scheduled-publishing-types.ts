@@ -100,9 +100,8 @@ export interface PublicationNotifier {
   scheduling(input: SchedulingNotificationInput): Promise<void>;
   publication(input: PublicationNotificationInput): Promise<void>;
 }
-
 export interface ScheduledPublishingRepository {
-  list(): Promise<ScheduledPostRecord[]>;
+  list(filters?: { triggerSource?: string; limit?: number; creatorId?: string }): Promise<ScheduledPostRecord[]>;
   listPaginated(
     page: number,
     limit: number,

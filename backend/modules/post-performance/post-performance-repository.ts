@@ -4,19 +4,24 @@ import type { PostPerformanceRepository, PostToUpdate, PerformanceMetrics } from
 export class SupabasePostPerformanceRepository implements PostPerformanceRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async findRecentPostedPosts(limit: number, daysAgo: number = 30): Promise<PostToUpdate[]> {
+  async findRecentPostedPosts(limit: number, daysAgo: number = 30, platform?: string): Promise<PostToUpdate[]> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
 
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('scheduled_posts')
       .select('id, platform, fb_post_id, created_by')
       .eq('status', 'posted')
-      .eq('platform', 'facebook')
       .not('fb_post_id', 'is', null)
       .gte('posted_at', cutoffDate.toISOString())
       .order('posted_at', { ascending: false })
       .limit(limit);
+
+    if (platform) {
+      query = query.eq('platform', platform);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[PostPerformanceRepository] Lỗi khi truy vấn các bài đã đăng:', error);
@@ -31,16 +36,33 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
     }));
   }
 
-  async findPageAccessToken(userId: string, accountId: string): Promise<string | null> {
+  async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
+    const baseQuery = this.supabase
+      .from('linked_accounts')
+      .select('access_token')
+      .eq('user_id', userId)
+      .eq('platform', platform);
+
+    if (accountId) {
+      // For facebook/instagram, accountId might be in format {page_id}_{post_id}
+      const actualAccountId = accountId.includes('_') ? accountId.split('_')[0] : accountId;
+      const { data, error } = await baseQuery.eq('account_id', actualAccountId).maybeSingle();
+      if (!error && data?.access_token) {
+        return data.access_token;
+      }
+    }
+
+    // Fallback: get any token for this user and platform
     const { data, error } = await this.supabase
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
-      .eq('platform', 'facebook')
+      .eq('platform', platform)
+      .limit(1)
       .maybeSingle();
 
     if (error) {
-      console.error('[PostPerformanceRepository] Lỗi khi lấy access token:', error);
+      console.error(`[PostPerformanceRepository] Lỗi khi lấy access token cho platform ${platform}:`, error);
       return null;
     }
 
