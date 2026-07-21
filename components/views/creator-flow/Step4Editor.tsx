@@ -8,12 +8,13 @@ import {
   Bookmark, Check, Search, EyeOff, MoreHorizontal,
   ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
   Repeat2, CheckCircle2, ChevronLeft, ChevronRight, Wand2,
-  History, RotateCcw
+  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { postService, ChatMessage } from '@/lib/services/creator/post.service';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 16 }: { className?: string; size?: number }) => (
@@ -80,6 +81,51 @@ export default function Step4Editor() {
   const [chatInput, setChatInput] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [igImageIndex, setIgImageIndex] = useState<number>(0);
+
+  // Dynamic Gemini 3.1 Flash Lite suggestion states
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{ label: string; prompt: string }>>([]);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState<boolean>(false);
+  const lastSuggestedSigRef = useRef<string>('');
+
+  useEffect(() => {
+    if (state.highlightSelections.length === 0) {
+      if (lastSuggestedSigRef.current !== '') {
+        lastSuggestedSigRef.current = '';
+        setAiSuggestions([]);
+        setIsGeneratingSuggestions(false);
+      }
+      return;
+    }
+
+    const currentHighlightedText = state.highlightSelections.map(s => s.text).join(' ');
+    if (currentHighlightedText === lastSuggestedSigRef.current) return;
+
+    lastSuggestedSigRef.current = currentHighlightedText;
+    setIsGeneratingSuggestions(true);
+    setAiSuggestions([]);
+
+    let isCancelled = false;
+
+    postService.generateAiSuggestions(currentHighlightedText, state.articleContext?.title)
+      .then((res) => {
+        if (!isCancelled) {
+          if (res.data?.suggestions && res.data.suggestions.length > 0) {
+            setAiSuggestions(res.data.suggestions);
+          }
+          setIsGeneratingSuggestions(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[Gemini Suggestions] Error:', err);
+        if (!isCancelled) {
+          setIsGeneratingSuggestions(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [state.highlightSelections, state.articleContext?.title]);
 
   // Add initial AI suggestion message on mount if no initial message exists
   useEffect(() => {
@@ -598,6 +644,50 @@ export default function Step4Editor() {
     }, 100);
   };
 
+  // Helper function to generate contextual suggestions dynamically for highlighted text
+  const getDynamicSuggestions = (selections: Array<{ text: string }>, topic?: string) => {
+    if (selections.length === 0) return [];
+
+    const fullSelectedText = selections.map(s => s.text).join(' ');
+    const charCount = fullSelectedText.length;
+    const isQuestion = fullSelectedText.includes('?') || fullSelectedText.includes('sao') || fullSelectedText.includes('gì');
+    const hasNumbers = /\d+/.test(fullSelectedText);
+    const hasEmotionalWords = /(thảm kịch|kinh hoàng|nỗi đau|xót xa|bàng hoàng|vô tội|nạn nhân|nghiêm trọng)/i.test(fullSelectedText);
+
+    const suggestions: Array<{ label: string; prompt: string }> = [];
+
+    // 1. Length-based suggestions
+    if (charCount > 120) {
+      suggestions.push({ label: '✨ Tóm tắt ngắn gọn', prompt: 'Rút gọn đoạn này lại súc tích, cô đọng nhất' });
+    } else {
+      suggestions.push({ label: '✍️ Bổ sung chi tiết', prompt: 'Viết mở rộng thêm chi tiết và góc nhìn sâu sắc hơn' });
+    }
+
+    // 2. Emotion / Tone suggestions based on content analysis
+    if (hasEmotionalWords) {
+      suggestions.push({ label: '💔 Tăng tính đồng cảm', prompt: 'Viết lại với văn phong sâu lắng, giàu cảm xúc và sự đồng cảm' });
+      suggestions.push({ label: '📢 Văn phong thời sự', prompt: 'Chuyển sang giọng văn báo chí thời sự trung lập, khách quan' });
+    } else {
+      suggestions.push({ label: '🔥 Viết lại thu hút', prompt: 'Tạo giọng văn giật gân, cuốn hút gây sự chú ý mạnh mẽ' });
+      suggestions.push({ label: '👔 Văn phong chuyên nghiệp', prompt: 'Chuyển sang văn phong chuyên nghiệp, chuẩn mực' });
+    }
+
+    // 3. Structure & CTA suggestions
+    if (isQuestion) {
+      suggestions.push({ label: '❓ Đặt câu hỏi mở', prompt: 'Chuyển đoạn này thành câu hỏi mở thảo luận cho cộng đồng' });
+    } else if (hasNumbers) {
+      suggestions.push({ label: '📊 Tóm tắt số liệu', prompt: 'Trình bày lại các con số/dữ liệu này rõ ràng và ấn tượng hơn' });
+    } else {
+      suggestions.push({ label: '📣 Thêm lời kêu gọi (CTA)', prompt: 'Thêm lời kêu gọi hành động (Call To Action) thúc đẩy tương tác ở cuối đoạn' });
+    }
+
+    // 4. Style & Formatting suggestion
+    suggestions.push({ label: '✨ Tối ưu icon & hashtag', prompt: 'Bổ sung thêm emoji phù hợp và hashtag chuẩn bài' });
+    suggestions.push({ label: '🎯 Đặt câu chốt ngắn', prompt: 'Tạo một câu kết thúc ngắn đắt giá và dễ nhớ' });
+
+    return suggestions.slice(0, 6);
+  };
+
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -620,7 +710,7 @@ export default function Step4Editor() {
 
 
   return (
-    <div className="w-full flex-grow flex flex-col md:flex-row h-[calc(100vh-130px)] min-h-[720px] overflow-hidden relative border border-gray-200 dark:border-zinc-800 rounded-3xl bg-card">
+    <div className="w-full flex-grow flex flex-col md:flex-row h-[calc(100vh-130px)] min-h-[720px] overflow-hidden relative border border-gray-200 dark:border-zinc-800/60 rounded-3xl bg-card">
       
       {/* Mobile Tab Swapper */}
       <div className="md:hidden flex border-b border-gray-150 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900">
@@ -644,30 +734,28 @@ export default function Step4Editor() {
 
       {/* LEFT COLUMN: CANVAS POST PREVIEW (63% width) */}
       <section 
-        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800 transition-all relative ${
+        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800/60 transition-all relative ${
           mobileMode === 'canvas' ? 'flex' : 'hidden md:flex'
         }`}
       >
-        {/* Editor subheader */}
-        <div className="px-6 h-[72px] flex items-center justify-between gap-6 border-b border-gray-150/10 dark:border-zinc-800/10 bg-white dark:bg-zinc-900 select-none flex-shrink-0">
-          <div className="flex items-center gap-5 min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <Globe className="w-4 h-4 text-text-muted flex-shrink-0" />
-              <span className="font-bold text-sm text-text truncate max-w-[240px] sm:max-w-[360px]">
-                {editableTitle || "Tài liệu mới"}
-              </span>
-            </div>
-            
-            <span className="bg-indigo-50 text-primary dark:bg-indigo-950/20 dark:text-primary text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex-shrink-0">
+        {/* Editor Top Toolbar */}
+        <div className="px-6 h-[64px] flex items-center justify-between gap-4 border-b border-gray-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900 select-none flex-shrink-0">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <Globe className="w-4 h-4 text-text-muted shrink-0" />
+            <span className="font-bold text-sm text-text truncate max-w-[260px] sm:max-w-[380px]">
+              {editableTitle || state.articleContext?.title || "Vụ cháy xe khách làm 7 người chết ở Đồng..."}
+            </span>
+            <span className="bg-indigo-50 text-primary dark:bg-indigo-950/20 dark:text-primary text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
               ĐANG CHỈNH SỬA
             </span>
           </div>
-          
-          <div className="flex items-center gap-3.5 flex-shrink-0">
+
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
+              type="button"
               onClick={() => regeneratePostContent()}
               disabled={state.isGeneratingPost}
-              className="flex items-center gap-1.5 text-xs font-bold text-text-muted hover:text-text border border-gray-250 dark:border-zinc-700 hover:bg-gray-55 dark:hover:bg-zinc-800 rounded-full px-4.5 py-2 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text-muted hover:text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${state.isGeneratingPost ? 'animate-spin' : ''}`} />
               <span>Tạo lại bài đăng</span>
@@ -676,7 +764,7 @@ export default function Step4Editor() {
         </div>
 
         {/* Platform Indicator Tabs */}
-        <div className="px-6 bg-white dark:bg-zinc-900 flex select-none border-b border-gray-150/20 dark:border-zinc-800/20 gap-4">
+        <div className="px-6 bg-white dark:bg-zinc-900 flex select-none border-b border-gray-200 dark:border-zinc-800/60 gap-4">
           {(state.selectedPlatforms.length > 0 ? state.selectedPlatforms : ['facebook'] as const).map((platform) => {
             const isActive = state.selectedPlatform === platform;
             return (
@@ -1124,15 +1212,22 @@ export default function Step4Editor() {
         }`}
       >
         {/* Chat sidebar header */}
-        <div className="px-4 h-[72px] flex items-center justify-between border-b border-gray-150/10 dark:border-zinc-800/10 bg-white/50 dark:bg-zinc-900/50 flex-shrink-0 select-none">
+        <div className="px-4 h-[64px] flex items-center justify-between border-b border-gray-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900 flex-shrink-0 select-none">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-primary flex items-center justify-center shrink-0">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-text">AI Trợ lý</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-extrabold text-sm text-text">AI Trợ lý</h3>
+                <span className="bg-[#E8F8F0] dark:bg-emerald-950/40 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+              </div>
               <p className="text-[10px] text-text-muted">Hỗ trợ biên tập & tinh chỉnh bài viết</p>
             </div>
+          </div>
+          <div className="flex items-center gap-1 text-text-muted">
+            <button type="button" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Thu nhỏ"><Minus className="w-4 h-4" /></button>
+            <button type="button" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Tùy chọn"><MoreVertical className="w-4 h-4" /></button>
           </div>
         </div>
 
@@ -1286,8 +1381,60 @@ export default function Step4Editor() {
           {/* End of chat messages container */}
         </div>
 
+        {/* Quick Suggestion Chips (Only visible when text is highlighted and after Gemini 3.1 Flash Lite finishes generating) */}
+        {state.highlightSelections.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900 select-none animate-fade-in">
+            {isGeneratingSuggestions ? (
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-text animate-pulse">
+                      Gemini 3.1 Flash Lite đang sinh gợi ý...
+                    </p>
+                    <p className="text-[10px] text-text-muted">Đang phân tích đoạn văn để tạo các hướng chỉnh sửa tối ưu</p>
+                  </div>
+                </div>
+                <span className="text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200/50 dark:border-emerald-800/40">
+                  Gemini 3.1 Flash Lite
+                </span>
+              </div>
+            ) : aiSuggestions.length > 0 ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-text flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary fill-primary/20" />
+                    <span>Gợi ý phong cách từ AI ({aiSuggestions.length})</span>
+                  </p>
+                  <span className="text-[10px] text-text-muted/80 font-medium flex items-center gap-1">
+                    <span>Powered by</span>
+                    <span className="font-bold text-primary">Gemini 3.1 Flash Lite</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {aiSuggestions.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        editHighlighted(item.prompt);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-200/80 dark:border-zinc-700/60 text-text text-xs font-semibold hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-left truncate cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1.5"
+                      title={item.prompt}
+                    >
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* Chat input footer */}
-        <div className="p-4 border-t border-gray-150 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md space-y-2">
+        <div className="p-4 border-t border-gray-200 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md space-y-2">
           {state.highlightSelections.length > 0 && (
             <div className="mb-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl p-2.5 flex flex-col gap-2 text-xs animate-fade-in select-none">
               <div className="flex items-center justify-between">
@@ -1322,12 +1469,12 @@ export default function Step4Editor() {
               </div>
             </div>
           )}
-          <form onSubmit={handleSendChat} className="relative bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden">
+          <form onSubmit={handleSendChat} className="relative bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all overflow-hidden p-2">
             <textarea
               ref={chatInputRef}
               disabled={state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
-              className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-sm p-4 resize-none h-20 text-text placeholder-text-muted/65 pr-14 disabled:opacity-60"
-              placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhắn AI... (Enter gửi, Shift+Enter xuống dòng)"}
+              className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-xs p-2 resize-none h-16 text-text placeholder-text-muted/65 disabled:opacity-60"
+              placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhập yêu cầu của bạn cho AI..."}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1337,28 +1484,37 @@ export default function Step4Editor() {
                 }
               }}
             />
-            <button 
-              type="submit"
-              disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
-              onClick={(e) => {
-                if (state.highlightSelections.length > 0 && !chatInput.trim()) {
-                  e.preventDefault();
-                  editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
-                }
-              }}
-              className={`absolute bottom-3.5 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${
-                state.highlightSelections.length > 0 && !chatInput.trim()
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
-                  : 'bg-primary/10 hover:bg-primary text-primary hover:text-white disabled:opacity-40 disabled:hover:bg-primary/10 disabled:hover:text-primary'
-              }`}
-              title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
-            >
-              {state.highlightSelections.length > 0 && !chatInput.trim() ? (
-                <Sparkles className="w-4.5 h-4.5" />
-              ) : (
-                <Send className="w-4.5 h-4.5" />
-              )}
-            </button>
+            {/* Input Bottom Action Toolbar */}
+            <div className="flex items-center justify-between pt-1 px-1 select-none">
+              <div className="flex items-center gap-1.5 text-text-muted">
+                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Đính kèm tệp"><ImageIcon className="w-4 h-4" /></button>
+                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Ghi âm"><Mic className="w-4 h-4" /></button>
+                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Mẫu câu"><Paperclip className="w-4 h-4" /></button>
+                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Tối ưu AI"><Sparkles className="w-4 h-4 text-amber-500" /></button>
+              </div>
+              <button 
+                type="submit"
+                disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
+                onClick={(e) => {
+                  if (state.highlightSelections.length > 0 && !chatInput.trim()) {
+                    e.preventDefault();
+                    editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
+                  }
+                }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${
+                  state.highlightSelections.length > 0 && !chatInput.trim()
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
+                    : 'bg-primary hover:bg-primary-hover text-white disabled:opacity-40 shadow-xs cursor-pointer'
+                }`}
+                title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
+              >
+                {state.highlightSelections.length > 0 && !chatInput.trim() ? (
+                  <Sparkles className="w-4 h-4" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </form>
         </div>
       </aside>

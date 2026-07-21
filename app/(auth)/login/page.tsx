@@ -322,7 +322,7 @@ export default function LoginPage() {
 
         <div className="relative">
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-700">{t("login.emailLabel")}</label>
             <div className="relative">

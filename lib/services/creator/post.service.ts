@@ -121,5 +121,67 @@ export const postService = {
     };
 
     return simulateRequest(reply, 800); // Fast response representing 3.1 Flash Lite
+  },
+
+  async generateAiSuggestions(
+    selectedText: string,
+    topic?: string
+  ): Promise<ApiResponse<{ suggestions: Array<{ label: string; prompt: string }>; modelUsed: 'Gemini 3.1 Flash Lite' }>> {
+    try {
+      const res = await fetch('/api/creator/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedText, topic }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.suggestions)) {
+          return {
+            data: { suggestions: data.suggestions, modelUsed: 'Gemini 3.1 Flash Lite' },
+            error: null,
+            status: 200,
+          };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    const charCount = selectedText.length;
+    const isQuestion = selectedText.includes('?') || selectedText.includes('sao') || selectedText.includes('gì');
+    const hasNumbers = /\d+/.test(selectedText);
+    const hasEmotionalWords = /(thảm kịch|kinh hoàng|nỗi đau|xót xa|bàng hoàng|vô tội|nạn nhân|nghiêm trọng)/i.test(selectedText);
+
+    const suggestions: Array<{ label: string; prompt: string }> = [];
+
+    if (charCount > 120) {
+      suggestions.push({ label: '✨ Tóm tắt ngắn gọn', prompt: 'Rút gọn đoạn này lại súc tích, cô đọng nhất' });
+    } else {
+      suggestions.push({ label: '✍️ Bổ sung chi tiết', prompt: 'Viết mở rộng thêm chi tiết và góc nhìn sâu sắc hơn' });
+    }
+
+    if (hasEmotionalWords) {
+      suggestions.push({ label: '💔 Tăng tính đồng cảm', prompt: 'Viết lại với văn phong sâu lắng, giàu cảm xúc và sự đồng cảm' });
+      suggestions.push({ label: '📢 Văn phong thời sự', prompt: 'Chuyển sang giọng văn báo chí thời sự trung lập, khách quan' });
+    } else {
+      suggestions.push({ label: '🔥 Viết lại thu hút', prompt: 'Tạo giọng văn giật gân, cuốn hút gây sự chú ý mạnh mẽ' });
+      suggestions.push({ label: '👔 Văn phong chuyên nghiệp', prompt: 'Chuyển sang văn phong chuyên nghiệp, chuẩn mực' });
+    }
+
+    if (isQuestion) {
+      suggestions.push({ label: '❓ Đặt câu hỏi mở', prompt: 'Chuyển đoạn này thành câu hỏi mở thảo luận cho cộng đồng' });
+    } else if (hasNumbers) {
+      suggestions.push({ label: '📊 Tóm tắt số liệu', prompt: 'Trình bày lại các con số/dữ liệu này rõ ràng và ấn tượng hơn' });
+    } else {
+      suggestions.push({ label: '📣 Thêm lời kêu gọi', prompt: 'Thêm lời kêu gọi hành động (CTA) thúc đẩy tương tác ở cuối đoạn' });
+    }
+
+    suggestions.push({ label: '✨ Tối ưu icon & hashtag', prompt: 'Bổ sung thêm emoji phù hợp và hashtag chuẩn bài' });
+    suggestions.push({ label: '🎯 Đặt câu chốt ngắn', prompt: 'Tạo một câu kết thúc ngắn đắt giá và dễ nhớ' });
+
+    return simulateRequest({
+      suggestions: suggestions.slice(0, 6),
+      modelUsed: 'Gemini 3.1 Flash Lite'
+    }, 300);
   }
 };

@@ -1331,6 +1331,16 @@ export default function PresetsView() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridMinHeight, setGridMinHeight] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (currentPage === 1 && gridRef.current) {
+      // Capture the natural height of Page 1 to lock the layout for subsequent pages
+      const height = gridRef.current.offsetHeight;
+      if (height > 0) setGridMinHeight(height);
+    }
+  }, [currentPage, presets, search]);
 
   const fetchPresets = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -1537,7 +1547,12 @@ export default function PresetsView() {
         </motion.div>
       ) : (
         <>
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <motion.div 
+            layout 
+            ref={gridRef}
+            style={{ minHeight: currentPage !== 1 && gridMinHeight ? `${gridMinHeight}px` : undefined }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start items-start"
+          >
             {paginatedDisplayed.map((preset) => (
               <PresetCard
                 key={preset.id}

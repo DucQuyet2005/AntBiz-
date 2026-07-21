@@ -14,7 +14,7 @@ import Step2Article from './creator-flow/Step2Article';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
@@ -114,21 +114,31 @@ function AiCreatorContent() {
     }
   };
 
+  const [isPublishingNow, setIsPublishingNow] = useState(false);
+
   // Action handlers
   const handlePublishNow = async () => {
+    if (isPublishingNow) return;
+    setIsPublishingNow(true);
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' });
-    const result = await confirmPostSchedule('now');
-    if (result.success) {
-      showToast(t('creator.step5.successToast'), 'success');
-      window.dispatchEvent(new CustomEvent('notification-updated'));
-      setTimeout(() => {
-        dispatch({ type: 'RESET_FLOW' });
-        router.push('/content-calendar');
-      }, 1500);
-    } else {
-      const failed = result.failed.join(', ');
-      showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
-      window.dispatchEvent(new CustomEvent('notification-updated'));
+    try {
+      const result = await confirmPostSchedule('now');
+      if (result.success) {
+        showToast(t('creator.step5.successToast'), 'success');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+        setTimeout(() => {
+          dispatch({ type: 'RESET_FLOW' });
+          router.push('/content-calendar');
+        }, 1500);
+      } else {
+        const failed = result.failed.join(', ');
+        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+        setIsPublishingNow(false);
+      }
+    } catch {
+      showToast("Có lỗi xảy ra khi đăng bài", "error");
+      setIsPublishingNow(false);
     }
   };
 
@@ -295,9 +305,14 @@ function AiCreatorContent() {
       <div className="select-none w-full max-w-7xl mx-auto px-4 md:px-6 pt-6">
 
         {/* Page Title Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
-          <p className="text-sm text-text-muted mt-1">Quy trình sản xuất nội dung tự động đa nền tảng.</p>
+        <div className="mb-8 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-xs">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
+            <p className="text-sm text-text-muted mt-1">Quy trình sản xuất nội dung tự động đa nền tảng.</p>
+          </div>
         </div>
 
         {/* Progress header - Render for all steps */}
@@ -327,6 +342,7 @@ function AiCreatorContent() {
           currentStep={state.currentStep}
           isValid={isStepValid()}
           isLoading={state.isScheduling || isSubmitting}
+          isPublishingNow={isPublishingNow}
           onBack={handleBack}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}

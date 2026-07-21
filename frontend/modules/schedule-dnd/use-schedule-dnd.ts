@@ -57,9 +57,27 @@ export function useScheduleDragDrop(
   ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const rawMinute = (y / rect.height) * 60;
+
+    let minute = 0;
+    if (rawMinute >= 52.5) {
+      minute = 45;
+    } else if (rawMinute >= 37.5) {
+      minute = 45;
+    } else if (rawMinute >= 22.5) {
+      minute = 30;
+    } else if (rawMinute >= 7.5) {
+      minute = 15;
+    } else {
+      minute = 0;
+    }
+
     setState(prev => ({
       ...prev,
-      dragOverCell: { dayIdx, hour },
+      dragOverCell: { dayIdx, hour, minute },
     }));
   }, []);
 
@@ -84,17 +102,26 @@ export function useScheduleDragDrop(
       if (!dataStr) return;
       const payload: DragPayload = JSON.parse(dataStr);
 
-      // Chỉ xử lý bài nháp
-      if (payload.type === 'draft') {
+      // Support both draft and scheduled post drags
+      if (payload.type === 'draft' || payload.type === 'scheduled' || payload.id) {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const y = e.clientY - rect.top;
-        // Calculate exact minute based on vertical drop position
-        let minute = Math.round((y / rect.height) * 60);
-        
-        // Ensure minute is within bounds
-        if (minute < 0) minute = 0;
-        if (minute >= 60) minute = 59;
-        
+        const rawMinute = (y / rect.height) * 60;
+
+        // Snap minute to 15-minute interval: 0, 15, 30, 45
+        let minute = 0;
+        if (rawMinute >= 52.5) {
+          minute = 45;
+        } else if (rawMinute >= 37.5) {
+          minute = 45;
+        } else if (rawMinute >= 22.5) {
+          minute = 30;
+        } else if (rawMinute >= 7.5) {
+          minute = 15;
+        } else {
+          minute = 0;
+        }
+
         onScheduleChange(dayIdx, hour, minute);
       }
     } catch (err) {
