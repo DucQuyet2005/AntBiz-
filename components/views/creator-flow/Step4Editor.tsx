@@ -1169,7 +1169,9 @@ export default function Step4Editor() {
                             contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                             suppressContentEditableWarning
                             onBlur={(e) => {
-                              dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                              const newText = e.currentTarget.innerText;
+                              const hashtagsStr = effectiveHashtags.length > 0 ? '\n\n' + effectiveHashtags.join(' ') : '';
+                              dispatch({ type: 'SET_POST_CONTENT', payload: newText + hashtagsStr });
                             }}
                             className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                           >
@@ -1732,7 +1734,7 @@ export default function Step4Editor() {
               type="button"
               onClick={generateAITitle}
               disabled={state.isChatSending}
-              className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-primary border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] font-bold hover:bg-primary hover:text-white transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-primary border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] font-bold hover:bg-emerald-100 hover:border-emerald-300 dark:hover:bg-emerald-900 transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
             >
               <Sparkles className="w-3 h-3" />
               <span>Viết lại Tiêu đề AI</span>
@@ -1741,7 +1743,7 @@ export default function Step4Editor() {
               type="button"
               onClick={generateAIHashtags}
               disabled={state.isChatSending}
-              className="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[#ff6b00] border border-amber-200/60 dark:border-amber-800/40 text-[11px] font-bold hover:bg-[#ff6b00] hover:text-white transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[#ff6b00] border border-amber-200/60 dark:border-amber-800/40 text-[11px] font-bold hover:bg-amber-100 hover:border-amber-300 dark:hover:bg-amber-900 transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
             >
               <Wand2 className="w-3 h-3" />
               <span>Gợi ý Hashtags AI</span>
