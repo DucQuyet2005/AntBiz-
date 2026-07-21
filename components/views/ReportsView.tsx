@@ -165,7 +165,7 @@ export default function ReportsView() {
         ...(timeframe === "custom" && endDate ? { endDate } : {}),
       });
 
-      const res = await fetch(`/api/reports/stats?${queryParams.toString()}`);
+      const res = await fetch(`/api/reports/stats?${queryParams.toString()}&t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) {
         const errText = await res.text();
         const headers: any = {};
