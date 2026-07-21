@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft, ArrowRight, Check, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Send, Loader2 } from 'lucide-react';
 
 interface NavigationFooterProps {
   currentStep: number;

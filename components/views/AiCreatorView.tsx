@@ -14,7 +14,7 @@ import Step2Article from './creator-flow/Step2Article';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
@@ -23,7 +23,7 @@ function AiCreatorContent() {
   const {
     state, dispatch, nextStep, prevStep, goToStep,
     startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
-    editHighlighted,
+    editHighlighted, generateAIContent,
   } = useCreatorFlow();
 
   // Custom Toast notification states
@@ -114,21 +114,31 @@ function AiCreatorContent() {
     }
   };
 
+  const [isPublishingNow, setIsPublishingNow] = useState(false);
+
   // Action handlers
   const handlePublishNow = async () => {
+    if (isPublishingNow) return;
+    setIsPublishingNow(true);
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'now' });
-    const result = await confirmPostSchedule('now');
-    if (result.success) {
-      showToast(t('creator.step5.successToast'), 'success');
-      window.dispatchEvent(new CustomEvent('notification-updated'));
-      setTimeout(() => {
-        dispatch({ type: 'RESET_FLOW' });
-        router.push('/content-calendar');
-      }, 1500);
-    } else {
-      const failed = result.failed.join(', ');
-      showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
-      window.dispatchEvent(new CustomEvent('notification-updated'));
+    try {
+      const result = await confirmPostSchedule('now');
+      if (result.success) {
+        showToast(t('creator.step5.successToast'), 'success');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+        setTimeout(() => {
+          dispatch({ type: 'RESET_FLOW' });
+          router.push('/content-calendar');
+        }, 1500);
+      } else {
+        const failed = result.failed.join(', ');
+        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+        setIsPublishingNow(false);
+      }
+    } catch {
+      showToast('Có lỗi xảy ra khi đăng bài', 'error');
+      setIsPublishingNow(false);
     }
   };
 
@@ -153,6 +163,7 @@ function AiCreatorContent() {
         }
       }
       nextStep();
+      generateAIContent();
     } else if (state.currentStep === 3) {
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
       nextStep();
@@ -300,9 +311,14 @@ function AiCreatorContent() {
       <div className="select-none w-full max-w-7xl mx-auto px-4 md:px-6 pt-6">
 
         {/* Page Title Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
-          <p className="text-sm text-text-muted mt-1">Quy trình sản xuất nội dung tự động đa nền tảng.</p>
+        <div className="mb-8 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-xs">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
+            <p className="text-sm text-text-muted mt-1">Quy trình sản xuất nội dung tự động đa nền tảng.</p>
+          </div>
         </div>
 
         {/* Progress header - Render for all steps */}
@@ -332,6 +348,7 @@ function AiCreatorContent() {
           currentStep={state.currentStep}
           isValid={isStepValid()}
           isLoading={state.isScheduling || isSubmitting}
+          isPublishingNow={isPublishingNow}
           onBack={handleBack}
           onContinue={handleContinue}
           onPublishNow={handlePublishNow}
@@ -397,32 +414,35 @@ function AiCreatorContent() {
       )}
 
       {/* Floating high-fidelity Toast Alert Banner */}
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, x: 20 }}
-            animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: -20, x: 20 }}
-            className={`fixed top-24 right-6 z-[99999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border max-w-sm ${toast.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
-              : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
-              }`}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-red-650" />
-            )}
-            <span className="text-sm font-bold">{toast.message}</span>
-            <button
-              onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-              className="text-text-muted hover:text-text ml-2 p-0.5"
+      {mounted && createPortal(
+        <AnimatePresence>
+          {toast.show && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className={`fixed bottom-24 left-6 z-[999999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
+                : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
+                }`}
             >
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-650" />
+              )}
+              <span className="text-sm font-bold">{toast.message}</span>
+              <button
+                onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+                className="text-text-muted hover:text-text ml-2 p-0.5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
