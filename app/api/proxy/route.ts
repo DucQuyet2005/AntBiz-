@@ -273,6 +273,20 @@ export async function GET(request: NextRequest) {
       return `${attr}${q}${rewritten}${q}`;
     });
 
+    // 1.5 Rewrite absolute src / data-src / data-original to proxy (bypasses hotlink protection)
+    html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])(https?:\/\/[^'"]+)\2/gi, (_m, attr, q, urlStr) => {
+      try {
+        const parsed = new URL(urlStr);
+        const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
+          (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
+        );
+        if (isSameAllowedDomain && !urlStr.includes('/api/proxy?')) {
+          return `${attr}${q}/api/proxy?url=${encodeURIComponent(urlStr)}${q}`;
+        }
+      } catch (_) {}
+      return _m;
+    });
+
     // ── 2. Rewrite all href attributes ───────────────────────────────────────
     const staticExts = [
       '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp',
