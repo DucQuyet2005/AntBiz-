@@ -18,7 +18,8 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
       .limit(limit);
 
     if (platform) {
-      query = query.eq('platform', platform);
+      const dbPlatform = platform === 'threads' ? 'thread' : platform;
+      query = query.eq('platform', dbPlatform);
     }
 
     const { data, error } = await query;
@@ -30,24 +31,37 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     return (data || []).map((post: any) => ({
       id: post.id,
-      platform: post.platform,
+      platform: post.platform === 'thread' ? 'threads' : post.platform,
       externalPostId: post.fb_post_id,
       userId: post.created_by,
     }));
   }
 
   async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
-    let query = this.supabase
+    const dbPlatform = platform === 'threads' ? 'thread' : platform;
+    const baseQuery = this.supabase
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
-      .eq('platform', platform);
+      .eq('platform', dbPlatform);
 
     if (accountId) {
-      query = query.eq('account_id', accountId);
+      // For facebook/instagram, accountId might be in format {page_id}_{post_id}
+      const actualAccountId = accountId.includes('_') ? accountId.split('_')[0] : accountId;
+      const { data, error } = await baseQuery.eq('account_id', actualAccountId).maybeSingle();
+      if (!error && data?.access_token) {
+        return data.access_token;
+      }
     }
 
-    const { data, error } = await query.maybeSingle();
+    // Fallback: get any token for this user and platform
+    const { data, error } = await this.supabase
+      .from('linked_accounts')
+      .select('access_token')
+      .eq('user_id', userId)
+      .eq('platform', dbPlatform)
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       console.error(`[PostPerformanceRepository] Lỗi khi lấy access token cho platform ${platform}:`, error);
