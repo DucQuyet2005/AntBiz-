@@ -24,6 +24,7 @@ import {
   ArrowUpDown
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { InstagramGoldenHoursCard } from "./reports/InstagramGoldenHoursCard";
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -550,6 +551,11 @@ export default function ReportsView() {
                 </div>
 
               </div>
+
+              {/* Instagram Golden Hours Analytics Card */}
+              {(platform === "all" || platform === "instagram") && (
+                <InstagramGoldenHoursCard />
+              )}
 
               {/* Interactions Breakdown Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-zinc-950 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-inner">

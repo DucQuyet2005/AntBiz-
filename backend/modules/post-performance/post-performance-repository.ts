@@ -4,19 +4,24 @@ import type { PostPerformanceRepository, PostToUpdate, PerformanceMetrics } from
 export class SupabasePostPerformanceRepository implements PostPerformanceRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async findRecentPostedPosts(limit: number, daysAgo: number = 30): Promise<PostToUpdate[]> {
+  async findRecentPostedPosts(limit: number, daysAgo: number = 30, platform?: string): Promise<PostToUpdate[]> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
 
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('scheduled_posts')
       .select('id, platform, fb_post_id, created_by')
       .eq('status', 'posted')
-      .eq('platform', 'facebook')
       .not('fb_post_id', 'is', null)
       .gte('posted_at', cutoffDate.toISOString())
       .order('posted_at', { ascending: false })
       .limit(limit);
+
+    if (platform) {
+      query = query.eq('platform', platform);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[PostPerformanceRepository] Lỗi khi truy vấn các bài đã đăng:', error);
@@ -31,16 +36,21 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
     }));
   }
 
-  async findPageAccessToken(userId: string, accountId: string): Promise<string | null> {
-    const { data, error } = await this.supabase
+  async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
+    let query = this.supabase
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
-      .eq('platform', 'facebook')
-      .maybeSingle();
+      .eq('platform', platform);
+
+    if (accountId) {
+      query = query.eq('account_id', accountId);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      console.error('[PostPerformanceRepository] Lỗi khi lấy access token:', error);
+      console.error(`[PostPerformanceRepository] Lỗi khi lấy access token cho platform ${platform}:`, error);
       return null;
     }
 
