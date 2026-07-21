@@ -46,7 +46,15 @@ export const initialCreatorFlowState: CreatorFlowState = {
   isChatSending: false,
   highlightSelections: [],
   isHighlightEditing: false,
-  conversationalStep: 1,
+  displayOptions: {
+    showTitle: true,
+    showContent: true,
+    showImages: true,
+    showAuthor: true,
+    showHashtags: true,
+  },
+  customHashtags: null,
+  customTitle: null,
   scheduleMode: 'now',
   scheduledDateTime: (() => {
     // Default to tomorrow at 09:00
@@ -178,9 +186,29 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
     case 'SET_GENERATING_POST':
       return { ...state, isGeneratingPost: action.payload };
     case 'ADD_CHAT_MESSAGE':
+      if (action.payload.id.startsWith('msg_ai_init') && state.chatMessages.some(m => m.id.startsWith('msg_ai_init'))) {
+        return state;
+      }
       return { ...state, chatMessages: [...state.chatMessages, action.payload] };
     case 'SET_CHAT_SENDING':
       return { ...state, isChatSending: action.payload };
+    case 'RESTORE_CHAT_STATE': {
+      const { messageIndex, postContent } = action.payload;
+      const truncatedMessages = state.chatMessages.slice(0, messageIndex);
+      return {
+        ...state,
+        chatMessages: truncatedMessages,
+        postContent,
+        drafts: state.selectedPlatform ? {
+          ...state.drafts,
+          [state.selectedPlatform]: {
+            ...(state.drafts[state.selectedPlatform] || { content: '', postId: null, generatedPost: null }),
+            content: postContent,
+          }
+        } : state.drafts,
+      };
+    }
+
     case 'ADD_HIGHLIGHT_SELECTION':
       return {
         ...state,
@@ -200,6 +228,18 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       return { ...state, isHighlightEditing: action.payload };
     case 'SET_CONVERSATIONAL_STEP':
       return { ...state, conversationalStep: action.payload };
+    case 'SET_DISPLAY_OPTIONS':
+      return {
+        ...state,
+        displayOptions: {
+          ...state.displayOptions,
+          ...action.payload,
+        },
+      };
+    case 'SET_CUSTOM_HASHTAGS':
+      return { ...state, customHashtags: action.payload };
+    case 'SET_CUSTOM_TITLE':
+      return { ...state, customTitle: action.payload };
     case 'SET_SCHEDULE_MODE':
       return { ...state, scheduleMode: action.payload };
     case 'SET_SCHEDULE_DATE_TIME':
@@ -250,6 +290,7 @@ interface CreatorFlowContextProps {
   regeneratePostContent: (presetId?: string | null) => Promise<void>;
   editHighlighted: (instruction: string) => Promise<void>;
   sendAssistantChat: (message: string) => Promise<void>;
+  restoreChatState: (messageIndex: number, overrideContent?: string) => { userPrompt?: string; quotedText?: string; restoredContent?: string };
   confirmPostSchedule: (mode?: 'now' | 'scheduled') => Promise<{
     success: boolean;
     failed: PlatformType[];
@@ -277,9 +318,16 @@ export function CreatorFlowProvider({
   });
 
   useEffect(() => {
-    if (platforms) dispatch({ type: 'SET_PLATFORMS', payload: platforms });
+    if (platforms) {
+      dispatch({ type: 'SET_PLATFORMS', payload: platforms });
+      const connectedIds = new Set(platforms.filter((p) => p.connected).map((p) => p.id));
+      const validSelected = state.selectedPlatforms.filter((id) => connectedIds.has(id));
+      if (validSelected.length !== state.selectedPlatforms.length) {
+        dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: validSelected });
+      }
+    }
     dispatch({ type: 'SET_LOADING_PLATFORMS', payload: isLoadingPlatforms });
-  }, [platforms, isLoadingPlatforms]);
+  }, [platforms, isLoadingPlatforms, state.selectedPlatforms]);
 
   // 2. Fetch presets
   const { data: presets, isLoading: isLoadingPresets } = useQuery({
@@ -588,12 +636,14 @@ export function CreatorFlowProvider({
 
     try {
       // 1. Add User Message to Chat Log
-      const selectedTexts = state.highlightSelections.map(s => `"${s.text}"`).join(', ');
+      const selectedTexts = state.highlightSelections.map(s => s.text).join('\n---\n');
       const userMsg: ChatMessage = {
         id: `msg_user_${Math.random()}`,
         sender: 'user',
-        text: `[Sửa đoạn: ${selectedTexts}]: ${instruction}`,
+        text: instruction,
+        quotedText: selectedTexts,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        postContentSnapshot: state.postContent,
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
@@ -615,6 +665,7 @@ export function CreatorFlowProvider({
         text: hasReplacement ? `Đoạn viết mới: ${result.generatedText}` : 'Đã xóa đoạn đã chọn thành công.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         modelUsed: 'Gemini 2.5 Flash',
+        postContentSnapshot: result.content,
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
 
@@ -647,6 +698,7 @@ export function CreatorFlowProvider({
       sender: 'user',
       text: message,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      postContentSnapshot: state.postContent,
     };
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
@@ -658,15 +710,56 @@ export function CreatorFlowProvider({
     );
 
     if (response.status === 'success' && response.data) {
-      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: response.data });
+      dispatch({
+        type: 'ADD_CHAT_MESSAGE',
+        payload: {
+          ...response.data,
+          postContentSnapshot: state.postContent,
+        },
+      });
     }
     dispatch({ type: 'SET_CHAT_SENDING', payload: false });
   };
 
-  // Persist every Caption, then publish now or schedule through Quick Publishing.
+  const restoreChatState = (messageIndex: number, overrideContent?: string) => {
+    const targetMsg = state.chatMessages[messageIndex];
+    let restoredContent = overrideContent;
+    if (!restoredContent) {
+      for (let i = messageIndex; i >= 0; i--) {
+        if (state.chatMessages[i]?.postContentSnapshot) {
+          restoredContent = state.chatMessages[i].postContentSnapshot;
+          break;
+        }
+      }
+    }
+    restoredContent = restoredContent ?? state.postContent;
+
+    let quotedText = targetMsg?.quotedText;
+    let userPrompt = targetMsg?.text;
+
+    if (!quotedText && userPrompt?.startsWith('[Sửa đoạn:')) {
+      const match = userPrompt.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+      if (match) {
+        quotedText = match[1];
+        userPrompt = match[2];
+      }
+    }
+
+    dispatch({
+      type: 'RESTORE_CHAT_STATE',
+      payload: { messageIndex, postContent: restoredContent },
+    });
+
+    return {
+      userPrompt: targetMsg?.sender === 'user' ? userPrompt : undefined,
+      quotedText,
+      restoredContent,
+    };
+  };
+
   const confirmPostSchedule = async (
     requestedMode: 'now' | 'scheduled' = state.scheduleMode
-  ): Promise<{ success: boolean; failed: PlatformType[] }> => {
+  ): Promise<{ success: boolean; failed: PlatformType[]; errors?: Record<string, string> }> => {
     const targetPlatforms = state.selectedPlatforms.length > 0
       ? state.selectedPlatforms
       : (state.selectedPlatform ? [state.selectedPlatform] : []);
@@ -684,13 +777,51 @@ export function CreatorFlowProvider({
     const connectedPlatforms = state.platforms
       .filter((platform) => platform.connected)
       .map((platform) => platform.id);
-    const imageUrls = [
+    let imageUrls = [
       ...(state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []),
       ...state.crawledImageUrls.filter(url => url !== state.articleContext?.thumbnail),
     ];
+
+    // Upload any local (blob: or data:) images to Supabase avatars bucket before scheduling
+    if (imageUrls.some(url => url.startsWith('blob:') || url.startsWith('data:'))) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const uploadedUrls = await Promise.all(imageUrls.map(async (url) => {
+            if (url.startsWith('blob:') || url.startsWith('data:')) {
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const ext = blob.type.split('/')[1] || 'png';
+                const path = `${user.id}/post_media_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+                const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
+                if (!error) {
+                  return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+                }
+              } catch (e) {
+                console.error('Failed to upload local image', e);
+              }
+            }
+            return url;
+          }));
+          imageUrls = uploadedUrls;
+        }
+      } catch (e) {
+        console.error('Failed to initialize Supabase client for upload', e);
+      }
+    }
     let successful: PlatformType[] = [];
     let failed: PlatformType[] = [];
+    const errors: Record<string, string> = {};
+    
     const onEvent = (event: QuickPublishingEvent) => {
+      if (event.type === 'platform-schedule-failed' || event.type === 'platform-publish-failed') {
+        const msg = event.error.context?.message as string | undefined;
+        if (msg) errors[event.platform] = msg;
+      }
       if (event.type === 'publish-completed' || event.type === 'schedule-completed') {
         successful = event.successful;
         failed = event.failed;
@@ -720,8 +851,9 @@ export function CreatorFlowProvider({
       return {
         success: failed.length === 0 && successful.length === targetPlatforms.length,
         failed,
+        errors,
       };
-    } catch {
+    } catch (e: any) {
       const failedPlatforms = failed.length > 0 ? failed : targetPlatforms;
       if (failed.length === 0) {
         dispatch({
@@ -729,7 +861,13 @@ export function CreatorFlowProvider({
           payload: { successful, failed: failedPlatforms },
         });
       }
-      return { success: false, failed: failedPlatforms };
+      
+      // Attempt to extract error message if it's a QuickPublishingError thrown synchronously
+      if (e?.code && !errors[failedPlatforms[0]]) {
+        errors[failedPlatforms[0]] = e.context?.message || e.context?.reason || e.message;
+      }
+      
+      return { success: false, failed: failedPlatforms, errors };
     } finally {
       dispatch({ type: 'SET_SCHEDULING', payload: false });
     }
@@ -764,6 +902,7 @@ export function CreatorFlowProvider({
         regeneratePostContent,
         editHighlighted,
         sendAssistantChat,
+        restoreChatState,
         confirmPostSchedule,
         updateScheduledTime,
       }}

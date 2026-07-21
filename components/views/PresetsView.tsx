@@ -26,6 +26,7 @@ import {
   Eye,
   Calendar,
   ArrowRight,
+  Star,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -112,7 +113,7 @@ function PresetCard({
   onEdit: (p: PromptConfigRecord) => void;
   onDelete: (id: string) => void;
   onSelect: (p: PromptConfigRecord) => void;
-  onSetDefault: (preset: PromptConfigRecord) => void;
+  onSetDefault: (preset: PromptConfigRecord) => void | Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -250,17 +251,15 @@ function PresetCard({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {/* Set Default Button */}
-            {!preset.is_default && (
-              <button
-                type="button"
-                onClick={() => onSetDefault(preset)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all cursor-pointer border-0 bg-transparent"
-                title={language === "vi" ? "Đặt làm mặc định" : "Set as default"}
-              >
-                ⭐
-              </button>
-            )}
+            {/* Set/Unset Default Button */}
+            <button
+              type="button"
+              onClick={() => onSetDefault(preset)}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent ${preset.is_default ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'}`}
+              title={preset.is_default ? (language === "vi" ? "Gỡ bỏ mặc định" : "Remove default") : (language === "vi" ? "Đặt làm mặc định" : "Set as default")}
+            >
+              {preset.is_default ? <Star fill="currentColor" size={14} /> : <Star size={14} />}
+            </button>
 
             {/* Kebab menu */}
             {!preset.is_system && (
@@ -1335,7 +1334,7 @@ export default function PresetsView() {
   const fetchPresets = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/prompt-configs");
+      const res = await fetch("/api/prompt-configs", { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         let fetchedPresets: PromptConfigRecord[] = json.data || [];
@@ -1422,6 +1421,8 @@ export default function PresetsView() {
       const res = await fetch(`/api/prompt-configs/${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchPresets();
+      } else {
+        alert(lang === "vi" ? "Lỗi khi xóa" : "Error deleting");
       }
     } catch {
       alert(lang === "vi" ? "Lỗi khi xóa" : "Error deleting");
@@ -1445,14 +1446,13 @@ export default function PresetsView() {
         })));
 
         if (currentUserDefault) {
-          // Unset the user default in DB
           await fetch(`/api/prompt-configs/${currentUserDefault.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ is_default: false }),
           });
         }
-        fetchPresets(true);
+        // fetchPresets(true); // Removed to prevent race condition on rapid clicks
       } else {
         localStorage.removeItem('systemDefaultPreset');
         // Optimistic update for user preset
@@ -1466,14 +1466,14 @@ export default function PresetsView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_default: true }),
         });
-        if (res.ok) {
-          fetchPresets(true);
-        } else {
+        if (!res.ok) {
           // Rollback on fail
+          alert(lang === "vi" ? "Lỗi khi lưu cài đặt" : "Error saving config");
           fetchPresets(true);
         }
       }
-    } catch {
+    } catch (e) {
+      alert("Lỗi: " + e);
       fetchPresets(true);
     }
   };

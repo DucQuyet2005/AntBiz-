@@ -45,7 +45,7 @@ export default function ContentListView({ selectedPlatforms, searchQuery = '', o
         return p;
       }).join(',');
       
-      const url = `/api/scheduled-posts?paginated=true&page=${pageNum}&limit=${limit}&platforms=${platformsParam}&sortOrder=asc`;
+      const url = `/api/scheduled-posts?paginated=true&page=${pageNum}&limit=${limit}&platforms=${platformsParam}&sortOrder=desc`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
@@ -64,7 +64,7 @@ export default function ContentListView({ selectedPlatforms, searchQuery = '', o
                 const existingPostIds = new Set(newData[existingDayIndex].posts.map((p: any) => p.id));
                 const uniqueNewPosts = incDay.posts.filter((p: any) => !existingPostIds.has(p.id));
                 newData[existingDayIndex].posts = [...newData[existingDayIndex].posts, ...uniqueNewPosts].sort(
-                  (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+                  (a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
                 );
               } else {
                 newData.push(incDay);

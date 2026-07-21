@@ -11,7 +11,7 @@ const ANTBIZ_API_ROUTES = new Set([
   'ab-tests', 'admin', 'auth', 'author-profiles', 'calendar', 'captions',
   'cron', 'export-jobs', 'generate-missing', 'landing-config', 'linked-accounts',
   'notifications', 'parse-doc', 'platform-presets', 'presets', 'prompt-configs',
-  'prompts', 'proxy', 'scheduled-posts', 'scrape', 'screenshot', 'search',
+  'prompts', 'proxy', 'reports', 'scheduled-posts', 'scrape', 'screenshot', 'search',
   'stats', 'stt', 'translate', 'users'
 ]);
 
@@ -28,7 +28,7 @@ function isActualAntBizRoute(pathname: string): boolean {
     '/login', '/register', '/forgot-password', '/reset-password',
     '/overview', '/ai-creator', '/archive', '/content-calendar',
     '/faq', '/notifications', '/presets', '/profile', '/prompts',
-    '/search', '/settings', '/admin',
+    '/search', '/settings', '/admin', '/reports',
   ]);
 
   if (ANTBIZ_ROUTES.has(pathname)) return true;

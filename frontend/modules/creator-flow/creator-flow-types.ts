@@ -4,6 +4,14 @@ import { Preset } from '@/lib/services/creator/preset.service';
 import { ChatMessage, GeneratedPost } from '@/lib/services/creator/post.service';
 import { ScheduledPostInfo } from '@/lib/services/creator/schedule.service';
 
+export interface PostDisplayOptions {
+  showTitle: boolean;
+  showContent: boolean;
+  showImages: boolean;
+  showAuthor: boolean;
+  showHashtags: boolean;
+}
+
 export interface CreatorFlowState {
   currentStep: number;
   
@@ -40,6 +48,9 @@ export interface CreatorFlowState {
   highlightSelections: Array<{ id: string; text: string; start: number; end: number }>;
   isHighlightEditing: boolean;
   conversationalStep: number; // For step-by-step assistant questionnaire
+  displayOptions: PostDisplayOptions;
+  customHashtags: string[] | null;
+  customTitle: string | null;
 
   // Drafts for each selected platform
   drafts: Record<string, { content: string; postId: string | null; generatedPost: GeneratedPost | null }>;
@@ -79,11 +90,15 @@ export type CreatorFlowAction =
   | { type: 'SET_GENERATING_POST'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'SET_CHAT_SENDING'; payload: boolean }
+  | { type: 'RESTORE_CHAT_STATE'; payload: { messageIndex: number; postContent: string } }
   | { type: 'ADD_HIGHLIGHT_SELECTION'; payload: { id: string; text: string; start: number; end: number } }
   | { type: 'REMOVE_HIGHLIGHT_SELECTION'; payload: string }
   | { type: 'CLEAR_HIGHLIGHT_SELECTIONS' }
   | { type: 'SET_HIGHLIGHT_EDITING'; payload: boolean }
   | { type: 'SET_CONVERSATIONAL_STEP'; payload: number }
+  | { type: 'SET_DISPLAY_OPTIONS'; payload: Partial<PostDisplayOptions> }
+  | { type: 'SET_CUSTOM_HASHTAGS'; payload: string[] | null }
+  | { type: 'SET_CUSTOM_TITLE'; payload: string | null }
   | { type: 'SET_SCHEDULE_MODE'; payload: 'now' | 'scheduled' }
   | { type: 'SET_SCHEDULE_DATE_TIME'; payload: string }
   | { type: 'SET_TIMELINE'; payload: ScheduledPostInfo[] }

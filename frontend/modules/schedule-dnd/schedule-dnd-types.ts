@@ -6,6 +6,7 @@
 export interface DragOverCell {
   dayIdx: number;
   hour: number;
+  minute?: number;
 }
 
 export interface DragPayload {
