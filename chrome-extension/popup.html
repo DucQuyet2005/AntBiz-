@@ -314,60 +314,37 @@
           <button id="btn-voice-cancel" class="btn btn-secondary">Làm lại</button>
           <button id="btn-voice-confirm" class="btn btn-primary">Xác nhận & Viết bài</button>
         </div>
+      </div>
 
-        <!-- Post History State -->
-        <div id="state-history" class="state-container hidden"
-          style="align-items: stretch; text-align: left; width: 100%;">
-          <h3 class="step-header" style="border-left: 3px solid #4f46e5; padding-left: 8px; margin-bottom: 12px;">Lịch
-            sử bài đăng</h3>
-          <p class="state-description" style="margin-bottom: 16px;">Danh sách 10 bài viết gần đây nhất được đăng hoặc
-            lên lịch từ Extension:</p>
-
-          <!-- Loading spinner for history -->
-          <div id="history-loader" class="history-loader">
-            <div class="loader-sm" style="margin: 20px auto 10px auto;"></div>
-            <p style="text-align: center; color: #6b7280; font-size: 12px; margin-top: 8px;">Đang tải lịch sử...</p>
-          </div>
-
-          <!-- History items list -->
-          <div id="history-list" class="history-list hidden"></div>
-
-          <!-- Empty state -->
-          <div id="history-empty" class="history-empty hidden" style="text-align: center; padding: 40px 10px;">
-            <span style="font-size: 28px;">📭</span>
-            <p style="margin-top: 10px; color: #6b7280; font-size: 13px;">Chưa có bài viết nào được đăng qua Extension.
-            </p>
+      <!-- Post History State -->
+      <div id="state-history" class="state-container hidden"
+        style="align-items: stretch; text-align: left; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 class="step-header" style="border-left: 3px solid #4f46e5; padding-left: 8px; margin: 0;">Lịch sử bài đăng</h3>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <a href="#" id="btn-open-antbiz" title="Mở trang Lưu trữ trên Web"
+              style="font-size: 11.5px; color: #4f46e5; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+              Mở AntBiz
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+            <button id="btn-close-history"
+              style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 0;">✕</button>
           </div>
         </div>
+        <p class="state-description" style="margin-bottom: 16px;">Danh sách 10 bài viết gần đây nhất được đăng hoặc
+          lên lịch từ Extension:</p>
 
-        <!-- History State -->
-        <div id="state-history" class="state-container hidden"
-          style="align-items: stretch; text-align: left; width: 100%;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 class="step-header" style="border-left: 3px solid #8b5cf6; padding-left: 8px; margin: 0;">Lịch sử (Top
-              10)</h3>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <a href="#" id="btn-open-antbiz" title="Mở trang Lưu trữ trên Web"
-                style="font-size: 11.5px; color: #4f46e5; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                Mở AntBiz
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-              <button id="btn-close-history"
-                style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 0;">✕</button>
-            </div>
-          </div>
-
-          <div id="history-list"
-            style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
-            <!-- Items will be injected here -->
-            <div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>
-          </div>
+        <div id="history-list"
+          style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Items will be injected here -->
+          <div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>
         </div>
+      </div>
     </main>
 
     <!-- Footer -->

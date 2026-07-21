@@ -18,6 +18,8 @@ const stateHistory = document.getElementById('state-history');
 const historyLoader = document.getElementById('history-loader');
 const historyList = document.getElementById('history-list');
 const historyEmpty = document.getElementById('history-empty');
+const btnCloseHistory = document.getElementById('btn-close-history');
+const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
 
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
@@ -463,7 +465,10 @@ function initEventListeners() {
   }
 
   function fetchExtensionHistory() {
-    historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
+    if (historyList) {
+      historyList.classList.remove('hidden');
+      historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
+    }
 
     chrome.runtime.sendMessage({ action: 'api_get', endpoint: '/api/scheduled-posts/extension-history' }, (response) => {
       if (chrome.runtime.lastError || !response || response.error) {
