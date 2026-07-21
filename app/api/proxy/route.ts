@@ -407,11 +407,22 @@ export async function GET(request: NextRequest) {
     // The active_proxy_origin cookie and proxy.ts middleware already handle relative requests.
     const fullHeaderInjection = interceptorScript + navigationScript;
 
-    // Insert into <head> — before any other scripts
-    if (/<head[\s>]/i.test(html)) {
-      html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + fullHeaderInjection);
-    } else {
-      html = fullHeaderInjection + html;
+    // Only inject interceptors into full HTML pages, NOT fragments (e.g. AJAX responses)
+    // Injecting into fragments causes the script to run when the fragment is inserted into the DOM,
+    // which triggers false URL_CHANGE events and breaks the iframe.
+    const hasHead = /<head[\s>]/i.test(html);
+    const hasHtml = /<html[\s>]/i.test(html);
+    const hasDoctype = /<!DOCTYPE/i.test(html);
+    const isFullPage = hasHead || hasHtml || hasDoctype;
+
+    if (isFullPage) {
+      if (hasHead) {
+        html = html.replace(/(<head[\s>][^>]*>|<head>)/i, (m: string) => m + fullHeaderInjection);
+      } else if (hasHtml) {
+        html = html.replace(/(<html[\s>][^>]*>|<html>)/i, (m: string) => m + fullHeaderInjection);
+      } else {
+        html = fullHeaderInjection + html;
+      }
     }
 
     const response = new NextResponse(html, {
