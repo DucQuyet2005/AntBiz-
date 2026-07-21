@@ -17,6 +17,8 @@ const FACEBOOK_SCOPES = [
   'instagram_content_publish',
   'business_management',
   'public_profile',
+  'instagram_manage_comments',
+  'instagram_manage_insights',
 ];
 
 export interface FacebookConnectionConfig {
@@ -37,7 +39,7 @@ export class FacebookConnectionAdapter implements FacebookConnectionProvider {
   constructor(
     private readonly fetchImplementation: typeof fetch = fetch,
     private readonly configProvider: ConfigProvider = defaultConfig
-  ) {}
+  ) { }
 
   buildAuthorizationUrl(state: string) {
     const config = this.requireConfig();
