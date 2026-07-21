@@ -78,11 +78,15 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
       const platform = normalizePlatform(record.platform);
       if (platform) connected.set(platform, record);
     }
-    return (['facebook', 'threads', 'instagram'] as PlatformType[]).map((platform) => ({
-      id: platform,
-      name: platform === 'threads' ? 'Threads' : `${platform[0].toUpperCase()}${platform.slice(1)}`,
-      connected: connected.has(platform),
-    }));
+    return (['facebook', 'threads', 'instagram'] as PlatformType[]).map((platform) => {
+      const record = connected.get(platform);
+      return {
+        id: platform,
+        name: platform === 'threads' ? 'Threads' : `${platform[0].toUpperCase()}${platform.slice(1)}`,
+        connected: !!record,
+        accountName: record ? String((record as any).account_name || '') : undefined,
+      };
+    });
   }
 
   async ingestUrl(url: string) {
