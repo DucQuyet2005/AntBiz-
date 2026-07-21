@@ -1434,37 +1434,47 @@ export default function PresetsView() {
 
   const handleSetDefault = async (preset: PromptConfigRecord) => {
     try {
-      if (preset.is_system) {
-        // Find current user default
-        const currentUserDefault = presets.find(p => p.is_default && !p.is_system);
-        
-        // Optimistic update using local storage
-        localStorage.setItem('systemDefaultPreset', preset.id);
-        setPresets(prev => prev.map(p => ({
-          ...p,
-          is_default: p.id === preset.id
-        })));
+      const isCurrentlyDefault = preset.is_default;
 
-        if (currentUserDefault) {
-          await fetch(`/api/prompt-configs/${currentUserDefault.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_default: false }),
-          });
+      if (preset.is_system) {
+        if (isCurrentlyDefault) {
+          // Unset system default
+          localStorage.removeItem('systemDefaultPreset');
+          setPresets(prev => prev.map(p => ({
+            ...p,
+            is_default: p.id === preset.id ? false : p.is_default
+          })));
+        } else {
+          // Find current user default
+          const currentUserDefault = presets.find(p => p.is_default && !p.is_system);
+          
+          // Optimistic update using local storage
+          localStorage.setItem('systemDefaultPreset', preset.id);
+          setPresets(prev => prev.map(p => ({
+            ...p,
+            is_default: p.id === preset.id
+          })));
+
+          if (currentUserDefault) {
+            await fetch(`/api/prompt-configs/${currentUserDefault.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ is_default: false }),
+            });
+          }
         }
-        // fetchPresets(true); // Removed to prevent race condition on rapid clicks
       } else {
         localStorage.removeItem('systemDefaultPreset');
         // Optimistic update for user preset
         setPresets(prev => prev.map(p => ({
           ...p,
-          is_default: p.id === preset.id ? true : false
+          is_default: p.id === preset.id ? !isCurrentlyDefault : false
         })));
         
         const res = await fetch(`/api/prompt-configs/${preset.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ is_default: true }),
+          body: JSON.stringify({ is_default: !isCurrentlyDefault }),
         });
         if (!res.ok) {
           // Rollback on fail
