@@ -10,7 +10,9 @@ const FACEBOOK_AUTH_URL = 'https://www.facebook.com/v19.0/dialog/oauth';
 const FACEBOOK_SCOPES = [
   'pages_show_list',
   'pages_read_engagement',
+  'pages_read_user_content',
   'pages_manage_posts',
+  'read_insights',
   'instagram_basic',
   'instagram_content_publish',
   'business_management',
