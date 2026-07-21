@@ -56,8 +56,11 @@ export class GoldenHoursCalculator {
       const clicks = post.interactions?.clicks || 0;
       const reach = post.interactions?.reach || 1;
 
-      const totalEngagement = likes + comments + shares + clicks;
-      const rate = reach > 0 ? (totalEngagement / reach) * 100 : totalEngagement * 0.1;
+      const saved = post.interactions?.saved || 0;
+
+      // Công thức Tỷ lệ Tương tác (ER) ưu tiên Saved và Shares
+      const weightedEngagement = likes + comments + (saved * 2) + (shares * 1.5) + clicks;
+      const rate = reach > 0 ? (weightedEngagement / reach) * 100 : weightedEngagement * 0.1;
 
       if (grid[key]) {
         grid[key].totalRate += rate;

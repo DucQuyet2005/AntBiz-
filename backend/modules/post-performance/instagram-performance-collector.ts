@@ -20,6 +20,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
     let clicks = 0;
     let reach = 0;
     let impressions = 0;
+    let saved = 0;
 
     // 1. Lấy chỉ số công khai từ Instagram Graph API (like_count, comments_count)
     try {
@@ -55,7 +56,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
             } else if (item.name === 'impressions') {
               impressions = value;
             } else if (item.name === 'saved') {
-              shares += value;
+              saved = value;
             } else if (item.name === 'shares') {
               shares += value;
             }
@@ -79,6 +80,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
       clicks,
       reach,
       impressions,
+      saved,
     };
   }
 

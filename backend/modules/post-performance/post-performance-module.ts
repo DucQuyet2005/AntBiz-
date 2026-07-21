@@ -42,7 +42,7 @@ export class PostPerformanceModule {
     for (const post of posts) {
       attempted += 1;
       try {
-        const token = await this.repository.findPageAccessToken(post.userId, platform, post.externalPostId);
+        const token = await this.repository.findPageAccessToken(post.userId, platform);
         if (!token) {
           throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
         }

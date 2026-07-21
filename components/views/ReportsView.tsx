@@ -21,7 +21,8 @@ import {
   Facebook,
   Instagram,
   ChevronDown,
-  ArrowUpDown
+  ArrowUpDown,
+  RefreshCw
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { InstagramGoldenHoursCard } from "./reports/InstagramGoldenHoursCard";
@@ -121,6 +122,7 @@ export default function ReportsView() {
   
   const [loading, setLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   
   // Sort state for Top Posts table
@@ -166,6 +168,25 @@ export default function ReportsView() {
       loadStats();
     }
   }, [timeframe, platform, startDate, endDate]);
+
+  const handleSync = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch(`/api/reports/sync?platform=${platform}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Lỗi đồng bộ dữ liệu");
+      } else {
+        alert(data.message || "Đồng bộ thành công!");
+        loadStats(); // Tải lại biểu đồ
+      }
+    } catch (err) {
+      console.error("Lỗi đồng bộ:", err);
+      alert("Đã xảy ra lỗi khi đồng bộ dữ liệu.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleExport = async () => {
     try {
@@ -315,6 +336,19 @@ export default function ReportsView() {
               className="bg-transparent text-sm focus:outline-none border-none outline-none w-[160px] font-medium"
             />
           </div>
+
+          <button
+            onClick={handleSync}
+            disabled={isSyncing || loading}
+            className="flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 cursor-pointer text-sm"
+          >
+            {isSyncing ? (
+              <RefreshCw className="animate-spin" size={16} />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            Đồng bộ ngay
+          </button>
 
           <button
             onClick={handleExport}
