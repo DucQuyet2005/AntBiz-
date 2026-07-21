@@ -18,7 +18,8 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
       .limit(limit);
 
     if (platform) {
-      query = query.eq('platform', platform);
+      const dbPlatform = platform === 'threads' ? 'thread' : platform;
+      query = query.eq('platform', dbPlatform);
     }
 
     const { data, error } = await query;
@@ -30,18 +31,19 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     return (data || []).map((post: any) => ({
       id: post.id,
-      platform: post.platform,
+      platform: post.platform === 'thread' ? 'threads' : post.platform,
       externalPostId: post.fb_post_id,
       userId: post.created_by,
     }));
   }
 
   async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
+    const dbPlatform = platform === 'threads' ? 'thread' : platform;
     const baseQuery = this.supabase
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
-      .eq('platform', platform);
+      .eq('platform', dbPlatform);
 
     if (accountId) {
       // For facebook/instagram, accountId might be in format {page_id}_{post_id}
@@ -57,7 +59,7 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
       .from('linked_accounts')
       .select('access_token')
       .eq('user_id', userId)
-      .eq('platform', platform)
+      .eq('platform', dbPlatform)
       .limit(1)
       .maybeSingle();
 
