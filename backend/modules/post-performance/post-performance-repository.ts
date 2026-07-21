@@ -10,9 +10,8 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     let query = this.supabase
       .from('scheduled_posts')
-      .select('id, platform, fb_post_id, created_by')
+      .select('id, platform, fb_post_id, threads_post_id, instagram_media_id, created_by')
       .eq('status', 'posted')
-      .not('fb_post_id', 'is', null)
       .gte('posted_at', cutoffDate.toISOString())
       .order('posted_at', { ascending: false })
       .limit(limit);
@@ -20,6 +19,13 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
     if (platform) {
       const dbPlatform = platform === 'threads' ? 'thread' : platform;
       query = query.eq('platform', dbPlatform);
+      if (platform === 'threads') {
+        query = query.not('threads_post_id', 'is', null);
+      } else if (platform === 'instagram') {
+        query = query.not('instagram_media_id', 'is', null);
+      } else {
+        query = query.not('fb_post_id', 'is', null);
+      }
     }
 
     const { data, error } = await query;
@@ -29,12 +35,21 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
       return [];
     }
 
-    return (data || []).map((post: any) => ({
-      id: post.id,
-      platform: post.platform === 'thread' ? 'threads' : post.platform,
-      externalPostId: post.fb_post_id,
-      userId: post.created_by,
-    }));
+    return (data || []).map((post: any) => {
+      let externalPostId = post.fb_post_id;
+      if (post.platform === 'thread') {
+        externalPostId = post.threads_post_id;
+      } else if (post.platform === 'instagram') {
+        externalPostId = post.instagram_media_id;
+      }
+
+      return {
+        id: post.id,
+        platform: post.platform === 'thread' ? 'threads' : post.platform,
+        externalPostId: externalPostId || '',
+        userId: post.created_by,
+      };
+    }).filter(post => post.externalPostId !== '');
   }
 
   async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
