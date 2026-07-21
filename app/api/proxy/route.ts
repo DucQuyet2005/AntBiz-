@@ -327,57 +327,85 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ── 2. Rewrite all href attributes ───────────────────────────────────────
-    const staticExts = [
-      '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp',
-      '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map',
-    ];
-
-    html = html.replace(/(\bhref\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, href) => {
-      if (href.includes('/api/proxy?')) return `${attr}${q}${href}${q}`;
-      if (
-        href.startsWith('#') ||
-        href.startsWith('mailto:') ||
-        href.startsWith('tel:') ||
-        href.startsWith('javascript:')
-      ) {
-        return `${attr}${q}${href}${q}`;
-      }
-
-      let absolute: string;
-      try {
-        absolute = new URL(href, targetUrl).href;
-      } catch {
-        return `${attr}${q}${href}${q}`;
-      }
-
-      const isStatic = staticExts.some((ext) => absolute.split('?')[0].endsWith(ext));
-      if (isStatic) return `${attr}${q}${absolute}${q}`;
-
-      const parsed = new URL(absolute);
-      const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
-        (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-      );
-      if (isSameAllowedDomain) {
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
-      }
-
-      return `${attr}${q}${absolute}${q}`;
-    });
-
-    // ── 3. Remove framing restrictions ───────────────────────────────
+    // ── 2. Remove framing restrictions ───────────────────────────────
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // Removed script stripping:
-    // Stripping scripts breaks Next.js App Router streaming (Gocnhinmoi) which relies on inline scripts to swap templates.
-    // It also breaks Dantri's lazy loading for images. 
-    // The history API spoofing injected below is sufficient to prevent SPA router 404 errors.
+    // ── 3. Inject navigation interceptor into <head> BEFORE any JS ───────────
 
-    // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
+    const interceptorScript = `
+<script>
+(function() {
+  var TARGET = ${JSON.stringify(targetUrl)};
+  var ALLOWED = ${JSON.stringify(ALLOWED_HOSTNAMES)};
+  
+  // ── 1. Fix SPA Routers (Dantri) ──
+  // SPA routers read window.location.pathname to determine the page to render.
+  try {
+    var _parsedTarget = new URL(TARGET);
+    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
+    if (window.location.pathname !== _parsedTarget.pathname) {
+      window.history.replaceState(null, '', window.location.origin + _targetPath);
+    }
+  } catch(_e) {}
 
-    const baseTag = `<base href="${targetOrigin}/">`;
-    const fullHeaderInjection = baseTag + interceptorScript;
+  // ── 2. Intercept Absolute Clicks ──
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (a && a.href) {
+      try {
+        var u = new URL(a.href);
+        var isAllowed = ALLOWED.some(function(h) { return u.hostname === h || u.hostname.endsWith('.' + h); });
+        // If it's an allowed absolute URL, route it through proxy
+        if (isAllowed && u.origin !== window.location.origin) {
+          e.preventDefault();
+          window.location.href = '/api/proxy?url=' + encodeURIComponent(a.href);
+        }
+      } catch(ex) {}
+    }
+  }, true);
+
+  // ── 3. Intercept Fetch for Next.js Data ──
+  // Intercept relative fetches (like /_next/data/...) to ensure they go through proxy middleware
+  // We rewrite them to the absolute proxy URL directly to bypass middleware's ignore rules
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+    if (url && typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+      try {
+        var _parsedTarget2 = new URL(TARGET);
+        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget2.origin + url);
+        if (typeof input === 'string') {
+          input = url;
+        } else {
+          input = new Request(url, init);
+        }
+      } catch(e) {}
+    }
+    return _fetch.call(window, input, init);
+  };
+
+  // ── 4. Intercept XMLHttpRequest ──
+  var _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+      try {
+        var _parsedTarget3 = new URL(TARGET);
+        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget3.origin + url);
+      } catch(e) {}
+    }
+    var args = Array.prototype.slice.call(arguments);
+    args[1] = url;
+    return _open.apply(this, args);
+  };
+})();
+</script>
+`;
+
+    // Do NOT inject <base href>. It breaks client-side routing and lazy-loading
+    // because JS resolves paths to the real origin instead of the proxy.
+    // The active_proxy_origin cookie and proxy.ts middleware already handle relative requests.
+    const fullHeaderInjection = interceptorScript;
 
     // Insert into <head> — before any other scripts
     if (/<head[\s>]/i.test(html)) {
