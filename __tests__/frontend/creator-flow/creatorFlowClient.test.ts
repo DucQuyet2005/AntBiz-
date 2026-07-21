@@ -31,7 +31,7 @@ describe('BrowserCreatorFlowClient', () => {
     }));
   });
 
-  it('uploads audio to speech processing and prefers corrected transcript', async () => {
+  it('uploads audio to speech processing and prefers raw transcript', async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       transcript: 'Raw transcript',
       rewritten_post: 'Corrected transcript',
@@ -40,7 +40,7 @@ describe('BrowserCreatorFlowClient', () => {
     const file = new File(['audio'], 'interview.mp3', { type: 'audio/mpeg' });
 
     await expect(new BrowserCreatorFlowClient(request).processSpeech(file)).resolves.toEqual({
-      text: 'Corrected transcript',
+      text: 'Raw transcript',
       title: 'Generated title',
     });
     const [url, init] = request.mock.calls[0];

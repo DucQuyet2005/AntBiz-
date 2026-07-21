@@ -2,7 +2,7 @@ import { SpeechProcessingError } from './speech-processing-errors';
 import type { SpeechTranscriber } from './speech-processing-types';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
-const GROQ_STT_MODEL = 'whisper-large-v3';
+const GROQ_STT_MODEL = 'whisper-large-v3-turbo';
 
 type ApiKeyProvider = () => string | undefined;
 
@@ -27,7 +27,6 @@ export class GroqWhisperAdapter implements SpeechTranscriber {
     body.append('model', GROQ_STT_MODEL);
     body.append('language', 'vi');
     body.append('response_format', 'text');
-    body.append('prompt', 'Chào bạn, đây là bản ghi âm giọng nói tiếng Việt tự nhiên nói về ý tưởng kinh doanh, tin tức xã hội, marketing, hoặc công nghệ. Hãy chuyển đổi âm thanh này thành văn bản tiếng Việt chính xác từng từ, viết hoa đúng chuẩn, tự động ngắt câu bằng dấu chấm, dấu phẩy phù hợp, và sửa các lỗi chính tả cơ bản.');
 
     let response: Response;
     try {
