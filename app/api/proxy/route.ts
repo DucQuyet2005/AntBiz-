@@ -286,44 +286,45 @@ export async function GET(request: NextRequest) {
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
     
-    html = html.replace(/(\bsrcset\s*=\s*)(['"])([^'"]+)\2/g, (_m, attr, q, srcset) => {
-      const rewritten = srcset.replace(
-        /(^|,\s*)(\/[^\s,]+)/g,
-        (_s: string, sep: string, p: string) => {
-          if (needsImageProxy) {
-            return `${sep}/api/proxy?url=${encodeURIComponent(targetOrigin + p)}`;
-          }
-          return `${sep}${targetOrigin}${p}`;
-        },
-      );
-      return `${attr}${q}${rewritten}${q}`;
-    });
 
-    // 1.5 Rewrite absolute src / data-src / data-original for images to proxy (Dantri hotlink protection)
+    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri
     if (needsImageProxy) {
-      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])(https?:\/\/[^'"]+)\2/gi, (_m, attr, q, urlStr) => {
-        if (urlStr.includes('/api/proxy?')) return _m; // Already proxied
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
+        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
+        if (urlStr.includes('/api/proxy?')) return _m;
+
         try {
-          const parsed = new URL(urlStr);
-          const isSameAllowedDomain = ALLOWED_HOSTNAMES.some(
-            (h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h)
-          );
-          if (isSameAllowedDomain) {
-            const lowerPath = parsed.pathname.split('?')[0].toLowerCase();
-            const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
-            if (isImage) {
-              return `${attr}${q}/api/proxy?url=${encodeURIComponent(urlStr)}${q}`;
-            }
+          const absolute = new URL(urlStr, targetUrl).href;
+          const u = new URL(absolute);
+          if (u.hostname.includes('dantri.com.vn')) {
+            return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
           }
-        } catch (_) {}
+          return `${attr}${q}${absolute}${q}`;
+        } catch(e) {}
         return _m;
       });
-    }
 
-    // 1.6 Rewrite relative data-src / data-original (lazy-loaded images, used by Dantri)
-    if (needsImageProxy) {
-      html = html.replace(/(\b(?:data-src|data-original)\s*=\s*)(['"])\/([^'"]*)\2/gi, (_m, attr, q, path) => {
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+      // Rewrite srcset and data-srcset
+      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, srcset) => {
+        const rewritten = srcset.replace(
+          /(^|,\s*)([^\s,]+)/g,
+          (_s: string, sep: string, urlStr: string) => {
+            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
+              return _s;
+            }
+            try {
+              const absolute = new URL(urlStr, targetUrl).href;
+              const u = new URL(absolute);
+              if (u.hostname.includes('dantri.com.vn')) {
+                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
+              }
+              return `${sep}${absolute}`;
+            } catch(e) {
+              return _s;
+            }
+          }
+        );
+        return `${attr}${q}${rewritten}${q}`;
       });
     }
 
