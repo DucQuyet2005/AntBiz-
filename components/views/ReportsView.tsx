@@ -134,18 +134,23 @@ export default function ReportsView() {
   // Load User Info for default reporter name and role
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Marketer";
-        setReporterName(fullName);
+      try {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        if (user) {
+          const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Marketer";
+          setReporterName(fullName);
 
-        const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-        if (profile) {
-          setUserRole(profile.role);
-          if (profile.role === 'marketer_content') {
-            setScope('personal');
+          const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+          if (profile) {
+            setUserRole(profile.role);
+            if (profile.role === 'marketer_content') {
+              setScope('personal');
+            }
           }
         }
+      } catch (error) {
+        console.warn("[ReportsView] Failed to fetch user from Supabase:", error);
       }
     };
     fetchUser();

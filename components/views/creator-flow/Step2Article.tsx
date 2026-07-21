@@ -834,14 +834,14 @@ export default function Step2Article({
               <h3 className="font-bold text-sm text-text truncate">Góc Nhìn Mới</h3>
             </div>
             <p className="text-xs text-text-muted leading-relaxed">
-              Tin tức, phân tích và góc nhìn đa chiều
+              {t('creator.step2.gocNhinMoiDesc')}
             </p>
           </div>
 
           {crawlStatus === 'crawling' && sourceType === 'gocnhinmoi' && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-[24px]">
               <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-              <span className="text-xs font-bold text-primary">Đang crawl dữ liệu...</span>
+              <span className="text-xs font-bold text-primary">{t('creator.step2.crawlingData')}</span>
             </div>
           )}
         </div>
@@ -880,14 +880,14 @@ export default function Step2Article({
               <h3 className="font-bold text-sm text-text truncate">Tuổi Trẻ</h3>
             </div>
             <p className="text-xs text-text-muted leading-relaxed">
-              Tin nhanh, thời sự, xã hội
+              {t('creator.step2.tuoiTreDesc')}
             </p>
           </div>
 
           {crawlStatus === 'crawling' && sourceType === 'tuoitre' && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-[24px]">
               <Loader2 className="w-8 h-8 animate-spin text-[#E32119] mb-2" />
-              <span className="text-xs font-bold text-[#E32119]">Đang crawl dữ liệu...</span>
+              <span className="text-xs font-bold text-[#E32119]">{t('creator.step2.crawlingData')}</span>
             </div>
           )}
         </div>
@@ -926,14 +926,14 @@ export default function Step2Article({
               <h3 className="font-bold text-sm text-text truncate">Dân Trí</h3>
             </div>
             <p className="text-xs text-text-muted leading-relaxed">
-              Tin tức tổng hợp, đời sống, kinh tế
+              {t('creator.step2.danTriDesc')}
             </p>
           </div>
 
           {crawlStatus === 'crawling' && sourceType === 'dantri' && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-[24px]">
               <Loader2 className="w-8 h-8 animate-spin text-[#008953] mb-2" />
-              <span className="text-xs font-bold text-[#008953]">Đang crawl dữ liệu...</span>
+              <span className="text-xs font-bold text-[#008953]">{t('creator.step2.crawlingData')}</span>
             </div>
           )}
         </div>
@@ -943,14 +943,14 @@ export default function Step2Article({
       {/* File Upload Area */}
       <div ref={uploadSectionRef} className="bg-white dark:bg-zinc-900 rounded-[24px] p-6 border border-gray-200 dark:border-zinc-800 shadow-sm font-sans mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-text">Hoặc tải lên tệp tin của bạn</h2>
+          <h2 className="text-sm font-bold text-text">{t('creator.step2.uploadSectionTitle')}</h2>
           <button
             type="button"
             onClick={handleResetAllFields}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800/50 rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Tạo lại</span>
+            <span>{t('creator.buttons.regenerate')}</span>
           </button>
         </div>
         
@@ -982,14 +982,14 @@ export default function Step2Article({
               {isUploading ? (
                 <div className="flex flex-col items-center">
                   <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-2" />
-                  <span className="text-xs font-bold text-text">Đang xử lý và lưu nguồn...</span>
+                  <span className="text-xs font-bold text-text">{t('common.loading')}</span>
                 </div>
               ) : (
                 <>
                   <UploadCloud className="w-10 h-10 text-amber-500 mb-3" />
-                  <h4 className="text-xs font-bold text-text mb-1">Kéo thả tệp vào đây hoặc Duyệt tìm</h4>
+                  <h4 className="text-xs font-bold text-text mb-1">{t('creator.step2.uploadDropzoneTitle')}</h4>
                   <p className="text-[10px] text-text-muted text-center max-w-[280px] leading-relaxed">
-                    Hỗ trợ Hình ảnh (PNG, JPG, JPEG), Audio (MP3, M4A, WAV, OGG, WebM) hoặc Tài liệu (PDF, DOCX, TXT)
+                    {t('creator.step2.uploadDropzoneDesc')}
                   </p>
                 </>
               )}
@@ -1007,10 +1007,10 @@ export default function Step2Article({
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text">
-                    {isRecording ? `Đang ghi âm... (${formatDuration(recordingDuration)})` : 'Ghi âm trực tiếp'}
+                    {isRecording ? t('creator.step2.recordingProgress', { time: formatDuration(recordingDuration) }) : t('creator.step2.directRecordingTitle')}
                   </p>
                   <p className="text-[10px] text-text-muted">
-                    {isRecording ? 'Bấm dừng để nói và chuyển thành bài viết' : 'Bấm nút để nói và chuyển thành bài viết'}
+                    {isRecording ? t('creator.step2.recordingActiveDesc') : t('creator.step2.recordingDesc')}
                   </p>
                 </div>
               </div>
@@ -1027,12 +1027,12 @@ export default function Step2Article({
                 {isRecording ? (
                   <>
                     <Square className="w-3.5 h-3.5 fill-white" />
-                    <span>Dừng</span>
+                    <span>{t('creator.step2.stopRecording')}</span>
                   </>
                 ) : (
                   <>
                     <Mic className="w-3.5 h-3.5" />
-                    <span>Bắt đầu</span>
+                    <span>{t('creator.step2.startRecording')}</span>
                   </>
                 )}
               </button>
@@ -1127,7 +1127,7 @@ export default function Step2Article({
           {/* Right Column: Uploaded Files Status & Manual Input Always Visible */}
           <div className="flex flex-col h-full min-h-[350px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-zinc-800/60 pt-6 md:pt-0 md:pl-6 justify-between">
             <div className="flex-grow flex flex-col min-h-0">
-              <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Trạng thái tệp tải lên</h4>
+              <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">{t('creator.step2.uploadStatusTitle')}</h4>
               
               {/* Audio and Document Tabs */}
               <div className="flex border-b border-gray-200 dark:border-zinc-800/60 mb-4 flex-shrink-0">
@@ -1142,7 +1142,7 @@ export default function Step2Article({
                         : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
-                    {tab === 'audio' ? 'Audio' : 'Tài liệu'}
+                    {tab === 'audio' ? t('creator.step2.tabAudio') : t('creator.step2.tabDocument')}
                   </button>
                 ))}
               </div>
@@ -1151,7 +1151,7 @@ export default function Step2Article({
               <div className="flex-grow overflow-y-auto pr-1 no-scrollbar max-h-[120px] mb-4">
                 {uploadedFiles.filter(f => f.type === activeFileTab).length === 0 ? (
                   <div className="text-[11px] text-text-muted py-6 text-center border border-dashed border-gray-300 dark:border-zinc-650 rounded-xl bg-gray-55 dark:bg-zinc-950/40 flex items-center justify-center min-h-[80px]">
-                    Chưa có {activeFileTab === 'audio' ? 'tệp âm thanh' : 'tài liệu'} nào
+                    {activeFileTab === 'audio' ? t('creator.step2.noAudioText') : t('creator.step2.noDocText')}
                   </div>
                 ) : (
                   <div className="space-y-2 pr-1">
@@ -1201,7 +1201,7 @@ export default function Step2Article({
                               </div>
                               <div className="min-w-0">
                                 <p className="text-[11px] font-bold text-text truncate">{file.name}</p>
-                                <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
+                                <p className="text-[9px] text-text-muted mt-0.5">{file.size} • OK</p>
                               </div>
                             </div>
                             
@@ -1256,12 +1256,12 @@ export default function Step2Article({
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Tiêu đề bài viết gốc</label>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step2.manualTitleLabel')}</label>
                     <span className="text-[10px] text-text-muted font-medium">{state.manualTitle.length}/120</span>
                   </div>
                   <input
                     type="text"
-                    placeholder="Nhập tiêu đề bài viết gốc..."
+                    placeholder={t('creator.step2.manualTitlePlaceholder')}
                     value={state.manualTitle}
                     maxLength={120}
                     disabled={isUploading}
@@ -1271,11 +1271,11 @@ export default function Step2Article({
                 </div>
                 <div className="flex-grow flex flex-col min-h-[180px]">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">Nội dung bài viết gốc</label>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step2.manualContentLabel')}</label>
                     <span className="text-[10px] text-text-muted font-medium">{state.manualContent.length}/5000</span>
                   </div>
                   <textarea
-                    placeholder="Nhập hoặc dán nội dung bài viết gốc của bạn vào đây..."
+                    placeholder={t('creator.step2.manualContentPlaceholder')}
                     value={state.manualContent}
                     maxLength={5000}
                     rows={6}
@@ -1297,7 +1297,7 @@ export default function Step2Article({
           <Info className="w-4 h-4" />
         </div>
         <p className="leading-relaxed">
-          <span className="font-bold text-blue-600 dark:text-blue-400">💡 Mẹo nhỏ:</span> Nội dung càng chi tiết, AI càng tạo ra bài viết chất lượng và phù hợp hơn.
+          {t('creator.step2.tipText')}
         </p>
       </div>
 

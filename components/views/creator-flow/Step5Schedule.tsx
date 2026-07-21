@@ -8,6 +8,7 @@ import {
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
 import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 13 }: { className?: string; size?: number }) => (
@@ -105,16 +106,17 @@ export function ChannelSummary({
   scheduleTimeText: string;
 }) {
   return (
-    <div className="bg-gray-50/70 dark:bg-zinc-800/40 border border-gray-200 dark:border-zinc-800/60 rounded-xl p-2.5 flex items-center justify-between text-xs select-none">
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 flex items-center justify-center shadow-2xs shrink-0">
+    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-xl p-3 flex items-center justify-between shadow-2xs">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-primary flex items-center justify-center shrink-0">
           {getPlatformIcon(platform)}
         </div>
-        <span className="font-bold text-text capitalize text-xs">{channelName}</span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-text truncate">{channelName}</p>
+          <p className="text-[10px] text-text-muted mt-0.5 truncate">{scheduleTimeText}</p>
+        </div>
       </div>
-      <span className="text-text-muted font-medium text-[10px]">
-        {scheduleTimeText}
-      </span>
+      <MoreVertical className="w-4 h-4 text-text-muted shrink-0" />
     </div>
   );
 }
@@ -139,8 +141,9 @@ export function PublishingSettings({
   onMinuteSelect: (minuteStr: string) => void;
   onReportToggleChange: () => void;
 }) {
+  const { t } = useLanguage();
   const formattedDate = dateValue ? dateValue.split('-').reverse().join('/') : '22/07/2026';
-  const scheduleTimeText = `${timeValue || '09:00'} ngày ${formattedDate}`;
+  const scheduleTimeText = `${timeValue || '09:00'} ${formattedDate}`;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 font-sans select-none">
@@ -149,13 +152,13 @@ export function PublishingSettings({
         <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-primary flex items-center justify-center shrink-0">
           <Settings className="w-3.5 h-3.5" />
         </div>
-        <h3 className="text-xs font-extrabold text-text tracking-wide uppercase">CÀI ĐẶT ĐĂNG BÀI</h3>
+        <h3 className="text-xs font-extrabold text-text tracking-wide uppercase">{t('creator.step5.settingsTitle')}</h3>
       </div>
 
       <div className="space-y-3">
         {/* NGÀY ĐĂNG Input */}
         <div className="space-y-1">
-          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">NGÀY ĐĂNG</label>
+          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.dateLabel')}</label>
           <div className="relative">
             <input
               type="date"
@@ -169,7 +172,7 @@ export function PublishingSettings({
 
         {/* GIỜ ĐĂNG Input & Quick Minute Selectors */}
         <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">GIỜ & PHÚT ĐĂNG BÀI (0, 15, 30, 45)</label>
+          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.timeLabel')}</label>
           <div className="relative">
             <input
               type="time"
@@ -209,7 +212,7 @@ export function PublishingSettings({
 
       {/* BÁO CÁO SAU ĐĂNG BÀI Toggle */}
       <div className="flex items-center justify-between py-0.5">
-        <span className="text-xs font-bold text-text">Báo cáo sau đăng bài</span>
+        <span className="text-xs font-bold text-text">{t('creator.step5.postReportLabel')}</span>
         <button
           type="button"
           onClick={onReportToggleChange}
@@ -230,7 +233,7 @@ export function PublishingSettings({
 
       {/* KÊNH XUẤT BẢN Summary Card */}
       <div className="space-y-1.5">
-        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">KÊNH XUẤT BẢN</label>
+        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.channelLabel')}</label>
         <ChannelSummary
           platform={platform}
           channelName={platform === 'facebook' ? 'Facebook' : platform}
@@ -271,6 +274,7 @@ export function WeeklyTimeline({
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   now: Date;
 }) {
+  const { t } = useLanguage();
   const [hoveredSubSlot, setHoveredSubSlot] = useState<{ dayIdx: number; hour: number; minute: number } | null>(null);
 
   // Auto-scroll timeline container to active hour when initialized or changed
@@ -289,7 +293,7 @@ export function WeeklyTimeline({
           <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-primary flex items-center justify-center shrink-0">
             <Calendar className="w-3.5 h-3.5" />
           </div>
-          <h3 className="text-xs font-extrabold text-primary tracking-wider uppercase">TIMELINE TUẦN</h3>
+          <h3 className="text-xs font-extrabold text-primary tracking-wider uppercase">{t('creator.step5.timelineTitle')}</h3>
         </div>
 
         {/* Segmented Control */}
@@ -305,7 +309,7 @@ export function WeeklyTimeline({
                   : 'text-text-muted hover:text-text'
               }`}
             >
-              {w === 'w1' ? 'Tuần 1' : w === 'w2' ? 'Tuần 2' : 'Tuần 3'}
+              {w === 'w1' ? t('creator.step5.week1') : w === 'w2' ? t('creator.step5.week2') : t('creator.step5.week3')}
             </button>
           ))}
         </div>
@@ -317,7 +321,7 @@ export function WeeklyTimeline({
         {/* Days Header Row with Fixed narrow 'Giờ' column */}
         <div className="flex border-b border-gray-200 dark:border-zinc-800/60 bg-gray-50/50 dark:bg-zinc-900/50 text-center">
           <div className="w-14 shrink-0 py-2.5 text-[11px] font-bold text-text-muted border-r border-gray-200 dark:border-zinc-800/60 flex items-center justify-center">
-            Giờ
+            {t('creator.step5.hourColumnHeader')}
           </div>
           <div className="grid grid-cols-7 flex-1">
             {days.map((day) => {

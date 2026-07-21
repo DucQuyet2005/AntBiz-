@@ -1490,10 +1490,10 @@ export default function PresetsView() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">
-              Văn phong
+              {t('presetsPage.title')}
             </h1>
             <p className="text-xs text-text-muted mt-0.5 font-medium">
-              Thư viện mẫu nội dung định hướng cách AI viết bài cho từng chiến dịch
+              {t('presetsPage.subtitle')}
             </p>
           </div>
         </div>
@@ -1504,11 +1504,9 @@ export default function PresetsView() {
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-extrabold transition-all active:scale-95 cursor-pointer border-0 shadow-md shadow-primary/20 shrink-0"
         >
           <Plus size={15} className="stroke-[3]" />
-          <span>Tạo Văn phong mới</span>
+          <span>{t('presetsPage.createBtn')}</span>
         </button>
       </div>
-
-
 
       {/* 3. Toolbar: Tabs (Left) & Category Dropdown + Search (Right) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs">
@@ -1523,7 +1521,7 @@ export default function PresetsView() {
                 : "text-text-muted hover:text-text"
             }`}
           >
-            Tất cả
+            {t('presetsPage.tabs.all')}
           </button>
           <button
             type="button"
@@ -1534,7 +1532,7 @@ export default function PresetsView() {
                 : "text-text-muted hover:text-text"
             }`}
           >
-            <span>Văn phong của tôi</span>
+            <span>{t('presetsPage.tabs.mine')}</span>
             <span className="px-1.5 py-0.2 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-primary text-[10px]">
               {myPresetsCount}
             </span>
@@ -1548,7 +1546,7 @@ export default function PresetsView() {
                 : "text-text-muted hover:text-text"
             }`}
           >
-            <span>Thư viện mẫu</span>
+            <span>{t('presetsPage.tabs.system')}</span>
             <span className="px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-zinc-800 text-text-muted text-[10px]">
               {systemPresetsCount}
             </span>
@@ -1580,7 +1578,7 @@ export default function PresetsView() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 Tìm văn phong..."
+              placeholder={t('presetsPage.searchPlaceholder')}
               className="w-full h-9 pl-9 pr-8 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-950 text-xs font-semibold text-text outline-none focus:border-primary transition-all"
             />
             {search && (
@@ -1612,17 +1610,17 @@ export default function PresetsView() {
             <Sparkles size={24} />
           </div>
           <h3 className="text-base font-extrabold text-text mb-1">
-            Không tìm thấy văn phong phù hợp
+            {t('presetsPage.empty.noResults')}
           </h3>
           <p className="text-xs text-text-muted max-w-xs mb-4">
-            Thử thay đổi từ khóa hoặc bộ lọc.
+            {t('presetsPage.empty.tryChangingSearch')}
           </p>
           <button
             type="button"
             onClick={handleClearFilters}
             className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-text hover:bg-gray-200 dark:hover:bg-zinc-700 text-xs font-extrabold transition-all cursor-pointer border-0"
           >
-            Xóa bộ lọc
+            {t('common.cancel')}
           </button>
         </motion.div>
       ) : (
@@ -1647,10 +1645,11 @@ export default function PresetsView() {
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
               <div className="text-xs font-semibold text-text-muted">
-                {lang === 'vi'
-                  ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, displayed.length)} trong tổng số ${displayed.length} văn phong`
-                  : `Showing ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, displayed.length)} of ${displayed.length} styles`
-                }
+                {t('presetsPage.pagination.showing', {
+                  from: Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length),
+                  to: Math.min(currentPage * ITEMS_PER_PAGE, displayed.length),
+                  total: displayed.length
+                })}
               </div>
               <div className="flex items-center gap-2">
                 <button

@@ -46,7 +46,15 @@ export const initialCreatorFlowState: CreatorFlowState = {
   isChatSending: false,
   highlightSelections: [],
   isHighlightEditing: false,
-  conversationalStep: 1,
+  displayOptions: {
+    showTitle: true,
+    showContent: true,
+    showImages: true,
+    showAuthor: true,
+    showHashtags: true,
+  },
+  customHashtags: null,
+  customTitle: null,
   scheduleMode: 'now',
   scheduledDateTime: (() => {
     // Default to tomorrow at 09:00
@@ -220,6 +228,18 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       return { ...state, isHighlightEditing: action.payload };
     case 'SET_CONVERSATIONAL_STEP':
       return { ...state, conversationalStep: action.payload };
+    case 'SET_DISPLAY_OPTIONS':
+      return {
+        ...state,
+        displayOptions: {
+          ...state.displayOptions,
+          ...action.payload,
+        },
+      };
+    case 'SET_CUSTOM_HASHTAGS':
+      return { ...state, customHashtags: action.payload };
+    case 'SET_CUSTOM_TITLE':
+      return { ...state, customTitle: action.payload };
     case 'SET_SCHEDULE_MODE':
       return { ...state, scheduleMode: action.payload };
     case 'SET_SCHEDULE_DATE_TIME':
