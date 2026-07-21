@@ -48,7 +48,7 @@ export default function Step1Platform({
     {
       id: 'facebook' as PlatformType,
       name: 'Facebook',
-      description: 'Trang cá nhân hoặc Fanpage doanh nghiệp',
+      description: t('creator.step1.fbDesc'),
       icon: Facebook,
       colorClass: 'text-[#1877F2]',
       bgClass: 'bg-[#1877F2]/10',
@@ -56,7 +56,7 @@ export default function Step1Platform({
     {
       id: 'threads' as PlatformType,
       name: 'Threads',
-      description: 'Bài đăng ngắn tiếp cận nhanh giới trẻ',
+      description: t('creator.step1.threadsDesc'),
       icon: ThreadsIcon,
       colorClass: 'text-black dark:text-white',
       bgClass: 'bg-black/5 dark:bg-white/5',
@@ -64,7 +64,7 @@ export default function Step1Platform({
     {
       id: 'instagram' as PlatformType,
       name: 'Instagram',
-      description: 'Kênh chia sẻ hình ảnh và phong cách sống',
+      description: t('creator.step1.igDesc'),
       icon: Instagram,
       colorClass: 'text-[#E1306C]',
       bgClass: 'bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-500/10 text-[#E1306C]',
@@ -79,10 +79,10 @@ export default function Step1Platform({
       {/* Section Header */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-text tracking-tight mb-2">
-          Chọn nền tảng đăng bài
+          {t('creator.step1.title')}
         </h2>
         <p className="text-sm text-text-muted max-w-xl mx-auto">
-          Người dùng chọn duy nhất 1 nền tảng để đăng bài (Facebook / Threads / Instagram)
+          {t('creator.step1.subtitle')}
         </p>
       </div>
 
@@ -91,14 +91,14 @@ export default function Step1Platform({
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0" />
             <p className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-300">
-              Bạn chưa kết nối tài khoản nền tảng nào. Vui lòng vào Cài đặt để kết nối tài khoản trước khi tiếp tục.
+              {t('creator.step1.noConnectionWarning')}
             </p>
           </div>
           <Link
             href="/settings"
             className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5 shadow-sm"
           >
-            <span>Đến Cài đặt</span>
+            <span>{t('creator.step1.goToSettings')}</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -132,7 +132,7 @@ export default function Step1Platform({
                 {isLoading ? (
                   <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-semibold text-text-muted">
                     <Loader2 className="w-3 h-3 animate-spin text-text-muted" />
-                    <span>Đang tải...</span>
+                    <span>{t('common.loading')}</span>
                   </div>
                 ) : isConnected && isSelected ? (
                   <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-xs">
@@ -140,7 +140,7 @@ export default function Step1Platform({
                   </div>
                 ) : !isConnected ? (
                   <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-xs font-medium">
-                    Chưa kết nối
+                    {t('creator.step1.notConnectedBadge')}
                   </span>
                 ) : null}
               </div>
@@ -171,13 +171,14 @@ export default function Step1Platform({
                 <>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-5">
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Đã kết nối</span>
+                    <span>{t('creator.step1.connectedBadge')}</span>
                   </div>
 
                   {/* Connected Fanpage Card Preview */}
                   <div className="w-full bg-white dark:bg-zinc-800/90 border border-emerald-500/20 rounded-2xl p-3 flex items-center justify-between shadow-xs mt-auto">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-black flex items-center justify-center shrink-0 text-xs overflow-hidden border border-primary/20">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
                           src="/images/avatar-placeholder.png" 
                           onError={(e) => (e.currentTarget.style.display = 'none')} 
@@ -188,7 +189,7 @@ export default function Step1Platform({
                       </div>
                       <div className="min-w-0 text-left">
                         <p className="text-xs font-bold text-text truncate">AntBiz Official</p>
-                        <p className="text-[10px] text-text-muted mt-0.5 truncate">Fanpage • 125.4K người theo dõi</p>
+                        <p className="text-[10px] text-text-muted mt-0.5 truncate">{t('creator.step1.followersCount')}</p>
                       </div>
                     </div>
                     <ExternalLink className="w-4 h-4 text-text-muted/70 hover:text-primary shrink-0 transition-colors" />
@@ -201,12 +202,12 @@ export default function Step1Platform({
                     onClick={(e) => e.stopPropagation()}
                     className="w-full py-2.5 px-4 rounded-xl border border-primary/30 text-primary text-xs font-bold hover:bg-primary/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>Kết nối ngay</span>
+                    <span>{t('creator.step1.connectNow')}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                   <p className="text-[11px] text-text-muted/80 flex items-center justify-center gap-1 mt-3">
                     <Lock className="w-3 h-3 text-text-muted/60" />
-                    <span>Chưa kết nối tài khoản {platform.name}</span>
+                    <span>{t('creator.step1.notConnectedAccount', { name: platform.name })}</span>
                   </p>
                 </div>
               )}
@@ -221,7 +222,7 @@ export default function Step1Platform({
           <Info className="w-4 h-4" />
         </div>
         <p className="leading-relaxed">
-          <span className="font-bold">Lưu ý:</span> Bạn chỉ có thể chọn <span className="font-bold text-blue-600 dark:text-blue-400">1</span> nền tảng để đăng bài trong mỗi lần tạo nội dung. Hãy đảm bảo tài khoản của bạn đã được kết nối và hoạt động bình thường.
+          {t('creator.step1.noteText')}
         </p>
       </div>
     </div>

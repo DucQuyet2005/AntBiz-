@@ -8,7 +8,7 @@ import {
   Bookmark, Check, Search, EyeOff, MoreHorizontal,
   ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
   Repeat2, CheckCircle2, ChevronLeft, ChevronRight, Wand2,
-  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic
+  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic, SlidersHorizontal
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { createPortal } from 'react-dom';
@@ -163,11 +163,18 @@ export default function Step4Editor() {
   const currentPlatform = state.selectedPlatform || 'facebook';
 
   const postContentText = state.postContent || '';
-  const contentLength = postContentText.length;
-  const wordCount = postContentText.trim() ? postContentText.trim().split(/\s+/).length : 0;
+  
+  // Extract inline hashtags from postContentText if present
+  const inlineHashtags = (postContentText.match(/#[^\s#]+/g) || []);
+  
+  // Clean body text by stripping inline hashtags for clear separation
+  const cleanBodyText = postContentText.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
+  const displayedContent = cleanBodyText || postContentText;
+
+  const contentLength = displayedContent.length;
+  const wordCount = displayedContent.trim() ? displayedContent.trim().split(/\s+/).length : 0;
   
   const isLongContent = contentLength > 500;
-  const displayedContent = postContentText;
 
   const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
   const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
@@ -181,9 +188,12 @@ export default function Step4Editor() {
     : '';
 
   const authorName = state.articleContext?.author || 'Ngọc Linh';
-  const hashtags = validKeywords
+  const keywordHashtags = validKeywords
     .map(k => '#' + (k.startsWith('#') ? k.slice(1) : k).replace(/\s+/g, ''))
     .filter(h => h.toLowerCase() !== '#manual');
+
+  // Unique merged hashtags
+  const hashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
 
   const handleRestore = (idx: number) => {
     const result = restoreChatState(idx);
@@ -442,6 +452,188 @@ export default function Step4Editor() {
   
   // Track visual flash transition state on update
   const [flashContent, setFlashContent] = useState<boolean>(false);
+
+  // Floating display options popover state
+  const [showDisplayOptionsPopover, setShowDisplayOptionsPopover] = useState<boolean>(false);
+  const displayOptions = state.displayOptions || {
+    showTitle: true,
+    showContent: true,
+    showImages: true,
+    showAuthor: true,
+    showHashtags: true,
+  };
+  const hiddenOptionsCount = Object.values(displayOptions).filter(v => v === false).length;
+
+  // New hashtag input & state
+  const [newHashtagInput, setNewHashtagInput] = useState<string>('');
+  const [isAddingHashtag, setIsAddingHashtag] = useState<boolean>(false);
+
+  const effectiveHashtags = state.customHashtags !== null ? state.customHashtags : hashtags;
+  const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
+
+  const handleAddHashtag = (tag: string) => {
+    const cleanTag = tag.trim().replace(/^#+/, '');
+    if (!cleanTag) return;
+    const formattedTag = `#${cleanTag}`;
+    if (!effectiveHashtags.includes(formattedTag)) {
+      const updated = [...effectiveHashtags, formattedTag];
+      dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: updated });
+    }
+    setNewHashtagInput('');
+    setIsAddingHashtag(false);
+  };
+
+  const handleRemoveHashtag = (tagToRemove: string) => {
+    const updated = effectiveHashtags.filter(h => h !== tagToRemove);
+    dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: updated });
+  };
+
+  const generateAITitle = async () => {
+    dispatch({ type: 'SET_CHAT_SENDING', payload: true });
+    const userMsg: ChatMessage = {
+      id: `user_${Date.now()}`,
+      sender: 'user',
+      text: 'Viết lại tiêu đề bài viết cho giật gân, cuốn hút hơn',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+
+    try {
+      const prompt = `Viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên bài viết sau. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn:\nTitle cũ: ${currentTitle}\nNội dung: ${displayedContent.slice(0, 300)}`;
+      const res = await postService.sendChatMessage(prompt, state.postContent);
+      const newTitle = (res.data?.reply || '').replace(/^["'«»]|["'«»]$/g, '').trim();
+
+      if (newTitle) {
+        setEditableTitle(newTitle);
+        dispatch({ type: 'SET_CUSTOM_TITLE', payload: newTitle });
+        const aiMsg: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          sender: 'ai',
+          text: `Đã cập nhật tiêu đề mới:\n✨ "${newTitle}"`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: 'Gemini 2.5 Flash',
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+      }
+    } catch (err) {
+      console.error('[AI Title Error]', err);
+    } finally {
+      dispatch({ type: 'SET_CHAT_SENDING', payload: false });
+    }
+  };
+
+  const generateAIHashtags = async () => {
+    dispatch({ type: 'SET_CHAT_SENDING', payload: true });
+    const userMsg: ChatMessage = {
+      id: `user_${Date.now()}`,
+      sender: 'user',
+      text: 'Gợi ý bộ Hashtags xu hướng mới',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
+
+    try {
+      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI):\nNội dung: ${displayedContent.slice(0, 300)}`;
+      const res = await postService.sendChatMessage(prompt, state.postContent);
+      const reply = res.data?.reply || '';
+      const parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
+
+      if (parsedTags.length > 0) {
+        dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: parsedTags });
+        const aiMsg: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          sender: 'ai',
+          text: `Đã cập nhật bộ Hashtags xu hướng mới:\n🏷️ ${parsedTags.join(' ')}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: 'Gemini 2.5 Flash',
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+      }
+    } catch (err) {
+      console.error('[AI Hashtag Error]', err);
+    } finally {
+      dispatch({ type: 'SET_CHAT_SENDING', payload: false });
+    }
+  };
+
+  const renderEditableTitle = () => {
+    if (!displayOptions.showTitle) return null;
+
+    return (
+      <div className="mb-2 group relative">
+        <h3
+          contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
+          suppressContentEditableWarning
+          onBlur={(e) => {
+            const val = e.currentTarget.innerText.trim();
+            setEditableTitle(val);
+            dispatch({ type: 'SET_CUSTOM_TITLE', payload: val });
+          }}
+          className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug outline-none focus:ring-1 focus:ring-primary/50 focus:bg-primary/5 rounded px-1.5 py-0.5 transition-all cursor-text hover:bg-slate-100/70 dark:hover:bg-zinc-800/50"
+          title="Bấm vào đây để tự sửa tiêu đề"
+        >
+          {currentTitle || "Nhập tiêu đề bài viết..."}
+        </h3>
+      </div>
+    );
+  };
+
+  const renderEditableHashtags = () => {
+    if (!displayOptions.showHashtags) return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold mb-4 select-none">
+        {effectiveHashtags.map((h, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-[#ff6b00] px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-250/60 dark:border-amber-800/40 shadow-2xs group hover:border-amber-400 transition-all"
+          >
+            <span>{h}</span>
+            <button
+              type="button"
+              onClick={() => handleRemoveHashtag(h)}
+              className="p-0.5 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
+              title="Xóa hashtag này"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+
+        {isAddingHashtag ? (
+          <div className="inline-flex items-center gap-1">
+            <input
+              type="text"
+              autoFocus
+              value={newHashtagInput}
+              onChange={(e) => setNewHashtagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddHashtag(newHashtagInput);
+                } else if (e.key === 'Escape') {
+                  setIsAddingHashtag(false);
+                  setNewHashtagInput('');
+                }
+              }}
+              onBlur={() => handleAddHashtag(newHashtagInput)}
+              placeholder="Nhập hashtag..."
+              className="w-28 h-7 px-2 py-0.5 rounded-lg border border-primary text-xs font-bold text-text bg-white dark:bg-zinc-800 outline-none shadow-2xs"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddingHashtag(true)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-text-muted hover:text-primary hover:bg-primary/10 transition-all text-xs font-bold cursor-pointer border border-dashed border-gray-300 dark:border-zinc-700"
+            title="Thêm hashtag mới"
+          >
+            <span>+ Thêm hashtag</span>
+          </button>
+        )}
+      </div>
+    );
+  };
 
   // References
   const editorRef = useRef<HTMLDivElement>(null);
@@ -763,7 +955,7 @@ export default function Step4Editor() {
               {editableTitle || state.articleContext?.title || "Vụ cháy xe khách làm 7 người chết ở Đồng..."}
             </span>
             <span className="bg-indigo-50 text-primary dark:bg-indigo-950/20 dark:text-primary text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
-              ĐANG CHỈNH SỬA
+              {t('creator.step4.statusEditing')}
             </span>
           </div>
 
@@ -775,7 +967,7 @@ export default function Step4Editor() {
               className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text-muted hover:text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${state.isGeneratingPost ? 'animate-spin' : ''}`} />
-              <span>Tạo lại bài đăng</span>
+              <span>{t('creator.step4.regenerateBtn')}</span>
             </button>
           </div>
         </div>
@@ -813,13 +1005,11 @@ export default function Step4Editor() {
           className="flex-grow overflow-y-auto p-4 md:p-8 bg-gray-55 dark:bg-zinc-950/20 select-text relative"
           onMouseUp={handleSelectionCheck}
         >
-
-
           {state.isGeneratingPost ? (
             <div className="max-w-3xl mx-auto space-y-6 pt-6">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="text-sm font-bold text-text animate-pulse">Gemini 2.5 Flash đang tạo bài viết...</span>
+                <span className="text-sm font-bold text-text animate-pulse">{t('creator.step4.generatingText')}</span>
               </div>
               <div className="space-y-3 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-150 dark:border-zinc-800">
                 <div className="h-4 bg-gray-200 dark:bg-zinc-800 rounded w-3/4 animate-pulse"></div>
@@ -829,7 +1019,104 @@ export default function Step4Editor() {
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="max-w-3xl mx-auto space-y-3 relative">
+              {/* Floating Sticky Display Options Control Button aligned to card top-right */}
+              <div className="sticky top-0 z-40 flex justify-end pointer-events-none -mb-1.5">
+                <div className="relative pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowDisplayOptionsPopover(prev => !prev)}
+                    className="px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-zinc-700 shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-zinc-750 transition-all flex items-center gap-2 text-xs font-bold active:scale-95 cursor-pointer"
+                    title={t('creator.step4.displayOptions.buttonTitle')}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold">{t('creator.step4.displayOptions.buttonTitle')}</span>
+                    {hiddenOptionsCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">
+                        {hiddenOptionsCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Display Options Popover Menu */}
+                  {showDisplayOptionsPopover && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl p-4 z-50 animate-scale-up space-y-3 font-sans select-none">
+                      <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-2">
+                        <h4 className="text-xs font-extrabold text-text uppercase tracking-wider">
+                          {t('creator.step4.displayOptions.popoverTitle')}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setShowDisplayOptionsPopover(false)}
+                          className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Toggle Controls List */}
+                      <div className="space-y-1.5">
+                        {[
+                          { key: 'showTitle', label: t('creator.step4.displayOptions.showTitle') },
+                          { key: 'showContent', label: t('creator.step4.displayOptions.showContent') },
+                          { key: 'showImages', label: t('creator.step4.displayOptions.showImages') },
+                          { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') },
+                          { key: 'showHashtags', label: t('creator.step4.displayOptions.showHashtags') },
+                        ].map((opt) => {
+                          const isChecked = displayOptions[opt.key as keyof typeof displayOptions] ?? true;
+                          return (
+                            <label
+                              key={opt.key}
+                              className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                            >
+                              <span className="text-xs font-bold text-text">{opt.label}</span>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  dispatch({
+                                    type: 'SET_DISPLAY_OPTIONS',
+                                    payload: { [opt.key]: e.target.checked }
+                                  });
+                                }}
+                                className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary accent-primary cursor-pointer"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      {/* Quick Selectors */}
+                      <div className="flex items-center justify-between border-t border-gray-100 dark:border-zinc-800 pt-2 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            dispatch({
+                              type: 'SET_DISPLAY_OPTIONS',
+                              payload: { showTitle: true, showContent: true, showImages: true, showAuthor: true, showHashtags: true }
+                            });
+                          }}
+                          className="text-primary font-bold hover:underline cursor-pointer"
+                        >
+                          {t('creator.step4.displayOptions.selectAll')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            dispatch({
+                              type: 'SET_DISPLAY_OPTIONS',
+                              payload: { showTitle: false, showContent: false, showImages: false, showAuthor: false, showHashtags: false }
+                            });
+                          }}
+                          className="text-text-muted font-bold hover:underline cursor-pointer"
+                        >
+                          {t('creator.step4.displayOptions.deselectAll')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* FACEBOOK PREVIEW */}
               {currentPlatform === 'facebook' && (
@@ -859,74 +1146,70 @@ export default function Step4Editor() {
 
                   {/* Post Body Content */}
                   <div className="px-6 py-2 select-text">
-                    <div className="mb-2">
-                      <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
-                        {editableTitle || state.articleContext?.title}
-                      </h3>
-                    </div>
+                    {renderEditableTitle()}
 
                     {/* Post Text Editor */}
-                    <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
-                      {state.isHighlightEditing && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
-                          <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
-                            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                            <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                    {displayOptions.showContent && (
+                      <>
+                        <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
+                          {state.isHighlightEditing && (
+                            <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                              <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
+                                <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                                <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                            {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                           </div>
+                          <div
+                            key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                            ref={editorRef}
+                            contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                            }}
+                            className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                          >
+                            {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                          </div>
+                          {isLongContent && !isExpanded && (
+                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                          )}
                         </div>
-                      )}
-                      <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
-                        {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
-                      </div>
-                      <div
-                        key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
-                        ref={editorRef}
-                        contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
-                        }}
-                        className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                      >
-                        {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                      </div>
-                      {isLongContent && !isExpanded && (
-                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
-                      )}
-                    </div>
 
-                    {isLongContent && (
-                      <button
-                        type="button"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
-                      >
-                        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
-                      </button>
+                        {isLongContent && (
+                          <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                          >
+                            {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                          </button>
+                        )}
+
+                        {/* Dashed Separator & Char Count */}
+                        <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                        <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
+                          {formattedCounter}
+                        </div>
+                      </>
                     )}
-
-                    {/* Dashed Separator & Char Count */}
-                    <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
-                    <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
-                      {formattedCounter}
-                    </div>
 
                     {/* Author & Hashtags */}
-                    <div className="text-xs text-slate-500 font-medium mb-2">
-                      Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
-                    </div>
-
-                    {hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-4">
-                        {hashtags.map((h, i) => (
-                          <span key={i}>{h}</span>
-                        ))}
+                    {displayOptions.showAuthor && (
+                      <div className="text-xs text-slate-500 font-medium mb-2">
+                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
                       </div>
                     )}
+
+                    {renderEditableHashtags()}
                   </div>
 
                   {/* Multi-Image Grid for Facebook */}
-                  {renderMultiImageGrid(postImages)}
+                  {displayOptions.showImages && renderMultiImageGrid(postImages)}
 
                   {/* Post Footer Action Bar */}
                   <div className="border-t border-slate-150 dark:border-zinc-800 py-2.5 px-4 grid grid-cols-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300 select-none">
@@ -978,57 +1261,57 @@ export default function Step4Editor() {
                         </div>
                       </div>
 
-                      <div className="mb-2">
-                        <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
-                          {editableTitle || state.articleContext?.title}
-                        </h3>
-                      </div>
+                      {renderEditableTitle()}
 
                       {/* Editor Text Area */}
-                      <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
-                        {state.isHighlightEditing && (
-                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
-                            <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
-                              <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                              <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                      {displayOptions.showContent && (
+                        <>
+                          <div className={`relative min-h-[120px] my-3 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
+                            {state.isHighlightEditing && (
+                              <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                                <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
+                                  <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                                  <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                              {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
+                            <div
+                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              ref={editorRef}
+                              contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
+                              suppressContentEditableWarning
+                              onBlur={(e) => {
+                                dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                              }}
+                              className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                            >
+                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                            </div>
+                            {isLongContent && !isExpanded && (
+                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                            )}
                           </div>
-                        )}
-                        <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
-                          {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
-                        </div>
-                        <div
-                          key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
-                          ref={editorRef}
-                          contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
-                          suppressContentEditableWarning
-                          onBlur={(e) => {
-                            dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
-                          }}
-                          className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                        >
-                          {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                        </div>
-                        {isLongContent && !isExpanded && (
-                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
-                        )}
-                      </div>
 
-                      {isLongContent && (
-                        <button
-                          type="button"
-                          onClick={() => setIsExpanded(!isExpanded)}
-                          className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
-                        >
-                          {isExpanded ? 'Thu gọn' : 'Xem thêm'}
-                        </button>
+                          {isLongContent && (
+                            <button
+                              type="button"
+                              onClick={() => setIsExpanded(!isExpanded)}
+                              className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                            >
+                              {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                            </button>
+                          )}
+
+                          {/* Dashed Separator & Right Aligned Char Counter */}
+                          <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                          <div className="text-[11px] font-bold text-slate-400 text-right mb-2">
+                            {formattedCounter}
+                          </div>
+                        </>
                       )}
-
-                      {/* Dashed Separator & Right Aligned Char Counter */}
-                      <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
-                      <div className="text-[11px] font-bold text-slate-400 text-right mb-2">
-                        {formattedCounter}
-                      </div>
 
                       {/* 1/2 Badge */}
                       <div className="mb-3">
@@ -1036,20 +1319,16 @@ export default function Step4Editor() {
                       </div>
 
                       {/* Author & Hashtags */}
-                      <div className="text-xs text-slate-500 font-medium mb-2">
-                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
-                      </div>
-
-                      {hashtags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-4">
-                          {hashtags.map((h, i) => (
-                            <span key={i}>{h}</span>
-                          ))}
+                      {displayOptions.showAuthor && (
+                        <div className="text-xs text-slate-500 font-medium mb-2">
+                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
                         </div>
                       )}
 
+                      {renderEditableHashtags()}
+
                       {/* Horizontal Draggable Carousel for Threads */}
-                      {renderThreadsCarousel(postImages)}
+                      {displayOptions.showImages && renderThreadsCarousel(postImages)}
 
                       {/* Action icons */}
                       <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300 pt-1">
@@ -1127,7 +1406,7 @@ export default function Step4Editor() {
                   </div>
 
                   {/* MEDIA IMAGES CAROUSEL FOR INSTAGRAM */}
-                  {renderInstagramCarousel(postImages)}
+                  {displayOptions.showImages && renderInstagramCarousel(postImages)}
 
                   {/* Instagram Action Icons & Likes */}
                   <div className="p-4 pb-6 select-none">
@@ -1143,73 +1422,69 @@ export default function Step4Editor() {
 
                     {/* Body Content */}
                     <div className="select-text">
-                      <div className="mb-2">
-                        <h3 className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug">
-                          {editableTitle || state.articleContext?.title}
-                        </h3>
-                      </div>
+                      {renderEditableTitle()}
 
                       <div className="font-black text-slate-900 dark:text-white text-sm mt-3 mb-2">
                         antbiz_official
                       </div>
 
-                      <div className={`relative min-h-[100px] my-2 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
-                        {state.isHighlightEditing && (
-                          <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
-                            <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
-                              <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                              <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                      {displayOptions.showContent && (
+                        <>
+                          <div className={`relative min-h-[100px] my-2 ${isLongContent && !isExpanded ? 'max-h-[180px] overflow-hidden' : ''}`}>
+                            {state.isHighlightEditing && (
+                              <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[1px] z-25 flex items-center justify-center rounded-xl animate-fade-in select-none">
+                                <div className="bg-white dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-250 dark:border-zinc-700 flex items-center gap-3 select-none">
+                                  <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                                  <span className="text-xs font-bold text-text animate-pulse">AI đang viết lại đoạn đã chọn...</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
+                              {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
+                            <div
+                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              ref={editorRef}
+                              contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
+                              suppressContentEditableWarning
+                              onBlur={(e) => {
+                                dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
+                              }}
+                              className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
+                            >
+                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
+                            </div>
+                            {isLongContent && !isExpanded && (
+                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
+                            )}
                           </div>
-                        )}
-                        <div className="absolute inset-0 text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans text-transparent pointer-events-none z-0 overflow-hidden">
-                          {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
-                        </div>
-                        <div
-                          key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
-                          ref={editorRef}
-                          contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
-                          suppressContentEditableWarning
-                          onBlur={(e) => {
-                            dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
-                          }}
-                          className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                        >
-                          {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                        </div>
-                        {isLongContent && !isExpanded && (
-                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
-                        )}
-                      </div>
 
-                      {isLongContent && (
-                        <button
-                          type="button"
-                          onClick={() => setIsExpanded(!isExpanded)}
-                          className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
-                        >
-                          {isExpanded ? 'Thu gọn' : 'Xem thêm'}
-                        </button>
+                          {isLongContent && (
+                            <button
+                              type="button"
+                              onClick={() => setIsExpanded(!isExpanded)}
+                              className="text-[#ff6b00] font-bold text-xs cursor-pointer hover:underline inline-block mb-3 border-0 bg-transparent p-0"
+                            >
+                              {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                            </button>
+                          )}
+
+                          {/* Dashed separator & Counter */}
+                          <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
+                          <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
+                            {formattedCounter}
+                          </div>
+                        </>
                       )}
-
-                      {/* Dashed separator & Counter */}
-                      <div className="w-full border-b border-dashed border-slate-250 dark:border-zinc-700 my-2" />
-                      <div className="text-[11px] font-bold text-slate-400 text-right mb-3">
-                        {formattedCounter}
-                      </div>
 
                       {/* Author & Hashtags */}
-                      <div className="text-xs text-slate-500 font-medium mb-2">
-                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
-                      </div>
-
-                      {hashtags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 text-xs font-bold text-[#ff6b00] mb-2">
-                          {hashtags.map((h, i) => (
-                            <span key={i}>{h}</span>
-                          ))}
+                      {displayOptions.showAuthor && (
+                        <div className="text-xs text-slate-500 font-medium mb-2">
+                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
                         </div>
                       )}
+
+                      {renderEditableHashtags()}
                     </div>
                   </div>
                 </div>
@@ -1236,10 +1511,10 @@ export default function Step4Editor() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="font-extrabold text-sm text-text">AI Trợ lý</h3>
+                <h3 className="font-extrabold text-sm text-text">{t('creator.step4.assistantTitle')}</h3>
                 <span className="bg-[#E8F8F0] dark:bg-emerald-950/40 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
               </div>
-              <p className="text-[10px] text-text-muted">Hỗ trợ biên tập & tinh chỉnh bài viết</p>
+              <p className="text-[10px] text-text-muted">{t('creator.step4.assistantSubtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-1 text-text-muted">
@@ -1253,7 +1528,7 @@ export default function Step4Editor() {
           {state.chatMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-text-muted text-xs gap-2 select-none">
               <Cpu className="w-8 h-8 opacity-45" />
-              <span>Nhập yêu cầu để bắt đầu chat hoặc bôi đen văn bản để sửa nhanh.</span>
+              <span>{t('creator.step4.emptyChatHint')}</span>
             </div>
           )}
           <AnimatePresence initial={false}>
@@ -1450,15 +1725,39 @@ export default function Step4Editor() {
           </div>
         )}
 
+        {/* Quick Title / Hashtag AI Actions when no text highlighted */}
+        {state.highlightSelections.length === 0 && (
+          <div className="px-4 py-2 bg-white/40 dark:bg-zinc-900/40 border-t border-gray-100 dark:border-zinc-800/40 flex items-center gap-2 overflow-x-auto select-none scrollbar-none">
+            <button
+              type="button"
+              onClick={generateAITitle}
+              disabled={state.isChatSending}
+              className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-primary border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] font-bold hover:bg-primary hover:text-white transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Viết lại Tiêu đề AI</span>
+            </button>
+            <button
+              type="button"
+              onClick={generateAIHashtags}
+              disabled={state.isChatSending}
+              className="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[#ff6b00] border border-amber-200/60 dark:border-amber-800/40 text-[11px] font-bold hover:bg-[#ff6b00] hover:text-white transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+            >
+              <Wand2 className="w-3 h-3" />
+              <span>Gợi ý Hashtags AI</span>
+            </button>
+          </div>
+        )}
+
         {/* Chat input footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md space-y-2">
+        <div className="p-4 border-t border-gray-100 dark:border-zinc-800/40 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md space-y-2">
           {state.highlightSelections.length > 0 && (
             <div className="mb-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl p-2.5 flex flex-col gap-2 text-xs animate-fade-in select-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
                   <span className="text-text font-semibold">
-                    Đang sửa {state.highlightSelections.length} đoạn
+                    {t('creator.step4.highlightEditingCount', { count: state.highlightSelections.length })}
                   </span>
                 </div>
                 <button
@@ -1491,7 +1790,7 @@ export default function Step4Editor() {
               ref={chatInputRef}
               disabled={state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
               className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none outline-none shadow-none text-xs p-2 resize-none h-16 text-text placeholder-text-muted/65 disabled:opacity-60"
-              placeholder={state.highlightSelections.length > 0 ? "Nhập yêu cầu sửa cho các đoạn đã chọn..." : "Nhập yêu cầu của bạn cho AI..."}
+              placeholder={state.highlightSelections.length > 0 ? t('creator.step4.chatSelectionPlaceholder') : t('creator.step4.chatPlaceholder')}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {

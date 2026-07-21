@@ -316,8 +316,8 @@ function AiCreatorContent() {
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-text tracking-tight">Sáng tạo nội dung AI</h1>
-            <p className="text-sm text-text-muted mt-1">Quy trình sản xuất nội dung tự động đa nền tảng.</p>
+            <h1 className="text-3xl font-black text-text tracking-tight">{t('creator.headerTitle')}</h1>
+            <p className="text-sm text-text-muted mt-1">{t('creator.headerSubtitle')}</p>
           </div>
         </div>
 
@@ -382,10 +382,10 @@ function AiCreatorContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-black text-text leading-snug">
-                      Xác nhận quay lại?
+                      {t('creator.modal.backConfirmTitle')}
                     </h3>
                     <p className="text-xs text-text-muted mt-2 leading-relaxed font-semibold">
-                      Quay lại sẽ xóa toàn bộ nội dung bản nháp do AI đã sinh. Bạn có chắc chắn muốn tiếp tục không?
+                      {t('creator.modal.backConfirmDesc')}
                     </p>
                   </div>
                 </div>
@@ -396,14 +396,14 @@ function AiCreatorContent() {
                     onClick={handleCancelBack}
                     className="px-4.5 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 text-xs font-bold text-text hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all active:scale-95 duration-150 cursor-pointer"
                   >
-                    Hủy
+                    {t('creator.modal.cancel')}
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirmBack}
                     className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-xs font-bold text-white transition-all active:scale-95 duration-150 cursor-pointer shadow-md shadow-primary/10"
                   >
-                    Xác nhận
+                    {t('creator.modal.confirm')}
                   </button>
                 </div>
               </motion.div>

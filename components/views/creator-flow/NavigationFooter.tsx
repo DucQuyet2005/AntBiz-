@@ -62,12 +62,12 @@ export default function NavigationFooter({
               {isPublishingNow ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang đăng...</span>
+                  <span>{t('creator.buttons.publishing')}</span>
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Đăng ngay</span>
+                  <span>{t('creator.buttons.publishNow')}</span>
                 </>
               )}
             </button>
@@ -79,7 +79,7 @@ export default function NavigationFooter({
                 isValid && !isLoading && !isPublishingNow ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
               }`}
             >
-              <span>Lên lịch</span>
+              <span>{t('creator.buttons.scheduleOption')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -97,12 +97,12 @@ export default function NavigationFooter({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang lên lịch...</span>
+                <span>{t('creator.buttons.scheduling')}</span>
               </>
             ) : (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Xác nhận lên lịch</span>
+                <span>{t('creator.buttons.confirmSchedule')}</span>
               </>
             )}
           </button>
@@ -117,7 +117,7 @@ export default function NavigationFooter({
                 : 'bg-gray-300 dark:bg-zinc-800 text-gray-500 cursor-not-allowed opacity-60 shadow-none'
             }`}
           >
-            <span>Tiếp tục</span>
+            <span>{t('creator.buttons.continue')}</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         )}
