@@ -2,7 +2,6 @@
 
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -405,7 +404,6 @@ export default function DashboardLayout({
             {children}
           </motion.div>
         </div>
-        {!isLandingEditor && <Footer />}
       </main>
 
       {/* Floating Back to Top Button */}

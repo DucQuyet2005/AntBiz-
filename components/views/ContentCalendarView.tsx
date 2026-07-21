@@ -1409,8 +1409,23 @@ export default function ContentCalendarView() {
               </button>
             </div>
           </div>
-          {/* Custom Calendar Grid */}
-          <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
+          {/* View Mode: List vs Calendar Grid */}
+          {viewMode === 'list' ? (
+            <div className="flex-1 mt-4">
+              <ContentListView 
+                selectedPlatforms={selectedPlatforms} 
+                searchQuery={searchQuery}
+                onPostClick={(post) => {
+                  setSelectedCell({
+                    date: new Date(post.scheduled_at),
+                    hour: new Date(post.scheduled_at).getHours(),
+                    posts: [post]
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
             <div className="min-w-[700px] h-full relative">
               {/* Header Row */}
               <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-100 dark:border-zinc-850 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-30 shadow-sm">
@@ -1420,7 +1435,12 @@ export default function ContentCalendarView() {
                 {weekDates.map((date, idx) => {
                   const isTodayDate = isToday(date);
                   return (
-                    <div key={idx} className="p-3 text-center border-r border-slate-100 dark:border-zinc-850 last:border-0 flex flex-col items-center justify-center gap-1">
+                    <div
+                      key={idx}
+                      className={`p-3 text-center border-r border-slate-100 dark:border-zinc-850 last:border-0 flex flex-col items-center justify-center gap-1 transition-all ${
+                        isTodayDate ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-b-2 border-b-primary' : ''
+                      }`}
+                    >
                       <span className={`text-[11px] font-black uppercase tracking-wider ${isTodayDate ? 'text-primary' : 'text-slate-500 dark:text-zinc-400'}`}>
                         {getDayLabel(date)} {date.getDate()}/{date.getMonth() + 1}
                       </span>
@@ -1440,6 +1460,8 @@ export default function ContentCalendarView() {
                     </div>
                     {/* Day Columns */}
                     {Array.from({ length: 7 }).map((_, colIdx) => {
+                      const isTodayCol = isToday(weekDates[colIdx]);
+
                       // Lọc các bài viết
                       const cellPosts = filteredPosts.filter(post => {
                         const dayPos = getDayAndPosition(post.scheduled_at, currentWeekStart);
@@ -1456,7 +1478,9 @@ export default function ContentCalendarView() {
                       return (
                         <div
                           key={colIdx}
-                          className="border-r border-slate-50 dark:border-zinc-800/50 last:border-0 relative hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-crosshair group/cell"
+                          className={`border-r border-slate-50 dark:border-zinc-800/50 last:border-0 relative hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-crosshair group/cell ${
+                            isTodayCol ? 'bg-emerald-50/35 dark:bg-emerald-950/20' : ''
+                          }`}
                           onDragOver={(e) => handleDragOver(e, colIdx, hour)}
                           onDragLeave={handleDragLeave}
                           onDrop={(e) => handleDrop(e, colIdx, weekDates[colIdx], hour)}
@@ -1577,6 +1601,7 @@ export default function ContentCalendarView() {
               </div>
             </div>
           </div>
+          )}
 
         </div>
 

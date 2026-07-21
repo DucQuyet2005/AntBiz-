@@ -15,7 +15,7 @@ import type { GoldenHourData } from '@/frontend/modules/scheduled-publishing/use
  * - Tạo DnD payload và parse từ dataTransfer
  */
 export function useScheduleDragDrop(
-  onScheduleChange: (dayIdx: number, hour: number) => void,
+  onScheduleChange: (dayIdx: number, hour: number, minute: number) => void,
   dynamicGoldenHours: GoldenHourData[] = []
 ) {
   const [state, setState] = useState<ScheduleDndState>({
@@ -57,9 +57,27 @@ export function useScheduleDragDrop(
   ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const rawMinute = (y / rect.height) * 60;
+
+    let minute = 0;
+    if (rawMinute >= 52.5) {
+      minute = 45;
+    } else if (rawMinute >= 37.5) {
+      minute = 45;
+    } else if (rawMinute >= 22.5) {
+      minute = 30;
+    } else if (rawMinute >= 7.5) {
+      minute = 15;
+    } else {
+      minute = 0;
+    }
+
     setState(prev => ({
       ...prev,
-      dragOverCell: { dayIdx, hour },
+      dragOverCell: { dayIdx, hour, minute },
     }));
   }, []);
 
@@ -84,9 +102,27 @@ export function useScheduleDragDrop(
       if (!dataStr) return;
       const payload: DragPayload = JSON.parse(dataStr);
 
-      // Chỉ xử lý bài nháp
-      if (payload.type === 'draft') {
-        onScheduleChange(dayIdx, hour);
+      // Support both draft and scheduled post drags
+      if (payload.type === 'draft' || payload.type === 'scheduled' || payload.id) {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const rawMinute = (y / rect.height) * 60;
+
+        // Snap minute to 15-minute interval: 0, 15, 30, 45
+        let minute = 0;
+        if (rawMinute >= 52.5) {
+          minute = 45;
+        } else if (rawMinute >= 37.5) {
+          minute = 45;
+        } else if (rawMinute >= 22.5) {
+          minute = 30;
+        } else if (rawMinute >= 7.5) {
+          minute = 15;
+        } else {
+          minute = 0;
+        }
+
+        onScheduleChange(dayIdx, hour, minute);
       }
     } catch (err) {
       console.error('[ScheduleDnD] Drop parse error:', err);
