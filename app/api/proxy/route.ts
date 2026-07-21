@@ -253,7 +253,8 @@ export async function GET(request: NextRequest) {
     const isHtml = contentType.toLowerCase().includes('text/html');
 
     if (!isHtml) {
-      const response = new NextResponse(res.body, {
+      const buffer = await res.arrayBuffer();
+      const response = new NextResponse(buffer, {
         status: res.status,
         headers: {
           'Content-Type': contentType,
@@ -364,16 +365,14 @@ export async function GET(request: NextRequest) {
       return `${attr}${q}${absolute}${q}`;
     });
 
-    // ── 3. Remove framing restrictions and SPA routers ───────────────────────────────
+    // ── 3. Remove framing restrictions ───────────────────────────────
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // Disable SPA scripts for sites that use client-side rendering frameworks
-    // (Dantri uses Webpack SPA, Gocnhinmoi uses Next.js) to prevent hydration errors in iframe proxy
-    if (parsedTarget.hostname.includes('dantri.com.vn') || parsedTarget.hostname.includes('gocnhinmoi.com')) {
-      // Strip ALL scripts to guarantee the SPA router never executes.
-      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '<!-- script blocked -->');
-    }
+    // Removed script stripping:
+    // Stripping scripts breaks Next.js App Router streaming (Gocnhinmoi) which relies on inline scripts to swap templates.
+    // It also breaks Dantri's lazy loading for images. 
+    // The history API spoofing injected below is sufficient to prevent SPA router 404 errors.
 
     // ── 4. Inject navigation interceptor into <head> BEFORE any JS ───────────
 
