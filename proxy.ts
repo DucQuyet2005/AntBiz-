@@ -38,10 +38,6 @@ function isActualAntBizRoute(pathname: string): boolean {
     return ANTBIZ_API_ROUTES.has(segment);
   }
 
-  if (pathname.startsWith('/_next/')) {
-    return true;
-  }
-
   return false;
 }
 
@@ -253,6 +249,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder (images, etc)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
