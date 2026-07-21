@@ -666,7 +666,7 @@ export function CreatorFlowProvider({
   // Persist every Caption, then publish now or schedule through Quick Publishing.
   const confirmPostSchedule = async (
     requestedMode: 'now' | 'scheduled' = state.scheduleMode
-  ): Promise<{ success: boolean; failed: PlatformType[] }> => {
+  ): Promise<{ success: boolean; failed: PlatformType[]; errors?: Record<string, string> }> => {
     const targetPlatforms = state.selectedPlatforms.length > 0
       ? state.selectedPlatforms
       : (state.selectedPlatform ? [state.selectedPlatform] : []);
@@ -684,13 +684,51 @@ export function CreatorFlowProvider({
     const connectedPlatforms = state.platforms
       .filter((platform) => platform.connected)
       .map((platform) => platform.id);
-    const imageUrls = [
+    let imageUrls = [
       ...(state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []),
       ...state.crawledImageUrls.filter(url => url !== state.articleContext?.thumbnail),
     ];
+
+    // Upload any local (blob: or data:) images to Supabase avatars bucket before scheduling
+    if (imageUrls.some(url => url.startsWith('blob:') || url.startsWith('data:'))) {
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const uploadedUrls = await Promise.all(imageUrls.map(async (url) => {
+            if (url.startsWith('blob:') || url.startsWith('data:')) {
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const ext = blob.type.split('/')[1] || 'png';
+                const path = `${user.id}/post_media_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+                const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
+                if (!error) {
+                  return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+                }
+              } catch (e) {
+                console.error('Failed to upload local image', e);
+              }
+            }
+            return url;
+          }));
+          imageUrls = uploadedUrls;
+        }
+      } catch (e) {
+        console.error('Failed to initialize Supabase client for upload', e);
+      }
+    }
     let successful: PlatformType[] = [];
     let failed: PlatformType[] = [];
+    const errors: Record<string, string> = {};
+    
     const onEvent = (event: QuickPublishingEvent) => {
+      if (event.type === 'platform-schedule-failed' || event.type === 'platform-publish-failed') {
+        const msg = event.error.context?.message as string | undefined;
+        if (msg) errors[event.platform] = msg;
+      }
       if (event.type === 'publish-completed' || event.type === 'schedule-completed') {
         successful = event.successful;
         failed = event.failed;
@@ -720,8 +758,9 @@ export function CreatorFlowProvider({
       return {
         success: failed.length === 0 && successful.length === targetPlatforms.length,
         failed,
+        errors,
       };
-    } catch {
+    } catch (e: any) {
       const failedPlatforms = failed.length > 0 ? failed : targetPlatforms;
       if (failed.length === 0) {
         dispatch({
@@ -729,7 +768,13 @@ export function CreatorFlowProvider({
           payload: { successful, failed: failedPlatforms },
         });
       }
-      return { success: false, failed: failedPlatforms };
+      
+      // Attempt to extract error message if it's a QuickPublishingError thrown synchronously
+      if (e?.code && !errors[failedPlatforms[0]]) {
+        errors[failedPlatforms[0]] = e.context?.message || e.context?.reason || e.message;
+      }
+      
+      return { success: false, failed: failedPlatforms, errors };
     } finally {
       dispatch({ type: 'SET_SCHEDULING', payload: false });
     }

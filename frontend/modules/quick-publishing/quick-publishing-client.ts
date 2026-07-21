@@ -117,14 +117,20 @@ export class BrowserQuickPublishingClient implements QuickPublishingClient {
     const response = await this.request('/api/scheduled-posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
-    if (!response.ok) throw new QuickPublishingError('SCHEDULE_FAILED', { status: response.status });
+    if (!response.ok) {
+      const body = await readJson(response);
+      throw new QuickPublishingError('SCHEDULE_FAILED', { status: response.status, message: body.error || body.message });
+    }
   }
 
   async publishNow(input: { captionId: string; imageUrls: string[] }) {
     const response = await this.request('/api/scheduled-posts/publish-now', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
-    if (!response.ok) throw new QuickPublishingError('PUBLISH_FAILED', { status: response.status });
+    if (!response.ok) {
+      const body = await readJson(response);
+      throw new QuickPublishingError('PUBLISH_FAILED', { status: response.status, message: body.error || body.message });
+    }
   }
 }
 

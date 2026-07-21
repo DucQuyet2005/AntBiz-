@@ -167,8 +167,13 @@ function AiCreatorContent() {
           router.push('/content-calendar');
         }, 1500);
       } else {
-        const failed = result.failed.join(', ');
-        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+        if (result.errors && Object.keys(result.errors).length > 0) {
+          const msgs = Object.entries(result.errors).map(([plat, msg]) => `${plat}: ${msg}`).join(' | ');
+          showToast(`Lỗi: ${msgs}`, 'error');
+        } else {
+          const failed = result.failed.join(', ');
+          showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
+        }
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }
     } else {
@@ -395,10 +400,10 @@ function AiCreatorContent() {
       <AnimatePresence>
         {toast.show && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-24 left-6 z-50 rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
+            initial={{ opacity: 0, y: -50, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: 20 }}
+            className={`fixed top-24 right-6 z-[99999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border max-w-sm ${toast.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
               : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
               }`}

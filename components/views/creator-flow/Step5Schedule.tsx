@@ -187,7 +187,7 @@ export default function Step5Schedule() {
                 {hours.map((hour) => {
                   const hourVal = parseInt(hour);
                   return (
-                    <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 h-14 group">
+                    <div key={hour} className="grid grid-cols-8 border-b border-slate-100/50 dark:border-zinc-800/40 min-h-[56px] h-auto py-1 group">
                       {/* Hour column */}
                       <div className="flex items-start justify-center pt-2 font-mono text-[9px] font-bold text-text-muted/80 border-r border-slate-100/50 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/10">
                         {hour}
@@ -195,9 +195,12 @@ export default function Step5Schedule() {
                       
                       {/* Days grid cell slots (7 sibling cells to Hour column) */}
                       {Array.from({ length: 7 }).map((_, dayIdx) => {
+                        const targetDay = days.find(d => d.index === dayIdx);
+                        if (!targetDay) return null;
+
                         // Check if there's any scheduled posts in this slot
                         const cellPosts = state.timelinePosts.filter(
-                          (p) => p.dayIndex === dayIdx && parseInt(p.time.split(':')[0]) === hourVal
+                          (p) => (p.date === targetDay.fullDateStr || (!p.date && p.dayIndex === dayIdx)) && parseInt(p.time.split(':')[0]) === hourVal
                         );
 
                         // Check if the current post we are scheduling belongs to this cell
@@ -205,9 +208,6 @@ export default function Step5Schedule() {
                           state.scheduleMode === 'scheduled' &&
                           currentPostDayIndex === dayIdx && 
                           currentPostHourVal === hourVal;
-
-                        const targetDay = days.find(d => d.index === dayIdx);
-                        if (!targetDay) return null;
                         const hourPad = `${hourVal.toString().padStart(2, '0')}:00`;
                         const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
                         const isPast = targetDate.getTime() < new Date().getTime();

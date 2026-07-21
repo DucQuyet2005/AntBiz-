@@ -337,13 +337,22 @@ export default function Step2Article({
       // ONLY auto-fill and show animation for web crawl sources. Manual sources (like Audio/File uploads) 
       // already handle their own state in useCreatorFlow to support appending.
       if (articleContext && sourceType !== 'manual') {
+        let newTitle = articleContext.title || '';
+        let newContent = articleContext.content || '';
+
+        // Preserve manual text and append if already exists
+        if (state.manualContent && state.manualContent.trim().length > 0) {
+          newTitle = state.manualTitle || newTitle;
+          newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ nguồn dữ liệu]:\n${newContent}`;
+        }
+
         // Fill data IMMEDIATELY — do not rely on onAnimationComplete
         dispatch({
           type: 'SET_MANUAL_CONTENT',
-          payload: { title: articleContext.title || '', content: articleContext.content || '' }
+          payload: { title: newTitle, content: newContent }
         });
         // Then trigger visual effects
-        setAnimatingData({ title: articleContext.title || '', content: articleContext.content || '' });
+        setAnimatingData({ title: newTitle, content: newContent });
         setShowCrawlSuccessDialog(true);
         setIsHighlighting(true);
         setTimeout(() => setIsHighlighting(false), 1500);
