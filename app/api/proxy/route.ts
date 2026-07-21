@@ -275,21 +275,31 @@ export async function GET(request: NextRequest) {
     const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
     const needsImageProxy = parsedTarget.hostname.includes('dantri.com.vn');
     
-    html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
+    // Double quotes
+    html = html.replace(/(\bsrc\s*=\s*)"\/([^"]*)"/g, (_m, attr, path) => {
+      const q = '"';
       const lowerPath = path.split('?')[0].toLowerCase();
       const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
       if (isImage && needsImageProxy) {
-        // Only Dantri images go through proxy to bypass hotlink protection
         return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
       }
-      // Everything else goes direct to origin
+      return `${attr}${q}${targetOrigin}/${path}${q}`;
+    });
+    // Single quotes
+    html = html.replace(/(\bsrc\s*=\s*)'\/([^']*)'/g, (_m, attr, path) => {
+      const q = "'";
+      const lowerPath = path.split('?')[0].toLowerCase();
+      const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
+      if (isImage && needsImageProxy) {
+        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+      }
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
     
 
     // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri
     if (needsImageProxy) {
-      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
+      const imgReplacer = (attr: string, q: string, urlStr: string, _m: string) => {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
         if (urlStr.includes('/api/proxy?')) return _m;
 
@@ -302,10 +312,19 @@ export async function GET(request: NextRequest) {
           return `${attr}${q}${absolute}${q}`;
         } catch(e) {}
         return _m;
+      };
+
+      // Double quotes
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)"([^"]+)"/gi, (m, attr, urlStr) => {
+        return imgReplacer(attr, '"', urlStr, m);
+      });
+      // Single quotes
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)'([^']+)'/gi, (m, attr, urlStr) => {
+        return imgReplacer(attr, "'", urlStr, m);
       });
 
       // Rewrite srcset and data-srcset
-      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, srcset) => {
+      const srcsetReplacer = (attr: string, q: string, srcset: string) => {
         const rewritten = srcset.replace(
           /(^|,\s*)([^\s,]+)/g,
           (_s: string, sep: string, urlStr: string) => {
@@ -325,6 +344,15 @@ export async function GET(request: NextRequest) {
           }
         );
         return `${attr}${q}${rewritten}${q}`;
+      };
+
+      // Double quotes
+      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)"([^"]+)"/gi, (_m, attr, srcset) => {
+        return srcsetReplacer(attr, '"', srcset);
+      });
+      // Single quotes
+      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)'([^']+)'/gi, (_m, attr, srcset) => {
+        return srcsetReplacer(attr, "'", srcset);
       });
     }
 
