@@ -25,9 +25,8 @@ import {
   RefreshCw
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { InstagramGoldenHoursCard } from "./reports/InstagramGoldenHoursCard";
-import { FacebookMetricsCard } from "./reports/FacebookMetricsCard";
-import { ThreadsMetricsCard } from "./reports/ThreadsMetricsCard";
+import PopupDialog, { PopupType } from "@/components/PopupDialog";
+
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -127,6 +126,22 @@ export default function ReportsView() {
   const [scope, setScope] = useState<string>("all");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Popup Toast Notification State
+  const [popup, setPopup] = useState<{
+    isOpen: boolean;
+    message: string;
+    type?: PopupType;
+    title?: string;
+  }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
+
+  const showToast = (message: string, type: PopupType = 'info', title?: string) => {
+    setPopup({ isOpen: true, message, type, title });
+  };
   
   // Sort state for Top Posts table
   const [sortField, setSortField] = useState<string>("interactions.likes");
@@ -194,32 +209,51 @@ export default function ReportsView() {
     }
   }, [timeframe, platform, startDate, endDate, scope]);
 
-  const handleSync = async () => {
+  const performSync = async (silent = false) => {
     try {
       setIsSyncing(true);
       const res = await fetch(`/api/reports/sync?platform=${platform}`, { method: 'POST' });
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        const headers: any = {};
-        res.headers.forEach((v, k) => { headers[k] = v; });
-        console.error("Sync API failed:", res.status, errText, "Headers:", headers);
-        alert(`Lỗi đồng bộ dữ liệu (Mã lỗi: ${res.status}). Chi tiết: ${errText || 'Không có phản hồi'}`);
-        return;
+        console.error("Sync API failed:", res.status, errText);
+        if (!silent) {
+          showToast(`Lỗi đồng bộ dữ liệu (Mã lỗi: ${res.status}). Chi tiết: ${errText || 'Không có phản hồi'}`, "error", "Đồng bộ thất bại");
+        }
+        return false;
       }
       const data = await res.json();
-      alert(data.message || "Đồng bộ thành công!");
-      loadStats(); // Tải lại biểu đồ
+      if (!silent) {
+        showToast(data.message || "Đồng bộ dữ liệu thành công!", "success", "Đồng bộ hoàn tất");
+      }
+      await loadStats(); // Reload stats with fresh sync data
+      return true;
     } catch (err) {
       console.error("Lỗi đồng bộ:", err);
-      alert("Đã xảy ra lỗi khi đồng bộ dữ liệu.");
+      if (!silent) {
+        showToast("Đã xảy ra lỗi khi đồng bộ dữ liệu.", "error", "Lỗi đồng bộ");
+      }
+      return false;
     } finally {
       setIsSyncing(false);
     }
   };
 
+  const handleSync = () => performSync(false);
+
   const handleExport = async () => {
     try {
       setIsExporting(true);
+
+      // Thông báo đang đồng bộ dữ liệu trước khi xuất báo cáo
+      showToast(
+        "Đang đồng bộ dữ liệu thực tế mới nhất trước khi xuất báo cáo...",
+        "info",
+        "Đồng bộ dữ liệu"
+      );
+
+      // Tự động đồng bộ dữ liệu thực tế mới nhất trước khi xuất file Excel
+      await performSync(true);
+
       const queryParams = new URLSearchParams({
         timeframe,
         platform,
@@ -252,9 +286,20 @@ export default function ReportsView() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+
+      // Thông báo xuất báo cáo thành công
+      showToast(
+        "Xuất báo cáo Excel thành công!",
+        "success",
+        "Xuất báo cáo thành công"
+      );
+    } catch (error: any) {
       console.error("Lỗi xuất báo cáo:", error);
-      alert("Đã xảy ra lỗi khi xuất file Excel. Vui lòng thử lại.");
+      showToast(
+        "Đã xảy ra lỗi khi xuất file Excel. Vui lòng thử lại.",
+        "error",
+        "Xuất báo cáo thất bại"
+      );
     } finally {
       setIsExporting(false);
     }
@@ -649,16 +694,9 @@ export default function ReportsView() {
 
               </div>
 
-              {/* Platform specific Cards */}
-              {platform === "facebook" && (
-                <FacebookMetricsCard data={reportData.platformBreakdown?.facebook || reportData.summary} />
-              )}
-              {platform === "threads" && (
-                <ThreadsMetricsCard data={reportData.platformBreakdown?.threads || reportData.summary} />
-              )}
 
-              {/* AI Golden Hours Analytics Card */}
-              <InstagramGoldenHoursCard platform={platform} />
+
+
 
               {/* Interactions Breakdown Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-zinc-950 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-inner">
@@ -1023,6 +1061,13 @@ export default function ReportsView() {
         </AnimatePresence>
       )}
 
+      <PopupDialog
+        isOpen={popup.isOpen}
+        onClose={() => setPopup(prev => ({ ...prev, isOpen: false }))}
+        title={popup.title}
+        message={popup.message}
+        type={popup.type}
+      />
     </div>
   );
 }

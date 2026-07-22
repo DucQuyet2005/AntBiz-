@@ -105,7 +105,7 @@ export interface ScheduledPublishingRepository {
   listPaginated(
     page: number,
     limit: number,
-    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc' }
+    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc'; creatorId?: string }
   ): Promise<{ data: ScheduledPostRecord[]; count: number }>;
   findCaption(id: string): Promise<CaptionSummary | null>;
   findPendingByCaption(captionId: string): Promise<ScheduledPostRecord | null>;

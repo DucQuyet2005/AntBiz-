@@ -32,11 +32,17 @@ export async function GET(request: NextRequest) {
   const earliestDateStr = trendDays[0].date;
   const earliestDateUtc = new Date(new Date(earliestDateStr + 'T00:00:00Z').getTime() - 7 * 60 * 60 * 1000).toISOString();
 
-  const { data: posts, error } = await supabase
+  let query = supabase
     .from('scheduled_posts')
     .select('platform, scheduled_at')
     .gte('scheduled_at', earliestDateUtc)
     .order('scheduled_at', { ascending: true });
+
+  if (role === 'marketer_content' && user) {
+    query = query.eq('created_by', user.id);
+  }
+
+  const { data: posts, error } = await query;
 
   if (error) {
     console.error('[GET /api/stats/trending] Supabase error:', error);

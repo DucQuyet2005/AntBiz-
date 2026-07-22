@@ -93,7 +93,8 @@ export class PromptConfigModule {
 
   async list(actor: PromptConfigActor, platform?: string): Promise<PromptConfigRecord[]> {
     try {
-      const userConfigs = await this.repository.list(actor.id, platform || undefined);
+      const targetUserId = actor.role === 'marketer_content' ? actor.id : undefined;
+      const userConfigs = await this.repository.list(targetUserId, platform || undefined);
       const combined = [...SYSTEM_PRESETS, ...userConfigs];
       
       combined.sort((a, b) => {

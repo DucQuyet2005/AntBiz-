@@ -8,10 +8,13 @@ import {
 } from '../scheduled-posts/_adapter';
 
 export async function GET(request: NextRequest) {
-  const { supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole(SCHEDULED_PUBLISHING_ROLES);
   if (unauthorized) return unauthorized;
   try {
-    const filters = parseCalendarFilters(new URL(request.url).searchParams);
+    let filters = parseCalendarFilters(new URL(request.url).searchParams);
+    if (role === 'marketer_content') {
+      filters = { ...filters, creatorId: user.id };
+    }
     const data = await buildScheduledPublishingModule(supabase).calendarEvents(filters);
     return NextResponse.json({ data });
   } catch (error) {
