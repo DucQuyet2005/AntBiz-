@@ -26,7 +26,15 @@ function cleanWhisperHallucinations(text: string): string {
     /cảm ơn các bạn đã theo dõi\.?/gi,
     /cảm ơn quý vị và các bạn đã quan tâm theo dõi\.?/gi,
     /cảm ơn quý vị và các bạn đã theo dõi\.?/gi,
-    /hãy đăng ký kênh để ủng hộ\.?/gi
+    /hãy đăng ký kênh để ủng hộ\.?/gi,
+    /cảm ơn bạn đã xem video\.?/gi,
+    /cảm ơn quý khán giả đã theo dõi\.?/gi,
+    /hãy đăng ký kênh của mình nhé\.?/gi,
+    /thanks for watching\.?/gi,
+    /thank you for watching\.?/gi,
+    /thank you so much\.?/gi,
+    /subscribe to my channel\.?/gi,
+    /thanks for watching my video\.?/gi
   ];
   
   let cleaned = text;
@@ -64,7 +72,7 @@ export class SpeechProcessingModule implements SpeechProcessingModuleInterface {
       ? `${transcript}\n\n${parsed.bullets}`
       : transcript;
     const [correctionResult, metadataResult] = await Promise.allSettled([
-      this.enricher.correct(transcript),
+      this.enricher.correct(transcript, parsed.bullets),
       this.enricher.generateMetadata(metadataInput),
     ]);
 

@@ -13,9 +13,13 @@ export class GeminiSpeechEnrichmentAdapter implements SpeechEnricher {
     private readonly capacityExecutor: GeminiCapacityExecutor = executeWithGeminiCapacity
   ) {}
 
-  correct(transcript: string) {
+  correct(transcript: string, bullets?: string) {
+    let promptWithContext = CORRECTION_PROMPT;
+    if (bullets && bullets.trim()) {
+      promptWithContext += `\n\nDưới đây là gợi ý từ khóa/ý chính mà người nói cung cấp để bạn hiểu ngữ cảnh và sửa từ viết sai chính xác hơn (đặc biệt là tên riêng, thuật ngữ): ${bullets.trim()}`;
+    }
     return this.callGemini(
-      `${CORRECTION_PROMPT}\n\nVĂN BẢN GỐC:`,
+      `${promptWithContext}\n\nVĂN BẢN GỐC:`,
       transcript,
       0.2,
       'Correction'

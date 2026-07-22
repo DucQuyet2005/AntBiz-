@@ -57,7 +57,7 @@ export interface CreatorFlowClient {
   listConnectedPlatforms(): Promise<PlatformConnection[]>;
   ingestUrl(url: string): Promise<IngestedCreatorArticle>;
   createManualArticle(title: string, content: string): Promise<IngestedCreatorArticle>;
-  processSpeech(file: File): Promise<ProcessedSpeechSource>;
+  processSpeech(file: File, bullets?: string): Promise<ProcessedSpeechSource>;
   parseDocument(file: File): Promise<ParsedDocumentSource>;
 }
 
@@ -126,9 +126,12 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
     return normalizeArticle(body);
   }
 
-  async processSpeech(file: File) {
+  async processSpeech(file: File, bullets?: string) {
     const formData = new FormData();
     formData.append('file', file);
+    if (bullets) {
+      formData.append('bullets', bullets);
+    }
     const response = await this.request('/api/stt', { method: 'POST', body: formData });
     const body = await readJson(response) as SpeechTransportRecord;
     if (!response.ok) {

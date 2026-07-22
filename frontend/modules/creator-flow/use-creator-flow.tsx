@@ -456,14 +456,14 @@ export function CreatorFlowProvider({
     beginSourceIngestion();
 
     try {
-      const uploaded = await uploadCreatorSource(creatorClient, file);
+      const uploaded = await uploadCreatorSource(creatorClient, file, state.manualContent || undefined);
 
       let newTitle = uploaded.article.context.title;
       let newContent = uploaded.content;
 
       if (state.manualContent && state.manualContent.trim().length > 0) {
         newTitle = state.manualTitle || newTitle;
-        newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ ghi âm/tệp đính kèm]:\n${uploaded.content}`;
+        newContent = `${state.manualContent}\n\n${uploaded.content}`;
       }
 
       dispatch({

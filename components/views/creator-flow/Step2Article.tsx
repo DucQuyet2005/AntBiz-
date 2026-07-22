@@ -1231,7 +1231,10 @@ export default function Step2Article({
                                   });
                                 }
                                 setUploadedFiles(prev => prev.filter(f => f.name !== file.name));
-                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+                                
+                                let currentContent = state.manualContent || '';
+                                currentContent = currentContent.replace(file.content, '').replace(/\n{3,}/g, '\n\n').trim();
+                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: currentContent } });
                               }}
                               className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
                               title="Xóa"

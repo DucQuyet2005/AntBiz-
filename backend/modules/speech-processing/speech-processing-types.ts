@@ -22,9 +22,8 @@ export interface SpeechProcessingResult {
 export interface SpeechTranscriber {
   transcribe(file: File): Promise<string>;
 }
-
 export interface SpeechEnricher {
-  correct(transcript: string): Promise<string>;
+  correct(transcript: string, bullets?: string): Promise<string>;
   generateMetadata(content: string): Promise<SpeechMetadata>;
 }
 
