@@ -411,26 +411,30 @@ export async function GET(request: NextRequest) {
         return _m;
       });
 
-      // Rewrite srcset and data-srcset
+      // Rewrite srcset and data-srcset cleanly preserving descriptors like 1x, 2x, 480w
       html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, srcset) => {
-        const rewritten = srcset.replace(
-          /(^|,\s*)([^\s,]+)/g,
-          (_s: string, sep: string, urlStr: string) => {
-            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
-              return _s;
-            }
-            try {
-              const absolute = new URL(urlStr, targetUrl).href;
-              const u = new URL(absolute);
-              if (isTargetDomain(u.hostname)) {
-                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
-              }
-              return `${sep}${absolute}`;
-            } catch(e) {
-              return _s;
-            }
+        const rewritten = srcset.split(',').map((entry: string) => {
+          const trimmed = entry.trim();
+          if (!trimmed) return entry;
+          const parts = trimmed.split(/\s+/);
+          const urlStr = parts[0];
+          const descriptor = parts.slice(1).join(' ');
+
+          if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
+            return entry;
           }
-        );
+          try {
+            const absolute = new URL(urlStr, targetUrl).href;
+            const u = new URL(absolute);
+            if (isTargetDomain(u.hostname)) {
+              const proxied = `/api/proxy?url=${encodeURIComponent(absolute)}`;
+              return descriptor ? `${proxied} ${descriptor}` : proxied;
+            }
+            return descriptor ? `${absolute} ${descriptor}` : absolute;
+          } catch(e) {
+            return entry;
+          }
+        }).join(', ');
         return `${attr}${q}${rewritten}${q}`;
       });
     }
