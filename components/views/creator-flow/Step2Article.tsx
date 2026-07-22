@@ -145,6 +145,7 @@ export default function Step2Article({
   // Active site simulated browser modal
   const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
   const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
+  const [iframeSrc, setIframeSrc] = useState<string>('');
   const [browserHistory, setBrowserHistory] = useState<string[]>([]);
   const [iframeKey, setIframeKey] = useState(0); // Force iframe remount when needed
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -162,12 +163,14 @@ export default function Step2Article({
       const prevUrl = browserHistory[browserHistory.length - 2];
       setBrowserHistory(prev => prev.slice(0, -1));
       setCurrentBrowserUrl(prevUrl);
+      setIframeSrc(`/api/proxy?url=${encodeURIComponent(prevUrl)}`);
       // Force remount the iframe to guarantee navigation works even after ad redirects
       setIframeKey(k => k + 1);
     } else if (activeBrowserSite) {
       // Fallback: even if history is empty/broken, go back to the site homepage
       const baseUrl = getBaseUrl(activeBrowserSite);
       setCurrentBrowserUrl(baseUrl);
+      setIframeSrc(`/api/proxy?url=${encodeURIComponent(baseUrl)}`);
       setBrowserHistory([baseUrl]);
       setIframeKey(k => k + 1);
     }
@@ -177,9 +180,11 @@ export default function Step2Article({
     if (activeBrowserSite) {
       const baseUrl = getBaseUrl(activeBrowserSite);
       setCurrentBrowserUrl(baseUrl);
+      setIframeSrc(`/api/proxy?url=${encodeURIComponent(baseUrl)}`);
       setBrowserHistory([baseUrl]);
     } else {
       setCurrentBrowserUrl('');
+      setIframeSrc('');
       setBrowserHistory([]);
     }
   }, [activeBrowserSite]);
@@ -1293,12 +1298,13 @@ export default function Step2Article({
                 value={currentBrowserUrl}
                 onChange={(e) => setCurrentBrowserUrl(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && currentBrowserUrl.trim() && iframeRef.current) {
+                  if (e.key === 'Enter' && currentBrowserUrl.trim()) {
                     let target = currentBrowserUrl.trim();
                     if (!target.startsWith('http://') && !target.startsWith('https://')) {
                       target = 'https://' + target;
                     }
-                    iframeRef.current.src = `/api/proxy?url=${encodeURIComponent(target)}`;
+                    setIframeSrc(`/api/proxy?url=${encodeURIComponent(target)}`);
+                    setIframeKey(k => k + 1);
                   }
                 }}
                 className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-3 py-1.5 text-xs text-text border border-gray-200 dark:border-zinc-800 font-semibold focus:ring-1 focus:ring-primary outline-none"
@@ -1338,7 +1344,7 @@ export default function Step2Article({
                 <iframe
                   key={iframeKey}
                   ref={iframeRef}
-                  src={`/api/proxy?url=${encodeURIComponent(currentBrowserUrl || getBaseUrl(activeBrowserSite))}`}
+                  src={iframeSrc || `/api/proxy?url=${encodeURIComponent(getBaseUrl(activeBrowserSite))}`}
                   className="w-full h-full border-none"
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
                 />
