@@ -448,7 +448,7 @@ export async function GET(request: NextRequest) {
           const absolute = new URL(urlStr, targetUrl).href;
           const u = new URL(absolute);
           const cleanPath = u.pathname.toLowerCase();
-          const isImg = imageExts.some(ext => cleanPath.endsWith(ext)) || isTargetDomain(u.hostname);
+          const isImg = isTargetDomain(u.hostname) || /\.(png|jpg|jpeg|gif|webp|svg|avif)$/i.test(cleanPath);
           if (isImg) {
             return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
           }
