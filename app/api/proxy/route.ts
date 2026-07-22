@@ -279,7 +279,7 @@ export async function GET(request: NextRequest) {
     var _imgProcessed = '_proxyDone';
     function proxyImg(el) {
       if (el[_imgProcessed]) return;
-      var real = el.getAttribute('data-src') || el.getAttribute('data-original');
+      var real = el.getAttribute('data-src') || el.getAttribute('data-original') || el.getAttribute('src');
       if (real && !real.startsWith('data:') && !real.startsWith('blob:') && real.indexOf('/api/proxy') === -1) {
         try {
           var abs = new URL(real, _currentTarget || TARGET).href;
@@ -298,23 +298,22 @@ export async function GET(request: NextRequest) {
             var n = m.addedNodes[j];
             if (n.nodeType !== 1) continue;
             if (n.tagName === 'IMG') proxyImg(n);
-            var imgs = n.querySelectorAll ? n.querySelectorAll('img[data-src], img[data-original]') : [];
+            var imgs = n.querySelectorAll ? n.querySelectorAll('img') : [];
             for (var k = 0; k < imgs.length; k++) proxyImg(imgs[k]);
           }
         } else if (m.type === 'attributes' && m.target.tagName === 'IMG') {
-          // Only act on data-src changes, NOT on src changes (prevents infinite loop)
-          if (m.attributeName === 'data-src' || m.attributeName === 'data-original') {
+          if (m.attributeName === 'src' || m.attributeName === 'data-src' || m.attributeName === 'data-original') {
             proxyImg(m.target);
           }
         }
       }
     }).observe(document.documentElement, {
       childList: true, subtree: true,
-      attributes: true, attributeFilter: ['data-src', 'data-original']
+      attributes: true, attributeFilter: ['src', 'data-src', 'data-original']
     });
     // Process existing images once DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-      var imgs = document.querySelectorAll('img[data-src], img[data-original]');
+      var imgs = document.querySelectorAll('img');
       for (var i = 0; i < imgs.length; i++) proxyImg(imgs[i]);
     });
   }
@@ -344,6 +343,26 @@ export async function GET(request: NextRequest) {
     const isHtml = contentType.toLowerCase().includes('text/html');
 
     if (!isHtml) {
+      if (contentType.toLowerCase().includes('json')) {
+        let jsonText = await res.text();
+        jsonText = jsonText.replace(/https:\/\/(cdnphoto|icdn|cdnweb)\.dantri\.com\.vn\/[^\s"',\\]+/gi, (imgUrl) => {
+          return `/api/proxy?url=${encodeURIComponent(imgUrl)}`;
+        });
+        const response = new NextResponse(jsonText, {
+          status: res.status,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': res.headers.get('cache-control') || 'no-store',
+          },
+        });
+        response.cookies.set('active_proxy_origin', normalizeProxyOrigin(targetOrigin), {
+          path: '/api/proxy',
+          maxAge: 3600,
+          sameSite: 'lax',
+        });
+        return response;
+      }
+
       const buffer = await res.arrayBuffer();
       const response = new NextResponse(buffer, {
         status: res.status,
@@ -353,7 +372,7 @@ export async function GET(request: NextRequest) {
         },
       });
       response.cookies.set('active_proxy_origin', normalizeProxyOrigin(targetOrigin), {
-        path: '/',
+        path: '/api/proxy',
         maxAge: 3600,
         sameSite: 'lax',
       });
