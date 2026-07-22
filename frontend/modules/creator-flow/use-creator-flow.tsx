@@ -21,6 +21,7 @@ import {
 
 export const initialCreatorFlowState: CreatorFlowState = {
   currentStep: 1,
+  conversationalStep: 1,
   selectedPlatform: null,
   selectedPlatforms: [],
   platforms: [],
@@ -738,7 +739,7 @@ export function CreatorFlowProvider({
     let userPrompt = targetMsg?.text;
 
     if (!quotedText && userPrompt?.startsWith('[Sửa đoạn:')) {
-      const match = userPrompt.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+      const match = userPrompt.match(/^\[Sửa đoạn:\s*([\s\S]+?)\]:\s*([\s\S]+)$/);
       if (match) {
         quotedText = match[1];
         userPrompt = match[2];

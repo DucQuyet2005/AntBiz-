@@ -2,12 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Loader2, Music, FileSpreadsheet, 
+import {
+  Loader2, Music, FileSpreadsheet,
   UploadCloud, Trash2, ExternalLink, X,
   Search, Check, Bookmark, Facebook, Instagram,
   ChevronLeft, Mic, Square, AlertCircle, Play, Pause, CheckCircle2, RotateCcw,
-  Sparkles, ArrowRight, Wand2
+  Sparkles, ArrowRight, Wand2, Info
 
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,14 +17,14 @@ import { ArticleContext } from '@/lib/services/creator/article.service';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?: number }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    width={size} 
-    height={size} 
-    className={className} 
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className={className}
     fill="currentColor"
   >
-    <path d="M13.62 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm8.84-2.8c-.85-4.14-4.22-7.3-8.39-7.89C8.36.43 3.32 3.86 1.83 8.78c-1.39 4.56.4 9.53 4.26 12.06 3.65 2.4 8.72 2.05 11.96-.86.33-.29.35-.8.06-1.12-.29-.32-.8-.35-1.12-.06-2.61 2.34-6.72 2.62-9.66.7-3.13-2.05-4.59-6.1-3.46-9.75C5.12 5.92 9.25 3.1 13.57 3.7c3.34.47 6.03 2.99 6.72 6.3.82 3.96-1.28 7.82-5.12 8.89-1.92.54-3.95.27-5.5-.78-1.58-1.07-2.39-2.88-2.22-4.83.21-2.42 2.19-4.32 4.61-4.39 2.59-.08 4.79 1.88 4.96 4.46.06.84.77 1.48 1.61 1.42s1.48-.77 1.42-1.61c-.29-4.33-3.94-7.61-8.29-7.48-4.06.12-7.36 3.3-7.7 7.36-.28 3.23 1.05 6.27 3.68 8.05 2.58 1.74 5.9 2.13 8.82 1.06 5.37-1.97 8.35-7.76 6.91-13.28z"/>
+    <path d="M13.62 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm8.84-2.8c-.85-4.14-4.22-7.3-8.39-7.89C8.36.43 3.32 3.86 1.83 8.78c-1.39 4.56.4 9.53 4.26 12.06 3.65 2.4 8.72 2.05 11.96-.86.33-.29.35-.8.06-1.12-.29-.32-.8-.35-1.12-.06-2.61 2.34-6.72 2.62-9.66.7-3.13-2.05-4.59-6.1-3.46-9.75C5.12 5.92 9.25 3.1 13.57 3.7c3.34.47 6.03 2.99 6.72 6.3.82 3.96-1.28 7.82-5.12 8.89-1.92.54-3.95.27-5.5-.78-1.58-1.07-2.39-2.88-2.22-4.83.21-2.42 2.19-4.32 4.61-4.39 2.59-.08 4.79 1.88 4.96 4.46.06.84.77 1.48 1.61 1.42s1.48-.77 1.42-1.61c-.29-4.33-3.94-7.61-8.29-7.48-4.06.12-7.36 3.3-7.7 7.36-.28 3.23 1.05 6.27 3.68 8.05 2.58 1.74 5.9 2.13 8.82 1.06 5.37-1.97 8.35-7.76 6.91-13.28z" />
   </svg>
 );
 
@@ -310,7 +310,7 @@ export default function Step2Article({
     const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const uploadedUrls = uploadedImages.map(img => img.url);
     const combined = [...crawledOnly, ...uploadedUrls];
-    
+
     const currentCombinedStr = JSON.stringify(state.crawledImageUrls || []);
     const newCombinedStr = JSON.stringify(combined);
     if (currentCombinedStr !== newCombinedStr) {
@@ -384,7 +384,7 @@ export default function Step2Article({
       setIsCrawlingActive(false);
       setUploadError('Không thể thu thập bài viết. Vui lòng thử lại hoặc nhập thủ công.');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crawlStatus, articleContext, dispatch, sourceType]);
 
   React.useEffect(() => {
@@ -418,17 +418,17 @@ export default function Step2Article({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       const startTime = Date.now();
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
@@ -443,11 +443,11 @@ export default function Step2Article({
         const file = new File([audioBlob], `Ghi-am-${Date.now()}.wav`, { type: 'audio/wav' });
         await processUploadedFile(file);
       };
-      
+
       mediaRecorder.start(1000); // chunk every 1s
       setIsRecording(true);
       setRecordingDuration(0);
-      
+
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((prev) => {
           if (prev >= 300) { // Limit to 5 mins
@@ -460,7 +460,7 @@ export default function Step2Article({
           return prev + 1;
         });
       }, 1000);
-      
+
     } catch (err) {
       console.error('Không thể truy cập microphone:', err);
       setUploadError('Không thể truy cập microphone. Vui lòng kiểm tra quyền thiết bị.');
@@ -610,7 +610,7 @@ export default function Step2Article({
     const markerIndex = previousManualOnly.indexOf('[Nội dung bổ sung từ nguồn dữ liệu]:');
     if (markerIndex !== -1) {
       previousManualOnly = previousManualOnly.substring(0, markerIndex).trim();
-      
+
       // Update the manual content to remove the old crawl
       dispatch({
         type: 'SET_MANUAL_CONTENT',
@@ -628,14 +628,27 @@ export default function Step2Article({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex-grow pt-4 pb-20 px-4 md:px-6 select-none animate-fade-in">
-      
+
       {/* Page Title */}
       <div className="mb-6 text-center md:text-left">
         <h1 className="text-2xl md:text-3xl font-black text-text tracking-tight">Lựa chọn nguồn nhập bài viết</h1>
       </div>
 
+      {/* Instagram Image Requirement Warning */}
+      {state.selectedPlatforms.includes('instagram') && getAllItems().length === 0 && (
+        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/40 rounded-2xl p-4 flex items-start gap-3 shadow-sm animate-fade-in">
+          <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-blue-700 dark:text-blue-400">Lưu ý khi đăng bài lên Instagram</h3>
+            <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1">
+              Bạn đang chọn nền tảng Instagram. Để có thể sang bước tiếp theo, vui lòng tải lên hoặc thu thập một nguồn bài viết có chứa ít nhất 1 hình ảnh.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Floating Style Presets Trigger Button & Onboarding Popover Hint */}
-      <div 
+      <div
         className="fixed right-6 bottom-24 z-40 select-none"
       >
         {/* Onboarding hint popover tooltip next to button */}
@@ -703,21 +716,21 @@ export default function Step2Article({
       {isPresetsOpen && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 select-text font-sans">
           {/* Backdrop */}
-          <div 
+          <div
             onClick={() => setIsPresetsOpen(false)}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[101] animate-fade-in"
           />
-          
+
           {/* Centered Modal Panel */}
           <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
                 <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsPresetsOpen(false)}
                 className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-850 transition-colors"
               >
@@ -764,11 +777,10 @@ export default function Step2Article({
                           const newId = isSelected ? null : preset.id;
                           dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
                         }}
-                        className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
-                          isSelected
+                        className={`flex items-center justify-between p-4 transition-all cursor-pointer ${isSelected
                             ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
                             : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
                           <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
@@ -795,11 +807,10 @@ export default function Step2Article({
                             )}
                           </div>
 
-                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                            isSelected 
-                              ? 'border-primary bg-primary text-white' 
+                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
+                              ? 'border-primary bg-primary text-white'
                               : 'border-gray-300 dark:border-zinc-700 bg-transparent'
-                          }`}>
+                            }`}>
                             {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
                         </div>
@@ -814,10 +825,10 @@ export default function Step2Article({
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (
-                  <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
-                    Không tìm thấy phong cách nào phù hợp.
-                  </div>
-                )}
+                    <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
+                      Không tìm thấy phong cách nào phù hợp.
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -839,26 +850,25 @@ export default function Step2Article({
 
       {/* Grid of Website Cards - 3 columns */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        
+
         {/* Card 1: Gocnhinmoi */}
-        <div 
+        <div
           onClick={() => {
             if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('gocnhinmoi');
           }}
-          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
-            crawlStatus === 'crawling' || isCrawlingActive 
-              ? 'cursor-not-allowed opacity-70' 
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${crawlStatus === 'crawling' || isCrawlingActive
+              ? 'cursor-not-allowed opacity-70'
               : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
-          }`}
+            }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+          <img
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvJ8KciIMLvReEBHnYlzWk5BOfT2GOG8lxu4IKb1OHQtTenSlm0YKFuhjKVqF_QA28KA5cVi9DRYlzisegqFHq-R2GXI9ZAcbzrN0ZCb1wr4pw5qOH3JoU6hjFayqua_m7CY3YxZ6BvwVNrgzX9B-vg7YDbdC64mW0D_aswaQ14L3ZbTWK6koHlXFVwLZtZj8DvU-Y7KM6PdB4yVlrNiNLkj-Apkf_l2AIgg5nSBOmKFa__x1npWU"
             alt="Gocnhinmoi background"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-          
+
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/gocnhinmoi-logo.png" alt="Góc Nhìn Mới" className="h-6 object-contain" />
@@ -876,24 +886,23 @@ export default function Step2Article({
         </div>
 
         {/* Card 2: Tuoi Tre */}
-        <div 
+        <div
           onClick={() => {
             if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('tuoitre');
           }}
-          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
-            crawlStatus === 'crawling' || isCrawlingActive 
-              ? 'cursor-not-allowed opacity-70' 
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${crawlStatus === 'crawling' || isCrawlingActive
+              ? 'cursor-not-allowed opacity-70'
               : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
-          }`}
+            }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+          <img
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply"
             src="https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=60"
             alt="Tuoitre background"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-          
+
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/tuoitre-logo.png" alt="Tuổi Trẻ" className="h-6 object-contain bg-red-600 p-1 rounded" />
@@ -911,24 +920,23 @@ export default function Step2Article({
         </div>
 
         {/* Card 3: Dan Tri */}
-        <div 
+        <div
           onClick={() => {
             if (crawlStatus !== 'crawling' && !isCrawlingActive) setActiveBrowserSite('dantri');
           }}
-          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${
-            crawlStatus === 'crawling' || isCrawlingActive 
-              ? 'cursor-not-allowed opacity-70' 
+          className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl overflow-hidden group transition-all duration-300 shadow-md relative aspect-[16/9] ${crawlStatus === 'crawling' || isCrawlingActive
+              ? 'cursor-not-allowed opacity-70'
               : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl'
-          }`}
+            }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply" 
+          <img
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-multiply"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzQ_bDckz_5eTLgBs9tEGpM7JxV3U5M8cLJAJ_4Wv_nfkOGTVFTaw9kPym9E51a0axHur2dgO7C-hnaoiNn-xIL0KJiOVoE4KUcwz6NLZKUiJpsja_rQwTEkbkR6cG73G4sxkb52Rwox3EzTs49LWb_UB6X2fpAMvXNIX0kXgtbKscE4umSG7GqKx6IFQk8EGeLm6TygMDkvopvWl6djx3aP3lIcVTbXkWiqkV_DvYZoRC3EDmMRA"
             alt="Dantri background"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-          
+
           <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2.5 shadow-md border border-gray-250 dark:border-zinc-800 flex items-center gap-2 font-sans">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/dantri-logo.png" alt="Dân Trí" className="h-6 object-contain" />
@@ -960,28 +968,26 @@ export default function Step2Article({
             <span>Tạo lại</span>
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch min-h-[380px]">
           {/* Left Column: Dropzone & Direct Recording */}
           <div className="flex flex-col gap-4 justify-between h-full min-h-[350px]">
-            <div 
+            <div
               onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleFileDrop}
               onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
-              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors flex-grow h-full min-h-[220px] ${
-                isUploading ? 'cursor-wait opacity-80' : 'cursor-pointer'
-              } ${
-                isDragging 
-                  ? 'border-amber-500 bg-amber-500/5' 
+              className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-colors flex-grow h-full min-h-[220px] ${isUploading ? 'cursor-wait opacity-80' : 'cursor-pointer'
+                } ${isDragging
+                  ? 'border-amber-500 bg-amber-500/5'
                   : 'border-gray-250 dark:border-zinc-800 hover:border-amber-500 bg-gray-55 dark:bg-zinc-900/30'
-              }`}
+                }`}
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileSelect} 
-                className="hidden" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
                 accept="image/png,image/jpeg,image/jpg,image/webp,audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg,.mp3,.m4a,.pdf,.docx,.txt"
                 disabled={isUploading}
                 multiple
@@ -1025,11 +1031,10 @@ export default function Step2Article({
                 type="button"
                 onClick={isRecording ? handleStopRecording : handleStartRecording}
                 disabled={isUploading}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-95 duration-150 shrink-0 ${
-                  isRecording 
-                    ? 'bg-red-500 hover:bg-red-650 shadow-md shadow-red-500/10' 
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-95 duration-150 shrink-0 ${isRecording
+                    ? 'bg-red-500 hover:bg-red-650 shadow-md shadow-red-500/10'
                     : 'bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/10'
-                }`}
+                  }`}
               >
                 {isRecording ? (
                   <>
@@ -1130,7 +1135,7 @@ export default function Step2Article({
           <div className="flex flex-col h-full min-h-[350px] border-t md:border-t-0 md:border-l border-gray-150 dark:border-zinc-850 pt-6 md:pt-0 md:pl-6 justify-between">
             <div className="flex-grow flex flex-col min-h-0">
               <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Trạng thái tệp tải lên</h4>
-              
+
               {/* Audio and Document Tabs */}
               <div className="flex border-b border-gray-150 dark:border-zinc-800 mb-4 flex-shrink-0">
                 {(['audio', 'document'] as const).map((tab) => (
@@ -1138,11 +1143,10 @@ export default function Step2Article({
                     key={tab}
                     type="button"
                     onClick={() => setActiveFileTab(tab)}
-                    className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 capitalize ${
-                      activeFileTab === tab 
-                        ? 'border-amber-500 text-amber-500' 
+                    className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 capitalize ${activeFileTab === tab
+                        ? 'border-amber-500 text-amber-500'
                         : 'border-transparent text-text-muted hover:text-text'
-                    }`}
+                      }`}
                   >
                     {tab === 'audio' ? 'Audio' : 'Tài liệu'}
                   </button>
@@ -1160,8 +1164,8 @@ export default function Step2Article({
                     {uploadedFiles
                       .filter(f => f.type === activeFileTab)
                       .map((file, idx) => (
-                        <div 
-                          key={idx} 
+                        <div
+                          key={idx}
                           onClick={() => {
                             if (file.type === 'document') {
                               setPreviewDoc({
@@ -1170,9 +1174,8 @@ export default function Step2Article({
                               });
                             }
                           }}
-                          className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${
-                            file.type === 'document' ? 'cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5' : ''
-                          }`}
+                          className={`bg-gray-55 dark:bg-zinc-950/40 rounded-xl p-3 border border-gray-250 dark:border-zinc-850 flex flex-col gap-2.5 shadow-sm transition-all ${file.type === 'document' ? 'cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5' : ''
+                            }`}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -1206,10 +1209,10 @@ export default function Step2Article({
                                 <p className="text-[9px] text-text-muted mt-0.5">{file.size} • Thành công</p>
                               </div>
                             </div>
-                            
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (playingAudio === file.name) {
                                   if (audioPlaybackRef.current) audioPlaybackRef.current.pause();
                                   setPlayingAudio(null);
@@ -1222,7 +1225,7 @@ export default function Step2Article({
                                     return next;
                                   });
                                 }
-                                setUploadedFiles(prev => prev.filter(f => f.name !== file.name)); 
+                                setUploadedFiles(prev => prev.filter(f => f.name !== file.name));
                                 dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
                               }}
                               className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
@@ -1250,11 +1253,10 @@ export default function Step2Article({
                     value={state.manualTitle}
                     disabled={isUploading}
                     onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: e.target.value, content: state.manualContent } })}
-                    className={`w-full px-3 py-2 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all duration-1000 ${
-                      isHighlighting 
-                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.01]' 
+                    className={`w-full px-3 py-2 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all duration-1000 ${isHighlighting
+                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.01]'
                         : 'border-gray-250 dark:border-zinc-800'
-                    }`}
+                      }`}
                   />
                 </div>
                 <div className="flex-grow flex flex-col min-h-[180px]">
@@ -1265,11 +1267,10 @@ export default function Step2Article({
                     rows={6}
                     disabled={isUploading}
                     onChange={(e) => dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: e.target.value } })}
-                    className={`w-full flex-grow px-3 py-3 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none min-h-[160px] leading-relaxed transition-all duration-1000 ${
-                      isHighlighting 
-                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.005]' 
+                    className={`w-full flex-grow px-3 py-3 rounded-xl border focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text resize-none min-h-[160px] leading-relaxed transition-all duration-1000 ${isHighlighting
+                        ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-950/20 shadow-lg shadow-amber-500/20 scale-[1.005]'
                         : 'border-gray-250 dark:border-zinc-800'
-                    }`}
+                      }`}
                   />
                 </div>
               </div>
@@ -1283,7 +1284,7 @@ export default function Step2Article({
       {activeBrowserSite && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in select-text font-sans">
           <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-850 rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scale-up">
-            
+
             {/* Chrome-style browser address bar */}
             <div className="bg-zinc-100 dark:bg-zinc-950 px-4 py-3 border-b border-gray-200 dark:border-zinc-850 flex items-center gap-3">
               {/* Nút quay lại trang trước */}
@@ -1295,7 +1296,7 @@ export default function Step2Article({
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
+
               <input
                 type="text"
                 value={currentBrowserUrl}
@@ -1312,7 +1313,7 @@ export default function Step2Article({
                 className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-3 py-1.5 text-xs text-text border border-gray-200 dark:border-zinc-800 font-semibold focus:ring-1 focus:ring-primary outline-none"
                 placeholder="Nhập hoặc dán liên kết bài viết tại đây..."
               />
-              
+
               <button
                 type="button"
                 onClick={() => handleSelectArticle(currentBrowserUrl)}
@@ -1322,7 +1323,7 @@ export default function Step2Article({
                 <span>Chọn bài viết này</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => setActiveBrowserSite(null)}
                 className="text-text-muted hover:text-text p-1 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
               >
@@ -1341,7 +1342,7 @@ export default function Step2Article({
                   Chọn bài viết để crawl nội dung
                 </span>
               </div>
-              
+
               <div className="w-full flex-grow relative bg-white rounded-2xl overflow-hidden border border-gray-250 dark:border-zinc-850 h-[50vh]">
                 <iframe
                   key={iframeKey}
@@ -1362,7 +1363,7 @@ export default function Step2Article({
       {previewDoc && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 animate-fade-in select-text font-sans">
           <div className="bg-white dark:bg-zinc-900 border border-gray-250 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-scale-up">
-            
+
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-150 dark:border-zinc-850 flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1374,7 +1375,7 @@ export default function Step2Article({
                   <p className="text-[10px] text-text-muted">Xem trước nội dung văn bản trích xuất</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setPreviewDoc(null)}
                 className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-all active:scale-95"
               >
@@ -1392,9 +1393,9 @@ export default function Step2Article({
               <button
                 type="button"
                 onClick={() => {
-                  dispatch({ 
-                    type: 'SET_MANUAL_CONTENT', 
-                    payload: { title: previewDoc.name.substring(0, previewDoc.name.lastIndexOf('.')), content: previewDoc.content } 
+                  dispatch({
+                    type: 'SET_MANUAL_CONTENT',
+                    payload: { title: previewDoc.name.substring(0, previewDoc.name.lastIndexOf('.')), content: previewDoc.content }
                   });
                   setPreviewDoc(null);
                 }}
@@ -1418,15 +1419,15 @@ export default function Step2Article({
 
       {/* Image Lightbox Modal */}
       {activeLightboxImage && typeof window !== 'undefined' && createPortal(
-        <div 
+        <div
           onClick={() => setActiveLightboxImage(null)}
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 cursor-zoom-out animate-fade-in select-none"
         >
           <div className="relative max-w-[90vw] max-h-[85vh] select-none" onClick={e => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={activeLightboxImage} 
-              alt="Preview gốc" 
+            <img
+              src={activeLightboxImage}
+              alt="Preview gốc"
               className="rounded-2xl max-w-full max-h-[80vh] object-contain shadow-2xl border border-white/10"
             />
             <button
@@ -1451,7 +1452,7 @@ export default function Step2Article({
                 <h3 className="text-sm font-bold text-text">Tất cả ảnh ({getAllItems().length})</h3>
                 <p className="text-[10px] text-text-muted">Xem và quản lý tất cả các ảnh nguồn</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowAllImagesModal(false)}
                 className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-250 dark:hover:bg-zinc-850 transition-all active:scale-95 cursor-pointer"
               >
@@ -1464,7 +1465,7 @@ export default function Step2Article({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {getAllItems().map((item, index) => (
                   <div key={index} className="flex flex-col items-center gap-1.5 group relative select-none">
-                    <div 
+                    <div
                       onClick={() => setActiveLightboxImage(item.url)}
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
                     >
@@ -1575,7 +1576,7 @@ export default function Step2Article({
 
       {/* Lightbox Modal for Full Image View */}
       {activeLightboxImage && typeof window !== 'undefined' && createPortal(
-        <div 
+        <div
           className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setActiveLightboxImage(null)}
         >
@@ -1588,9 +1589,9 @@ export default function Step2Article({
               <X className="w-6 h-6" />
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={activeLightboxImage.startsWith('http') && !activeLightboxImage.includes('localhost') ? `/api/proxy?url=${encodeURIComponent(activeLightboxImage)}` : activeLightboxImage} 
-              alt="Ảnh phóng to" 
+            <img
+              src={activeLightboxImage.startsWith('http') && !activeLightboxImage.includes('localhost') ? `/api/proxy?url=${encodeURIComponent(activeLightboxImage)}` : activeLightboxImage}
+              alt="Ảnh phóng to"
               referrerPolicy="no-referrer"
               className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
               onClick={(e) => e.stopPropagation()}
