@@ -166,7 +166,7 @@ export default function ContentCalendarView() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
   });
-  const [selectedCell, setSelectedCell] = useState<{ date: Date; hour: number; posts: any[] } | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{ date: Date; hour?: number; title?: string; posts: any[] } | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(() => new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -554,6 +554,7 @@ export default function ContentCalendarView() {
   }, [handleReschedule, showPopup, language, clearCache, fetchPosts]);
 
   const renderEventContent = useCallback((eventInfo: any) => {
+    const isMonthView = eventInfo.view.type === 'dayGridMonth';
     const { platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
 
     const isGoldenHour = (postPlatform: string, scheduledAt: string) => {
@@ -565,6 +566,27 @@ export default function ContentCalendarView() {
     if (isMultiple) {
       const postsCount = posts ? posts.length : 0;
       const uniquePlatforms = platforms || [];
+
+      if (isMonthView) {
+        return (
+          <div className="w-full bg-[#EDF3FF] dark:bg-blue-950/40 rounded-lg border border-blue-200/60 dark:border-blue-900/40 px-1.5 py-0.5 flex items-center justify-between cursor-pointer select-none shadow-2xs hover:bg-[#E2EAFB] dark:hover:bg-blue-900/50 transition-colors my-0.5">
+            <div className="flex items-center gap-1 min-w-0">
+              <Layers size={11} className="text-[#1E40AF] dark:text-blue-300 stroke-[2.5] shrink-0" />
+              <span className="text-[9.5px] font-black text-[#1E40AF] dark:text-blue-300 truncate">
+                {postsCount} {language === 'vi' ? 'bài' : 'posts'}
+              </span>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {uniquePlatforms.map((plat: string, idx: number) => {
+                if (plat === 'facebook') return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+                if (plat === 'instagram') return <Instagram key={idx} size={10} className="text-[#E4405F] shrink-0" />;
+                if (plat === 'threads') return <ThreadsIcon key={idx} size={10} className="text-black dark:text-white shrink-0" />;
+                return <Globe key={idx} size={10} className="text-emerald-700 shrink-0" />;
+              })}
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="w-full h-auto bg-[#EDF3FF] dark:bg-blue-950/40 rounded-xl overflow-hidden cursor-pointer shadow-sm select-none border border-blue-100 dark:border-blue-900/30">
@@ -622,31 +644,49 @@ export default function ContentCalendarView() {
         bgClass = 'bg-[#EDF3FF] dark:bg-blue-950/20';
         borderClass = 'border-[#D1E2FF] dark:border-blue-900/30';
         textClass = 'text-[#1E40AF] dark:text-blue-400';
-        icon = <Facebook size={12} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+        icon = <Facebook size={11} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
       } else if (platform === 'instagram') {
         bgClass = 'bg-[#FFF0F2] dark:bg-pink-950/20';
         borderClass = 'border-[#FFB8C6] dark:border-pink-900/30';
         textClass = 'text-[#900A22] dark:text-pink-400';
-        icon = <Instagram size={12} className="text-[#E4405F] shrink-0" />;
+        icon = <Instagram size={11} className="text-[#E4405F] shrink-0" />;
       } else if (platform === 'threads') {
         bgClass = 'bg-[#F8F9FA] dark:bg-zinc-900/40';
         borderClass = 'border-[#E9ECEF] dark:border-zinc-800';
         textClass = 'text-[#212529] dark:text-zinc-300';
-        icon = <ThreadsIcon size={12} className="text-black dark:text-white shrink-0" />;
+        icon = <ThreadsIcon size={11} className="text-black dark:text-white shrink-0" />;
       } else {
         bgClass = 'bg-[#E8F5E9] dark:bg-emerald-950/20';
         borderClass = 'border-[#C8E6C9] dark:border-emerald-900/30';
         textClass = 'text-[#2E7D32] dark:text-emerald-400';
-        icon = <Globe size={12} className="text-[#2E7D32] shrink-0" />;
+        icon = <Globe size={11} className="text-[#2E7D32] shrink-0" />;
       }
 
       let statusIcon = null;
       if (status === 'failed') {
-        statusIcon = <AlertTriangle size={10} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
+        statusIcon = <AlertTriangle size={9} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
       } else if (status === 'cancelled') {
-        statusIcon = <X size={10} className="text-slate-500 shrink-0 font-bold" />;
+        statusIcon = <X size={9} className="text-slate-500 shrink-0 font-bold" />;
       } else if (status === 'posted') {
-        statusIcon = <CheckCircle2 size={10} className="text-emerald-500 fill-emerald-100 shrink-0" />;
+        statusIcon = <CheckCircle2 size={9} className="text-emerald-500 fill-emerald-100 shrink-0" />;
+      }
+
+      if (isMonthView) {
+        return (
+          <div className={`w-full rounded-lg border ${borderClass} ${bgClass} px-1.5 py-0.5 flex items-center justify-between gap-1 overflow-hidden cursor-pointer select-none shadow-2xs my-0.5`}>
+            <div className="flex items-center gap-1 min-w-0 flex-1">
+              {icon}
+              <span className={`text-[9px] font-extrabold font-mono shrink-0 ${textClass}`}>
+                {time}
+              </span>
+              {isGolden && <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />}
+              <span className={`text-[9.5px] font-bold truncate min-w-0 leading-none ${textClass}`}>
+                {title}
+              </span>
+            </div>
+            {statusIcon}
+          </div>
+        );
       }
 
       return (
@@ -668,6 +708,56 @@ export default function ContentCalendarView() {
       );
     }
   }, [language]);
+
+  const handleMoreLinkClick = useCallback((arg: any) => {
+    const extraPosts: any[] = [];
+    const segsToProcess = (arg.hiddenSegs && arg.hiddenSegs.length > 0) ? arg.hiddenSegs : arg.allSegs;
+
+    segsToProcess.forEach((seg: any) => {
+      const post = seg.event?.extendedProps?.post;
+      const postsList = seg.event?.extendedProps?.posts;
+      if (postsList && Array.isArray(postsList)) {
+        extraPosts.push(...postsList);
+      } else if (post) {
+        extraPosts.push(post);
+      }
+    });
+
+    const uniqueMap = new Map();
+    extraPosts.forEach((p) => {
+      if (p && p.id) uniqueMap.set(p.id, p);
+    });
+    const uniquePosts = Array.from(uniqueMap.values());
+
+    const clickDate = arg.date ? new Date(arg.date) : new Date();
+
+    setSelectedCell({
+      date: clickDate,
+      hour: clickDate.getHours(),
+      title: language === 'vi' ? 'Danh sách bài đăng nhóm thêm' : 'Extra Posts Group',
+      posts: uniquePosts,
+    });
+
+    return 'none';
+  }, [language]);
+
+  const handleDateClick = useCallback((info: any) => {
+    const clickedDate = new Date(info.dateStr || info.date);
+    const dayPosts = posts.filter(post => {
+      const d = new Date(post.scheduled_at);
+      return d.getDate() === clickedDate.getDate() &&
+             d.getMonth() === clickedDate.getMonth() &&
+             d.getFullYear() === clickedDate.getFullYear();
+    });
+
+    if (dayPosts.length === 0) return;
+
+    setSelectedCell({
+      date: clickedDate,
+      title: language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details',
+      posts: dayPosts,
+    });
+  }, [posts, language]);
 
 
 
@@ -915,6 +1005,38 @@ export default function ContentCalendarView() {
         .fc .fc-daygrid-event {
           margin-top: 2px !important;
           margin-bottom: 2px !important;
+          padding: 1px 2px !important;
+        }
+        .fc .fc-daygrid-more-link {
+          font-size: 10px !important;
+          font-weight: 800 !important;
+          color: #1E40AF !important;
+          background: #EDF3FF !important;
+          border: 1px solid #D1E2FF !important;
+          border-radius: 8px !important;
+          padding: 2px 6px !important;
+          margin-top: 2px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          transition: all 0.15s ease !important;
+          text-decoration: none !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+        .fc .fc-daygrid-more-link:hover {
+          background: #D1E2FF !important;
+          color: #1e3a8a !important;
+          transform: translateY(-1px) !important;
+        }
+        .dark .fc .fc-daygrid-more-link {
+          color: #60a5fa !important;
+          background: rgba(30, 58, 138, 0.4) !important;
+          border-color: rgba(30, 64, 175, 0.5) !important;
+        }
+        .dark .fc .fc-daygrid-more-link:hover {
+          background: rgba(30, 58, 138, 0.7) !important;
+          color: #93c5fd !important;
+        }
+        .fc .fc-daygrid-day-frame {
           padding: 2px 4px !important;
         }
       `}</style>
@@ -1244,6 +1366,10 @@ export default function ContentCalendarView() {
                 eventClick={handleEventClick}
                 eventContent={renderEventContent}
                 datesSet={handleDatesSet}
+                dateClick={handleDateClick}
+                dayMaxEvents={3}
+                moreLinkText={(num: number) => language === 'vi' ? `+${num} bài nữa` : `+${num} more`}
+                moreLinkClick={handleMoreLinkClick}
                 height="100%"
               />
             </div>
@@ -1375,12 +1501,12 @@ export default function ContentCalendarView() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex flex-col">
                   <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-                    {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
+                    {selectedCell.title || (language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details')}
                   </h3>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                     {language === 'vi'
-                      ? `Ngày ${selectedCell.date.getDate()}/${selectedCell.date.getMonth() + 1}/${selectedCell.date.getFullYear()} · Khung giờ ${selectedCell.hour}:00`
-                      : `Date: ${selectedCell.date.getMonth() + 1}/${selectedCell.date.getDate()}/${selectedCell.date.getFullYear()} · Time slot: ${selectedCell.hour}:00`}
+                      ? `Ngày ${selectedCell.date.getDate()}/${selectedCell.date.getMonth() + 1}/${selectedCell.date.getFullYear()}`
+                      : `Date: ${selectedCell.date.getMonth() + 1}/${selectedCell.date.getDate()}/${selectedCell.date.getFullYear()}`}
                   </span>
                 </div>
                 <button
