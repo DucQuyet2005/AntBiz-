@@ -113,6 +113,13 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
   const lowerAlt = alt ? alt.toLowerCase() : '';
   const lowerTitle = title ? title.toLowerCase() : '';
 
+  // Skip SVG data URIs (placeholder images used by Dantri lazy-loading)
+  if (lowerSrc.startsWith('data:image/svg')) return true;
+
+  // Dantri uses /zoom/NNN_NNN/ for small thumbnail images (sidebar, author avatars, related articles)
+  // Body images use /thumb_w/NNNN/ instead. Filter out small zoom thumbnails.
+  if (/\/zoom\/\d{2,3}_\d{2,3}\//.test(lowerSrc)) return true;
+
   // Check common logo, icons, avatars, trackers, and social media/promo patterns in URL
   const invalidUrlPatterns = [
     'logo', 'no-data', 'track-view', 'author', 'tac-gia', 'tacgia', 'avatar', 'icon', 'banner', 'ads', 
@@ -970,7 +977,14 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     // Try to find the specific body container first to exclude header/footer/sidebar/author elements across Tuoi Tre, Dantri, Goc Nhin Moi
     let bodyContainer = $('.singular-content, .singular-body, #html_content, [itemprop="articleBody"], .detail-content, .detail-cmain, .article-content, .content-detail, .e-magazine, .e-magazine__body, .dmagazine-container').first();
     if (!bodyContainer.length) {
-      bodyContainer = scope;
+      // Dantri uses multiple <article> tags — one for main content (contains h1) and others for sidebar/related.
+      // Find the first <article> that contains the h1 to scope precisely to the main article body.
+      const mainArticle = $('article').filter((_, el) => $(el).find('h1').length > 0).first();
+      if (mainArticle.length) {
+        bodyContainer = mainArticle;
+      } else {
+        bodyContainer = scope;
+      }
     }
 
     bodyContainer.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
