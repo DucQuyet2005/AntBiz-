@@ -233,12 +233,12 @@ export async function GET(request: NextRequest) {
     } catch (err) {}
   }, false);
 
-  // ── Intercept fetch() so Dantri lazy-loaders go through proxy ──
+  // ── Intercept fetch() so Dantri lazy-loaders & APIs go through proxy ──
   var _fetch = window.fetch;
   window.fetch = function(input, init) {
     var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
     if (url && typeof url === 'string') {
-      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/')) {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
         input = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
       } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
         if (isAllowedHost(url)) input = PROXY + encodeURIComponent(url);
@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
   var _xhrOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     if (typeof url === 'string') {
-      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/')) {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
         url = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
       } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
         if (isAllowedHost(url)) url = PROXY + encodeURIComponent(url);
