@@ -354,26 +354,6 @@ function PresetCard({
           </div>
         </div>
 
-        {/* Name */}
-        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2.5 group-hover:text-primary transition-colors min-h-[44px]">
-          {preset.name}
-        </h3>
-
-        {/* Objectives as Badges */}
-        {objectives.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {objectives.slice(0, 2).map((obj: string, i: number) => (
-              <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-violet-500/10 dark:bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/15 max-w-[120px] truncate">
-                🎯 {obj}
-              </span>
-            ))}
-            {objectives.length > 2 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-200/50 dark:border-zinc-700/50">
-                +{objectives.length - 2}
-              </span>
-            )}
-          </div>
-        )}
 
         {/* Style Properties Grid */}
         {parsedProps.length > 0 && (
