@@ -144,6 +144,14 @@ export async function GET(request: NextRequest) {
     opacity: 0 !important;
     pointer-events: none !important;
   }
+  /* Completely hide "Tin của bạn" skeleton containers */
+  .dt-skeleton,
+  [class*="skeleton"],
+  [data-box*="recommend"] {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
 </style>
 <script>
 (function () {
@@ -335,15 +343,19 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Lightweight periodic cleanup of ad iframes without layout thrashing
+  // Lightweight periodic cleanup of ad iframes and skeleton elements without layout thrashing
   setInterval(function() {
     try {
       var iframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="googlesyndication"], iframe[src*="adnxs"]');
       for (var i = 0; i < iframes.length; i++) {
         iframes[i].remove();
       }
+      var skeletons = document.querySelectorAll('.dt-skeleton, [class*="skeleton"]');
+      for (var j = 0; j < skeletons.length; j++) {
+        skeletons[j].remove();
+      }
     } catch (_) {}
-  }, 3000);
+  }, 500);
 })();
 </script>`;
 
