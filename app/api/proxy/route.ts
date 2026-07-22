@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
     }
     
     reqHeaders.set('Referer', spoofReferer);
+    reqHeaders.set('Origin', spoofReferer.replace(/\/$/, ''));
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
     reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8');
     reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7');
@@ -91,6 +92,9 @@ export async function GET(request: NextRequest) {
     
     const headersToForward = [
       'content-type',
+      'cookie',
+      'authorization',
+      'x-requested-with',
     ];
     for (const h of headersToForward) {
       const val = request.headers.get(h);
@@ -140,11 +144,6 @@ export async function GET(request: NextRequest) {
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
-  }
-  /* Auto-hide empty stagnant skeleton placeholders */
-  [class*="skeleton"]:not(:has(img)):not(:has(a)),
-  .dt-skeleton:not(:has(img)):not(:has(a)) {
-    display: none !important;
   }
 </style>
 <script>
@@ -561,9 +560,13 @@ export async function POST(request: NextRequest) {
     
     const reqHeaders = new Headers();
     reqHeaders.set('Referer', spoofReferer);
+    reqHeaders.set('Origin', spoofReferer.replace(/\/$/, ''));
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
-    const clientContentType = request.headers.get('content-type');
-    if (clientContentType) reqHeaders.set('Content-Type', clientContentType);
+    const headersToForward = ['content-type', 'cookie', 'authorization', 'x-requested-with'];
+    for (const h of headersToForward) {
+      const val = request.headers.get(h);
+      if (val) reqHeaders.set(h, val);
+    }
 
     const res = await fetch(targetUrl, {
       method: 'POST',
