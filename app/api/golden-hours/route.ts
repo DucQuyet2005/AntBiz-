@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server';
 import { createPostPerformanceModule } from '@/backend/modules/post-performance';
 
 export async function GET(request: Request) {
@@ -7,8 +7,9 @@ export async function GET(request: Request) {
   const platform = searchParams.get('platform') || 'all';
 
   try {
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+
 
     if (authError || !user) {
       return NextResponse.json(
