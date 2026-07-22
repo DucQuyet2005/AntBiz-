@@ -7,7 +7,12 @@ const ALLOWED_HOSTNAMES = [
   'gocnhinmoi.com',
   'cdn.gocnhinmoi.com',
   'tuoitre.vn',
+  'tuoitrecdn.net',
   'dantri.com.vn',
+  'vcmedia.vn',
+  'dantricdn.com',
+  'vccorp.vn',
+  'mediacdn.vn',
 ];
 
 function isAllowedUrl(url: string): boolean {
@@ -49,9 +54,9 @@ export async function GET(request: NextRequest) {
     const parsedTarget = new URL(targetUrl);
     
     let spoofReferer = parsedTarget.origin + '/';
-    if (spoofReferer.includes('dantri.com.vn')) {
+    if (spoofReferer.includes('dantri.com.vn') || spoofReferer.includes('vcmedia.vn') || spoofReferer.includes('dantricdn.com') || spoofReferer.includes('vccorp.vn')) {
       spoofReferer = 'https://dantri.com.vn/';
-    } else if (spoofReferer.includes('tuoitre.vn')) {
+    } else if (spoofReferer.includes('tuoitre.vn') || spoofReferer.includes('tuoitrecdn.net')) {
       spoofReferer = 'https://tuoitre.vn/';
     } else if (spoofReferer.includes('gocnhinmoi.com.vn') || spoofReferer.includes('gocnhinmoi.com')) {
       spoofReferer = 'https://gocnhinmoi.com.vn/';
@@ -287,7 +292,11 @@ export async function GET(request: NextRequest) {
     });
     
 
-    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri
+    const isTargetDomain = (host: string) => {
+      return ['dantri.com.vn', 'vcmedia.vn', 'dantricdn.com', 'tuoitre.vn', 'tuoitrecdn.net', 'gocnhinmoi.com', 'vccorp.vn', 'mediacdn.vn'].some(h => host.includes(h));
+    };
+
+    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri & others
     if (needsImageProxy) {
       html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
@@ -296,9 +305,9 @@ export async function GET(request: NextRequest) {
         try {
           const absolute = new URL(urlStr, targetUrl).href;
           const u = new URL(absolute);
-            if (u.hostname.includes('dantri.com.vn')) {
-              return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
-            }
+          if (isTargetDomain(u.hostname)) {
+            return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
+          }
           return `${attr}${q}${absolute}${q}`;
         } catch(e) {}
         return _m;
@@ -315,9 +324,9 @@ export async function GET(request: NextRequest) {
             try {
               const absolute = new URL(urlStr, targetUrl).href;
               const u = new URL(absolute);
-                if (u.hostname.includes('dantri.com.vn')) {
-                  return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
-                }
+              if (isTargetDomain(u.hostname)) {
+                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
+              }
               return `${sep}${absolute}`;
             } catch(e) {
               return _s;
@@ -411,7 +420,7 @@ export async function GET(request: NextRequest) {
       if (!val || val.startsWith('data:') || val.startsWith('blob:') || val.indexOf(PROXY) === 0) return;
       
       // Check if it's an image or a known CDN
-      if (imgPatterns.test(val) || val.indexOf('cdnphoto.dantri.com.vn') > -1 || val.indexOf('cdn.tuoitre.vn') > -1 || val.indexOf('gocnhinmoi.com') > -1) {
+      if (imgPatterns.test(val) || val.indexOf('dantri') > -1 || val.indexOf('vcmedia') > -1 || val.indexOf('tuoitre') > -1 || val.indexOf('gocnhinmoi') > -1 || val.indexOf('vccorp') > -1) {
         try {
           var absolute = new URL(val, TARGET).href;
           node.setAttribute(attrName, PROXY + encodeURIComponent(absolute));
