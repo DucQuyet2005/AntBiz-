@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,8 +25,10 @@ export default function PopupDialog({
 }: PopupDialogProps) {
   const { language } = useLanguage();
 
-  // Auto-close after 5 seconds
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
@@ -77,7 +80,9 @@ export default function PopupDialog({
     }
   };
 
-  return (
+  if (!mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-[9999] pointer-events-none w-full max-w-sm px-4 sm:px-0">
@@ -114,6 +119,7 @@ export default function PopupDialog({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

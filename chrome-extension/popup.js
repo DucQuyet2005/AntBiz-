@@ -10,17 +10,6 @@ const stateError = document.getElementById('state-error');
 const stateExtracted = document.getElementById('state-extracted');
 const stateSuccess = document.getElementById('state-success');
 
-// Navigation và Lịch sử
-const extensionNav = document.getElementById('extension-nav');
-const tabCreate = document.getElementById('tab-create');
-const tabHistory = document.getElementById('tab-history');
-const stateHistory = document.getElementById('state-history');
-const historyLoader = document.getElementById('history-loader');
-const historyList = document.getElementById('history-list');
-const historyEmpty = document.getElementById('history-empty');
-const btnCloseHistory = document.getElementById('btn-close-history');
-const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
-
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
 const stateVoiceConfirm = document.getElementById('state-voice-confirm');
@@ -105,7 +94,6 @@ let activeRequestId = null;
 let lastActionType = ''; // 'scrape', 'select', 'record', 'upload'
 let lastActionParams = null; // Lưu tham số khi thử lại
 let activePresets = [];
-let lastCreationState = null;
 
 // Biến quản lý ghi âm
 let mediaRecorder = null;
@@ -131,20 +119,6 @@ function showState(stateEl, message = '') {
     loadingText.textContent = message;
   }
   stateEl.classList.remove('hidden');
-
-  // Lưu lại màn hình nghiệp vụ tạo bài viết hiện tại
-  if (stateEl !== stateLoading && stateEl !== stateUnauth && stateEl !== stateHistory && stateEl !== stateError) {
-    lastCreationState = stateEl;
-  }
-
-  // Đồng bộ trạng thái active của tab điều hướng
-  if (stateEl === stateHistory) {
-    if (tabHistory) tabHistory.classList.add('active');
-    if (tabCreate) tabCreate.classList.remove('active');
-  } else if (stateEl !== stateLoading && stateEl !== stateUnauth && stateEl !== stateError) {
-    if (tabCreate) tabCreate.classList.add('active');
-    if (tabHistory) tabHistory.classList.remove('active');
-  }
 }
 
 // Ẩn/Hiện bước Wizard con
@@ -336,7 +310,6 @@ function checkAuthAndInitialize() {
 
     if (response && response.session && response.session.access_token && !isJwtExpired(response.session.access_token)) {
       authToken = response.session.access_token;
-      if (extensionNav) extensionNav.classList.remove('hidden');
 
       // Hiển thị thông tin kết nối
       if (response.session.user && response.session.user.email) {
@@ -401,7 +374,6 @@ function checkAuthAndInitialize() {
     } else {
       authToken = '';
       userProfile.classList.add('hidden');
-      if (extensionNav) extensionNav.classList.add('hidden');
       showState(stateUnauth);
     }
   });
@@ -409,20 +381,6 @@ function checkAuthAndInitialize() {
 
 // Khởi tạo các sự kiện click và lắng nghe
 function initEventListeners() {
-  // Sự kiện chuyển Tab điều hướng
-  if (tabCreate) {
-    tabCreate.addEventListener('click', () => {
-      showState(lastCreationState || stateHome);
-    });
-  }
-
-  if (tabHistory) {
-    tabHistory.addEventListener('click', () => {
-      showState(stateHistory);
-      loadPostHistory();
-    });
-  }
-
   // Tự động lưu khi thay đổi trường nhập liệu
   const autoSaveElements = [
     inputTitle, inputImage, inputDesc, inputContent,
@@ -1675,119 +1633,5 @@ function saveCurrentState() {
 function clearSavedState() {
   chrome.storage.local.remove('antbiz_extension_state', () => {
     console.log('[AntBiz State] Đã xóa trạng thái lưu trữ');
-  });
-}
-
-// Tải lịch sử bài đăng từ hệ thống API
-function loadPostHistory() {
-  if (!authToken) return;
-
-  if (historyLoader) historyLoader.classList.remove('hidden');
-  if (historyList) historyList.classList.add('hidden');
-  if (historyEmpty) historyEmpty.classList.add('hidden');
-
-  chrome.runtime.sendMessage({
-    action: 'get_history',
-    token: authToken,
-    host: AntBizUrl
-  }, (response) => {
-    if (historyLoader) historyLoader.classList.add('hidden');
-
-    if (chrome.runtime.lastError) {
-      console.error('Lỗi tải lịch sử bài đăng:', chrome.runtime.lastError);
-      if (historyEmpty) historyEmpty.classList.remove('hidden');
-      return;
-    }
-
-    if (response && response.success && response.data && Array.isArray(response.data.data)) {
-      const posts = response.data.data;
-      if (posts.length === 0) {
-        if (historyEmpty) historyEmpty.classList.remove('hidden');
-        return;
-      }
-
-      renderHistoryList(posts);
-      if (historyList) historyList.classList.remove('hidden');
-    } else {
-      console.warn('Không thể tải danh sách bài đăng từ API lịch sử:', response?.error);
-      if (historyEmpty) historyEmpty.classList.remove('hidden');
-    }
-  });
-}
-
-// Render danh sách 10 bài đăng gần nhất lên giao diện
-function renderHistoryList(posts) {
-  if (!historyList) return;
-  historyList.innerHTML = '';
-
-  posts.forEach(post => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-
-    // Xác định emoji của nền tảng đăng
-    let platformEmoji = '📱';
-    if (post.platform === 'facebook') platformEmoji = '👥';
-    else if (post.platform === 'thread' || post.platform === 'threads') platformEmoji = '🧵';
-    else if (post.platform === 'instagram') platformEmoji = '📸';
-
-    // Xác định chấm màu và nhãn trạng thái bài đăng
-    let statusClass = 'pending';
-    let statusText = 'Đang lên lịch';
-
-    if (post.status === 'posted') {
-      statusClass = 'posted';
-      statusText = 'Đã đăng';
-    } else if (post.status === 'failed') {
-      statusClass = 'failed';
-      statusText = 'Thất bại';
-    } else if (post.status === 'cancelled') {
-      statusClass = 'cancelled';
-      statusText = 'Đã hủy';
-    }
-
-    // Thời gian hiển thị
-    const timeVal = post.posted_at || post.scheduled_at || post.created_at;
-    let timeString = '';
-    if (timeVal) {
-      const dateObj = new Date(timeVal);
-      timeString = dateObj.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      if (post.status === 'posted') {
-        timeString = `Đăng lúc: ${timeString}`;
-      } else if (post.status === 'pending') {
-        timeString = `Lên lịch: ${timeString}`;
-      } else {
-        timeString = `Thời gian: ${timeString}`;
-      }
-    }
-
-    // Xác định tiêu đề hiển thị (rút gọn)
-    let titleText = 'Bài viết không tên';
-    if (post.captions?.articles?.title) {
-      titleText = post.captions.articles.title;
-    } else if (post.captions?.ai_content) {
-      titleText = post.captions.ai_content.substring(0, 45).replace(/[\r\n]+/g, ' ') + '...';
-    }
-
-    item.innerHTML = `
-      <div class="history-item-left">
-        <div class="history-platform-icon">${platformEmoji}</div>
-        <div class="history-item-details">
-          <div class="history-item-title" title="${titleText.replace(/"/g, '&quot;')}">${titleText}</div>
-          <div class="history-item-time">${timeString}</div>
-        </div>
-      </div>
-      <div class="history-item-right">
-        <span class="status-dot ${statusClass}"></span>
-        <span class="status-label">${statusText}</span>
-      </div>
-    `;
-
-    historyList.appendChild(item);
   });
 }

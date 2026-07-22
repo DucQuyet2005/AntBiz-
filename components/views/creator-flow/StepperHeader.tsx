@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Check } from 'lucide-react';
 
 interface StepperHeaderProps {
@@ -9,11 +10,13 @@ interface StepperHeaderProps {
 }
 
 export default function StepperHeader({ currentStep, onStepClick }: StepperHeaderProps) {
+  const { t } = useLanguage();
+
   const steps = [
-    { title: 'Chọn nền tảng', subtitle: 'Kết nối tài khoản' },
-    { title: 'Tạo nội dung', subtitle: 'AI tạo nội dung' },
-    { title: 'Xem trước', subtitle: 'Kiểm tra và chỉnh sửa' },
-    { title: 'Đăng bài', subtitle: 'Xuất bản nội dung' },
+    { title: t('creator.stepper.step1Title'), subtitle: t('creator.stepper.step1Sub') },
+    { title: t('creator.stepper.step2Title'), subtitle: t('creator.stepper.step2Sub') },
+    { title: t('creator.stepper.step3Title'), subtitle: t('creator.stepper.step3Sub') },
+    { title: t('creator.stepper.step4Title'), subtitle: t('creator.stepper.step4Sub') },
   ];
 
   return (
@@ -29,10 +32,9 @@ export default function StepperHeader({ currentStep, onStepClick }: StepperHeade
             <React.Fragment key={idx}>
               {/* Connector line before step (except first step) */}
               {idx > 0 && (
-                <div 
-                  className={`h-[2px] flex-1 min-w-[20px] mx-3 rounded-full transition-colors duration-300 ${
-                    stepNumber <= currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-zinc-800'
-                  }`}
+                <div
+                  className={`h-[2px] flex-1 min-w-[20px] mx-3 rounded-full transition-colors duration-300 ${stepNumber <= currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-zinc-800'
+                    }`}
                 />
               )}
 
@@ -41,20 +43,18 @@ export default function StepperHeader({ currentStep, onStepClick }: StepperHeade
                 type="button"
                 onClick={() => isCompleted && onStepClick?.(stepNumber)}
                 disabled={!isCompleted}
-                className={`flex items-center gap-3 text-left transition-all duration-200 ${
-                  isCompleted ? 'cursor-pointer group' : 'cursor-default'
-                }`}
+                className={`flex items-center gap-3 text-left transition-all duration-200 ${isCompleted ? 'cursor-pointer group' : 'cursor-default'
+                  }`}
                 title={`Bước ${stepNumber}: ${step.title}`}
               >
                 {/* Circle Number / Check icon */}
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 shrink-0 ${
-                    isActive
+                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 shrink-0 ${isActive
                       ? 'bg-primary text-white shadow-md shadow-primary/20 scale-105'
                       : isCompleted
-                      ? 'bg-primary text-white group-hover:opacity-90'
-                      : 'border-2 border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-400 dark:text-zinc-500'
-                  }`}
+                        ? 'bg-primary text-white group-hover:opacity-90'
+                        : 'border-2 border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-400 dark:text-zinc-500'
+                    }`}
                 >
                   {isCompleted ? (
                     <Check className="w-4 h-4 stroke-[3]" />
@@ -66,22 +66,20 @@ export default function StepperHeader({ currentStep, onStepClick }: StepperHeade
                 {/* Step Titles */}
                 <div className="hidden sm:flex flex-col min-w-0">
                   <span
-                    className={`text-xs sm:text-sm font-bold tracking-tight transition-colors duration-200 ${
-                      isActive
+                    className={`text-xs sm:text-sm font-bold tracking-tight transition-colors duration-200 ${isActive
                         ? 'text-primary'
                         : isCompleted
-                        ? 'text-text group-hover:text-primary'
-                        : 'text-gray-400 dark:text-zinc-500'
-                    }`}
+                          ? 'text-text group-hover:text-primary'
+                          : 'text-gray-400 dark:text-zinc-500'
+                      }`}
                   >
                     {step.title}
                   </span>
                   <span
-                    className={`text-[11px] font-medium transition-colors duration-200 ${
-                      isFilled
+                    className={`text-[11px] font-medium transition-colors duration-200 ${isFilled
                         ? 'text-text-muted'
                         : 'text-gray-400/80 dark:text-zinc-600'
-                    }`}
+                      }`}
                   >
                     {step.subtitle}
                   </span>

@@ -126,6 +126,7 @@ export default function ReportsView() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [scope, setScope] = useState<string>("all");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Sort state for Top Posts table
   const [sortField, setSortField] = useState<string>("interactions.likes");
@@ -134,18 +135,23 @@ export default function ReportsView() {
   // Load User Info for default reporter name and role
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Marketer";
-        setReporterName(fullName);
+      try {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        if (user) {
+          const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Marketer";
+          setReporterName(fullName);
 
-        const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-        if (profile) {
-          setUserRole(profile.role);
-          if (profile.role === 'marketer_content') {
-            setScope('personal');
+          const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+          if (profile) {
+            setUserRole(profile.role);
+            if (profile.role === 'marketer_content') {
+              setScope('personal');
+            }
           }
         }
+      } catch (error) {
+        console.warn("[ReportsView] Failed to fetch user from Supabase:", error);
       }
     };
     fetchUser();
@@ -154,6 +160,7 @@ export default function ReportsView() {
   // Load reports stats data
   const loadStats = async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const queryParams = new URLSearchParams({
         timeframe,
@@ -163,12 +170,19 @@ export default function ReportsView() {
         ...(timeframe === "custom" && endDate ? { endDate } : {}),
       });
 
-      const res = await fetch(`/api/reports/stats?${queryParams.toString()}`);
-      if (!res.ok) throw new Error("Không thể tải báo cáo");
+      const res = await fetch(`/api/reports/stats?${queryParams.toString()}&t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) {
+        const errText = await res.text();
+        const headers: any = {};
+        res.headers.forEach((v, k) => { headers[k] = v; });
+        console.error("Stats API failed:", res.status, errText, "Headers:", headers);
+        throw new Error(`Không thể tải báo cáo (Mã lỗi: ${res.status}): ${errText}`);
+      }
       const data = await res.json();
       setReportData(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi khi tải dữ liệu báo cáo:", err);
+      setErrorMsg(err.message);
     } finally {
       setLoading(false);
     }
@@ -184,13 +198,17 @@ export default function ReportsView() {
     try {
       setIsSyncing(true);
       const res = await fetch(`/api/reports/sync?platform=${platform}`, { method: 'POST' });
-      const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Lỗi đồng bộ dữ liệu");
-      } else {
-        alert(data.message || "Đồng bộ thành công!");
-        loadStats(); // Tải lại biểu đồ
+        const errText = await res.text().catch(() => "");
+        const headers: any = {};
+        res.headers.forEach((v, k) => { headers[k] = v; });
+        console.error("Sync API failed:", res.status, errText, "Headers:", headers);
+        alert(`Lỗi đồng bộ dữ liệu (Mã lỗi: ${res.status}). Chi tiết: ${errText || 'Không có phản hồi'}`);
+        return;
       }
+      const data = await res.json();
+      alert(data.message || "Đồng bộ thành công!");
+      loadStats(); // Tải lại biểu đồ
     } catch (err) {
       console.error("Lỗi đồng bộ:", err);
       alert("Đã xảy ra lỗi khi đồng bộ dữ liệu.");
@@ -525,6 +543,17 @@ export default function ReportsView() {
           <Loader2 className="animate-spin text-primary" size={48} />
           <p className="text-sm font-semibold text-text-muted">Đang tính toán các chỉ số thống kê...</p>
         </div>
+      ) : errorMsg ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <AlertTriangle className="text-red-500" size={48} />
+          <p className="text-sm font-semibold text-text-muted">{errorMsg}</p>
+          <button 
+            onClick={loadStats} 
+            className="mt-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-md transition-all text-sm"
+          >
+            Thử lại
+          </button>
+        </div>
       ) : (
         <AnimatePresence mode="wait">
           {reportData && (
@@ -750,12 +779,12 @@ export default function ReportsView() {
                         </AreaChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="h-full flex items-center justify-center text-text-muted font-medium text-sm">
-                        {t("reports.noData")}
-                      </div>
-                    )}
+                        <div className="h-full flex items-center justify-center text-text-muted font-medium text-sm">
+                          {t("reports.noData")}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
                 {/* PieChart (Phân phối tương tác theo nền tảng) */}
                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
