@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { executeWithGeminiCapacity } from '@/backend/modules/gemini-capacity';
 
 export async function POST(request: NextRequest) {
@@ -28,7 +29,7 @@ TUYỆT ĐỐI KHÔNG có lời mở đầu, không trích dẫn, chỉ trả v�
 
     try {
       const result = await executeWithGeminiCapacity(
-        { prompt: selectedText, topic },
+        { title: topic || 'Nội dung chung', content: selectedText },
         async (key, modelName) => {
           const genAI = new GoogleGenerativeAI(key);
           const model = genAI.getGenerativeModel({

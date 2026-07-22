@@ -1627,7 +1627,7 @@ export default function PresetsView() {
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.label}
+                  {lang === "vi" ? cat.labelVi : cat.labelEn}
                 </option>
               ))}
             </select>
@@ -1712,7 +1712,7 @@ export default function PresetsView() {
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.label}
+                  {lang === "vi" ? cat.labelVi : cat.labelEn}
                 </option>
               ))}
             </select>
