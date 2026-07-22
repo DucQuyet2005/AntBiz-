@@ -112,8 +112,22 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       };
     case 'SET_CRAWL_STATUS':
       return { ...state, crawlStatus: action.payload };
-    case 'SET_ARTICLE_CONTEXT':
-      return { ...state, articleContext: action.payload, drafts: {}, postContent: '' };
+    case 'SET_ARTICLE_CONTEXT': {
+      const ctx = action.payload as any;
+      const contextImages = ctx?.imageUrls && ctx.imageUrls.length > 0
+        ? ctx.imageUrls
+        : (ctx?.thumbnail ? [ctx.thumbnail] : []);
+      const validImages = contextImages.filter(
+        (u: unknown) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))
+      );
+      return { 
+        ...state, 
+        articleContext: action.payload, 
+        drafts: {}, 
+        postContent: '',
+        crawledImageUrls: Array.from(new Set(validImages))
+      };
+    }
     case 'SET_CRAWLED_IMAGES':
       return { ...state, crawledImageUrls: action.payload };
     case 'SET_PRESETS':
