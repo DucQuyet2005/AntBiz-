@@ -87,10 +87,12 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
         if (platform === 'facebook') {
           profileUrl = `https://facebook.com/${accountId}`;
         } else if (platform === 'threads') {
-          const handle = record ? String((record as any).account_name || '').replace(/^@/, '') : '';
+          const rawName = record ? String((record as any).account_name || '') : '';
+          const handle = rawName.split(/\s*\(/)[0].trim().replace(/^@/, '');
           profileUrl = handle ? `https://threads.net/@${handle}` : `https://threads.net`;
         } else if (platform === 'instagram') {
-          const handle = record ? String((record as any).account_name || '').replace(/^@/, '') : '';
+          const rawName = record ? String((record as any).account_name || '') : '';
+          const handle = rawName.split(/\s*\(/)[0].trim().replace(/^@/, '');
           profileUrl = handle ? `https://instagram.com/${handle}` : `https://instagram.com`;
         }
       }
