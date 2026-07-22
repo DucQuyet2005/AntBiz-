@@ -265,26 +265,18 @@ function PresetCard({
         }`}
     >
       <div>
-        {/* Card Header: Icon, Name, Star (Default toggle), 3-dots */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* Card Header: Icon, Category Badge Tag, Star & 3-dots */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {/* Category Icon Badge */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${categoryIconObj.bg}`}>
               {categoryIconObj.icon}
             </div>
 
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-sm text-text leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                {preset.name}
-              </h3>
-
-              {/* Optional Category Tag under title */}
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 truncate max-w-[150px]">
-                  🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
-                </span>
-              </div>
-            </div>
+            {/* Category Tag */}
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 truncate max-w-[150px]">
+              🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
+            </span>
           </div>
 
           {/* Right Action Icons: Star & Kebab Menu */}
@@ -354,6 +346,10 @@ function PresetCard({
           </div>
         </div>
 
+        {/* Name */}
+        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-3 group-hover:text-primary transition-colors min-h-[44px]">
+          {preset.name}
+        </h3>
 
         {/* Style Properties Grid */}
         {parsedProps.length > 0 && (
