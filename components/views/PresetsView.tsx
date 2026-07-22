@@ -265,18 +265,11 @@ function PresetCard({
         }`}
     >
       <div>
-        {/* Card Header: Icon, Category Badge Tag, Star & 3-dots */}
+        {/* Card Header: Icon Badge (Left) & Actions Star/Menu (Right) */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            {/* Category Icon Badge */}
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${categoryIconObj.bg}`}>
-              {categoryIconObj.icon}
-            </div>
-
-            {/* Category Tag */}
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 truncate max-w-[150px]">
-              🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
-            </span>
+          {/* Category Icon Badge */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
+            {categoryIconObj.icon}
           </div>
 
           {/* Right Action Icons: Star & Kebab Menu */}
@@ -347,9 +340,16 @@ function PresetCard({
         </div>
 
         {/* Name */}
-        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-3 group-hover:text-primary transition-colors min-h-[44px]">
+        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[44px]">
           {preset.name}
         </h3>
+
+        {/* Category Tag Badge */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40">
+            🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
+          </span>
+        </div>
 
         {/* Style Properties Grid */}
         {parsedProps.length > 0 && (
