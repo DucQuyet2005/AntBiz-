@@ -237,14 +237,25 @@ export async function GET(request: NextRequest) {
   // ── Intercept fetch() so Dantri lazy-loaders & APIs go through proxy ──
   var _fetch = window.fetch;
   window.fetch = function(input, init) {
-    var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
-    if (url && typeof url === 'string') {
-      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-        input = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
-      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
-        if (isAllowedHost(url)) input = PROXY + encodeURIComponent(url);
+    try {
+      var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+      if (urlStr && typeof urlStr === 'string') {
+        var proxiedUrl = null;
+        if (urlStr.startsWith('/') && !urlStr.startsWith('//') && !urlStr.startsWith('/api/proxy')) {
+          proxiedUrl = PROXY + encodeURIComponent(TARGET_ORIGIN + urlStr);
+        } else if (urlStr.startsWith('http') && urlStr.indexOf('/api/proxy') === -1) {
+          if (isAllowedHost(urlStr)) proxiedUrl = PROXY + encodeURIComponent(urlStr);
+        }
+
+        if (proxiedUrl) {
+          if (typeof input === 'string') {
+            input = proxiedUrl;
+          } else if (input && typeof input === 'object') {
+            input = new Request(proxiedUrl, input);
+          }
+        }
       }
-    }
+    } catch (_) {}
     return _fetch.call(window, input, init);
   };
 
