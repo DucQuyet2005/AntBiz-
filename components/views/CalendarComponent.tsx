@@ -11,6 +11,7 @@ const CalendarComponent = forwardRef<FullCalendar, any>((props, ref) => {
     <FullCalendar
       ref={ref}
       plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+      allDaySlot={false}
       {...props}
     />
   );

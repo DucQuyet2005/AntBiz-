@@ -32,6 +32,9 @@ export class CaptionExportModule {
     rawFilters: RawCaptionExportFilters
   ): Promise<CaptionExportArtifact> {
     const filters = parseCaptionExportFilters(rawFilters);
+    if (actor.role === 'marketer_content') {
+      filters.creatorId = actor.id;
+    }
     const rowCount = await this.repository.count(filters);
     let jobId: string | undefined;
 

@@ -21,6 +21,8 @@ export interface PostToUpdate {
   platform: string;
   externalPostId: string; // ví dụ: fb_post_id hoặc ig_media_id
   userId: string;
+  postedAt?: string;
+  lastSyncedAt?: string | null;
 }
 
 export interface PostWithInteractions {

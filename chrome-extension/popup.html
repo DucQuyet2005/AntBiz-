@@ -16,7 +16,8 @@
         <h1 class="logo-text">AntBiz Assistant</h1>
       </div>
       <div id="user-profile" class="user-profile hidden" style="display: flex; align-items: center;">
-        <button id="btn-show-history" class="btn-icon" title="Lịch sử bài đăng từ Extension" style="background: none; border: none; cursor: pointer; font-size: 14px; margin-right: 6px; padding: 0; display: inline-flex; align-items: center; justify-content: center; transform: translateY(-1px);">🕒</button>
+        <button id="btn-show-history" class="btn-icon" title="Lịch sử bài đăng từ Extension"
+          style="background: none; border: none; cursor: pointer; font-size: 14px; margin-right: 6px; padding: 0; display: inline-flex; align-items: center; justify-content: center; transform: translateY(-1px);">🕒</button>
         <span id="user-name" class="user-name">...</span>
       </div>
     </header>
@@ -34,45 +35,54 @@
         <div class="error-icon">🔒</div>
         <h3>Đăng nhập AntBiz</h3>
         <p class="state-description" style="margin-bottom: 12px;">Đăng nhập tài khoản của bạn để sử dụng Extension.</p>
-        
+
         <div class="login-form" style="width: 100%; text-align: left; box-sizing: border-box;">
           <div class="form-group" style="margin-bottom: 10px;">
-            <label for="input-login-email" style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Email</label>
-            <input type="email" id="input-login-email" placeholder="name@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
+            <label for="input-login-email"
+              style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Email</label>
+            <input type="email" id="input-login-email" placeholder="name@example.com"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="input-login-password" style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Mật khẩu</label>
-            <input type="password" id="input-login-password" placeholder="••••••••" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
+            <label for="input-login-password"
+              style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Mật
+              khẩu</label>
+            <input type="password" id="input-login-password" placeholder="••••••••"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
           </div>
-          <div id="login-error-message" style="color: #ef4444; font-size: 11.5px; margin-bottom: 10px; display: none; font-weight: 600; text-align: left;"></div>
-          <button id="btn-login-submit" class="btn btn-primary" style="width: 100%; font-weight: 600;">Đăng nhập</button>
+          <div id="login-error-message"
+            style="color: #ef4444; font-size: 11.5px; margin-bottom: 10px; display: none; font-weight: 600; text-align: left;">
+          </div>
+          <button id="btn-login-submit" class="btn btn-primary" style="width: 100%; font-weight: 600;">Đăng
+            nhập</button>
         </div>
 
         <div style="margin-top: 14px; font-size: 11.5px; color: #6b7280; text-align: center; width: 100%;">
-          Hoặc <a href="#" id="btn-login" style="color: #4f46e5; text-decoration: none; font-weight: 600;">đăng nhập qua trang Web</a>
+          Hoặc <a href="#" id="btn-login" style="color: #4f46e5; text-decoration: none; font-weight: 600;">đăng nhập qua
+            trang Web</a>
         </div>
       </div>
 
       <!-- Home State (Input Selector) -->
       <div id="state-home" class="state-container hidden">
         <h3 class="home-title">Chọn phương thức nhập</h3>
-        
+
         <div class="input-grid">
           <button id="btn-input-scrape" class="input-card">
             <span class="card-icon">🌐</span>
             <span class="card-title">Cào trang hiện tại</span>
           </button>
-          
+
           <button id="btn-input-select" class="input-card">
             <span class="card-icon">📝</span>
             <span class="card-title">Lấy phần bôi đen</span>
           </button>
-          
+
           <button id="btn-input-record" class="input-card">
             <span class="card-icon">🎙️</span>
             <span class="card-title">Ghi âm giọng nói</span>
           </button>
-          
+
           <button id="btn-input-upload" class="input-card">
             <span class="card-icon">📁</span>
             <span class="card-title">Tải tệp lên</span>
@@ -89,10 +99,16 @@
         </div>
 
         <!-- Nhập tay ý tưởng trực tiếp -->
-        <div class="manual-input-box" style="margin-top: 14px; width: 100%; border-top: 1px solid #e5e7eb; padding-top: 14px; text-align: left;">
-          <label for="textarea-manual-content" style="display: block; font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: 6px;">Hoặc nhập ý tưởng/phác thảo nội dung:</label>
-          <textarea id="textarea-manual-content" rows="4" placeholder="Nhập ý chính, thông tin thô hoặc phác thảo nội dung bài đăng của bạn tại đây..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
-          <button id="btn-manual-write" class="btn btn-primary" style="margin-top: 8px; width: 100%; font-weight: 600;">Tạo bài viết AI</button>
+        <div class="manual-input-box"
+          style="margin-top: 14px; width: 100%; border-top: 1px solid #e5e7eb; padding-top: 14px; text-align: left;">
+          <label for="textarea-manual-content"
+            style="display: block; font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: 6px;">Hoặc nhập ý
+            tưởng/phác thảo nội dung:</label>
+          <textarea id="textarea-manual-content" rows="4"
+            placeholder="Nhập ý chính, thông tin thô hoặc phác thảo nội dung bài đăng của bạn tại đây..."
+            style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
+          <button id="btn-manual-write" class="btn btn-primary"
+            style="margin-top: 8px; width: 100%; font-weight: 600;">Tạo bài viết AI</button>
         </div>
 
         <!-- Trình ghi âm trực quan (Đã chuyển sang màn hình chuyên dụng mới) -->
@@ -121,11 +137,11 @@
 
       <!-- Extraction Form State -->
       <div id="state-extracted" class="state-container hidden">
-        
+
         <!-- BƯỚC 1: Xem & Sửa nội dung bài viết gốc -->
         <div id="step-article-info" class="wizard-step">
           <h4 class="step-header">Bước 1: Nội dung bài viết</h4>
-          
+
           <div class="form-group">
             <label for="input-title">Tiêu đề bài viết</label>
             <input type="text" id="input-title" placeholder="Nhập tiêu đề...">
@@ -202,7 +218,8 @@
                   </div>
                 </div>
               </div>
-              <div id="fb-preview-text" class="fb-preview-text" contenteditable="true" placeholder="Nhập nội dung bài đăng tại đây..."></div>
+              <div id="fb-preview-text" class="fb-preview-text" contenteditable="true"
+                placeholder="Nhập nội dung bài đăng tại đây..."></div>
               <div id="fb-preview-image-container" class="fb-preview-image-container hidden"></div>
               <div class="fb-preview-footer">
                 <div class="fb-preview-action">
@@ -233,10 +250,13 @@
 
           <div class="form-group">
             <label for="input-schedule-time">Chọn Ngày & Giờ đăng bài</label>
-            
+
             <div id="golden-hour-suggestions" style="margin: 8px 0; display: none;">
-              <span style="font-size: 11px; font-weight: 600; color: #f59e0b; display: flex; align-items: center; gap: 4px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              <span
+                style="font-size: 11px; font-weight: 600; color: #f59e0b; display: flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
                 Giờ Vàng khuyên dùng:
               </span>
               <div id="golden-hour-chips" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;"></div>
@@ -280,10 +300,12 @@
       </div>
 
       <!-- Voice Confirmation State (Giao diện xác nhận văn bản nhận diện được) -->
-      <div id="state-voice-confirm" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+      <div id="state-voice-confirm" class="state-container hidden"
+        style="align-items: stretch; text-align: left; width: 100%;">
         <h3 class="step-header" style="border-left: 3px solid #10b981; padding-left: 8px;">Kết quả dịch giọng nói</h3>
-        <p class="state-description" style="margin-bottom: 12px;">Dưới đây là văn bản trích xuất từ giọng nói của bạn. Bạn có thể chỉnh sửa lại cho chính xác trước khi tạo bài viết:</p>
-        
+        <p class="state-description" style="margin-bottom: 12px;">Dưới đây là văn bản trích xuất từ giọng nói của bạn.
+          Bạn có thể chỉnh sửa lại cho chính xác trước khi tạo bài viết:</p>
+
         <div class="form-group" style="margin-bottom: 14px;">
           <textarea id="voice-transcript-text" rows="8" placeholder="Nội dung giọng nói..."></textarea>
         </div>
@@ -295,19 +317,31 @@
       </div>
 
       <!-- History State -->
-      <div id="state-history" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+      <div id="state-history" class="state-container hidden"
+        style="align-items: stretch; text-align: left; width: 100%;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3 class="step-header" style="border-left: 3px solid #8b5cf6; padding-left: 8px; margin: 0;">Lịch sử (Top 10)</h3>
+          <h3 class="step-header" style="border-left: 3px solid #4f46e5; padding-left: 8px; margin: 0;">Lịch sử bài đăng
+          </h3>
           <div style="display: flex; align-items: center; gap: 12px;">
-            <a href="#" id="btn-open-antbiz" title="Mở trang Lưu trữ trên Web" style="font-size: 11.5px; color: #4f46e5; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-              Mở AntBiz 
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            <a href="#" id="btn-open-antbiz" title="Mở trang Lưu trữ trên Web"
+              style="font-size: 11.5px; color: #4f46e5; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+              Mở AntBiz
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
             </a>
-            <button id="btn-close-history" style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 0;">✕</button>
+            <button id="btn-close-history"
+              style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 0;">✕</button>
           </div>
         </div>
-        
-        <div id="history-list" style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
+        <p class="state-description" style="margin-bottom: 16px;">Danh sách 10 bài viết gần đây nhất được đăng hoặc
+          lên lịch từ Extension:</p>
+
+        <div id="history-list"
+          style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
           <!-- Items will be injected here -->
           <div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>
         </div>

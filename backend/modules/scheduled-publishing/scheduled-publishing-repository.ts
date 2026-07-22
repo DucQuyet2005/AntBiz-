@@ -9,8 +9,8 @@ import type {
   ScheduledPublishingRepository,
 } from './scheduled-publishing-types';
 
-const listSelection = '*, captions(id, ai_content, edited_content, platform, articles(id, title, category, description))';
-const runnerSelection = '*, captions(id, platform, ai_content, edited_content, articles(id, title)), users(id, email)';
+const listSelection = '*, captions(id, ai_content, edited_content, platform, articles(id, title, category, description)), users:created_by(id, email)';
+const runnerSelection = '*, captions(id, platform, ai_content, edited_content, articles(id, title)), users:created_by(id, email)';
 
 export class SupabaseScheduledPublishingRepository implements ScheduledPublishingRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -43,7 +43,7 @@ export class SupabaseScheduledPublishingRepository implements ScheduledPublishin
   async listPaginated(
     page: number,
     limit: number,
-    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc' }
+    filters?: { platforms?: string[]; status?: string; sortOrder?: 'asc' | 'desc'; creatorId?: string }
   ) {
     let query = this.supabase
       .from('scheduled_posts')
@@ -54,6 +54,9 @@ export class SupabaseScheduledPublishingRepository implements ScheduledPublishin
     }
     if (filters?.status) {
       query = query.eq('status', filters.status);
+    }
+    if (filters?.creatorId) {
+      query = query.eq('created_by', filters.creatorId);
     }
 
     const sortOrder = filters?.sortOrder || 'asc';

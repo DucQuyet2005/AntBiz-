@@ -113,9 +113,16 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
   const lowerAlt = alt ? alt.toLowerCase() : '';
   const lowerTitle = title ? title.toLowerCase() : '';
 
+  // Skip SVG data URIs (placeholder images used by Dantri lazy-loading)
+  if (lowerSrc.startsWith('data:image/svg')) return true;
+
+  // Dantri uses /zoom/NNN_NNN/ for small thumbnail images (sidebar, author avatars, related articles)
+  // Body images use /thumb_w/NNNN/ instead. Filter out small zoom thumbnails.
+  if (/\/zoom\/\d{2,3}_\d{2,3}\//.test(lowerSrc)) return true;
+
   // Check common logo, icons, avatars, trackers, and social media/promo patterns in URL
   const invalidUrlPatterns = [
-    'logo', 'no-data', 'track-view', 'author', 'avatar', 'icon', 'banner', 'ads', 
+    'logo', 'no-data', 'track-view', 'author', 'tac-gia', 'tacgia', 'avatar', 'icon', 'banner', 'ads', 
     'loading', 'placeholder', 'pixel', 'gif', 'spacer', 'facebook', 'twitter', 
     'instagram', 'youtube', 'google-news', 'googlenews', 'google_news', 'news-google',
     'rating', 'star', 'star-rating', 'widget', 'gift'
@@ -127,7 +134,7 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
 
   // Check common logo, icons, avatars, promo patterns in Alt/Title text
   const invalidTextPatterns = [
-    'logo', 'avatar', 'ảnh đại diện', 'icon', 'biểu tượng', 'banner', 'quảng cáo', 
+    'logo', 'avatar', 'ảnh đại diện', 'tác giả', 'tac gia', 'author', 'icon', 'biểu tượng', 'banner', 'quảng cáo', 
     'google news', 'theo dõi trên', 'thông tin tài khoản', 'tài khoản', 'bình luận',
     'tặng sao'
   ];
@@ -737,17 +744,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   let description = jsonLdDescription;
   if (!description) {
     if (url.includes('dantri.com.vn')) {
-      description = cleanText($('h2.sapo, h2.sing-sapo, h2.detail-sapo').first().text()) || 
-                    cleanText($('h2').first().text());
+      // Dantri sapo elements usually have class sapo, sing-sapo, detail-sapo, singular-sapo
+      const candidateSapo = cleanText($('h2.sapo, h2.sing-sapo, h2.detail-sapo, h2.singular-sapo, .singular-sapo, h2.dt-sapo').first().text());
+      if (candidateSapo && candidateSapo.length > 20) {
+        description = candidateSapo;
+      }
     } else if (url.includes('tuoitre.vn')) {
       description = cleanText($('.detail-sapo, .sapo').first().text());
     }
 
     if (!description) {
-      // Try h4 (often used as sapo in Spotlight layouts)
-      const h4Text = cleanText($('h4').first().text());
-      description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
-        cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+      // Fall back to og:description / meta description
+      const metaDesc = cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+      if (metaDesc && metaDesc.length > 15) {
+        description = metaDesc;
+      }
     }
   }
 
@@ -963,20 +974,27 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     const seenTexts = new Set<string>();
     const seenImageUrls = new Set<string>();
 
-    // Try to find the specific body container first to exclude header/footer/sidebar elements
-    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content, .e-magazine, .e-magazine__body, .dmagazine-container').first();
+    // Try to find the specific body container first to exclude header/footer/sidebar/author elements across Tuoi Tre, Dantri, Goc Nhin Moi
+    let bodyContainer = $('.singular-content, .singular-body, #html_content, [itemprop="articleBody"], .detail-content, .detail-cmain, .article-content, .content-detail, .e-magazine, .e-magazine__body, .dmagazine-container').first();
     if (!bodyContainer.length) {
-      bodyContainer = scope;
+      // Dantri uses multiple <article> tags — one for main content (contains h1) and others for sidebar/related.
+      // Find the first <article> that contains the h1 to scope precisely to the main article body.
+      const mainArticle = $('article').filter((_, el) => $(el).find('h1').length > 0).first();
+      if (mainArticle.length) {
+        bodyContainer = mainArticle;
+      } else {
+        bodyContainer = scope;
+      }
     }
 
     bodyContainer.find('p, h2, h3, img, div.content-body, div.article-body, div.post-content').each((_, el) => {
       const tagName = (el as any).tagName || el.name;
       const cheerioEl = $(el);
 
-      // Skip related news sections (Các phần có hiển thị tin liên quan thì không crawl)
-      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]').length > 0 ||
-                        cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]');
-      if (isRelated) {
+      // Skip related news sections, ads, author info boxes & sidebar elements
+      const isExcludedSection = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"], [class*="author"], [class*="tac-gia"], [class*="sidebar"], [class*="banner"], [class*="ads"]').length > 0 ||
+                                cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"], [class*="author"], [class*="tac-gia"], [class*="sidebar"], [class*="banner"], [class*="ads"]');
+      if (isExcludedSection) {
         return;
       }
 
@@ -1022,11 +1040,12 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
           return;
         }
 
-        // Check if this image is the author's avatar/portrait (Phân biệt cả ảnh Avatar tác giả)
+        // Check if this image is the author's avatar/portrait (Phân biệt cả ảnh Avatar tác giả cho Dân trí, Tuổi Trẻ, Góc Nhìn Mới)
         const isAuthorImage = 
-          (alt && author && alt.toLowerCase() === author.toLowerCase()) ||
-          (titleAttr && author && titleAttr.toLowerCase() === author.toLowerCase()) ||
-          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="avatar"], .tac-gia').length > 0;
+          (alt && author && alt.toLowerCase().includes(author.toLowerCase())) ||
+          (titleAttr && author && titleAttr.toLowerCase().includes(author.toLowerCase())) ||
+          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="author-name"], [class*="author-meta"], [class*="avatar"], [class*="detail-author"], .tac-gia, .author-info, .author').length > 0 ||
+          cheerioEl.is('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"], [class*="author-name"]');
 
         if (isAuthorImage) {
           if (!author_image_url) {
@@ -1071,8 +1090,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     }
     if (ogImg) {
       ogImg = resolveUrl(ogImg, raw.url);
-      images.push({ url: ogImg, caption: title });
-      console.log('   📸 Dùng og:image làm ảnh đại diện');
+      if (!isInvalidImage(ogImg, title)) {
+        images.push({ url: ogImg, caption: title });
+        console.log('   📸 Dùng og:image làm ảnh đại diện');
+      }
     }
   }
 

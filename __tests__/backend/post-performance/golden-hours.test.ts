@@ -92,4 +92,38 @@ describe('PostPerformanceModule - Golden Hours & Caching', () => {
     expect(result.topOptimalSlots).toEqual([]);
     expect(result.recommendedBestTimeText).toContain('Gợi ý khung giờ mặc định');
   });
+
+  it('nên áp dụng phân tầng (Tiered Syncing) để bỏ qua các bài viết chưa đến chu kỳ crawl', async () => {
+    const now = Date.now();
+    const HOUR_MS = 60 * 60 * 1000;
+
+    const testPosts = [
+      // Tier 1 (< 24h, vừa crawl 10 phút trước -> bỏ qua)
+      { id: 'p1', platform: 'facebook', externalPostId: 'fb1', userId: 'u1', postedAt: new Date(now - 2 * HOUR_MS).toISOString(), lastSyncedAt: new Date(now - 10 * 60 * 1000).toISOString() },
+      // Tier 1 (< 24h, crawl 45 phút trước -> thực hiện)
+      { id: 'p2', platform: 'facebook', externalPostId: 'fb2', userId: 'u1', postedAt: new Date(now - 2 * HOUR_MS).toISOString(), lastSyncedAt: new Date(now - 45 * 60 * 1000).toISOString() },
+      // Tier 2 (1-7 ngày, crawl 2 giờ trước -> bỏ qua)
+      { id: 'p3', platform: 'facebook', externalPostId: 'fb3', userId: 'u1', postedAt: new Date(now - 3 * 24 * HOUR_MS).toISOString(), lastSyncedAt: new Date(now - 2 * HOUR_MS).toISOString() },
+      // Tier 2 (1-7 ngày, crawl 7 giờ trước -> thực hiện)
+      { id: 'p4', platform: 'facebook', externalPostId: 'fb4', userId: 'u1', postedAt: new Date(now - 3 * 24 * HOUR_MS).toISOString(), lastSyncedAt: new Date(now - 7 * HOUR_MS).toISOString() },
+    ];
+
+    vi.mocked(mockRepository.findRecentPostedPosts).mockResolvedValue(testPosts);
+    vi.mocked(mockRepository.findPageAccessToken).mockResolvedValue('token');
+    vi.mocked(mockRepository.upsertInteractions).mockResolvedValue(true);
+
+    const mockCollector = {
+      platform: 'facebook' as const,
+      fetchPostMetrics: vi.fn().mockResolvedValue({ likes: 5, comments: 1, shares: 0, clicks: 0, reach: 10, impressions: 15 }),
+    };
+
+    const syncModule = new PostPerformanceModule(mockRepository, mockCollector);
+    const result = await syncModule.syncFacebookPerformance();
+
+    expect(result.attempted).toBe(2);
+    expect(result.succeeded).toBe(2);
+    expect(mockCollector.fetchPostMetrics).toHaveBeenCalledTimes(2);
+    expect(mockCollector.fetchPostMetrics).toHaveBeenCalledWith('fb2', 'token');
+    expect(mockCollector.fetchPostMetrics).toHaveBeenCalledWith('fb4', 'token');
+  });
 });

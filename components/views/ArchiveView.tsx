@@ -116,7 +116,7 @@ export default function ArchiveView() {
 
   useEffect(() => {
     async function fetchCaptions() {
-      if (!userId) return;
+      if (!userId || !userRole) return;
       setLoading(true);
       try {
         let query = supabase
@@ -129,6 +129,7 @@ export default function ArchiveView() {
             status,
             created_at,
             article_id,
+            created_by,
             articles (
               id,
               title,
@@ -141,6 +142,10 @@ export default function ArchiveView() {
               id,
               status,
               scheduled_at
+            ),
+            users:created_by (
+              id,
+              email
             )
           `)
           .neq('status', 'draft');
@@ -164,7 +169,7 @@ export default function ArchiveView() {
   }, [userId, userRole, scope]);
 
   const fetchPreviewData = async () => {
-    if (!userId) return;
+    if (!userId || !userRole) return;
     setIsFetchingPreview(true);
     try {
       let query = supabase
@@ -338,6 +343,8 @@ export default function ArchiveView() {
       }
     }
 
+    const creatorEmail = (cap as any).users?.email || null;
+
     return {
       id: cap.id,
       type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
@@ -353,7 +360,8 @@ export default function ArchiveView() {
       link: `/archive/${art.id || ''}?captionId=${cap.id}&platform=${cap.platform === 'thread' ? 'threads' : cap.platform}`,
       gradient: '',
       created_at: cap.created_at,
-      status: resolvedStatus
+      status: resolvedStatus,
+      creatorEmail
     };
   });
 
@@ -662,6 +670,14 @@ export default function ArchiveView() {
                           </span>
                         )}
                       </div>
+
+                      {item.creatorEmail && userRole && userRole !== 'marketer_content' && (
+                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-zinc-800/60 flex items-center justify-between">
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold truncate">
+                            👤 Tác giả: {item.creatorEmail}
+                          </span>
+                        </div>
+                      )}
 
                     </div>
 

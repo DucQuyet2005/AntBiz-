@@ -9,6 +9,7 @@ import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
 import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { buildGoogleCalendarUrl } from '@/frontend/modules/scheduled-publishing/google-calendar-helper';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 13 }: { className?: string; size?: number }) => (
@@ -481,8 +482,31 @@ export function WeeklyTimeline({
                     })}
                   </div>
                 </div>
-              );
-            })}
+                <div className="text-right">
+                  <span className="text-text font-black">
+                    {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!datePart) return;
+                  const gcalUrl = buildGoogleCalendarUrl({
+                    title: state.manualTitle || 'Bài đăng AntBiz',
+                    scheduledAt: `${datePart}T${timePart || '09:00'}:00`,
+                    platform: currentPlatform,
+                  });
+                  window.open(gcalUrl, '_blank');
+                }}
+                disabled={!datePart}
+                className="w-full mt-2 py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 rounded-xl font-bold text-xs border border-blue-200/50 dark:border-blue-800/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>+ Thêm lịch này vào Google Calendar</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
