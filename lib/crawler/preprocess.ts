@@ -968,7 +968,7 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     const seenImageUrls = new Set<string>();
 
     // Try to find the specific body container first to exclude header/footer/sidebar/author elements across Tuoi Tre, Dantri, Goc Nhin Moi
-    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content, .detail-cmain, .article-content, .content-detail, .e-magazine, .e-magazine__body, .dmagazine-container').first();
+    let bodyContainer = $('.singular-content, .singular-body, #html_content, [itemprop="articleBody"], .detail-content, .detail-cmain, .article-content, .content-detail, .e-magazine, .e-magazine__body, .dmagazine-container').first();
     if (!bodyContainer.length) {
       bodyContainer = scope;
     }
@@ -1030,8 +1030,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
         const isAuthorImage = 
           (alt && author && alt.toLowerCase().includes(author.toLowerCase())) ||
           (titleAttr && author && titleAttr.toLowerCase().includes(author.toLowerCase())) ||
-          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"], [class*="detail-author"], .tac-gia, .author-info, .author').length > 0 ||
-          cheerioEl.is('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"]');
+          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="author-name"], [class*="author-meta"], [class*="avatar"], [class*="detail-author"], .tac-gia, .author-info, .author').length > 0 ||
+          cheerioEl.is('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"], [class*="author-name"]');
 
         if (isAuthorImage) {
           if (!author_image_url) {
