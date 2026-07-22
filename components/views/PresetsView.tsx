@@ -27,17 +27,15 @@ import {
   Calendar,
   ArrowRight,
   Star,
-<<<<<<< HEAD
   ChevronDown,
   Sparkle
-=======
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Platform = "facebook" | "thread" | "instagram" | "all";
+type ActiveTab = "all" | "mine" | "system";
 
 interface PromptConfigRecord {
   id: string;
@@ -69,6 +67,16 @@ const OBJECTIVES = [
   { id: "Tuyển dụng", label: "Tuyển dụng nhân sự", icon: "👥" },
   { id: "Sự kiện", label: "Truyền thông sự kiện mới", icon: "📢" },
 ];
+
+const CATEGORIES = [
+  { id: "all", label: "Tất cả danh mục" },
+  { id: "Bán hàng", label: "Bán hàng & Doanh số" },
+  { id: "Thương hiệu", label: "Nhận diện Thương hiệu" },
+  { id: "Tương tác", label: "Tương tác & Cộng đồng" },
+  { id: "Giáo dục", label: "Giáo dục & Kiến thức" },
+  { id: "Tuyển dụng", label: "Tuyển dụng" },
+  { id: "Sự kiện", label: "Sự kiện & Truyền thông" },
+] as const;
 
 const PLATFORM_OPTIONS: { value: Platform; label: string; color: string }[] = [
   { value: "facebook", label: "Facebook", color: "#1877F2" },
@@ -102,6 +110,18 @@ const PLATFORM_BADGE: Record<string, string> = {
   instagram: "bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400",
   all: "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400",
 };
+
+function getPresetCategoryIcon(name: string, objectives: string[]) {
+  const combined = `${name} ${objectives.join(" ")}`.toLowerCase();
+  if (combined.includes("bán hàng") || combined.includes("sales")) return { icon: "🛒", bg: "bg-amber-50 dark:bg-amber-950/40 text-amber-600" };
+  if (combined.includes("thương hiệu") || combined.includes("brand")) return { icon: "🎯", bg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" };
+  if (combined.includes("tương tác") || combined.includes("viral")) return { icon: "🔥", bg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600" };
+  if (combined.includes("giáo dục") || combined.includes("education")) return { icon: "🎓", bg: "bg-blue-50 dark:bg-blue-950/40 text-blue-600" };
+  if (combined.includes("chuyên gia") || combined.includes("expert")) return { icon: "👔", bg: "bg-violet-50 dark:bg-violet-950/40 text-violet-600" };
+  if (combined.includes("gần gũi") || combined.includes("friend")) return { icon: "👥", bg: "bg-pink-50 dark:bg-pink-950/40 text-pink-600" };
+  if (combined.includes("thông báo") || combined.includes("update")) return { icon: "📢", bg: "bg-sky-50 dark:bg-sky-950/40 text-sky-600" };
+  return { icon: "✍️", bg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" };
+}
 
 // ─── PresetCard ───────────────────────────────────────────────────────────────
 
@@ -140,6 +160,10 @@ function PresetCard({
     return [language === "vi" ? "Văn phong đa năng" : "Versatile Style"];
   }, [preset.params, language]);
 
+  const categoryIconObj = useMemo(() => {
+    return getPresetCategoryIcon(preset.name, objectives);
+  }, [preset.name, objectives]);
+
   const parsedProps = useMemo(() => {
     const props: { icon: string; label: string; value: string }[] = [];
 
@@ -148,14 +172,9 @@ function PresetCard({
       const qa = preset.params.questionnaireAnswers;
       const steps = qa.steps || [];
       const personaStep = steps.find((s: any) => s.key === "persona" || s.question?.toLowerCase().includes("vai trò"));
-<<<<<<< HEAD
       const toneStep = steps.find((s: any) => s.key === "tone" || s.question?.toLowerCase().includes("sắc thái") || s.question?.toLowerCase().includes("giọng điệu"));
-
-=======
-      const toneStep = steps.find((s: any) => s.key === "tone" || s.question?.toLowerCase().includes("sắc thái"));
       const pronounStep = steps.find((s: any) => s.key === "pronoun" || s.question?.toLowerCase().includes("xưng hô"));
-      
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
+
       if (personaStep?.answer) {
         props.push({
           icon: "🎭",
@@ -164,17 +183,10 @@ function PresetCard({
         });
       }
       if (toneStep?.answer) {
-<<<<<<< HEAD
         props.push({
           icon: "💬",
           label: language === "vi" ? "Giọng điệu" : "Tone",
           value: Array.isArray(toneStep.answer) ? toneStep.answer.join(", ") : toneStep.answer
-=======
-        props.push({ 
-          icon: "💬", 
-          label: language === "vi" ? "Tông giọng" : "Tone", 
-          value: Array.isArray(toneStep.answer) ? toneStep.answer.join(", ") : toneStep.answer 
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
         });
       }
       if (pronounStep?.answer) {
@@ -217,14 +229,9 @@ function PresetCard({
         } else {
           // Sentence-based formats: "Bạn đóng vai trò là Người kể chuyện"
           const personaMatch = clean.match(/(?:vai trò là|role is)\s+([^,\n.]+)/i);
-<<<<<<< HEAD
           const toneMatch = clean.match(/(?:tông giọng|sắc thái|giọng điệu|tone is)\s+([^,\n.]+)/i);
-
-=======
-          const toneMatch = clean.match(/(?:tông giọng|sắc thái|tone is|hành văn với tông giọng)\s+([^,\n.]+)/i);
           const pronounMatch = clean.match(/(?:xưng hô với người đọc là|pronoun is)\s+([^,\n.]+)/i);
-          
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
+
           if (personaMatch && props.every((p) => p.icon !== "🎭")) {
             props.push({ icon: "🎭", label: language === "vi" ? "Vai trò" : "Role", value: personaMatch[1].trim() });
           }
@@ -237,13 +244,8 @@ function PresetCard({
         }
       });
     }
-<<<<<<< HEAD
 
     // Fallback default values
-=======
-    
-    // Add default values for a completely full card layout if still empty
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
     if (props.length === 0) {
       props.push({ icon: "🎭", label: language === "vi" ? "Vai trò" : "Role", value: language === "vi" ? "Chuyên gia sáng tạo" : "Creative Expert" });
       props.push({ icon: "💬", label: language === "vi" ? "Tông giọng" : "Tone", value: language === "vi" ? "Tự nhiên, thuyết phục" : "Natural, persuasive" });
@@ -259,7 +261,6 @@ function PresetCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       onClick={() => onSelect(preset)}
-<<<<<<< HEAD
       className={`relative group bg-white dark:bg-zinc-900 border rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-lg hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between cursor-pointer select-none ${preset.is_default
           ? "border-emerald-400 dark:border-emerald-700/70 ring-1 ring-emerald-500/20"
           : "border-gray-200 dark:border-zinc-800/80 hover:border-emerald-300 dark:hover:border-emerald-700"
@@ -310,35 +311,6 @@ function PresetCard({
                     : "fill-none stroke-[2]"
                   }`}
               />
-=======
-      className="relative group bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-5 hover:shadow-xl hover:shadow-primary/5 dark:hover:shadow-none hover:border-primary/50 dark:hover:border-primary/50 transition-all duration-300 flex flex-col justify-between min-h-[220px] hover:-translate-y-0.5 cursor-pointer"
-    >
-      <div>
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {preset.is_default && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-2.5 py-1 bg-amber-500/10 dark:bg-amber-500/5 text-amber-600 dark:text-amber-400 rounded-full border border-amber-500/20 select-none shrink-0">
-                ⭐ {language === "vi" ? "Mặc định" : "Default"}
-              </span>
-            )}
-            {preset.is_system && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-2.5 py-1 bg-sky-500/10 dark:bg-sky-500/5 text-sky-600 dark:text-sky-400 rounded-full border border-sky-500/20 select-none shrink-0">
-                🏷️ {language === "vi" ? "Mẫu" : "Template"}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {/* Set/Unset Default Button */}
-            <button
-              type="button"
-              onClick={() => onSetDefault(preset)}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent ${preset.is_default ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'}`}
-              title={preset.is_default ? (language === "vi" ? "Gỡ bỏ mặc định" : "Remove default") : (language === "vi" ? "Đặt làm mặc định" : "Set as default")}
-            >
-              {preset.is_default ? <Star fill="currentColor" size={14} /> : <Star size={14} />}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
             </button>
 
             {/* Kebab menu */}
@@ -466,12 +438,7 @@ function PresetDetailModal({
   // Parse rules to render structured rows
   const parsedRules = (() => {
     if (!preset.rules) return [];
-<<<<<<< HEAD
 
-=======
-    
-    // Check if JSON rules
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
     try {
       const parsed = JSON.parse(preset.rules);
       if (parsed && typeof parsed === "object") {
@@ -512,13 +479,7 @@ function PresetDetailModal({
         
         return list;
       }
-<<<<<<< HEAD
     } catch { }
-=======
-    } catch {
-      // Fallback to text splitting
-    }
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
 
     const list: { key: string; val: string; isAdditional?: boolean }[] = [];
     const lines = preset.rules.split("\n").filter(l => l.trim());
@@ -652,15 +613,9 @@ function PresetDetailModal({
         <div className="px-6 py-4 bg-slate-50 dark:bg-zinc-900/60 border-t border-slate-100 dark:border-zinc-800/80 flex items-center justify-between">
           <div className="text-[10px] text-slate-400 dark:text-zinc-500">
             {language === "vi" ? "Tạo lúc: " : "Created: "}
-<<<<<<< HEAD
             <span className="font-semibold text-text">
               {preset.is_system
                 ? (language === "vi" ? "Mặc định hệ thống" : "System default")
-=======
-            <span className="font-medium">
-              {preset.is_system 
-                ? (language === "vi" ? "Mặc định hệ thống" : "System default") 
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                 : new Date(preset.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US")}
             </span>
           </div>
@@ -831,12 +786,7 @@ function WizardModal({
           : (editPreset.params.objective ? [editPreset.params.objective] : []);
         setSelectedObjectives(objs);
         setAiSteps(editPreset.params.aiSteps || []);
-<<<<<<< HEAD
 
-=======
-        
-        // Normalize loaded answers to string[]
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
         const loadedAnswers: Record<string, string[]> = {};
         if (editPreset.params.answers) {
           Object.entries(editPreset.params.answers).forEach(([key, val]) => {
@@ -1026,22 +976,12 @@ function WizardModal({
                           type="button"
                           disabled={isDisabled}
                           onClick={() => toggleObjective(obj.id)}
-<<<<<<< HEAD
                           className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-xs font-bold transition-all ${isSelected
                               ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
                               : isDisabled
                                 ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
                                 : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                             }`}
-=======
-                          className={`flex items-center gap-3.5 p-4 rounded-2xl border text-sm font-semibold transition-all ${
-                            isSelected
-                              ? "border-primary bg-primary/5 text-primary shadow-sm shadow-primary/5 ring-1 ring-primary/20 cursor-pointer"
-                              : isDisabled
-                              ? "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 text-slate-400 dark:text-zinc-600 opacity-40 cursor-not-allowed"
-                              : "border-slate-150 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:border-slate-300 dark:hover:border-zinc-700 cursor-pointer"
-                          }`}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                         >
                           <span className="text-2xl shrink-0">{obj.icon}</span>
                           <span className="leading-snug">{obj.label}</span>
@@ -1057,22 +997,12 @@ function WizardModal({
                           type="button"
                           disabled={isKhacDisabled}
                           onClick={() => toggleObjective("Khác")}
-<<<<<<< HEAD
                           className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-xs font-bold transition-all ${isKhacSelected
                               ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
                               : isKhacDisabled
                                 ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
                                 : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                             }`}
-=======
-                          className={`flex items-center gap-3.5 p-4 rounded-2xl border text-sm font-semibold transition-all ${
-                            isKhacSelected
-                              ? "border-primary bg-primary/5 text-primary shadow-sm shadow-primary/5 ring-1 ring-primary/20 cursor-pointer"
-                              : isKhacDisabled
-                              ? "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 text-slate-400 dark:text-zinc-600 opacity-40 cursor-not-allowed"
-                              : "border-slate-150 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:border-slate-300 dark:hover:border-zinc-700 cursor-pointer"
-                          }`}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                         >
                           <span className="text-2xl shrink-0">✨</span>
                           <span>{lang === "vi" ? "Khác..." : "Other..."}</span>
@@ -1087,18 +1017,10 @@ function WizardModal({
                         value={customObjective}
                         onChange={(e) => setCustomObjective(e.target.value)}
                         placeholder={lang === "vi" ? "Nhập mục tiêu cụ thể của bạn..." : "Enter your specific objective..."}
-<<<<<<< HEAD
                         className={`w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-zinc-900 text-xs text-text outline-none focus:border-primary transition-all ${customObjective.trim() && !validateCustomInput(customObjective).isValid
                             ? "border-rose-500"
                             : "border-gray-200 dark:border-zinc-700"
                           }`}
-=======
-                        className={`w-full px-4 py-3 rounded-xl border bg-slate-50 dark:bg-zinc-900 focus:ring-2 focus:ring-primary/20 outline-none text-sm text-slate-800 dark:text-white transition-all ${
-                          customObjective.trim() && !validateCustomInput(customObjective).isValid
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-550/20"
-                            : "border-slate-200 dark:border-zinc-700 focus:border-primary/55"
-                        }`}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                         autoFocus
                       />
                       {customObjective.trim() && !validateCustomInput(customObjective).isValid && (
@@ -1165,7 +1087,6 @@ function WizardModal({
                                 setAnswers(prev => ({ ...prev, [currentKey]: [...(prev[currentKey] || []), opt] }));
                               }
                             }}
-<<<<<<< HEAD
                             className={`group w-full px-4 py-3 rounded-2xl border text-xs font-semibold transition-all flex items-center gap-3.5 ${isSelected
                                 ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
                                 : isDisabled
@@ -1179,23 +1100,6 @@ function WizardModal({
                                   ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
                                   : "bg-gray-100 dark:bg-zinc-800 text-text-muted group-hover:bg-primary/20 group-hover:text-primary"
                               }`}>
-=======
-                            className={`group w-full px-4 py-3.5 rounded-2xl border text-sm font-semibold transition-all flex items-center gap-3.5 ${
-                              isSelected
-                                ? "border-primary bg-primary/5 text-primary shadow-sm shadow-primary/5 ring-1 ring-primary/10 cursor-pointer"
-                                : isDisabled
-                                ? "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 text-slate-400 dark:text-zinc-600 opacity-40 cursor-not-allowed"
-                                : "border-slate-150 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:border-primary/40 hover:bg-slate-50 dark:hover:bg-zinc-800/40 cursor-pointer"
-                            }`}
-                          >
-                            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all ${
-                              isSelected
-                                ? "bg-primary text-white"
-                                : isDisabled
-                                ? "bg-slate-100/50 dark:bg-zinc-900/50 text-slate-300 dark:text-zinc-700"
-                                : "bg-slate-100 dark:bg-zinc-800 text-slate-555 dark:text-slate-400 group-hover:bg-primary/15 group-hover:text-primary"
-                            }`}>
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                               {letter}
                             </span>
                             <span className="text-left leading-normal flex-1">{opt}</span>
@@ -1220,7 +1124,6 @@ function WizardModal({
                                   setAnswers(prev => ({ ...prev, [currentKey]: [...(prev[currentKey] || []), "Khác"] }));
                                 }
                               }}
-<<<<<<< HEAD
                               className={`group w-full px-4 py-3 rounded-2xl border text-xs font-semibold transition-all flex items-center gap-3.5 ${isSelected
                                   ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
                                   : isDisabled
@@ -1234,36 +1137,14 @@ function WizardModal({
                                     ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
                                     : "bg-gray-100 dark:bg-zinc-800 text-text-muted"
                                 }`}>
-=======
-                              className={`group w-full px-4 py-3.5 rounded-2xl border text-sm font-semibold transition-all flex items-center gap-3.5 ${
-                                isSelected
-                                  ? "border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/10 cursor-pointer"
-                                  : isDisabled
-                                  ? "border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 text-slate-400 dark:text-zinc-600 opacity-40 cursor-not-allowed"
-                                  : "border-slate-150 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:border-primary/40 hover:bg-slate-50 dark:hover:bg-zinc-800/40 cursor-pointer"
-                              }`}
-                            >
-                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all ${
-                                isSelected
-                                  ? "bg-primary text-white"
-                                  : isDisabled
-                                  ? "bg-slate-100/50 dark:bg-zinc-900/50 text-slate-300 dark:text-zinc-700"
-                                  : "bg-slate-100 dark:bg-zinc-800 text-slate-555 dark:text-slate-400"
-                              }`}>
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                                 ✎
                               </span>
                               <span className="text-left flex-1">{lang === "vi" ? "Lựa chọn khác..." : "Other response..."}</span>
                             </button>
                           );
                         })()}
-<<<<<<< HEAD
 
                         <AnimatePresence>
-=======
-                        
-                         <AnimatePresence>
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                           {currentAnswers.includes("Khác") && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 space-y-1.5">
                               <input
@@ -1271,14 +1152,8 @@ function WizardModal({
                                 value={customAnswers[currentKey] || ""}
                                 onChange={(e) => setCustomAnswers(prev => ({ ...prev, [currentKey]: e.target.value }))}
                                 placeholder={lang === "vi" ? "Nhập văn phong mong muốn của bạn..." : "Type your customized tone..."}
-<<<<<<< HEAD
                                 className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-900 text-xs text-text outline-none transition-all ${(customAnswers[currentKey] || "").trim() && !validateCustomInput(customAnswers[currentKey] || "").isValid
                                     ? "border-rose-500"
-=======
-                                className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-primary/20 outline-none text-sm text-slate-800 dark:text-white transition-all ${
-                                  (customAnswers[currentKey] || "").trim() && !validateCustomInput(customAnswers[currentKey] || "").isValid
-                                    ? "border-rose-500 focus:border-rose-500 focus:ring-rose-550/20"
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
                                     : "border-primary/45 focus:border-primary"
                                   }`}
                                 autoFocus
@@ -1488,6 +1363,8 @@ export default function PresetsView() {
   const [presets, setPresets] = useState<PromptConfigRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<PromptConfigRecord | null>(null);
   const [viewingPreset, setViewingPreset] = useState<PromptConfigRecord | null>(null);
@@ -1531,9 +1408,34 @@ export default function PresetsView() {
     fetchPresets();
   }, [fetchPresets]);
 
+  const myPresetsCount = useMemo(() => presets.filter((preset) => !preset.is_system).length, [presets]);
+  const systemPresetsCount = useMemo(() => presets.filter((preset) => preset.is_system).length, [presets]);
+
   const displayed = useMemo(() => {
     let list = [...presets];
-    
+
+    if (activeTab === "mine") {
+      list = list.filter((preset) => !preset.is_system);
+    } else if (activeTab === "system") {
+      list = list.filter((preset) => preset.is_system);
+    }
+
+    if (selectedCategory !== "all") {
+      const category = selectedCategory.toLowerCase();
+      list = list.filter((preset) => {
+        const objectives = preset.params?.objectives || (preset.params?.objective ? [preset.params.objective] : []);
+        const searchableText = `${preset.name} ${preset.rules || ""}`.toLowerCase();
+        return objectives.some((objective: string) => objective.toLowerCase().includes(category)) || searchableText.includes(category);
+      });
+    }
+
+    if (search.trim()) {
+      const query = search.trim().toLowerCase();
+      list = list.filter(
+        (preset) => preset.name.toLowerCase().includes(query) || preset.rules?.toLowerCase().includes(query)
+      );
+    }
+
     // Sort so default is always first, then user presets, then system presets
     list.sort((a, b) => {
       if (a.is_default && !b.is_default) return -1;
@@ -1545,20 +1447,13 @@ export default function PresetsView() {
       return 0;
     });
 
-    if (search.trim()) {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          (p.rules && p.rules.toLowerCase().includes(search.toLowerCase()))
-      );
-    }
     return list;
-  }, [presets, search]);
+  }, [presets, activeTab, selectedCategory, search]);
 
   // Reset to page 1 on search
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab, selectedCategory]);
 
   const totalPages = Math.ceil(displayed.length / ITEMS_PER_PAGE);
   const paginatedDisplayed = useMemo(() => {
@@ -1641,15 +1536,9 @@ export default function PresetsView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_default: !isCurrentlyDefault }),
         });
-<<<<<<< HEAD
         if (res.ok) {
           fetchPresets(true);
         } else {
-=======
-        if (!res.ok) {
-          // Rollback on fail
-          alert(lang === "vi" ? "Lỗi khi lưu cài đặt" : "Error saving config");
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
           fetchPresets(true);
         }
       }
@@ -1684,7 +1573,6 @@ export default function PresetsView() {
 
 
 
-<<<<<<< HEAD
       {/* 3. Toolbar: Tabs (Left) & Category Dropdown + Search (Right) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs">
         {/* Left: Segmented Control Tabs */}
@@ -1769,9 +1657,6 @@ export default function PresetsView() {
       </div>
 
       {/* 4. Cards Display Area */}
-=======
-      {/* Grid */}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 size={28} className="animate-spin text-primary" />
@@ -1805,7 +1690,6 @@ export default function PresetsView() {
         </motion.div>
       ) : (
         <>
-<<<<<<< HEAD
           <div className="flex flex-col justify-between">
             {/* Active Preset Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[456px] content-start">
@@ -1864,58 +1748,6 @@ export default function PresetsView() {
               </div>
             )}
           </div>
-=======
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {paginatedDisplayed.map((preset) => (
-              <PresetCard
-                key={preset.id}
-                preset={preset}
-                language={lang}
-                onEdit={handleEdit}
-                onDelete={(id) => setDeleteConfirmId(id)}
-                onSelect={(p) => setViewingPreset(p)}
-                onSetDefault={handleSetDefault}
-              />
-            ))}
-          </motion.div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-8 pb-4">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all cursor-pointer"
-              >
-                &lt;
-              </button>
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-xl text-sm font-bold transition-all cursor-pointer ${
-                      currentPage === i + 1 
-                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
-                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all cursor-pointer"
-              >
-                &gt;
-              </button>
-            </div>
-          )}
->>>>>>> a6dad8c537aa7a62e7e9587595d928d19597262e
         </>
       )}
 
