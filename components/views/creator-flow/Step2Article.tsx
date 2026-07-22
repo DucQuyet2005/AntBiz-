@@ -577,8 +577,8 @@ export default function Step2Article({
 
   const handleResetAllFields = () => {
     // 1. Clear local uploaded images
+    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
     setUploadedImages([]);
-    // 2. Clear uploaded files (audio/documents)
     setUploadedFiles([]);
     setAudioUrls({});
     if (audioPlaybackRef.current) {
@@ -599,18 +599,11 @@ export default function Step2Article({
     if (!activeBrowserSite) return;
     if (crawlStatus === 'crawling' || isCrawlingActive) return;
 
-      dispatch({
-        type: 'SET_MANUAL_CONTENT',
-        payload: { title: previousManualOnly ? state.manualTitle : '', content: previousManualOnly }
-      });
-=======
-    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
     setUploadedImages([]);
     setUploadedFiles([]);
     setAudioUrls({});
     if (audioPlaybackRef.current) {
       audioPlaybackRef.current.pause();
->>>>>>> origin/us_302
     }
     setPlayingAudio(null);
     dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });

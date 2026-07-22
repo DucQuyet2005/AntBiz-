@@ -482,12 +482,8 @@ export function WeeklyTimeline({
                     })}
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-text font-black">
-                    {timePart || '09:00'} ngày {datePart ? datePart.split('-').reverse().join('/') : '17/07/2026'}
-                  </span>
-                </div>
-              </div>            </div>
+              );
+            })}
           </div>
         </div>
       </div>
