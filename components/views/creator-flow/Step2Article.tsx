@@ -358,16 +358,10 @@ export default function Step2Article({
       // ONLY auto-fill and show animation for web crawl sources. Manual sources (like Audio/File uploads) 
       // already handle their own state in useCreatorFlow to support appending.
       if (articleContext && sourceType !== 'manual') {
-        let newTitle = articleContext.title || '';
-        let newContent = articleContext.content || '';
+        const newTitle = articleContext.title || '';
+        const newContent = articleContext.content || '';
 
-        // Preserve manual text and append if already exists
-        if (state.manualContent && state.manualContent.trim().length > 0) {
-          newTitle = state.manualTitle || newTitle;
-          newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ nguồn dữ liệu]:\n${newContent}`;
-        }
-
-        // Fill data IMMEDIATELY — do not rely on onAnimationComplete
+        // Fill data IMMEDIATELY with the new crawled article
         dispatch({
           type: 'SET_MANUAL_CONTENT',
           payload: { title: newTitle, content: newContent }
@@ -605,18 +599,16 @@ export default function Step2Article({
     if (!activeBrowserSite) return;
     if (crawlStatus === 'crawling' || isCrawlingActive) return;
 
-    // Lọc bỏ bài cào cũ để chuẩn bị thay bằng bài cào mới
-    let previousManualOnly = state.manualContent;
-    const markerIndex = previousManualOnly.indexOf('[Nội dung bổ sung từ nguồn dữ liệu]:');
-    if (markerIndex !== -1) {
-      previousManualOnly = previousManualOnly.substring(0, markerIndex).trim();
-      
-      // Update the manual content to remove the old crawl
-      dispatch({
-        type: 'SET_MANUAL_CONTENT',
-        payload: { title: previousManualOnly ? state.manualTitle : '', content: previousManualOnly }
-      });
+    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
+    setUploadedImages([]);
+    setUploadedFiles([]);
+    setAudioUrls({});
+    if (audioPlaybackRef.current) {
+      audioPlaybackRef.current.pause();
     }
+    setPlayingAudio(null);
+    dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+    dispatch({ type: 'SET_CRAWLED_IMAGES', payload: [] });
 
     const site = activeBrowserSite;
     setActiveBrowserSite(null);

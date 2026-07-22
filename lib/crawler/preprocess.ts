@@ -115,7 +115,7 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
 
   // Check common logo, icons, avatars, trackers, and social media/promo patterns in URL
   const invalidUrlPatterns = [
-    'logo', 'no-data', 'track-view', 'author', 'avatar', 'icon', 'banner', 'ads', 
+    'logo', 'no-data', 'track-view', 'author', 'tac-gia', 'tacgia', 'avatar', 'icon', 'banner', 'ads', 
     'loading', 'placeholder', 'pixel', 'gif', 'spacer', 'facebook', 'twitter', 
     'instagram', 'youtube', 'google-news', 'googlenews', 'google_news', 'news-google',
     'rating', 'star', 'star-rating', 'widget', 'gift'
@@ -127,7 +127,7 @@ function isInvalidImage(src: string, alt?: string, title?: string): boolean {
 
   // Check common logo, icons, avatars, promo patterns in Alt/Title text
   const invalidTextPatterns = [
-    'logo', 'avatar', 'ảnh đại diện', 'icon', 'biểu tượng', 'banner', 'quảng cáo', 
+    'logo', 'avatar', 'ảnh đại diện', 'tác giả', 'tac gia', 'author', 'icon', 'biểu tượng', 'banner', 'quảng cáo', 
     'google news', 'theo dõi trên', 'thông tin tài khoản', 'tài khoản', 'bình luận',
     'tặng sao'
   ];
@@ -963,8 +963,8 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     const seenTexts = new Set<string>();
     const seenImageUrls = new Set<string>();
 
-    // Try to find the specific body container first to exclude header/footer/sidebar elements
-    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content, .e-magazine, .e-magazine__body, .dmagazine-container').first();
+    // Try to find the specific body container first to exclude header/footer/sidebar/author elements across Tuoi Tre, Dantri, Goc Nhin Moi
+    let bodyContainer = $('#html_content, [itemprop="articleBody"], .detail-content, .detail-cmain, .article-content, .content-detail, .e-magazine, .e-magazine__body, .dmagazine-container').first();
     if (!bodyContainer.length) {
       bodyContainer = scope;
     }
@@ -973,10 +973,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
       const tagName = (el as any).tagName || el.name;
       const cheerioEl = $(el);
 
-      // Skip related news sections (Các phần có hiển thị tin liên quan thì không crawl)
-      const isRelated = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]').length > 0 ||
-                        cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"]');
-      if (isRelated) {
+      // Skip related news sections, ads, author info boxes & sidebar elements
+      const isExcludedSection = cheerioEl.parents('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"], [class*="author"], [class*="tac-gia"], [class*="sidebar"], [class*="banner"], [class*="ads"]').length > 0 ||
+                                cheerioEl.is('[class*="related"], [id*="related"], [class*="recommend"], [class*="relate"], .tin-lien-quan, .box-lien-quan, [type*="Related"], [type*="related"], [class*="author"], [class*="tac-gia"], [class*="sidebar"], [class*="banner"], [class*="ads"]');
+      if (isExcludedSection) {
         return;
       }
 
@@ -1022,11 +1022,12 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
           return;
         }
 
-        // Check if this image is the author's avatar/portrait (Phân biệt cả ảnh Avatar tác giả)
+        // Check if this image is the author's avatar/portrait (Phân biệt cả ảnh Avatar tác giả cho Dân trí, Tuổi Trẻ, Góc Nhìn Mới)
         const isAuthorImage = 
-          (alt && author && alt.toLowerCase() === author.toLowerCase()) ||
-          (titleAttr && author && titleAttr.toLowerCase() === author.toLowerCase()) ||
-          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="avatar"], .tac-gia').length > 0;
+          (alt && author && alt.toLowerCase().includes(author.toLowerCase())) ||
+          (titleAttr && author && titleAttr.toLowerCase().includes(author.toLowerCase())) ||
+          cheerioEl.parents('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"], [class*="detail-author"], .tac-gia, .author-info, .author').length > 0 ||
+          cheerioEl.is('[class*="author-avatar"], [class*="author-img"], [class*="author-image"], [class*="avatar"]');
 
         if (isAuthorImage) {
           if (!author_image_url) {
