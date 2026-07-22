@@ -21,6 +21,7 @@ import {
 
 export const initialCreatorFlowState: CreatorFlowState = {
   currentStep: 1,
+  conversationalStep: 1,
   selectedPlatform: null,
   selectedPlatforms: [],
   platforms: [],
@@ -411,7 +412,7 @@ export function CreatorFlowProvider({
       dispatch({ type: 'SET_ARTICLE_ID', payload: result.articleId });
       dispatch({ type: 'SET_ARTICLE_CONTEXT', payload: result.context });
       // Collect all images from article context for use in Step 3+ publish
-      const rawUrls = (result.context as any).imageUrls || (result.context.thumbnail ? [result.context.thumbnail] : []);
+      const rawUrls = result.context.imageUrls || (result.context.thumbnail ? [result.context.thumbnail] : []);
       const crawledImages: string[] = rawUrls.filter(
         (u: unknown) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))
       );
@@ -738,7 +739,7 @@ export function CreatorFlowProvider({
     let userPrompt = targetMsg?.text;
 
     if (!quotedText && userPrompt?.startsWith('[Sửa đoạn:')) {
-      const match = userPrompt.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+      const match = userPrompt.match(/^\[Sửa đoạn:\s*([\s\S]+?)\]:\s*([\s\S]+)$/);
       if (match) {
         quotedText = match[1];
         userPrompt = match[2];
@@ -777,10 +778,9 @@ export function CreatorFlowProvider({
     const connectedPlatforms = state.platforms
       .filter((platform) => platform.connected)
       .map((platform) => platform.id);
-    let imageUrls = [
-      ...(state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []),
-      ...state.crawledImageUrls.filter(url => url !== state.articleContext?.thumbnail),
-    ];
+    let imageUrls = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
+      ? state.crawledImageUrls
+      : (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
 
     // Upload any local (blob: or data:) images to Supabase avatars bucket before scheduling
     if (imageUrls.some(url => url.startsWith('blob:') || url.startsWith('data:'))) {
