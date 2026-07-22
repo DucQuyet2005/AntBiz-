@@ -233,6 +233,80 @@ export async function GET(request: NextRequest) {
     } catch (err) {}
   }, false);
 
+  // ── Intercept fetch() so Dantri lazy-loaders go through proxy ──
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+    if (url && typeof url === 'string') {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/')) {
+        input = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
+      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
+        if (isAllowedHost(url)) input = PROXY + encodeURIComponent(url);
+      }
+    }
+    return _fetch.call(window, input, init);
+  };
+
+  // ── Intercept XMLHttpRequest.open ──
+  var _xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === 'string') {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/')) {
+        url = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
+      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
+        if (isAllowedHost(url)) url = PROXY + encodeURIComponent(url);
+      }
+    }
+    var args = Array.prototype.slice.call(arguments);
+    args[1] = url;
+    return _xhrOpen.apply(this, args);
+  };
+
+  // ── Lazy-image src promotion (client-side, safe – no infinite loop) ──
+  if (typeof MutationObserver !== 'undefined') {
+    var _imgProcessed = '_proxyDone';
+    function proxyImg(el) {
+      if (el[_imgProcessed]) return;
+      var real = el.getAttribute('data-src') || el.getAttribute('data-original');
+      if (real && !real.startsWith('data:') && !real.startsWith('blob:') && real.indexOf('/api/proxy') === -1) {
+        try {
+          var abs = new URL(real, _currentTarget || TARGET).href;
+          if (isAllowedHost(abs)) {
+            el[_imgProcessed] = true;
+            el.setAttribute('src', PROXY + encodeURIComponent(abs));
+          }
+        } catch(_) {}
+      }
+    }
+    new MutationObserver(function(muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === 'childList') {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var n = m.addedNodes[j];
+            if (n.nodeType !== 1) continue;
+            if (n.tagName === 'IMG') proxyImg(n);
+            var imgs = n.querySelectorAll ? n.querySelectorAll('img[data-src], img[data-original]') : [];
+            for (var k = 0; k < imgs.length; k++) proxyImg(imgs[k]);
+          }
+        } else if (m.type === 'attributes' && m.target.tagName === 'IMG') {
+          // Only act on data-src changes, NOT on src changes (prevents infinite loop)
+          if (m.attributeName === 'data-src' || m.attributeName === 'data-original') {
+            proxyImg(m.target);
+          }
+        }
+      }
+    }).observe(document.documentElement, {
+      childList: true, subtree: true,
+      attributes: true, attributeFilter: ['data-src', 'data-original']
+    });
+    // Process existing images once DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      var imgs = document.querySelectorAll('img[data-src], img[data-original]');
+      for (var i = 0; i < imgs.length; i++) proxyImg(imgs[i]);
+    });
+  }
+
   // Lightweight periodic cleanup of ad iframes without layout thrashing
   setInterval(function() {
     try {

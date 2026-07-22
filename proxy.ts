@@ -144,10 +144,6 @@ export async function proxy(request: NextRequest) {
       maxAge: 3600,
       sameSite: 'lax',
     });
-    rewriteResponse.cookies.set('active_proxy_origin', '', {
-      path: '/',
-      maxAge: 0,
-    });
     return rewriteResponse;
   }
   // ──────────────────────────────────────────────────────────────────────────
