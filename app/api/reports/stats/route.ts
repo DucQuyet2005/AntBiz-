@@ -58,9 +58,13 @@ export async function GET(request: NextRequest) {
     end.setHours(23, 59, 59, 999);
   }
 
-  let dbPlatform = platform;
-  if (platform === 'threads') {
-    dbPlatform = 'thread';
+  let targetPlatform: string | null = null;
+  if (platform === 'facebook' || platform === 'fb') {
+    targetPlatform = 'facebook';
+  } else if (platform === 'instagram' || platform === 'ig') {
+    targetPlatform = 'instagram';
+  } else if (platform === 'threads' || platform === 'thread') {
+    targetPlatform = 'thread';
   }
 
   // Try querying with post_interactions join
@@ -95,8 +99,8 @@ export async function GET(request: NextRequest) {
     .gte('scheduled_at', start.toISOString())
     .lte('scheduled_at', end.toISOString());
 
-  if (dbPlatform !== 'all') {
-    query = query.eq('platform', dbPlatform);
+  if (targetPlatform) {
+    query = query.eq('platform', targetPlatform);
   }
 
   const isPersonalScope = role === 'marketer_content' || scope === 'personal';
@@ -107,47 +111,42 @@ export async function GET(request: NextRequest) {
   const { data: postsData, error: postsError } = await query;
 
   if (postsError) {
-    // If table doesn't exist, fallback to query without post_interactions
-    if (postsError.message.includes('post_interactions') || postsError.code === 'PGRST108') {
-      isMigrationMissing = true;
-      let fallbackQuery = supabaseClient
-        .from('scheduled_posts')
-        .select(`
+    console.warn('[GET /api/reports/stats] Joined query failed, attempting fallback query:', postsError.message);
+    isMigrationMissing = true;
+    let fallbackQuery = supabaseClient
+      .from('scheduled_posts')
+      .select(`
+        id,
+        platform,
+        status,
+        scheduled_at,
+        posted_at,
+        captions (
           id,
-          platform,
-          status,
-          scheduled_at,
-          posted_at,
-          captions (
-            id,
-            edited_content,
-            ai_content,
-            articles (
-              title
-            )
+          edited_content,
+          ai_content,
+          articles (
+            title
           )
-        `)
-        .gte('scheduled_at', start.toISOString())
-        .lte('scheduled_at', end.toISOString());
+        )
+      `)
+      .gte('scheduled_at', start.toISOString())
+      .lte('scheduled_at', end.toISOString());
 
-      if (dbPlatform !== 'all') {
-        fallbackQuery = fallbackQuery.eq('platform', dbPlatform);
-      }
-
-      if (isPersonalScope && user) {
-        fallbackQuery = fallbackQuery.eq('created_by', user.id);
-      }
-
-      const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-      if (fallbackError) {
-        console.error('[GET /api/reports/stats] Fallback query error:', fallbackError);
-        return NextResponse.json({ error: 'Không thể lấy dữ liệu thống kê' }, { status: 500 });
-      }
-      data = fallbackData || [];
-    } else {
-      console.error('[GET /api/reports/stats] Query error:', postsError);
-      return NextResponse.json({ error: 'Không thể lấy dữ liệu thống kê' }, { status: 500 });
+    if (targetPlatform) {
+      fallbackQuery = fallbackQuery.eq('platform', targetPlatform);
     }
+
+    if (isPersonalScope && user) {
+      fallbackQuery = fallbackQuery.eq('created_by', user.id);
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) {
+      console.error('[GET /api/reports/stats] Fallback query error:', fallbackError);
+      return NextResponse.json({ error: `Không thể lấy dữ liệu thống kê (${fallbackError.message})` }, { status: 500 });
+    }
+    data = fallbackData || [];
   } else {
     data = postsData || [];
   }

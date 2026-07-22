@@ -21,6 +21,7 @@ export interface CaptionRecord {
   edited_content?: string | null;
   created_by?: string;
   status: string;
+  users?: { id?: string; email?: string | null } | null;
   [key: string]: unknown;
 }
 
@@ -63,6 +64,7 @@ export interface CaptionVersionRecord {
 export interface CaptionListQuery {
   platform?: string;
   search?: string;
+  creatorId?: string;
   from: number;
   to: number;
 }

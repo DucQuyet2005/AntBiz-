@@ -28,9 +28,9 @@ function config(overrides: Partial<PromptConfigRecord> = {}): PromptConfigRecord
 class FakePromptConfigRepository implements PromptConfigRepository {
   configs: PromptConfigRecord[] = [];
 
-  async list(userId: string, platform?: string): Promise<PromptConfigRecord[]> {
+  async list(userId?: string, platform?: string): Promise<PromptConfigRecord[]> {
     return this.configs.filter(
-      (item) => item.user_id === userId && (!platform || item.platform === platform)
+      (item) => (!userId || item.user_id === userId) && (!platform || item.platform === platform)
     );
   }
 
@@ -96,7 +96,20 @@ function createInput(overrides: Partial<CreatePromptConfigInput> = {}): CreatePr
 }
 
 describe('PromptConfigModule', () => {
-  it('lists only the actor configs and applies the platform filter', async () => {
+  it('lists only the actor configs for marketer_content and applies the platform filter', async () => {
+    const repository = new FakePromptConfigRepository();
+    repository.configs = [
+      config(),
+      config({ id: 'config-2', platform: 'instagram' }),
+      config({ id: 'config-3', user_id: otherUser.id, platform: 'instagram' }),
+    ];
+
+    const result = await new PromptConfigModule(repository).list({ ...owner, role: 'marketer_content' }, 'instagram');
+
+    expect(result.filter((item) => !item.is_system).map((item) => item.id)).toEqual(['config-2']);
+  });
+
+  it('lists all user configs for marketer_full and applies the platform filter', async () => {
     const repository = new FakePromptConfigRepository();
     repository.configs = [
       config(),
@@ -106,7 +119,7 @@ describe('PromptConfigModule', () => {
 
     const result = await new PromptConfigModule(repository).list(owner, 'instagram');
 
-    expect(result.filter((item) => !item.is_system).map((item) => item.id)).toEqual(['config-2']);
+    expect(result.filter((item) => !item.is_system).map((item) => item.id)).toEqual(['config-2', 'config-3']);
   });
 
   it('trims names and resets the previous default on create', async () => {

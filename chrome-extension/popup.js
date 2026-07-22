@@ -30,6 +30,13 @@ const userProfile = document.getElementById('user-profile');
 const userNameEl = document.getElementById('user-name');
 const loadingText = document.getElementById('loading-text');
 
+// Màn hình Lịch sử bài đăng
+const stateHistory = document.getElementById('state-history');
+const btnShowHistory = document.getElementById('btn-show-history');
+const btnCloseHistory = document.getElementById('btn-close-history');
+const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
+const historyList = document.getElementById('history-list');
+
 // Màn hình lỗi
 const errorTitle = document.getElementById('error-title');
 const errorDescription = document.getElementById('error-description');
@@ -105,20 +112,20 @@ const MAX_RECORDING_SECONDS = 300; // 5 phút
 
 // Hiển thị trạng thái/màn hình
 function showState(stateEl, message = '') {
-  stateLoading.classList.add('hidden');
-  stateUnauth.classList.add('hidden');
-  stateHome.classList.add('hidden');
-  stateError.classList.add('hidden');
-  stateExtracted.classList.add('hidden');
-  stateSuccess.classList.add('hidden');
-  if (stateRecording) stateRecording.classList.add('hidden');
-  if (stateVoiceConfirm) stateVoiceConfirm.classList.add('hidden');
-  if (stateHistory) stateHistory.classList.add('hidden');
+  const allStates = [
+    stateLoading, stateUnauth, stateHome, stateError,
+    stateExtracted, stateSuccess, stateRecording, stateVoiceConfirm, stateHistory
+  ];
+  allStates.forEach(st => {
+    if (st) st.classList.add('hidden');
+  });
 
-  if (stateEl === stateLoading && message) {
+  if (stateEl === stateLoading && message && loadingText) {
     loadingText.textContent = message;
   }
-  stateEl.classList.remove('hidden');
+  if (stateEl) {
+    stateEl.classList.remove('hidden');
+  }
 }
 
 // Ẩn/Hiện bước Wizard con
@@ -1581,7 +1588,10 @@ function updateFbPreview() {
 
 // Lấy ID trạng thái màn hình hiện tại
 function getActiveStateId() {
-  const states = [stateLoading, stateUnauth, stateHome, stateError, stateExtracted, stateSuccess];
+  const states = [
+    stateLoading, stateUnauth, stateHome, stateError,
+    stateExtracted, stateSuccess, stateRecording, stateVoiceConfirm, stateHistory
+  ];
   for (const st of states) {
     if (st && !st.classList.contains('hidden')) {
       return st.id;

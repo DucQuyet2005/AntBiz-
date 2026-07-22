@@ -18,6 +18,7 @@ export interface CaptionExportFilters {
   search?: string;
   startDate?: string;
   endDate?: string;
+  creatorId?: string;
 }
 
 export type ExportRelation = Record<string, unknown> | Array<Record<string, unknown>> | null;
