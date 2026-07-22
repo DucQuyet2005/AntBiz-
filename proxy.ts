@@ -22,7 +22,14 @@ function isAllowedHost(hostname: string): boolean {
 }
 
 function isActualAntBizRoute(pathname: string): boolean {
-  if (pathname === '/') return true;
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return true;
+  }
 
   const ANTBIZ_ROUTES = new Set([
     '/login', '/register', '/forgot-password', '/reset-password',
@@ -32,11 +39,6 @@ function isActualAntBizRoute(pathname: string): boolean {
   ]);
 
   if (ANTBIZ_ROUTES.has(pathname)) return true;
-
-  if (pathname.startsWith('/api/')) {
-    const segment = pathname.split('/')[2];
-    return ANTBIZ_API_ROUTES.has(segment);
-  }
 
   return false;
 }
@@ -138,9 +140,13 @@ export async function proxy(request: NextRequest) {
     
     const rewriteResponse = NextResponse.rewrite(dest);
     rewriteResponse.cookies.set('active_proxy_origin', targetOrigin, {
-      path: '/',
+      path: '/api/proxy',
       maxAge: 3600,
       sameSite: 'lax',
+    });
+    rewriteResponse.cookies.set('active_proxy_origin', '', {
+      path: '/',
+      maxAge: 0,
     });
     return rewriteResponse;
   }

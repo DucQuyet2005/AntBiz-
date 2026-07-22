@@ -572,9 +572,14 @@ export async function GET(request: NextRequest) {
       },
     });
     response.cookies.set('active_proxy_origin', targetOrigin, {
-      path: '/',
+      path: '/api/proxy',
       maxAge: 3600,
       sameSite: 'lax',
+    });
+    // Clear legacy root cookie if present
+    response.cookies.set('active_proxy_origin', '', {
+      path: '/',
+      maxAge: 0,
     });
     return response;
   } catch (error: any) {
