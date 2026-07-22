@@ -6,7 +6,7 @@ import { postService, ChatMessage } from '@/lib/services/creator/post.service';
 import { scheduleService } from '@/lib/services/creator/schedule.service';
 import { presetService } from '@/lib/services/creator/preset.service';
 import { CreatorFlowState, CreatorFlowAction } from './creator-flow-types';
-import { PlatformType } from '@/lib/services/creator/platform.service';
+import { PlatformType, PlatformConnection } from '@/lib/services/creator/platform.service';
 import { BrowserCreatorFlowClient, type CreatorFlowClient } from './creator-flow-client';
 import {
   persistManualCreatorSource,
@@ -313,7 +313,7 @@ export function CreatorFlowProvider({
   const quickPublishing = useQuickPublishing();
 
   // 1. Fetch platforms connection
-  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery({
+  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<PlatformConnection[]>({
     queryKey: ['connectedPlatforms'],
     queryFn: () => creatorClient.listConnectedPlatforms(),
   });

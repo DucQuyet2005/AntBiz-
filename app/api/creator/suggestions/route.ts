@@ -28,10 +28,11 @@ TUYỆT ĐỐI KHÔNG có lời mở đầu, không trích dẫn, chỉ trả v�
 
     try {
       const result = await executeWithGeminiCapacity(
-        { selectedText, topic },
-        async (ai) => {
-          const model = ai.getGenerativeAIModel({
-            model: 'gemini-3.1-flash-lite',
+        { prompt: selectedText, topic },
+        async (key, modelName) => {
+          const genAI = new GoogleGenerativeAI(key);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
             systemInstruction,
           });
           const response = await model.generateContent(userPrompt);

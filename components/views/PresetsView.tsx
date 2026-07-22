@@ -68,16 +68,6 @@ const OBJECTIVES = [
   { id: "Sự kiện", label: "Truyền thông sự kiện mới", icon: "📢" },
 ];
 
-const CATEGORIES = [
-  { id: "all", label: "Tất cả danh mục" },
-  { id: "Bán hàng", label: "Bán hàng & Doanh số" },
-  { id: "Thương hiệu", label: "Nhận diện Thương hiệu" },
-  { id: "Tương tác", label: "Tương tác & Cộng đồng" },
-  { id: "Giáo dục", label: "Giáo dục & Kiến thức" },
-  { id: "Tuyển dụng", label: "Tuyển dụng" },
-  { id: "Sự kiện", label: "Sự kiện & Truyền thông" },
-] as const;
-
 const PLATFORM_OPTIONS: { value: Platform; label: string; color: string }[] = [
   { value: "facebook", label: "Facebook", color: "#1877F2" },
   { value: "thread", label: "Threads", color: "#000000" },
@@ -1637,7 +1627,7 @@ export default function PresetsView() {
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {lang === "vi" ? cat.labelVi : cat.labelEn}
+                  {cat.label}
                 </option>
               ))}
             </select>
