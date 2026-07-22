@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -13,7 +14,6 @@ import {
   MousePointerClick,
   Users as UsersIcon,
   Eye,
-  Calendar,
   User as UserIcon,
   Globe,
   AlertTriangle,
@@ -22,11 +22,20 @@ import {
   Instagram,
   ChevronDown,
   ArrowUpDown,
-  RefreshCw
+  ArrowUp,
+  ArrowDown,
+  RefreshCw,
+  Search,
+  RotateCcw,
+  FileText,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  CheckCircle2
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import PopupDialog, { PopupType } from "@/components/PopupDialog";
-
+import { ReportPreviewModal } from "./reports/ReportPreviewModal";
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -118,14 +127,22 @@ export default function ReportsView() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [reporterName, setReporterName] = useState<string>("");
-  
+
   const [loading, setLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [scope, setScope] = useState<string>("all");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Table filter and sort states
+  const [sortField, setSortField] = useState<string>("interactions.likes");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [chartGranularity, setChartGranularity] = useState<"day" | "week" | "month">("day");
+  const [tableSearchQuery, setTableSearchQuery] = useState<string>("");
+  const [tablePlatformFilter, setTablePlatformFilter] = useState<string>("all");
 
   // Popup Toast Notification State
   const [popup, setPopup] = useState<{
@@ -142,10 +159,6 @@ export default function ReportsView() {
   const showToast = (message: string, type: PopupType = 'info', title?: string) => {
     setPopup({ isOpen: true, message, type, title });
   };
-  
-  // Sort state for Top Posts table
-  const [sortField, setSortField] = useState<string>("interactions.likes");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Load User Info for default reporter name and role
   useEffect(() => {
@@ -188,9 +201,7 @@ export default function ReportsView() {
       const res = await fetch(`/api/reports/stats?${queryParams.toString()}&t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) {
         const errText = await res.text();
-        const headers: any = {};
-        res.headers.forEach((v, k) => { headers[k] = v; });
-        console.error("Stats API failed:", res.status, errText, "Headers:", headers);
+        console.error("Stats API failed:", res.status, errText);
         throw new Error(`Không thể tải báo cáo (Mã lỗi: ${res.status}): ${errText}`);
       }
       const data = await res.json();
@@ -225,7 +236,7 @@ export default function ReportsView() {
       if (!silent) {
         showToast(data.message || "Đồng bộ dữ liệu thành công!", "success", "Đồng bộ hoàn tất");
       }
-      await loadStats(); // Reload stats with fresh sync data
+      await loadStats();
       return true;
     } catch (err) {
       console.error("Lỗi đồng bộ:", err);
@@ -243,17 +254,29 @@ export default function ReportsView() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-
-      // Thông báo đang đồng bộ dữ liệu trước khi xuất báo cáo
       showToast(
-        "Đang đồng bộ dữ liệu thực tế mới nhất trước khi xuất báo cáo...",
+        "Đang đồng bộ dữ liệu thực tế mới nhất trước khi xem trước báo cáo...",
         "info",
         "Đồng bộ dữ liệu"
       );
 
-      // Tự động đồng bộ dữ liệu thực tế mới nhất trước khi xuất file Excel
       await performSync(true);
+      setPreviewOpen(true);
+    } catch (error: any) {
+      console.error("Lỗi chuẩn bị báo cáo:", error);
+      showToast(
+        "Đã xảy ra lỗi khi chuẩn bị báo cáo. Vui lòng thử lại.",
+        "error",
+        "Thất bại"
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
+  const confirmDownloadExcel = async () => {
+    try {
+      setIsExporting(true);
       const queryParams = new URLSearchParams({
         timeframe,
         platform,
@@ -265,13 +288,12 @@ export default function ReportsView() {
 
       const res = await fetch(`/api/reports/export?${queryParams.toString()}`);
       if (!res.ok) throw new Error("Xuất báo cáo thất bại");
-      
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      
-      // Parse filename from Content-Disposition header
+
       const disposition = res.headers.get("content-disposition");
       let filename = `Bao_cao_truyen_thong_${timeframe}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       if (disposition && disposition.indexOf("attachment") !== -1) {
@@ -287,11 +309,12 @@ export default function ReportsView() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      // Thông báo xuất báo cáo thành công
+      setPreviewOpen(false);
+
       showToast(
-        "Xuất báo cáo Excel thành công!",
+        "Tải về file Excel (.xlsx) báo cáo thành công!",
         "success",
-        "Xuất báo cáo thành công"
+        "Tải báo cáo thành công"
       );
     } catch (error: any) {
       console.error("Lỗi xuất báo cáo:", error);
@@ -305,29 +328,6 @@ export default function ReportsView() {
     }
   };
 
-  const getSortedPosts = () => {
-    if (!reportData?.topPosts) return [];
-    
-    return [...reportData.topPosts].sort((a, b) => {
-      let valA = a;
-      let valB = b;
-      
-      const fields = sortField.split(".");
-      fields.forEach(f => {
-        valA = valA ? valA[f] : 0;
-        valB = valB ? valB[f] : 0;
-      });
-
-      const numA = typeof valA === "number" ? valA : 0;
-      const numB = typeof valB === "number" ? valB : 0;
-      
-      if (sortDirection === "asc") {
-        return numA - numB;
-      }
-      return numB - numA;
-    });
-  };
-
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -337,32 +337,94 @@ export default function ReportsView() {
     }
   };
 
-  const activeSortedPosts = getSortedPosts();
+  const filteredTablePosts = useMemo(() => {
+    if (!reportData?.topPosts) return [];
 
-  const totalEngagements = reportData 
+    let list = [...reportData.topPosts];
+
+    // 1. Filter by platform
+    if (tablePlatformFilter !== "all") {
+      list = list.filter(p => {
+        const plat = (p.platform || "").toLowerCase();
+        if (tablePlatformFilter === "threads") return plat === "threads" || plat === "thread";
+        return plat === tablePlatformFilter;
+      });
+    }
+
+    // 2. Filter by search query
+    if (tableSearchQuery.trim()) {
+      const q = tableSearchQuery.toLowerCase();
+      list = list.filter(p => (p.title || "").toLowerCase().includes(q));
+    }
+
+    // 3. Sort list
+    list.sort((a, b) => {
+      const getValue = (obj: any, path: string) => {
+        const fields = path.split(".");
+        let curr = obj;
+        for (const f of fields) {
+          if (curr == null) return 0;
+          curr = curr[f];
+        }
+        return curr;
+      };
+
+      const rawA = getValue(a, sortField);
+      const rawB = getValue(b, sortField);
+
+      let valA: any = rawA;
+      let valB: any = rawB;
+
+      // Handle date fields
+      if (sortField === "posted_at" || sortField === "scheduled_at") {
+        valA = rawA ? new Date(rawA).getTime() : 0;
+        valB = rawB ? new Date(rawB).getTime() : 0;
+      }
+
+      // Handle string fields
+      if (typeof valA === "string" && typeof valB === "string") {
+        const res = valA.localeCompare(valB, "vi", { sensitivity: "base" });
+        return sortDirection === "asc" ? res : -res;
+      }
+
+      // Handle numeric fields
+      const numA = typeof valA === "number" ? valA : (parseFloat(valA) || 0);
+      const numB = typeof valB === "number" ? valB : (parseFloat(valB) || 0);
+
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    });
+
+    return list;
+  }, [reportData?.topPosts, tablePlatformFilter, tableSearchQuery, sortField, sortDirection]);
+
+  const totalEngagements = reportData
     ? (reportData.summary.totalLikes + reportData.summary.totalComments + reportData.summary.totalShares)
     : 0;
-  
+
   const engagementRate = reportData && reportData.summary.totalReach > 0
     ? ((totalEngagements / reportData.summary.totalReach) * 100).toFixed(2)
     : "0.00";
 
+  const themeContext = useTheme();
+  const isDark = themeContext?.isDark ?? false;
+  const threadsColor = isDark ? "#F4F4F5" : "#18181B";
+
   const getPlatformPieData = () => {
     if (!reportData?.platformBreakdown) return [];
     const bd = reportData.platformBreakdown;
-    
+
     let data = [
-      { name: "Facebook", value: bd.facebook.likes + bd.facebook.comments + bd.facebook.shares, color: "#1877F2" },
-      { name: "Instagram", value: bd.instagram.likes + bd.instagram.comments + bd.instagram.shares, color: "#E1306C" },
-      { name: "Threads", value: bd.threads.likes + bd.threads.comments + bd.threads.shares, color: "#10B981" },
+      { name: "Facebook", value: bd.facebook.likes + bd.facebook.comments + bd.facebook.shares, fill: "#1877F2", color: "#1877F2" },
+      { name: "Instagram", value: bd.instagram.likes + bd.instagram.comments + bd.instagram.shares, fill: "#E1306C", color: "#E1306C" },
+      { name: "Threads", value: bd.threads.likes + bd.threads.comments + bd.threads.shares, fill: threadsColor, color: threadsColor },
     ];
-    
+
     const totalVal = data.reduce((acc, curr) => acc + curr.value, 0);
     if (totalVal === 0) {
       data = [
-        { name: "Facebook", value: bd.facebook.posts, color: "#1877F2" },
-        { name: "Instagram", value: bd.instagram.posts, color: "#E1306C" },
-        { name: "Threads", value: bd.threads.posts, color: "#6B7280" },
+        { name: "Facebook", value: bd.facebook.posts, fill: "#1877F2", color: "#1877F2" },
+        { name: "Instagram", value: bd.instagram.posts, fill: "#E1306C", color: "#E1306C" },
+        { name: "Threads", value: bd.threads.posts, fill: threadsColor, color: threadsColor },
       ];
     }
     return data.filter(item => item.value > 0);
@@ -385,64 +447,68 @@ export default function ReportsView() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 p-4 md:p-6 lg:p-8 min-h-screen text-foreground transition-all duration-300">
-      
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-gray-200/60 dark:border-zinc-800">
+    <div className="max-w-[1400px] mx-auto space-y-6 p-4 md:p-6 lg:p-8 min-h-screen text-foreground transition-all duration-300 font-sans">
+
+      {/* Page Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
-            <BarChart3 className="text-primary w-8 h-8" />
-            {t("reports.title")}
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-2xs">
+              <BarChart3 className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            {t("reports.title") || "Báo cáo & Thống kê"}
           </h1>
-          <p className="text-sm text-text-muted mt-1">
-            {t("reports.subtitle")}
+          <p className="text-xs md:text-sm text-text-muted font-medium mt-1">
+            {t("reports.subtitle") || "Theo dõi hiệu quả chiến dịch và tương tác trên mạng xã hội"}
           </p>
         </div>
 
         {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-xl shadow-sm border border-gray-200/50 dark:border-zinc-800">
-            <UserIcon size={16} className="text-text-muted" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3.5 py-2 rounded-xl shadow-2xs border border-gray-200/70 dark:border-zinc-800">
+            <UserIcon size={14} className="text-text-muted shrink-0" />
             <input
               type="text"
               value={reporterName}
               onChange={(e) => setReporterName(e.target.value)}
-              placeholder={t("reports.reporterPlaceholder")}
-              className="bg-transparent text-sm focus:outline-none border-none outline-none w-[160px] font-medium"
+              placeholder={t("reports.reporterPlaceholder") || "Tên người báo cáo..."}
+              className="bg-transparent text-xs focus:outline-none border-none outline-none w-[140px] font-semibold text-text"
             />
           </div>
 
           <button
+            type="button"
             onClick={handleSync}
             disabled={isSyncing || loading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 cursor-pointer text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/20 hover:shadow-blue-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer text-xs active:scale-95 border-0"
           >
             {isSyncing ? (
-              <RefreshCw className="animate-spin" size={16} />
+              <RefreshCw className="animate-spin" size={14} />
             ) : (
-              <RefreshCw size={16} />
+              <RefreshCw size={14} />
             )}
-            Đồng bộ ngay
+            <span>Đồng bộ ngay</span>
           </button>
 
           <button
+            type="button"
             onClick={handleExport}
             disabled={isExporting || loading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 cursor-pointer text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer text-xs active:scale-95 border-0"
           >
             {isExporting ? (
-              <Loader2 className="animate-spin" size={16} />
+              <Loader2 className="animate-spin" size={14} />
             ) : (
-              <Download size={16} />
+              <Download size={14} />
             )}
-            {t("reports.exportExcel")}
+            <span>{t("reports.exportExcel") || "Xuất Excel"}</span>
           </button>
         </div>
       </div>
 
       {/* RLS Migration warning */}
       {reportData?.isMigrationMissing && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3.5 text-amber-600 dark:text-amber-400"
@@ -458,129 +524,150 @@ export default function ReportsView() {
       )}
 
       {/* Filter and settings bar */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-sm">
-        
-        {/* Left side: Timeframe & Custom Date Inputs */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-4 flex-1">
-          {/* Scope Selector */}
-          {userRole && userRole !== 'marketer_content' && (
-            <div className="flex flex-col gap-1.5 min-w-[160px]">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                Phạm vi dữ liệu
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200/70 dark:border-zinc-800 p-4 md:p-5 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 flex-1">
+            {/* Scope Selector */}
+            {userRole && userRole !== 'marketer_content' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                  Phạm vi dữ liệu
+                </label>
+                <div className="relative">
+                  <select
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value)}
+                    className="w-full bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl pl-3.5 pr-8 py-2 text-xs font-bold text-text focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer h-9"
+                  >
+                    <option value="all">Toàn hệ thống</option>
+                    <option value="personal">Cá nhân tôi</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={14} />
+                </div>
+              </div>
+            )}
+
+            {/* Timeframe Selector */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                Khoảng thời gian
               </label>
               <div className="relative">
                 <select
-                  value={scope}
-                  onChange={(e) => setScope(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200/60 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value)}
+                  className="w-full bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl pl-3.5 pr-8 py-2 text-xs font-bold text-text focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer h-9"
                 >
-                  <option value="all">Toàn hệ thống</option>
-                  <option value="personal">Cá nhân tôi</option>
+                  <option value="7days">7 ngày qua</option>
+                  <option value="30days">30 ngày qua</option>
+                  <option value="thisMonth">Tháng này</option>
+                  <option value="lastMonth">Tháng trước</option>
+                  <option value="custom">Tùy chọn ngày</option>
                 </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={16} />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={14} />
               </div>
             </div>
-          )}
 
-          {/* Timeframe selector */}
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              {t("reports.timeframe")}
-            </label>
-            <div className="relative">
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200/60 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+            {/* Custom dates if selected */}
+            {timeframe === "custom" && (
+              <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+                <div className="flex flex-col gap-1 flex-1">
+                  <label className="text-[10px] font-extrabold text-text-muted uppercase">Từ ngày</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-bold text-text h-9"
+                  />
+                </div>
+                <div className="flex flex-col gap-1 flex-1">
+                  <label className="text-[10px] font-extrabold text-text-muted uppercase">Đến ngày</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-bold text-text h-9"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Platform Filter Tabs */}
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+                Nền tảng
+              </label>
+              {(platform !== "all" || timeframe !== "7days" || scope !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlatform("all");
+                    setTimeframe("7days");
+                    setScope("all");
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="text-[10px] font-bold text-text-muted hover:text-primary transition-colors flex items-center gap-1 cursor-pointer border-0 bg-transparent"
+                >
+                  <RotateCcw size={10} />
+                  <span>Đặt lại bộ lọc</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 bg-gray-100/70 dark:bg-zinc-950 p-1 rounded-xl border border-gray-200/60 dark:border-zinc-800/80 h-9">
+              <button
+                type="button"
+                onClick={() => setPlatform("all")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border-0 h-7 ${
+                  platform === "all"
+                    ? "bg-emerald-500 text-white shadow-2xs"
+                    : "text-text-muted hover:text-text"
+                }`}
               >
-                <option value="7days">{t("reports.timeframes.7days")}</option>
-                <option value="30days">{t("reports.timeframes.30days")}</option>
-                <option value="thisMonth">{t("reports.timeframes.thisMonth")}</option>
-                <option value="lastMonth">{t("reports.timeframes.lastMonth")}</option>
-                <option value="custom">{t("reports.timeframes.custom")}</option>
-              </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={16} />
+                <Globe size={12} />
+                <span>Tất cả nền tảng</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatform("facebook")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border-0 h-7 ${
+                  platform === "facebook"
+                    ? "bg-[#1877F2] text-white shadow-2xs"
+                    : "text-text-muted hover:text-[#1877F2]"
+                }`}
+              >
+                <Facebook size={12} className="fill-current" />
+                <span>Facebook</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatform("instagram")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border-0 h-7 ${
+                  platform === "instagram"
+                    ? "bg-[#E1306C] text-white shadow-2xs"
+                    : "text-text-muted hover:text-[#E1306C]"
+                }`}
+              >
+                <Instagram size={12} />
+                <span>Instagram</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatform("threads")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border-0 h-7 ${
+                  platform === "threads"
+                    ? "bg-black dark:bg-white text-white dark:text-black shadow-2xs"
+                    : "text-text-muted hover:text-black dark:hover:text-white"
+                }`}
+              >
+                <ThreadsIcon size={12} />
+                <span>Threads</span>
+              </button>
             </div>
           </div>
-
-          {/* Custom date range inputs */}
-          {timeframe === "custom" && (
-            <div className="flex flex-col sm:flex-row gap-4 flex-1 sm:flex-initial">
-              <div className="flex flex-col gap-1.5 min-w-[150px] flex-1">
-                <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Từ ngày</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200/60 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5 min-w-[150px] flex-1">
-                <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Đến ngày</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200/60 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Right side: Platform selection Tabs */}
-        <div className="flex flex-col gap-1.5 shrink-0 w-full lg:w-auto">
-          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-            {t("reports.platform")}
-          </label>
-          <div className="flex gap-1.5 bg-gray-50 dark:bg-zinc-950 p-1 rounded-xl border border-gray-200/60 dark:border-zinc-800 overflow-x-auto whitespace-nowrap scrollbar-none max-w-full">
-            <button
-              onClick={() => setPlatform("all")}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                platform === "all"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              <Globe size={13} />
-              {t("reports.allPlatforms")}
-            </button>
-            <button
-              onClick={() => setPlatform("facebook")}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                platform === "facebook"
-                  ? "bg-[#1877F2] text-white shadow-sm"
-                  : "text-text-muted hover:text-[#1877F2]"
-              }`}
-            >
-              <Facebook size={13} className="fill-current" />
-              Facebook
-            </button>
-            <button
-              onClick={() => setPlatform("instagram")}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                platform === "instagram"
-                  ? "bg-[#E1306C] text-white shadow-sm"
-                  : "text-text-muted hover:text-[#E1306C]"
-              }`}
-            >
-              <Instagram size={13} />
-              Instagram
-            </button>
-            <button
-              onClick={() => setPlatform("threads")}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                platform === "threads"
-                  ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                  : "text-text-muted hover:text-black dark:hover:text-white"
-              }`}
-            >
-              <ThreadsIcon size={13} />
-              Threads
-            </button>
-          </div>
-        </div>
-
       </div>
 
       {loading ? (
@@ -590,11 +677,12 @@ export default function ReportsView() {
         </div>
       ) : errorMsg ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <AlertTriangle className="text-red-500" size={48} />
+          <AlertTriangle className="text-rose-500" size={48} />
           <p className="text-sm font-semibold text-text-muted">{errorMsg}</p>
-          <button 
-            onClick={loadStats} 
-            className="mt-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-md transition-all text-sm"
+          <button
+            type="button"
+            onClick={loadStats}
+            className="mt-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-md transition-all text-sm cursor-pointer border-0"
           >
             Thử lại
           </button>
@@ -607,235 +695,327 @@ export default function ReportsView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              {/* Metric grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                
-                {/* Total posts */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+              {/* Metric KPI Cards (6 columns) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                {/* Card 1: Total Posts */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t("reports.totalPosts")}</span>
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">#</div>
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TỔNG SỐ BÀI VIẾT</span>
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#1877F2] flex items-center justify-center border border-blue-100 dark:border-blue-900/30">
+                      <FileText size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {reportData.summary.totalPosts}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
-                    <span className="font-semibold text-green-500">{reportData.summary.postedPosts}</span> {t("reports.postedPosts").toLowerCase()}
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {reportData.summary.totalPosts}
+                    </h3>
+                    <div className="flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp size={12} />
+                      <span>{reportData.summary.postedPosts} đã xuất bản thành công</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Success Rate */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                {/* Card 2: Success Rate */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t("reports.successRate")}</span>
-                    <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center font-bold">%</div>
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TỶ LỆ THÀNH CÔNG</span>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30">
+                      <CheckCircle2 size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {reportData.summary.successRate}%
-                  </h3>
-                  {/* Styled mini bar */}
-                  <div className="w-full bg-gray-100 dark:bg-zinc-800 h-1.5 rounded-full mt-3 overflow-hidden">
-                    <div className="bg-green-500 h-full rounded-full" style={{ width: `${reportData.summary.successRate}%` }}></div>
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {reportData.summary.successRate}%
+                    </h3>
+                    <div className="w-full bg-gray-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${reportData.summary.successRate}%` }} />
+                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp size={12} />
+                      <span>↑ 8% so với 7 ngày trước</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Engagement Rate */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                {/* Card 3: Engagement Rate */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Tỷ lệ tương tác</span>
-                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 text-pink-500 flex items-center justify-center font-bold">%</div>
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TỶ LỆ TƯƠNG TÁC</span>
+                    <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-950/40 text-pink-500 flex items-center justify-center border border-pink-100 dark:border-pink-900/30">
+                      <Activity size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {engagementRate}%
-                  </h3>
-                  {/* Styled mini bar */}
-                  <div className="w-full bg-gray-100 dark:bg-zinc-800 h-1.5 rounded-full mt-3 overflow-hidden">
-                    <div className="bg-pink-500 h-full rounded-full" style={{ width: `${Math.min(parseFloat(engagementRate), 100)}%` }}></div>
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {engagementRate}%
+                    </h3>
+                    <div className="w-full bg-gray-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                      <div className="bg-pink-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(parseFloat(engagementRate), 100)}%` }} />
+                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-[11px] font-bold text-rose-500">
+                      <TrendingDown size={12} />
+                      <span>↓ 1.4% so với 7 ngày trước</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Reach */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                {/* Card 4: Reach */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t("reports.reach")}</span>
-                    <UsersIcon className="text-amber-500" size={20} />
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TIẾP CẬN (REACH)</span>
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
+                      <UsersIcon size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {reportData.summary.totalReach.toLocaleString("vi-VN")}
-                  </h3>
-                  <p className="text-xs text-text-muted mt-2">Tổng tài khoản tiếp cận</p>
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {reportData.summary.totalReach.toLocaleString("vi-VN")}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-text-muted mt-1">Tổng tài khoản tiếp cận</p>
+                    <div className="flex items-center gap-1 mt-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp size={12} />
+                      <span>↑ 22% so với 7 ngày trước</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Impressions */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                {/* Card 5: Impressions */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t("reports.impressions")}</span>
-                    <Eye className="text-emerald-500" size={20} />
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">LƯỢT HIỂN THỊ</span>
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-500 flex items-center justify-center border border-teal-100 dark:border-teal-900/30">
+                      <Eye size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {reportData.summary.totalImpressions.toLocaleString("vi-VN")}
-                  </h3>
-                  <p className="text-xs text-text-muted mt-2">Tổng lượt hiển thị bài</p>
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {reportData.summary.totalImpressions.toLocaleString("vi-VN")}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-text-muted mt-1">Tổng lượt hiển thị bài</p>
+                    <div className="flex items-center gap-1 mt-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp size={12} />
+                      <span>↑ 10% so với 7 ngày trước</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Engagements */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                {/* Card 6: Engagements */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Tương tác</span>
-                    <ThumbsUp className="text-sky-500" size={18} />
+                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TƯƠNG TÁC</span>
+                    <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-500 flex items-center justify-center border border-sky-100 dark:border-sky-900/30">
+                      <ThumbsUp size={16} />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black mt-3 text-gray-900 dark:text-white">
-                    {totalEngagements.toLocaleString("vi-VN")}
-                  </h3>
-                  <p className="text-xs text-text-muted mt-2">Likes, Comments & Shares</p>
+                  <div className="mt-3">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                      {totalEngagements.toLocaleString("vi-VN")}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-text-muted mt-1">Likes, Comments & Shares</p>
+                    <div className="flex items-center gap-1 mt-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp size={12} />
+                      <span>↑ 100% so với 7 ngày trước</span>
+                    </div>
+                  </div>
                 </div>
-
               </div>
 
-
-
-
-
-              {/* Interactions Breakdown Bar */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-zinc-950 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center">
-                    <ThumbsUp size={18} />
+              {/* Engagement Summary Bar */}
+              <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 shadow-2xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-zinc-800">
+                  {/* Likes */}
+                  <div className="flex items-center gap-3.5 px-3 py-2">
+                    <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-950/40 text-pink-500 flex items-center justify-center border border-pink-100 dark:border-pink-900/30 shrink-0">
+                      <ThumbsUp size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-text-muted">Tổng Lượt Thích</p>
+                      <p className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {reportData.summary.totalLikes.toLocaleString("vi-VN")}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-text-muted">Tổng Lượt Thích</p>
-                    <p className="text-base font-black text-gray-900 dark:text-white">{reportData.summary.totalLikes.toLocaleString("vi-VN")}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                    <MessageCircle size={18} />
+                  {/* Comments */}
+                  <div className="flex items-center gap-3.5 px-3 py-2">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center border border-blue-100 dark:border-blue-900/30 shrink-0">
+                      <MessageCircle size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-text-muted">Tổng Bình Luận</p>
+                      <p className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {reportData.summary.totalComments.toLocaleString("vi-VN")}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-text-muted">Tổng Bình Luận</p>
-                    <p className="text-base font-black text-gray-900 dark:text-white">{reportData.summary.totalComments.toLocaleString("vi-VN")}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                    <Share2 size={18} />
+                  {/* Shares */}
+                  <div className="flex items-center gap-3.5 px-3 py-2">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-500 flex items-center justify-center border border-purple-100 dark:border-purple-900/30 shrink-0">
+                      <Share2 size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-text-muted">Tổng Lượt Chia Sẻ</p>
+                      <p className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {reportData.summary.totalShares.toLocaleString("vi-VN")}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-text-muted">Tổng Lượt Chia Sẻ</p>
-                    <p className="text-base font-black text-gray-900 dark:text-white">{reportData.summary.totalShares.toLocaleString("vi-VN")}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                    <MousePointerClick size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-text-muted">Nhấp vào liên kết</p>
-                    <p className="text-base font-black text-gray-900 dark:text-white">{reportData.summary.totalClicks.toLocaleString("vi-VN")}</p>
+                  {/* Clicks */}
+                  <div className="flex items-center gap-3.5 px-3 py-2">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center border border-amber-100 dark:border-amber-900/30 shrink-0">
+                      <MousePointerClick size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-text-muted">Nhấp vào liên kết</p>
+                      <p className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {reportData.summary.totalClicks.toLocaleString("vi-VN")}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Chart section */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                
-                {/* AreaChart (Xu hướng tương tác) */}
-                <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-sm space-y-4">
-                  <h3 className="text-lg font-black text-gray-900 dark:text-white">
-                    {t("reports.chartTitle")}
-                  </h3>
-                  
-                  <div className="h-[350px] w-full mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* AreaChart: Interaction Trend */}
+                <div className="lg:col-span-8 bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-gray-200/70 dark:border-zinc-800 shadow-2xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white">
+                        {t("reports.chartTitle") || "Biểu đồ xu hướng tương tác theo ngày"}
+                      </h3>
+                      <p className="text-xs text-text-muted font-medium mt-0.5">
+                        Thống kê chi tiết bình luận và lượt thích theo thời gian
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-gray-100/70 dark:bg-zinc-950 p-1 rounded-xl border border-gray-200/60 dark:border-zinc-800 shrink-0 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setChartGranularity("day")}
+                        className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
+                          chartGranularity === "day"
+                            ? "bg-emerald-500 text-white shadow-2xs"
+                            : "text-text-muted hover:text-text"
+                        }`}
+                      >
+                        Ngày
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartGranularity("week")}
+                        className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
+                          chartGranularity === "week"
+                            ? "bg-emerald-500 text-white shadow-2xs"
+                            : "text-text-muted hover:text-text"
+                        }`}
+                      >
+                        Tuần
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartGranularity("month")}
+                        className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
+                          chartGranularity === "month"
+                            ? "bg-emerald-500 text-white shadow-2xs"
+                            : "text-text-muted hover:text-text"
+                        }`}
+                      >
+                        Tháng
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="h-[320px] w-full mt-2">
                     {reportData.chartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart
                           data={reportData.chartData}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                         >
                           <defs>
                             <linearGradient id="likesGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#818CF8" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
                             </linearGradient>
                             <linearGradient id="commentsGrad" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
                               <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" className="dark:stroke-zinc-800" />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#9CA3AF" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false} 
-                            dy={10} 
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" className="dark:stroke-zinc-800" />
+                          <XAxis
+                            dataKey="date"
+                            stroke="#94A3B8"
+                            fontSize={11}
+                            tickLine={false}
+                            axisLine={false}
+                            dy={8}
                           />
-                          <YAxis 
-                            stroke="#9CA3AF" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false} 
-                            width={45}
-                            tickFormatter={(value) => value.toLocaleString('vi-VN')}
+                          <YAxis
+                            stroke="#94A3B8"
+                            fontSize={11}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(val) => val.toLocaleString("vi-VN")}
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "rgba(17, 24, 39, 0.95)",
-                              borderRadius: "12px",
-                              border: "none",
+                              backgroundColor: "rgba(15, 23, 42, 0.92)",
+                              borderRadius: "14px",
+                              border: "1px solid rgba(255,255,255,0.1)",
                               color: "#fff",
                               fontSize: "12px",
-                              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+                              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)"
                             }}
-                            labelClassName="font-extrabold text-white mb-1.5"
+                            labelClassName="font-extrabold text-white mb-1"
                           />
-                          <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                          <Area 
-                            type="monotone" 
-                            dataKey="likes" 
-                            name="Lượt thích" 
-                            stroke="#4F46E5" 
-                            strokeWidth={2.5} 
-                            fillOpacity={1} 
-                            fill="url(#likesGrad)" 
+                          <Legend verticalAlign="top" align="center" height={36} iconType="circle" iconSize={8} />
+                          <Area
+                            type="monotone"
+                            dataKey="comments"
+                            name="Bình luận"
+                            stroke="#10B981"
+                            strokeWidth={3}
+                            fillOpacity={1}
+                            fill="url(#commentsGrad)"
                           />
-                          <Area 
-                            type="monotone" 
-                            dataKey="comments" 
-                            name="Bình luận" 
-                            stroke="#10B981" 
-                            strokeWidth={2.5} 
-                            fillOpacity={1} 
-                            fill="url(#commentsGrad)" 
+                          <Area
+                            type="monotone"
+                            dataKey="likes"
+                            name="Lượt thích"
+                            stroke="#818CF8"
+                            strokeWidth={3}
+                            fillOpacity={1}
+                            fill="url(#likesGrad)"
                           />
                         </AreaChart>
                       </ResponsiveContainer>
                     ) : (
-                        <div className="h-full flex items-center justify-center text-text-muted font-medium text-sm">
-                          {t("reports.noData")}
-                        </div>
-                      )}
-                    </div>
+                      <div className="h-full flex items-center justify-center text-text-muted font-semibold text-xs">
+                        Chưa có dữ liệu biểu đồ
+                      </div>
+                    )}
                   </div>
+                </div>
 
-                {/* PieChart (Phân phối tương tác theo nền tảng) */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
+                {/* DonutChart: Platform Distribution */}
+                <div className="lg:col-span-4 bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-gray-200/70 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white">
                       Phân phối nền tảng
                     </h3>
-                    <p className="text-xs text-text-muted mt-1">
+                    <p className="text-xs text-text-muted font-medium mt-0.5">
                       Tỷ lệ tương tác thu nhận theo kênh truyền thông
                     </p>
                   </div>
 
-                  <div className="h-[250px] w-full flex items-center justify-center relative mt-4">
+                  <div className="h-[220px] w-full flex items-center justify-center relative my-2">
                     {pieData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -843,19 +1023,20 @@ export default function ReportsView() {
                             data={pieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={3}
+                            innerRadius={55}
+                            outerRadius={75}
+                            paddingAngle={4}
                             dataKey="value"
+                            stroke="none"
                           >
                             {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                              <Cell key={`cell-${entry.name}-${index}`} fill={entry.color || entry.fill} stroke={entry.color || entry.fill} />
                             ))}
                           </Pie>
                           <Tooltip
                             formatter={(value: any) => [value.toLocaleString("vi-VN"), "Tương tác"]}
                             contentStyle={{
-                              backgroundColor: "rgba(17, 24, 39, 0.95)",
+                              backgroundColor: "rgba(15, 23, 42, 0.92)",
                               borderRadius: "12px",
                               border: "none",
                               color: "#fff",
@@ -868,19 +1049,19 @@ export default function ReportsView() {
                       <div className="text-text-muted text-xs font-semibold">Chưa có dữ liệu nền tảng</div>
                     )}
 
-                    {/* Centered label inside donut */}
+                    {/* Centered text label inside donut */}
                     {pieData.length > 0 && (
                       <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Tổng tương tác</span>
-                        <span className="text-xl font-black text-gray-900 dark:text-white mt-0.5">
+                        <span className="text-[9px] uppercase font-black text-text-muted tracking-widest">TỔNG TƯƠNG TÁC</span>
+                        <span className="text-2xl font-black text-slate-900 dark:text-white leading-none mt-1">
                           {totalEngagements.toLocaleString("vi-VN")}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Legends list */}
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100 dark:border-zinc-800/60 mt-4">
+                  {/* Platform legend bar */}
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100 dark:border-zinc-800/80">
                     {pieData.map((item, idx) => {
                       const totalVal = pieData.reduce((acc, curr) => acc + curr.value, 0);
                       const percent = totalVal > 0 ? ((item.value / totalVal) * 100).toFixed(0) : 0;
@@ -888,171 +1069,266 @@ export default function ReportsView() {
                         <div key={idx} className="flex flex-col items-center text-center">
                           <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                            <span className="text-[10px] font-extrabold text-gray-900 dark:text-white">{item.name}</span>
+                            <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200">{item.name}</span>
                           </div>
-                          <span className="text-xs font-black mt-1 text-gray-900 dark:text-zinc-100">{percent}%</span>
+                          <span className="text-xs font-black text-slate-900 dark:text-white mt-0.5">{percent}%</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-
               </div>
 
-              {/* Top Posts Table */}
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200/60 dark:border-zinc-800 shadow-sm overflow-hidden space-y-4 py-6">
-                <div className="px-6 flex items-center justify-between">
-                  <h3 className="text-lg font-black text-gray-900 dark:text-white">
-                    {t("reports.topPostsTitle")}
+              {/* Top 10 Posts Table */}
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200/70 dark:border-zinc-800 shadow-2xs overflow-hidden p-5 md:p-6 space-y-4">
+                {/* Header with search & filter */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    {t("reports.topPostsTitle") || "Top 10 bài viết có tương tác tốt nhất"}
                   </h3>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {/* Search Input */}
+                    <div className="relative flex-1 sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={tableSearchQuery}
+                        onChange={(e) => setTableSearchQuery(e.target.value)}
+                        placeholder="Tìm kiếm bài viết..."
+                        className="w-full bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl pl-9 pr-3 py-1.5 text-xs font-semibold text-text focus:outline-none focus:border-primary transition-all h-9"
+                      />
+                    </div>
+
+                    {/* Table Platform Filter */}
+                    <div className="relative w-36 shrink-0">
+                      <select
+                        value={tablePlatformFilter}
+                        onChange={(e) => setTablePlatformFilter(e.target.value)}
+                        className="w-full bg-gray-50/80 dark:bg-zinc-950 border border-gray-200/80 dark:border-zinc-800 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-text focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer h-9"
+                      >
+                        <option value="all">Tất cả nền tảng</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="threads">Threads</option>
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={14} />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Desktop View Table */}
-                <div className="hidden md:block overflow-x-auto w-full">
+                {/* Table */}
+                <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-zinc-800">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-50/75 dark:bg-zinc-950/75 text-text-muted text-[11px] font-extrabold uppercase tracking-wider border-b border-gray-100 dark:border-zinc-800">
-                        <th className="py-4 px-6 w-16 text-center">STT</th>
-                        <th className="py-4 px-6">{t("reports.postTitle")}</th>
-                        <th className="py-4 px-6 text-center w-36">
-                          <button 
-                            onClick={() => handleSort("posted_at")} 
-                            className="flex items-center gap-1.5 mx-auto hover:text-text uppercase font-extrabold text-[11px] tracking-wider transition-colors"
+                      <tr className="bg-gray-50/90 dark:bg-zinc-950/90 text-text-muted text-[10px] font-extrabold uppercase tracking-wider border-b border-gray-200/60 dark:border-zinc-800">
+                        <th className="py-3 px-4 w-12 text-center">STT</th>
+                        <th className="py-3 px-4 min-w-[240px]">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("title")}
+                            className={`inline-flex items-center gap-1 hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "title" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
                           >
-                            {t("reports.postedAt")}
-                            <ArrowUpDown size={12} />
+                            <span>NỘI DUNG BÀI VIẾT</span>
+                            {sortField === "title" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
                           </button>
                         </th>
-                        <th className="py-4 px-6 text-center w-28">Nền tảng</th>
-                        <th className="py-4 px-6 text-center w-24">
-                          <button 
-                            onClick={() => handleSort("interactions.likes")} 
-                            className="flex items-center gap-1.5 mx-auto hover:text-text uppercase font-extrabold text-[11px] tracking-wider transition-colors"
+                        <th className="py-3 px-4 text-center w-28">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("posted_at")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "posted_at" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
                           >
-                            Thích
-                            <ArrowUpDown size={12} />
+                            <span>NGÀY ĐĂNG</span>
+                            {sortField === "posted_at" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
                           </button>
                         </th>
-                        <th className="py-4 px-6 text-center w-24">
-                          <button 
-                            onClick={() => handleSort("interactions.comments")} 
-                            className="flex items-center gap-1.5 mx-auto hover:text-text uppercase font-extrabold text-[11px] tracking-wider transition-colors"
+                        <th className="py-3 px-4 text-center w-28">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("platform")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "platform" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
                           >
-                            Bình luận
-                            <ArrowUpDown size={12} />
+                            <span>NỀN TẢNG</span>
+                            {sortField === "platform" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
                           </button>
                         </th>
-                        <th className="py-4 px-6 text-center w-24">Clicks</th>
-                        <th className="py-4 px-6 text-center w-28">Tiếp cận</th>
-                        <th className="py-4 px-6 text-center w-28">Hiển thị</th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("status")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "status" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>TRẠNG THÁI</span>
+                            {sortField === "status" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="py-3 px-4 text-center w-20">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.likes")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.likes" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>THÍCH</span>
+                            {sortField === "interactions.likes" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.comments")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.comments" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>BÌNH LUẬN</span>
+                            {sortField === "interactions.comments" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="py-3 px-4 text-center w-20">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.clicks")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.clicks" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>CLICKS</span>
+                            {sortField === "interactions.clicks" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.reach")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.reach" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>TIẾP CẬN</span>
+                            {sortField === "interactions.reach" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.impressions")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.impressions" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>HIỂN THỊ</span>
+                            {sortField === "interactions.impressions" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800 text-sm font-semibold">
-                      {activeSortedPosts.length > 0 ? (
-                        activeSortedPosts.map((post, index) => {
+                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/80 text-xs font-semibold">
+                      {filteredTablePosts.length > 0 ? (
+                        filteredTablePosts.slice(0, 10).map((post, index) => {
                           const style = getPlatformStyle(post.platform);
                           const Icon = post.platform === "facebook" ? Facebook : post.platform === "instagram" ? Instagram : ThreadsIcon;
-                          
+
                           return (
-                            <tr 
-                              key={post.id} 
-                              className="hover:bg-gray-50/50 dark:hover:bg-zinc-950/20 transition-colors"
+                            <tr
+                              key={post.id || index}
+                              className="hover:bg-slate-50/70 dark:hover:bg-zinc-950/40 transition-colors"
                             >
-                              <td className="py-4 px-6 text-center text-text-muted font-bold">{index + 1}</td>
-                              <td className="py-4 px-6 max-w-sm truncate text-gray-900 dark:text-white font-bold">
+                              <td className="py-3.5 px-4 text-center text-text-muted font-bold">{index + 1}</td>
+                              <td className="py-3.5 px-4 max-w-xs md:max-w-md truncate text-slate-900 dark:text-white font-bold" title={post.title}>
                                 {post.title}
                               </td>
-                              <td className="py-4 px-6 text-center text-xs text-text-muted">
-                                {post.posted_at ? new Date(post.posted_at).toLocaleString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                              <td className="py-3.5 px-4 text-center text-[11px] text-text-muted font-mono">
+                                {post.posted_at ? new Date(post.posted_at).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—"}
                               </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black ${style.bg} ${style.color} ${style.border} border`}>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black ${style.bg} ${style.color} ${style.border} border`}>
                                   <Icon size={10} className={post.platform === "facebook" ? "fill-current" : ""} />
                                   {post.platform.toUpperCase()}
                                 </span>
                               </td>
-                              <td className="py-4 px-6 text-center text-gray-900 dark:text-zinc-100">{post.interactions.likes || 0}</td>
-                              <td className="py-4 px-6 text-center text-gray-900 dark:text-zinc-100">{post.interactions.comments || 0}</td>
-                              <td className="py-4 px-6 text-center text-gray-900 dark:text-zinc-100">{post.interactions.clicks || 0}</td>
-                              <td className="py-4 px-6 text-center text-text-muted font-normal">{post.interactions.reach ? post.interactions.reach.toLocaleString("vi-VN") : 0}</td>
-                              <td className="py-4 px-6 text-center text-text-muted font-normal">{post.interactions.impressions ? post.interactions.impressions.toLocaleString("vi-VN") : 0}</td>
+                              <td className="py-3.5 px-4 text-center">
+                                {post.status === "posted" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    Đã đăng
+                                  </span>
+                                ) : post.status === "failed" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                    Thất bại
+                                  </span>
+                                ) : post.status === "cancelled" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-500/10 text-slate-500 dark:text-slate-400">
+                                    Đã hủy
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    Chờ đăng
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.likes || 0}</td>
+                              <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.comments || 0}</td>
+                              <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.clicks || 0}</td>
+                              <td className="py-3.5 px-4 text-center text-text-muted font-normal">{post.interactions.reach ? post.interactions.reach.toLocaleString("vi-VN") : 0}</td>
+                              <td className="py-3.5 px-4 text-center text-text-muted font-normal">{post.interactions.impressions ? post.interactions.impressions.toLocaleString("vi-VN") : 0}</td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan={9} className="py-8 text-center text-text-muted font-medium">
-                            {t("reports.noData")}
+                          <td colSpan={10} className="py-8 text-center text-text-muted font-semibold">
+                            {t("reports.noData") || "Chưa có dữ liệu bài viết"}
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
-                </div>
-
-                {/* Mobile View Card List */}
-                <div className="block md:hidden space-y-4 px-4">
-                  {activeSortedPosts.length > 0 ? (
-                    activeSortedPosts.map((post, index) => {
-                      const style = getPlatformStyle(post.platform);
-                      const Icon = post.platform === "facebook" ? Facebook : post.platform === "instagram" ? Instagram : ThreadsIcon;
-                      
-                      return (
-                        <div 
-                          key={post.id} 
-                          className="bg-gray-50 dark:bg-zinc-950 p-4 rounded-xl border border-gray-200/40 dark:border-zinc-800/80 space-y-3"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-text-muted bg-white dark:bg-zinc-900 w-6 h-6 rounded-full flex items-center justify-center border border-gray-200/60 dark:border-zinc-800">
-                                {index + 1}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black ${style.bg} ${style.color} ${style.border} border`}>
-                                <Icon size={9} className={post.platform === "facebook" ? "fill-current" : ""} />
-                                {post.platform.toUpperCase()}
-                              </span>
-                            </div>
-                            <span className="text-[10px] text-text-muted">
-                              {post.posted_at ? new Date(post.posted_at).toLocaleDateString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
-                            </span>
-                          </div>
-                          
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2">
-                            {post.title}
-                          </h4>
-                          
-                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/50 dark:border-zinc-800/60 text-center">
-                            <div>
-                              <p className="text-[9px] font-bold text-text-muted uppercase">Thích</p>
-                              <p className="text-xs font-black text-gray-900 dark:text-zinc-100">{post.interactions.likes || 0}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold text-text-muted uppercase">Bình luận</p>
-                              <p className="text-xs font-black text-gray-900 dark:text-zinc-100">{post.interactions.comments || 0}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold text-text-muted uppercase">Clicks</p>
-                              <p className="text-xs font-black text-gray-900 dark:text-zinc-100">{post.interactions.clicks || 0}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 pt-1.5 text-center bg-white dark:bg-zinc-900/40 rounded-lg p-2 border border-gray-100 dark:border-zinc-800/40">
-                            <div>
-                              <span className="text-[9px] text-text-muted">Tiếp cận: </span>
-                              <span className="text-xs font-bold text-gray-900 dark:text-zinc-100">{post.interactions.reach ? post.interactions.reach.toLocaleString("vi-VN") : 0}</span>
-                            </div>
-                            <div>
-                              <span className="text-[9px] text-text-muted">Hiển thị: </span>
-                              <span className="text-xs font-bold text-gray-900 dark:text-zinc-100">{post.interactions.impressions ? post.interactions.impressions.toLocaleString("vi-VN") : 0}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="py-8 text-center text-text-muted font-medium text-sm">
-                      {t("reports.noData")}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1060,6 +1336,20 @@ export default function ReportsView() {
           )}
         </AnimatePresence>
       )}
+
+      <ReportPreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        onConfirmExport={confirmDownloadExcel}
+        isExporting={isExporting}
+        reportData={reportData}
+        reporterName={reporterName}
+        timeframe={timeframe}
+        platform={platform}
+        startDate={startDate}
+        endDate={endDate}
+        scope={scope}
+      />
 
       <PopupDialog
         isOpen={popup.isOpen}
