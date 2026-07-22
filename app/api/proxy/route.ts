@@ -161,9 +161,23 @@ export async function GET(request: NextRequest) {
 
   var _currentTarget = TARGET;
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*'); } catch (_) {}
+    try {
+      if (!_currentTarget) return;
+      var path = new URL(_currentTarget).pathname.toLowerCase();
+      if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.json') || path.endsWith('.ico') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.includes('sw.js')) {
+        return;
+      }
+      window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*');
+    } catch (_) {}
   }
   report();
+
+  // Disable ServiceWorker registration inside proxy iframe to prevent /sw.js 404 navigation errors
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+    navigator.serviceWorker.register = function() {
+      return Promise.reject(new Error('ServiceWorker disabled in proxy'));
+    };
+  }
 
   // Block window.open (ads use this for popup redirects)
   window.open = function() { return null; };
