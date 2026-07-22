@@ -8,6 +8,7 @@ export interface ArticleContext {
   keywords: string[];
   entities: string[];
   thumbnail?: string;
+  imageUrls?: string[];
   author?: string;
 }
 

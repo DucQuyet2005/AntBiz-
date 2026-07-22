@@ -2,6 +2,7 @@ export interface InstagramPublishResult {
   success: boolean;
   postId?: string;
   error?: string;
+  imageCount?: number;
 }
 
 /**
@@ -35,12 +36,18 @@ export async function publishToInstagram(
     // 1. Tạo Instagram Media Container
     let containerId = '';
 
-    if (imageUrls.length === 1) {
+    // Auto pad hình ảnh về tỷ lệ chuẩn 1:1 (1080x1080) bằng public proxy (tránh lỗi Aspect Ratio)
+    const paddedImageUrls = imageUrls.map(url => {
+      if (!url.startsWith('http')) return url;
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1080&h=1080&fit=contain&we&bg=white`;
+    });
+
+    if (paddedImageUrls.length === 1) {
       const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igId}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image_url: imageUrls[0],
+          image_url: paddedImageUrls[0],
           caption: caption,
           access_token: token,
         }),
@@ -56,7 +63,7 @@ export async function publishToInstagram(
       containerId = containerData.id;
     } else {
       // Instagram Carousel
-      const allowedUrls = imageUrls.slice(0, 10);
+      const allowedUrls = paddedImageUrls.slice(0, 10);
       const childPromises = allowedUrls.map(async (url, idx) => {
         const res = await fetch(`https://graph.facebook.com/v19.0/${igId}/media`, {
           method: 'POST',
@@ -96,6 +103,8 @@ export async function publishToInstagram(
       containerId = parentData.id;
     }
 
+    console.log(`[Instagram API] Đang tiến hành đăng bài với ${paddedImageUrls.length} hình ảnh...`);
+
     // 2. Publish Instagram Container
     const publishRes = await fetch(`https://graph.facebook.com/v19.0/${igId}/media_publish`, {
       method: 'POST',
@@ -108,15 +117,19 @@ export async function publishToInstagram(
 
     const publishData = await publishRes.json();
     if (!publishRes.ok || !publishData.id) {
+      console.error(`[Instagram API] Thất bại khi publish container ${containerId}:`, publishData.error);
       return {
         success: false,
         error: publishData.error?.message || 'Không thể publish bài viết trên Instagram',
       };
     }
 
+    console.log(`[Instagram API] ✅ Đăng bài thành công! Post ID: ${publishData.id} (Tổng số ảnh đã đăng: ${paddedImageUrls.length})`);
+
     return {
       success: true,
       postId: publishData.id,
+      imageCount: paddedImageUrls.length,
     };
   } catch (error: any) {
     return {
