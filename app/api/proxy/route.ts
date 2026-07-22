@@ -298,12 +298,32 @@ export async function GET(request: NextRequest) {
 
     // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri & others
     if (needsImageProxy) {
+      // Promote data-src / data-original to src so lazy images render immediately without gray boxes
+      html = html.replace(/<img\s+[^>]*>/gi, (imgTag) => {
+        const dataSrcMatch = imgTag.match(/\b(?:data-src|data-original)\s*=\s*(['"])([^'"]+)\1/i);
+        if (dataSrcMatch && dataSrcMatch[2]) {
+          const realUrl = dataSrcMatch[2];
+          if (!realUrl.startsWith('data:') && !realUrl.startsWith('blob:')) {
+            try {
+              const absolute = new URL(realUrl, targetUrl).href;
+              const proxied = `/api/proxy?url=${encodeURIComponent(absolute)}`;
+              if (/\bsrc\s*=\s*(['"])[^'"]*\1/i.test(imgTag)) {
+                return imgTag.replace(/\bsrc\s*=\s*(['"])[^'"]*\1/i, `src="${proxied}"`);
+              } else {
+                return imgTag.replace('<img', `<img src="${proxied}"`);
+              }
+            } catch (_) {}
+          }
+        }
+        return imgTag;
+      });
+
       html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
         if (urlStr.includes('/api/proxy?')) return _m;
 
         const lowerUrl = urlStr.split('?')[0].toLowerCase();
-        const isImage = imageExts.some(ext => lowerUrl.endsWith(ext)) || urlStr.includes('icdn.dantri.com.vn') || urlStr.includes('cdnweb.dantri.com.vn/images');
+        const isImage = imageExts.some(ext => lowerUrl.endsWith(ext)) || urlStr.includes('icdn.dantri.com.vn') || urlStr.includes('cdnweb.dantri.com.vn');
         if (!isImage) return _m;
 
         try {
