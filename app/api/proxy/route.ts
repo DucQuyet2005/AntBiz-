@@ -280,7 +280,7 @@ export async function GET(request: NextRequest) {
       const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
       if (isImage && needsImageProxy) {
         // Only Dantri images go through proxy to bypass hotlink protection
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
+        return `${attr}${q}https://images.weserv.nl/?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
       }
       // Everything else goes direct to origin
       return `${attr}${q}${targetOrigin}/${path}${q}`;
@@ -297,7 +297,7 @@ export async function GET(request: NextRequest) {
           const absolute = new URL(urlStr, targetUrl).href;
           const u = new URL(absolute);
           if (u.hostname.includes('dantri.com.vn')) {
-            return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
+            return `${attr}${q}https://images.weserv.nl/?url=${encodeURIComponent(absolute)}${q}`;
           }
           return `${attr}${q}${absolute}${q}`;
         } catch(e) {}
@@ -309,14 +309,14 @@ export async function GET(request: NextRequest) {
         const rewritten = srcset.replace(
           /(^|,\s*)([^\s,]+)/g,
           (_s: string, sep: string, urlStr: string) => {
-            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
+            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?') || urlStr.includes('images.weserv.nl')) {
               return _s;
             }
             try {
               const absolute = new URL(urlStr, targetUrl).href;
               const u = new URL(absolute);
               if (u.hostname.includes('dantri.com.vn')) {
-                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
+                return `${sep}https://images.weserv.nl/?url=${encodeURIComponent(absolute)}`;
               }
               return `${sep}${absolute}`;
             } catch(e) {
@@ -339,6 +339,7 @@ export async function GET(request: NextRequest) {
 (function() {
   var TARGET = ${JSON.stringify(targetUrl)};
   var ALLOWED = ${JSON.stringify(ALLOWED_HOSTNAMES)};
+  var PROXY_IMG = 'https://images.weserv.nl/?url=';
   
   // ── 1. Fix SPA Routers (Dantri) ──
   // SPA routers read window.location.pathname to determine the page to render.
@@ -408,13 +409,13 @@ export async function GET(request: NextRequest) {
     function rewriteAttr(node, attrName) {
       if (!node.hasAttribute(attrName)) return;
       var val = node.getAttribute(attrName);
-      if (!val || val.startsWith('data:') || val.startsWith('blob:') || val.indexOf(PROXY) === 0) return;
+      if (!val || val.startsWith('data:') || val.startsWith('blob:') || val.indexOf(PROXY_IMG) === 0 || val.indexOf(PROXY) === 0) return;
       
       // Check if it's an image or a known CDN
       if (imgPatterns.test(val) || val.indexOf('cdnphoto.dantri.com.vn') > -1 || val.indexOf('cdn.tuoitre.vn') > -1 || val.indexOf('gocnhinmoi.com') > -1) {
         try {
           var absolute = new URL(val, TARGET).href;
-          node.setAttribute(attrName, PROXY + encodeURIComponent(absolute));
+          node.setAttribute(attrName, PROXY_IMG + encodeURIComponent(absolute));
         } catch(e) {}
       }
     }
@@ -422,7 +423,7 @@ export async function GET(request: NextRequest) {
     function rewriteSrcset(node, attrName) {
       if (!node.hasAttribute(attrName)) return;
       var val = node.getAttribute(attrName);
-      if (!val || val.indexOf(PROXY) > -1) return;
+      if (!val || val.indexOf(PROXY_IMG) > -1 || val.indexOf(PROXY) > -1) return;
       
       var parts = val.split(',');
       var rewritten = parts.map(function(part) {
@@ -430,10 +431,10 @@ export async function GET(request: NextRequest) {
         var tokens = trimmed.split(/\\s+/);
         if (tokens.length === 0 || !tokens[0]) return part;
         var urlStr = tokens[0];
-        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.indexOf(PROXY) === 0) return part;
+        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.indexOf(PROXY_IMG) === 0 || urlStr.indexOf(PROXY) === 0) return part;
         try {
           var absolute = new URL(urlStr, TARGET).href;
-          tokens[0] = PROXY + encodeURIComponent(absolute);
+          tokens[0] = PROXY_IMG + encodeURIComponent(absolute);
           return tokens.join(' ');
         } catch(e) { return part; }
       }).join(', ');
