@@ -1072,8 +1072,10 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
     }
     if (ogImg) {
       ogImg = resolveUrl(ogImg, raw.url);
-      images.push({ url: ogImg, caption: title });
-      console.log('   📸 Dùng og:image làm ảnh đại diện');
+      if (!isInvalidImage(ogImg, title)) {
+        images.push({ url: ogImg, caption: title });
+        console.log('   📸 Dùng og:image làm ảnh đại diện');
+      }
     }
   }
 

@@ -1455,7 +1455,7 @@ export default function Step2Article({
             <div className="p-6 overflow-y-auto flex-grow bg-gray-55 dark:bg-zinc-950/20">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {getAllItems().map((item, index) => (
-                  <div key={index} className="flex flex-col items-center gap-1.5 group relative select-none">
+                  <div key={`${item.type}-${item.url}-${index}`} className="flex flex-col items-center gap-1.5 group relative select-none">
                     <div 
                       onClick={() => setActiveLightboxImage(item.url)}
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
