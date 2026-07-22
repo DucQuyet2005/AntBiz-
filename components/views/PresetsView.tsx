@@ -190,10 +190,10 @@ function PresetCard({
         });
       }
       if (pronounStep?.answer) {
-        props.push({ 
-          icon: "👥", 
-          label: language === "vi" ? "Xưng hô" : "Pronouns", 
-          value: Array.isArray(pronounStep.answer) ? pronounStep.answer.join(", ") : pronounStep.answer 
+        props.push({
+          icon: "👥",
+          label: language === "vi" ? "Xưng hô" : "Pronouns",
+          value: Array.isArray(pronounStep.answer) ? pronounStep.answer.join(", ") : pronounStep.answer
         });
       }
     }
@@ -255,15 +255,11 @@ function PresetCard({
   }, [preset, language]);
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+    <div
       onClick={() => onSelect(preset)}
       className={`relative group bg-white dark:bg-zinc-900 border rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-lg hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between cursor-pointer select-none ${preset.is_default
-          ? "border-emerald-400 dark:border-emerald-700/70 ring-1 ring-emerald-500/20"
-          : "border-gray-200 dark:border-zinc-800/80 hover:border-emerald-300 dark:hover:border-emerald-700"
+        ? "border-emerald-400 dark:border-emerald-700/70 ring-1 ring-emerald-500/20"
+        : "border-gray-200 dark:border-zinc-800/80 hover:border-emerald-300 dark:hover:border-emerald-700"
         }`}
     >
       <div>
@@ -296,8 +292,8 @@ function PresetCard({
               type="button"
               onClick={() => onSetDefault(preset)}
               className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent ${preset.is_default
-                  ? "text-amber-500 hover:scale-110"
-                  : "text-gray-300 hover:text-amber-400 dark:text-zinc-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                ? "text-amber-500 hover:scale-110"
+                : "text-gray-300 hover:text-amber-400 dark:text-zinc-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                 }`}
               title={
                 preset.is_default
@@ -307,8 +303,8 @@ function PresetCard({
             >
               <Star
                 className={`w-4 h-4 transition-transform ${preset.is_default
-                    ? "fill-amber-400 text-amber-400"
-                    : "fill-none stroke-[2]"
+                  ? "fill-amber-400 text-amber-400"
+                  : "fill-none stroke-[2]"
                   }`}
               />
             </button>
@@ -316,41 +312,41 @@ function PresetCard({
             {/* Kebab menu */}
             {!preset.is_system && (
               <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-700 dark:hover:text-slate-200 transition-all cursor-pointer border-0 bg-transparent"
-              >
-                <MoreVertical size={14} />
-              </button>
-              <AnimatePresence>
-                {menuOpen && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-8 z-20 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-lg overflow-hidden min-w-[135px]"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => { setMenuOpen(false); onEdit(preset); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer border-0 bg-transparent text-left"
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-700 dark:hover:text-slate-200 transition-all cursor-pointer border-0 bg-transparent"
+                >
+                  <MoreVertical size={14} />
+                </button>
+                <AnimatePresence>
+                  {menuOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 top-8 z-20 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-lg overflow-hidden min-w-[135px]"
                       >
-                        <Pencil size={12} /> {language === "vi" ? "Sửa" : "Edit"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setMenuOpen(false); onDelete(preset.id); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer border-0 bg-transparent text-left"
-                      >
-                        <Trash2 size={12} /> {language === "vi" ? "Xóa" : "Delete"}
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                        <button
+                          type="button"
+                          onClick={() => { setMenuOpen(false); onEdit(preset); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer border-0 bg-transparent text-left"
+                        >
+                          <Pencil size={12} /> {language === "vi" ? "Sửa" : "Edit"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMenuOpen(false); onDelete(preset.id); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer border-0 bg-transparent text-left"
+                        >
+                          <Trash2 size={12} /> {language === "vi" ? "Xóa" : "Delete"}
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>
@@ -414,7 +410,7 @@ function PresetCard({
           <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform duration-200" />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -469,14 +465,14 @@ function PresetDetailModal({
             }
           });
         }
-        
+
         // Add platform rules if any
         if (preset.platform === "all") {
           if (parsed.facebook) list.push({ key: "Facebook Style", val: parsed.facebook });
           if (parsed.instagram) list.push({ key: "Instagram Style", val: parsed.instagram });
           if (parsed.threads) list.push({ key: "Threads Style", val: parsed.threads });
         }
-        
+
         return list;
       }
     } catch { }
@@ -977,10 +973,10 @@ function WizardModal({
                           disabled={isDisabled}
                           onClick={() => toggleObjective(obj.id)}
                           className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-xs font-bold transition-all ${isSelected
-                              ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
-                              : isDisabled
-                                ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
-                                : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
+                            ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
+                            : isDisabled
+                              ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
+                              : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                             }`}
                         >
                           <span className="text-2xl shrink-0">{obj.icon}</span>
@@ -998,10 +994,10 @@ function WizardModal({
                           disabled={isKhacDisabled}
                           onClick={() => toggleObjective("Khác")}
                           className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-xs font-bold transition-all ${isKhacSelected
-                              ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
-                              : isKhacDisabled
-                                ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
-                                : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
+                            ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
+                            : isKhacDisabled
+                              ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
+                              : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                             }`}
                         >
                           <span className="text-2xl shrink-0">✨</span>
@@ -1018,8 +1014,8 @@ function WizardModal({
                         onChange={(e) => setCustomObjective(e.target.value)}
                         placeholder={lang === "vi" ? "Nhập mục tiêu cụ thể của bạn..." : "Enter your specific objective..."}
                         className={`w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-zinc-900 text-xs text-text outline-none focus:border-primary transition-all ${customObjective.trim() && !validateCustomInput(customObjective).isValid
-                            ? "border-rose-500"
-                            : "border-gray-200 dark:border-zinc-700"
+                          ? "border-rose-500"
+                          : "border-gray-200 dark:border-zinc-700"
                           }`}
                         autoFocus
                       />
@@ -1088,17 +1084,17 @@ function WizardModal({
                               }
                             }}
                             className={`group w-full px-4 py-3 rounded-2xl border text-xs font-semibold transition-all flex items-center gap-3.5 ${isSelected
-                                ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
-                                : isDisabled
-                                  ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
-                                  : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
+                              ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
+                              : isDisabled
+                                ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
+                                : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                               }`}
                           >
                             <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all ${isSelected
-                                ? "bg-primary text-white"
-                                : isDisabled
-                                  ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
-                                  : "bg-gray-100 dark:bg-zinc-800 text-text-muted group-hover:bg-primary/20 group-hover:text-primary"
+                              ? "bg-primary text-white"
+                              : isDisabled
+                                ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
+                                : "bg-gray-100 dark:bg-zinc-800 text-text-muted group-hover:bg-primary/20 group-hover:text-primary"
                               }`}>
                               {letter}
                             </span>
@@ -1125,17 +1121,17 @@ function WizardModal({
                                 }
                               }}
                               className={`group w-full px-4 py-3 rounded-2xl border text-xs font-semibold transition-all flex items-center gap-3.5 ${isSelected
-                                  ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
-                                  : isDisabled
-                                    ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
-                                    : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
+                                ? "border-primary bg-emerald-50/50 dark:bg-emerald-950/20 text-primary cursor-pointer"
+                                : isDisabled
+                                  ? "border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/30 text-text-muted opacity-40 cursor-not-allowed"
+                                  : "border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-text hover:border-emerald-300 cursor-pointer"
                                 }`}
                             >
                               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all ${isSelected
-                                  ? "bg-primary text-white"
-                                  : isDisabled
-                                    ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
-                                    : "bg-gray-100 dark:bg-zinc-800 text-text-muted"
+                                ? "bg-primary text-white"
+                                : isDisabled
+                                  ? "bg-gray-100 dark:bg-zinc-800 text-text-muted"
+                                  : "bg-gray-100 dark:bg-zinc-800 text-text-muted"
                                 }`}>
                                 ✎
                               </span>
@@ -1153,8 +1149,8 @@ function WizardModal({
                                 onChange={(e) => setCustomAnswers(prev => ({ ...prev, [currentKey]: e.target.value }))}
                                 placeholder={lang === "vi" ? "Nhập văn phong mong muốn của bạn..." : "Type your customized tone..."}
                                 className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-900 text-xs text-text outline-none transition-all ${(customAnswers[currentKey] || "").trim() && !validateCustomInput(customAnswers[currentKey] || "").isValid
-                                    ? "border-rose-500"
-                                    : "border-primary/45 focus:border-primary"
+                                  ? "border-rose-500"
+                                  : "border-primary/45 focus:border-primary"
                                   }`}
                                 autoFocus
                               />
@@ -1507,7 +1503,7 @@ export default function PresetsView() {
         } else {
           // Find current user default
           const currentUserDefault = presets.find(p => p.is_default && !p.is_system);
-          
+
           // Optimistic update using local storage
           localStorage.setItem('systemDefaultPreset', preset.id);
           setPresets(prev => prev.map(p => ({
@@ -1581,8 +1577,8 @@ export default function PresetsView() {
             type="button"
             onClick={() => setActiveTab("all")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${activeTab === "all"
-                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-                : "text-text-muted hover:text-text"
+              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+              : "text-text-muted hover:text-text"
               }`}
           >
             Tất cả
@@ -1591,8 +1587,8 @@ export default function PresetsView() {
             type="button"
             onClick={() => setActiveTab("mine")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "mine"
-                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-                : "text-text-muted hover:text-text"
+              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+              : "text-text-muted hover:text-text"
               }`}
           >
             <span>Văn phong của tôi</span>
@@ -1604,8 +1600,8 @@ export default function PresetsView() {
             type="button"
             onClick={() => setActiveTab("system")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "system"
-                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-                : "text-text-muted hover:text-text"
+              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+              : "text-text-muted hover:text-text"
               }`}
           >
             <span>Thư viện mẫu</span>
@@ -1662,11 +1658,7 @@ export default function PresetsView() {
           <Loader2 size={28} className="animate-spin text-primary" />
         </div>
       ) : displayed.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl"
-        >
+        <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
             <Sparkles size={28} />
           </div>
@@ -1687,7 +1679,7 @@ export default function PresetsView() {
               <Plus size={14} /> {lang === "vi" ? "Bắt đầu thiết lập" : "Start Setup"}
             </button>
           )}
-        </motion.div>
+        </div>
       ) : (
         <>
           <div className="flex flex-col justify-between">
