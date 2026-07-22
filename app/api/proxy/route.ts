@@ -444,14 +444,12 @@ export async function GET(request: NextRequest) {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
         if (urlStr.includes('/api/proxy?')) return _m;
 
-        const lowerUrl = urlStr.split('?')[0].toLowerCase();
-        const isImage = imageExts.some(ext => lowerUrl.endsWith(ext)) || urlStr.includes('icdn.dantri.com.vn') || urlStr.includes('cdnweb.dantri.com.vn');
-        if (!isImage) return _m;
-
         try {
           const absolute = new URL(urlStr, targetUrl).href;
           const u = new URL(absolute);
-          if (isTargetDomain(u.hostname)) {
+          const cleanPath = u.pathname.toLowerCase();
+          const isImg = imageExts.some(ext => cleanPath.endsWith(ext)) || isTargetDomain(u.hostname);
+          if (isImg) {
             return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
           }
           return `${attr}${q}${absolute}${q}`;
