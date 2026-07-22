@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
     
     const headersToForward = [
       'content-type',
-      'cookie',
       'authorization',
       'x-requested-with',
     ];
@@ -562,7 +561,7 @@ export async function POST(request: NextRequest) {
     reqHeaders.set('Referer', spoofReferer);
     reqHeaders.set('Origin', spoofReferer.replace(/\/$/, ''));
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
-    const headersToForward = ['content-type', 'cookie', 'authorization', 'x-requested-with'];
+    const headersToForward = ['content-type', 'authorization', 'x-requested-with'];
     for (const h of headersToForward) {
       const val = request.headers.get(h);
       if (val) reqHeaders.set(h, val);
