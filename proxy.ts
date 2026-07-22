@@ -38,10 +38,6 @@ function isActualAntBizRoute(pathname: string): boolean {
     return ANTBIZ_API_ROUTES.has(segment);
   }
 
-  if (pathname.startsWith('/_next/')) {
-    return true;
-  }
-
   return false;
 }
 
@@ -58,9 +54,9 @@ export async function proxy(request: NextRequest) {
   let isProxyRequest = false;
   let targetOrigin: string | null = null;
 
-  // 1. Kiểm tra tham số 'url' trong chính request hiện tại (khi load iframe)
+  // 1. Kiểm tra tham số 'url' trong chính request hiện tại (khi load iframe hoặc link có ?url=)
   const requestUrlParam = request.nextUrl.searchParams.get('url');
-  if (pathname === '/api/proxy' && requestUrlParam) {
+  if (requestUrlParam) {
     try {
       const parsedUrl = new URL(requestUrlParam);
       if (isAllowedHost(parsedUrl.hostname)) {
@@ -81,22 +77,33 @@ export async function proxy(request: NextRequest) {
           targetOrigin = parsedRefererUrl.origin;
           isProxyRequest = true;
         }
-      } else {
-        // Nếu referrer pathname không thuộc về AntBiz, đây là yêu cầu phát sinh từ iframe (sau khi spoof URL)
-        if (!isActualAntBizRoute(refererUrl.pathname)) {
-          const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
-          if (cookieOrigin) {
-            try {
-              const parsedCookie = new URL(cookieOrigin);
-              if (isAllowedHost(parsedCookie.hostname)) {
-                targetOrigin = parsedCookie.origin;
-                isProxyRequest = true;
-              }
-            } catch (_) {}
-          }
+      } else if (!isActualAntBizRoute(refererUrl.pathname) || refererUrl.pathname === '/api/proxy' || refererUrl.pathname === '/') {
+        const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
+        if (cookieOrigin) {
+          try {
+            const parsedCookie = new URL(cookieOrigin);
+            if (isAllowedHost(parsedCookie.hostname)) {
+              targetOrigin = parsedCookie.origin;
+              isProxyRequest = true;
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {}
+  }
+
+  // 3. Fallback: Nếu cookie active_proxy_origin tồn tại và pathname hiện tại KHÔNG phải là route AntBiz
+  if (!isProxyRequest && !isActualAntBizRoute(pathname)) {
+    const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
+    if (cookieOrigin) {
+      try {
+        const parsedCookie = new URL(cookieOrigin);
+        if (isAllowedHost(parsedCookie.hostname)) {
+          targetOrigin = parsedCookie.origin;
+          isProxyRequest = true;
+        }
+      } catch (_) {}
+    }
   }
 
   // Nếu xác định đây là yêu cầu thuộc iframe proxy và KHÔNG PHẢI là yêu cầu đến /api/proxy (tránh lặp vô hạn)

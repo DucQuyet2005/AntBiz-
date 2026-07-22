@@ -133,20 +133,7 @@ export async function GET(request: NextRequest) {
   var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
   var ALLOWED_HOSTNAMES = ${JSON.stringify(ALLOWED_HOSTNAMES)};
 
-  // ── Fix SPA Routers (Dantri) ──
-  // SPA routers read window.location.pathname to determine the page to render.
-  // We cannot spoof window.location via Object.defineProperty because it's non-configurable.
-  // Instead, we use the History API to actually change the browser's URL path to match the target.
-  try {
-    var _parsedTarget = new URL(TARGET);
-    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
-    if (window.location.pathname !== _parsedTarget.pathname) {
-      // Must use window.location.origin to bypass the <base> tag resolution, otherwise SecurityError
-      window.history.replaceState(null, '', window.location.origin + _targetPath);
-    }
-  } catch(_e) {
-    console.error('[Proxy] Failed to rewrite history state:', _e);
-  }
+
 
   function isAllowedHost(url) {
     try {
@@ -349,15 +336,7 @@ export async function GET(request: NextRequest) {
   var TARGET = ${JSON.stringify(targetUrl)};
   var ALLOWED = ${JSON.stringify(ALLOWED_HOSTNAMES)};
   
-  // ── 1. Fix SPA Routers (Dantri) ──
-  // SPA routers read window.location.pathname to determine the page to render.
-  try {
-    var _parsedTarget = new URL(TARGET);
-    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
-    if (window.location.pathname !== _parsedTarget.pathname) {
-      window.history.replaceState(null, '', window.location.origin + _targetPath);
-    }
-  } catch(_e) {}
+
 
   // ── 2. Intercept Absolute Clicks ──
   document.addEventListener('click', function(e) {
@@ -376,21 +355,35 @@ export async function GET(request: NextRequest) {
   }, true);
 
   // ── 3. Intercept Fetch for Next.js Data ──
-  // Intercept relative fetches (like /_next/data/...) to ensure they go through proxy middleware
-  // We rewrite them to the absolute proxy URL directly to bypass middleware's ignore rules
+  // Intercept relative fetches and allowed absolute fetches to ensure they go through proxy middleware
   var _fetch = window.fetch;
   window.fetch = function(input, init) {
     var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
-    if (url && typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-      try {
-        var _parsedTarget2 = new URL(TARGET);
-        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget2.origin + url);
+    if (url && typeof url === 'string') {
+      var shouldProxy = false;
+      var proxyTarget = url;
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+        try {
+          shouldProxy = true;
+          proxyTarget = (new URL(TARGET)).origin + url;
+        } catch(e) {}
+      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
+        try {
+          var u = new URL(url);
+          if (ALLOWED.some(function(h) { return u.hostname === h || u.hostname.endsWith('.' + h); })) {
+            shouldProxy = true;
+          }
+        } catch(e) {}
+      }
+
+      if (shouldProxy) {
+        var proxyUrl = '/api/proxy?url=' + encodeURIComponent(proxyTarget);
         if (typeof input === 'string') {
-          input = url;
+          input = proxyUrl;
         } else {
-          input = new Request(url, init);
+          input = new Request(proxyUrl, init);
         }
-      } catch(e) {}
+      }
     }
     return _fetch.call(window, input, init);
   };
@@ -398,11 +391,26 @@ export async function GET(request: NextRequest) {
   // ── 4. Intercept XMLHttpRequest ──
   var _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-      try {
-        var _parsedTarget3 = new URL(TARGET);
-        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget3.origin + url);
-      } catch(e) {}
+    if (typeof url === 'string') {
+      var shouldProxy = false;
+      var proxyTarget = url;
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+        try {
+          shouldProxy = true;
+          proxyTarget = (new URL(TARGET)).origin + url;
+        } catch(e) {}
+      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
+        try {
+          var u = new URL(url);
+          if (ALLOWED.some(function(h) { return u.hostname === h || u.hostname.endsWith('.' + h); })) {
+            shouldProxy = true;
+          }
+        } catch(e) {}
+      }
+
+      if (shouldProxy) {
+        url = '/api/proxy?url=' + encodeURIComponent(proxyTarget);
+      }
     }
     var args = Array.prototype.slice.call(arguments);
     args[1] = url;
@@ -411,61 +419,65 @@ export async function GET(request: NextRequest) {
 
   // ── 5. Intercept Dynamically Added Images (Lazy Loading) ──
   if (typeof MutationObserver !== 'undefined') {
-    var imgExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'];
-    var imgPatterns = new RegExp('\\\\.(' + imgExts.map(function(e){return e.replace('.','')}).join('|') + ')(?:\\\\?.*)?$', 'i');
-    
-    function rewriteAttr(node, attrName) {
-      if (!node.hasAttribute(attrName)) return;
-      var val = node.getAttribute(attrName);
-      if (!val || val.startsWith('data:') || val.startsWith('blob:') || val.indexOf(PROXY) === 0) return;
-      
-      // Check if it's an image or a known CDN
-      if (imgPatterns.test(val) || val.indexOf('dantri') > -1 || val.indexOf('vcmedia') > -1 || val.indexOf('tuoitre') > -1 || val.indexOf('gocnhinmoi') > -1 || val.indexOf('vccorp') > -1) {
-        try {
-          var absolute = new URL(val, TARGET).href;
-          node.setAttribute(attrName, PROXY + encodeURIComponent(absolute));
-        } catch(e) {}
-      }
+    var IMG_PROXY = 'https://images.weserv.nl/?url=';
+    function isImageUrl(url) {
+      if (!url) return false;
+      var lower = url.split('?')[0].split('#')[0].toLowerCase();
+      return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp') || lower.endsWith('.svg') || lower.endsWith('.avif');
     }
-
-    function rewriteSrcset(node, attrName) {
-      if (!node.hasAttribute(attrName)) return;
-      var val = node.getAttribute(attrName);
-      if (!val || val.indexOf(PROXY) > -1) return;
+    
+    function forceWeserv(urlStr) {
+      if (!urlStr || urlStr.startsWith('data:') || urlStr.startsWith('blob:')) return urlStr;
       
-      var parts = val.split(',');
-      var rewritten = parts.map(function(part) {
-        var trimmed = part.trim();
-        var tokens = trimmed.split(/\\s+/);
-        if (tokens.length === 0 || !tokens[0]) return part;
-        var urlStr = tokens[0];
-        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.indexOf(PROXY) === 0) return part;
+      // If it's already going through our proxy, use it as-is
+      if (urlStr.indexOf('/api/proxy?url=') > -1) return urlStr;
+      // If it's already going through weserv, use it as-is
+      if (urlStr.indexOf(IMG_PROXY) === 0) return urlStr;
+      
+      if (isImageUrl(urlStr) || urlStr.indexOf('dantri') > -1 || urlStr.indexOf('vcmedia') > -1 || urlStr.indexOf('tuoitre') > -1 || urlStr.indexOf('gocnhinmoi') > -1 || urlStr.indexOf('vccorp') > -1) {
         try {
           var absolute = new URL(urlStr, TARGET).href;
-          tokens[0] = PROXY + encodeURIComponent(absolute);
-          return tokens.join(' ');
-        } catch(e) { return part; }
-      }).join(', ');
-      
-      node.setAttribute(attrName, rewritten);
+          return '/api/proxy?url=' + encodeURIComponent(absolute);
+        } catch(e) {}
+      }
+      return urlStr;
     }
 
     function processImgNode(node) {
       if (node.tagName === 'IMG' || node.tagName === 'SOURCE') {
-        rewriteAttr(node, 'src');
-        rewriteAttr(node, 'data-src');
-        rewriteAttr(node, 'data-original');
-        rewriteSrcset(node, 'srcset');
-        rewriteSrcset(node, 'data-srcset');
+        var realSrc = node.getAttribute('data-src') || node.getAttribute('data-original');
+        if (realSrc) {
+           var currentSrc = node.getAttribute('src') || '';
+           if (!currentSrc || currentSrc.startsWith('data:image') || currentSrc.indexOf(IMG_PROXY) !== 0) {
+              var rewrittenSrc = forceWeserv(realSrc);
+              if (rewrittenSrc !== realSrc) node.setAttribute('src', rewrittenSrc);
+           }
+        } else {
+           var src = node.getAttribute('src');
+           if (src) {
+              var newSrc = forceWeserv(src);
+              if (newSrc !== src) node.setAttribute('src', newSrc);
+           }
+        }
+        
+        var srcset = node.getAttribute('srcset') || node.getAttribute('data-srcset');
+        if (srcset && srcset.indexOf(IMG_PROXY) === -1) {
+          var rewritten = srcset.split(',').map(function(part) {
+            var trimmed = part.trim();
+            var tokens = trimmed.split(/\s+/);
+            if (tokens.length > 0 && tokens[0]) {
+              tokens[0] = forceWeserv(tokens[0]);
+              return tokens.join(' ');
+            }
+            return part;
+          }).join(', ');
+          if (rewritten !== srcset) node.setAttribute('srcset', rewritten);
+        }
       }
       if (node.querySelectorAll) {
         var imgs = node.querySelectorAll('img, source');
         for (var i = 0; i < imgs.length; i++) {
-          rewriteAttr(imgs[i], 'src');
-          rewriteAttr(imgs[i], 'data-src');
-          rewriteAttr(imgs[i], 'data-original');
-          rewriteSrcset(imgs[i], 'srcset');
-          rewriteSrcset(imgs[i], 'data-srcset');
+          processImgNode(imgs[i]);
         }
       }
     }
@@ -474,13 +486,18 @@ export async function GET(request: NextRequest) {
       mutations.forEach(function(m) {
         if (m.type === 'childList') {
           m.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) processImgNode(node);
+            if (node.nodeType === 1) {
+              processImgNode(node);
+              var nested = node.querySelectorAll('img, source');
+              for (var i = 0; i < nested.length; i++) {
+                processImgNode(nested[i]);
+              }
+            }
           });
         } else if (m.type === 'attributes') {
           if (m.target.nodeType === 1 && (m.target.tagName === 'IMG' || m.target.tagName === 'SOURCE')) {
-            // Prevent infinite loop by checking if we already proxied it inside processImgNode
             var val = m.target.getAttribute(m.attributeName);
-            if (val && val.indexOf(PROXY) !== 0) {
+            if (val && val.indexOf(IMG_PROXY) !== 0) {
               processImgNode(m.target);
             }
           }
@@ -488,13 +505,20 @@ export async function GET(request: NextRequest) {
       });
     });
     
-    // Ensure the body exists before observing, otherwise observe documentElement
     var targetNode = document.documentElement;
     imgObserver.observe(targetNode, { 
       childList: true, 
       subtree: true,
       attributes: true,
-      attributeFilter: ['src', 'data-src', 'srcset', 'data-srcset', 'data-original']
+      attributeFilter: ['src', 'srcset', 'data-src', 'data-srcset', 'data-original']
+    });
+
+    // Process already existing nodes as a fallback
+    document.addEventListener('DOMContentLoaded', function() {
+      var existingNodes = document.querySelectorAll('img, source');
+      for (var i = 0; i < existingNodes.length; i++) {
+        processImgNode(existingNodes[i]);
+      }
     });
   }
 })();
