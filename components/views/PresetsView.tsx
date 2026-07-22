@@ -27,12 +27,14 @@ import {
   Calendar,
   ArrowRight,
   Star,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Platform = "facebook" | "thread" | "instagram" | "all";
+type ActiveTab = "all" | "mine" | "system";
 
 interface PromptConfigRecord {
   id: string;
@@ -70,6 +72,16 @@ const PLATFORM_OPTIONS: { value: Platform; label: string; color: string }[] = [
   { value: "thread", label: "Threads", color: "#000000" },
   { value: "instagram", label: "Instagram", color: "#E1306C" },
   { value: "all", label: "Tất cả", color: "#6366F1" },
+];
+
+const CATEGORIES = [
+  { id: "all", labelVi: "Tất cả danh mục", labelEn: "All Categories" },
+  { id: "Bán hàng", labelVi: "Bán hàng & Doanh số", labelEn: "Sales & Revenue" },
+  { id: "Thương hiệu", labelVi: "Nhận diện Thương hiệu", labelEn: "Brand Identity" },
+  { id: "Tương tác", labelVi: "Tương tác & Cộng đồng", labelEn: "Engagement & Community" },
+  { id: "Giáo dục", labelVi: "Giáo dục & Kiến thức", labelEn: "Education & Knowledge" },
+  { id: "Tuyển dụng", labelVi: "Tuyển dụng", labelEn: "Recruitment" },
+  { id: "Sự kiện", labelVi: "Sự kiện & Truyền thông", labelEn: "Events & Media" },
 ];
 
 // ─── PlatformIcon ────────────────────────────────────────────────────────────
@@ -1323,6 +1335,8 @@ export default function PresetsView() {
   const [presets, setPresets] = useState<PromptConfigRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<PromptConfigRecord | null>(null);
   const [viewingPreset, setViewingPreset] = useState<PromptConfigRecord | null>(null);
@@ -1366,9 +1380,43 @@ export default function PresetsView() {
     fetchPresets();
   }, [fetchPresets]);
 
+  // Counts
+  const myPresetsCount = useMemo(() => presets.filter(p => !p.is_system).length, [presets]);
+  const systemPresetsCount = useMemo(() => presets.filter(p => p.is_system).length, [presets]);
+
   const displayed = useMemo(() => {
     let list = [...presets];
     
+    // 1. Tab filter
+    if (activeTab === "mine") {
+      list = list.filter(p => !p.is_system);
+    } else if (activeTab === "system") {
+      list = list.filter(p => p.is_system);
+    }
+
+    // 2. Category filter
+    if (selectedCategory !== "all") {
+      list = list.filter(p => {
+        const objs = p.params?.objectives || (p.params?.objective ? [p.params.objective] : []);
+        const nameAndRules = (p.name + " " + (p.rules || "")).toLowerCase();
+        const catLower = selectedCategory.toLowerCase();
+        return (
+          objs.some((o: string) => o.toLowerCase().includes(catLower)) ||
+          nameAndRules.includes(catLower)
+        );
+      });
+    }
+
+    // 3. Search query filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.rules && p.rules.toLowerCase().includes(q))
+      );
+    }
+
     // Sort so default is always first, then user presets, then system presets
     list.sort((a, b) => {
       if (a.is_default && !b.is_default) return -1;
@@ -1380,20 +1428,13 @@ export default function PresetsView() {
       return 0;
     });
 
-    if (search.trim()) {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          (p.rules && p.rules.toLowerCase().includes(search.toLowerCase()))
-      );
-    }
     return list;
-  }, [presets, search]);
+  }, [presets, activeTab, selectedCategory, search]);
 
   // Reset to page 1 on search
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab, selectedCategory]);
 
   const totalPages = Math.ceil(displayed.length / ITEMS_PER_PAGE);
   const paginatedDisplayed = useMemo(() => {
@@ -1430,6 +1471,12 @@ export default function PresetsView() {
       setIsDeleting(false);
       setDeleteConfirmId(null);
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setActiveTab("all");
+    setSelectedCategory("all");
   };
 
   const handleSetDefault = async (preset: PromptConfigRecord) => {
@@ -1511,6 +1558,90 @@ export default function PresetsView() {
         </button>
       </div>
 
+      {/* Tabs & Search Row */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs mt-2">
+        <div className="bg-gray-100 dark:bg-zinc-950 p-1 rounded-xl flex items-center gap-1 shrink-0 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+              activeTab === "all"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
+          >
+            {t('presetsPage.tabs.all') || "Tất cả"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("mine")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "mine"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
+          >
+            <span>{t('presetsPage.tabs.mine') || "Của tôi"}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-primary text-[10px]">
+              {myPresetsCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("system")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "system"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
+          >
+            <span>{t('presetsPage.tabs.system') || "Hệ thống"}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-800 text-text-muted text-[10px]">
+              {systemPresetsCount}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Category Dropdown */}
+          <div className="relative shrink-0 min-w-[150px]">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full h-9 pl-3 pr-8 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-950 text-xs font-bold text-text outline-none focus:border-primary cursor-pointer appearance-none"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {lang === "vi" ? cat.labelVi : cat.labelEn}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+          </div>
+
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-xs min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('presetsPage.searchPlaceholder') || "Tìm kiếm Văn phong..."}
+              className="w-full h-9 pl-9 pr-8 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-950 text-xs font-semibold text-text outline-none focus:border-primary transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-200 dark:bg-zinc-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors"
+              >
+                <X size={10} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
 
 
       {/* Grid */}
@@ -1535,13 +1666,21 @@ export default function PresetsView() {
               ? lang === "vi" ? "Thử thay đổi từ khóa tìm kiếm." : "Try changing your search term."
               : lang === "vi" ? "Thiết lập văn phong để AI hiểu rõ cách thương hiệu của bạn giao tiếp với khách hàng." : "Set up brand styles to help AI understand how your brand communicates."}
           </p>
-          {!search && (
+          {!search && selectedCategory === "all" && activeTab === "all" ? (
             <button
               type="button"
               onClick={() => { setEditingPreset(null); setWizardOpen(true); }}
               className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all cursor-pointer border-0"
             >
               <Plus size={14} /> {lang === "vi" ? "Bắt đầu thiết lập" : "Start Setup"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-text hover:bg-gray-200 dark:hover:bg-zinc-700 text-xs font-extrabold transition-all cursor-pointer border-0"
+            >
+              {t('common.cancel') || "Xóa bộ lọc"}
             </button>
           )}
         </motion.div>
