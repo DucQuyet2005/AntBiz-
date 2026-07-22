@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   RefreshCw, Send, Sparkles,
@@ -8,9 +8,11 @@ import {
   Bookmark, Check, Search, EyeOff, MoreHorizontal,
   ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
   Repeat2, CheckCircle2, ChevronLeft, ChevronRight, Wand2,
-  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic, SlidersHorizontal
+  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic, SlidersHorizontal,
+  Scissors, Crop
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useSmartCrop } from '@/frontend/modules/smart-crop';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,11 +61,31 @@ export default function Step4Editor() {
   // Default fallback image when no article/crawled image exists
   const fallbackImage = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000';
 
-  // Determine active post preview images (prefer custom uploaded/crawled list first, then articleContext imageUrls/thumbnail, then fallback)
-  const contextImages = (state.articleContext as any)?.imageUrls || (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
-  const postImages: string[] = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
-    ? state.crawledImageUrls
-    : (contextImages.length > 0 ? contextImages : [fallbackImage]);
+  // ─── Smart Crop: auto-detect focal point & crop all crawled images to 1:1 ───
+  const rawImagesForCrop = useMemo(() => {
+    if (state.crawledImageUrls && state.crawledImageUrls.length > 0) return state.crawledImageUrls;
+    const contextImages = (state.articleContext as any)?.imageUrls || (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
+    if (contextImages.length > 0) return contextImages;
+    return [];
+  }, [state.crawledImageUrls, state.articleContext]);
+
+  const { croppedUrls, isCropping, cropProgress } = useSmartCrop(rawImagesForCrop);
+
+  // Sync cropped URLs into global state when processing completes
+  useEffect(() => {
+    if (!isCropping && croppedUrls.length > 0) {
+      if ((state.croppedImageUrls || []).join('|') !== croppedUrls.join('|')) {
+        dispatch({ type: 'SET_CROPPED_IMAGES', payload: croppedUrls });
+      }
+    }
+  }, [croppedUrls, isCropping, dispatch, state.croppedImageUrls]);
+
+  // ─── Active images for preview: prefer cropped, fall back to crawled/thumbnail ───
+  const postImages: string[] = (
+    (state.croppedImageUrls && state.croppedImageUrls.length > 0)
+      ? state.croppedImageUrls
+      : (rawImagesForCrop.length > 0 ? rawImagesForCrop : [fallbackImage])
+  );
   const postImage = postImages[0] || fallbackImage;
 
   const getTagColorClass = (tag: string) => {
@@ -323,7 +345,7 @@ export default function Step4Editor() {
           <img
             src={displayImages[0]}
             alt="Instagram Post Media"
-            className="w-full aspect-square max-h-[500px] object-cover"
+            className="w-full h-auto max-h-[550px] object-cover"
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
           />
         </div>
@@ -335,19 +357,19 @@ export default function Step4Editor() {
     return (
       <div className="w-full select-none flex flex-col items-center">
         {/* Main Carousel Image Container */}
-        <div className="w-full relative border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden bg-black aspect-square max-h-[500px]">
+        <div className="w-full relative border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden">
           {/* Horizontal Sliding Track */}
           <div
-            className="flex w-full h-full transition-transform duration-300 ease-out"
+            className="flex items-start w-full transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-${safeIndex * 100}%)` }}
           >
             {displayImages.map((img, idx) => (
-              <div key={idx} className="w-full h-full shrink-0 flex-none relative">
+              <div key={idx} className="w-full shrink-0 flex-none relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img}
                   alt={`Instagram Post Media ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto max-h-[550px] object-cover"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
                 />
               </div>

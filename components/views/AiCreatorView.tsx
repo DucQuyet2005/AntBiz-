@@ -136,15 +136,12 @@ function AiCreatorContent() {
     try {
       const result = await confirmPostSchedule('now');
       if (result.success) {
-        showToast(t('creator.step5.successToast'), 'success');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
           router.push('/content-calendar');
         }, 1500);
       } else {
-        const failed = result.failed.join(', ');
-        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setIsPublishingNow(false);
       }
@@ -189,7 +186,6 @@ function AiCreatorContent() {
       // Submit and publish/schedule
       const result = await confirmPostSchedule('scheduled');
       if (result.success) {
-        showToast(t('creator.step5.successToast'), 'success');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
@@ -199,9 +195,6 @@ function AiCreatorContent() {
         if ('errors' in result && result.errors && Object.keys(result.errors).length > 0) {
           const msgs = Object.entries(result.errors).map(([plat, msg]) => `${plat}: ${msg}`).join(' | ');
           showToast(`Lỗi: ${msgs}`, 'error');
-        } else {
-          const failed = result.failed.join(', ');
-          showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
         }
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }

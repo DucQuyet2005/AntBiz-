@@ -156,10 +156,11 @@ export async function publishToInstagramAccount(
     // 2. Tạo Media Container cho Instagram
     let creationId = '';
 
-    // Auto pad hình ảnh về tỷ lệ chuẩn 1:1 (1080x1080) bằng public proxy (tránh lỗi Aspect Ratio)
+    // Crop hình ảnh về tỷ lệ chuẩn 1:1 (1080x1080) bằng fit=cover nếu chưa qua Smart Crop
     const paddedImageUrls = imageUrls.map(url => {
       if (!url.startsWith('http')) return url;
-      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1080&h=1080&fit=contain&we&bg=white`;
+      if (url.includes('supabase.co') || url.includes('smart_crop')) return url;
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1080&h=1080&fit=cover&a=attention`;
     });
 
     if (paddedImageUrls.length === 1) {

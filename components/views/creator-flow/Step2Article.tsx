@@ -1434,8 +1434,13 @@ export default function Step2Article({
           <div className="relative max-w-[90vw] max-h-[85vh] select-none" onClick={e => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={activeLightboxImage}
+              src={activeLightboxImage?.startsWith('http://') || activeLightboxImage?.startsWith('https://') ? `/api/proxy?url=${encodeURIComponent(activeLightboxImage)}` : (activeLightboxImage || '')}
               alt="Preview gốc"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).onerror = null;
+                (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+              }}
               className="rounded-2xl max-w-full max-h-[80vh] object-contain shadow-2xl border border-white/10"
             />
             <button
@@ -1478,7 +1483,16 @@ export default function Step2Article({
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.url} alt={item.name} className="w-full h-full object-cover select-none" />
+                      <img
+                        src={item.type === 'crawled' || item.url.startsWith('http://') || item.url.startsWith('https://') ? `/api/proxy?url=${encodeURIComponent(item.url)}` : item.url}
+                        alt={item.name}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).onerror = null;
+                          (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                        }}
+                        className="w-full h-full object-cover select-none"
+                      />
                       <button
                         type="button"
                         onClick={(e) => {
