@@ -399,6 +399,95 @@ export async function GET(request: NextRequest) {
     args[1] = url;
     return _open.apply(this, args);
   };
+
+  // ── 5. Intercept Dynamically Added Images (Lazy Loading) ──
+  if (typeof MutationObserver !== 'undefined') {
+    var imgExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'];
+    var imgPatterns = new RegExp('\\\\.(' + imgExts.map(function(e){return e.replace('.','')}).join('|') + ')(?:\\\\?.*)?$', 'i');
+    
+    function rewriteAttr(node, attrName) {
+      if (!node.hasAttribute(attrName)) return;
+      var val = node.getAttribute(attrName);
+      if (!val || val.startsWith('data:') || val.startsWith('blob:') || val.indexOf(PROXY) === 0) return;
+      
+      // Check if it's an image or a known CDN
+      if (imgPatterns.test(val) || val.indexOf('cdnphoto.dantri.com.vn') > -1 || val.indexOf('cdn.tuoitre.vn') > -1 || val.indexOf('gocnhinmoi.com') > -1) {
+        try {
+          var absolute = new URL(val, TARGET).href;
+          node.setAttribute(attrName, PROXY + encodeURIComponent(absolute));
+        } catch(e) {}
+      }
+    }
+
+    function rewriteSrcset(node, attrName) {
+      if (!node.hasAttribute(attrName)) return;
+      var val = node.getAttribute(attrName);
+      if (!val || val.indexOf(PROXY) > -1) return;
+      
+      var parts = val.split(',');
+      var rewritten = parts.map(function(part) {
+        var trimmed = part.trim();
+        var tokens = trimmed.split(/\\s+/);
+        if (tokens.length === 0 || !tokens[0]) return part;
+        var urlStr = tokens[0];
+        if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.indexOf(PROXY) === 0) return part;
+        try {
+          var absolute = new URL(urlStr, TARGET).href;
+          tokens[0] = PROXY + encodeURIComponent(absolute);
+          return tokens.join(' ');
+        } catch(e) { return part; }
+      }).join(', ');
+      
+      node.setAttribute(attrName, rewritten);
+    }
+
+    function processImgNode(node) {
+      if (node.tagName === 'IMG' || node.tagName === 'SOURCE') {
+        rewriteAttr(node, 'src');
+        rewriteAttr(node, 'data-src');
+        rewriteAttr(node, 'data-original');
+        rewriteSrcset(node, 'srcset');
+        rewriteSrcset(node, 'data-srcset');
+      }
+      if (node.querySelectorAll) {
+        var imgs = node.querySelectorAll('img, source');
+        for (var i = 0; i < imgs.length; i++) {
+          rewriteAttr(imgs[i], 'src');
+          rewriteAttr(imgs[i], 'data-src');
+          rewriteAttr(imgs[i], 'data-original');
+          rewriteSrcset(imgs[i], 'srcset');
+          rewriteSrcset(imgs[i], 'data-srcset');
+        }
+      }
+    }
+
+    var imgObserver = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        if (m.type === 'childList') {
+          m.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) processImgNode(node);
+          });
+        } else if (m.type === 'attributes') {
+          if (m.target.nodeType === 1 && (m.target.tagName === 'IMG' || m.target.tagName === 'SOURCE')) {
+            // Prevent infinite loop by checking if we already proxied it inside processImgNode
+            var val = m.target.getAttribute(m.attributeName);
+            if (val && val.indexOf(PROXY) !== 0) {
+              processImgNode(m.target);
+            }
+          }
+        }
+      });
+    });
+    
+    // Ensure the body exists before observing, otherwise observe documentElement
+    var targetNode = document.documentElement;
+    imgObserver.observe(targetNode, { 
+      childList: true, 
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'data-src', 'srcset', 'data-srcset', 'data-original']
+    });
+  }
 })();
 </script>
 `;
