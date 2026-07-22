@@ -13,6 +13,7 @@ const ALLOWED_HOSTNAMES = [
   'dantricdn.com',
   'vccorp.vn',
   'mediacdn.vn',
+  'dtadnetwork.com',
 ];
 
 function isAllowedUrl(url: string): boolean {
@@ -367,7 +368,7 @@ export async function GET(request: NextRequest) {
     
 
     const isTargetDomain = (host: string) => {
-      return ['dantri.com.vn', 'vcmedia.vn', 'dantricdn.com', 'tuoitre.vn', 'tuoitrecdn.net', 'gocnhinmoi.com', 'vccorp.vn', 'mediacdn.vn'].some(h => host.includes(h));
+      return ['dantri.com.vn', 'vcmedia.vn', 'dantricdn.com', 'tuoitre.vn', 'tuoitrecdn.net', 'gocnhinmoi.com', 'vccorp.vn', 'mediacdn.vn', 'dtadnetwork.com'].some(h => host.includes(h));
     };
 
     // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri & others

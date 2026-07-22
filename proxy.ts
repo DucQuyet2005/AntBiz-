@@ -5,6 +5,10 @@ const ALLOWED_HOSTNAMES = [
   'gocnhinmoi.com.vn',
   'tuoitre.vn',
   'dantri.com.vn',
+  'dtadnetwork.com',
+  'vcmedia.vn',
+  'dantricdn.com',
+  'vccorp.vn',
 ];
 
 const ANTBIZ_API_ROUTES = new Set([
