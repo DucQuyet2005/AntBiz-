@@ -15,7 +15,8 @@
   "host_permissions": [
     "http://localhost/*",
     "http://127.0.0.1/*",
-    "http://172.25.240.1/*"
+    "http://172.25.240.1/*",
+    "https://dev.antbiz.me/*"
   ],
   "background": {
     "service_worker": "background.js"

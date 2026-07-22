@@ -255,15 +255,13 @@ export async function GET(request: NextRequest) {
       ...chartDataMap[date]
     }));
 
-    // Top posts sorted by interactions (likes + comments + shares + clicks) descending
+    // All posts sorted by interactions (likes + comments + shares + clicks) descending
     const topPosts = [...processedPosts]
-      .filter(p => p.status === 'posted')
       .sort((a, b) => {
         const scoreA = (a.interactions?.likes || 0) + (a.interactions?.comments || 0) + (a.interactions?.shares || 0) + (a.interactions?.clicks || 0);
         const scoreB = (b.interactions?.likes || 0) + (b.interactions?.comments || 0) + (b.interactions?.shares || 0) + (b.interactions?.clicks || 0);
         return scoreB - scoreA; // Giảm dần
-      })
-      .slice(0, 10);
+      });
 
     return NextResponse.json({
       summary: {

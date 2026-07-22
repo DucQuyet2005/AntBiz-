@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import PopupDialog, { PopupType } from "@/components/PopupDialog";
+import { ReportPreviewModal } from "./reports/ReportPreviewModal";
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -129,6 +131,7 @@ export default function ReportsView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [scope, setScope] = useState<string>("all");
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -252,13 +255,28 @@ export default function ReportsView() {
     try {
       setIsExporting(true);
       showToast(
-        "Đang đồng bộ dữ liệu thực tế mới nhất trước khi xuất báo cáo...",
+        "Đang đồng bộ dữ liệu thực tế mới nhất trước khi xem trước báo cáo...",
         "info",
         "Đồng bộ dữ liệu"
       );
 
       await performSync(true);
+      setPreviewOpen(true);
+    } catch (error: any) {
+      console.error("Lỗi chuẩn bị báo cáo:", error);
+      showToast(
+        "Đã xảy ra lỗi khi chuẩn bị báo cáo. Vui lòng thử lại.",
+        "error",
+        "Thất bại"
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
+  const confirmDownloadExcel = async () => {
+    try {
+      setIsExporting(true);
       const queryParams = new URLSearchParams({
         timeframe,
         platform,
@@ -291,10 +309,12 @@ export default function ReportsView() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
+      setPreviewOpen(false);
+
       showToast(
-        "Xuất báo cáo Excel thành công!",
+        "Tải về file Excel (.xlsx) báo cáo thành công!",
         "success",
-        "Xuất báo cáo thành công"
+        "Tải báo cáo thành công"
       );
     } catch (error: any) {
       console.error("Lỗi xuất báo cáo:", error);
@@ -385,22 +405,26 @@ export default function ReportsView() {
     ? ((totalEngagements / reportData.summary.totalReach) * 100).toFixed(2)
     : "0.00";
 
+  const themeContext = useTheme();
+  const isDark = themeContext?.isDark ?? false;
+  const threadsColor = isDark ? "#F4F4F5" : "#18181B";
+
   const getPlatformPieData = () => {
     if (!reportData?.platformBreakdown) return [];
     const bd = reportData.platformBreakdown;
 
     let data = [
-      { name: "Facebook", value: bd.facebook.likes + bd.facebook.comments + bd.facebook.shares, color: "#1877F2" },
-      { name: "Instagram", value: bd.instagram.likes + bd.instagram.comments + bd.instagram.shares, color: "#E1306C" },
-      { name: "Threads", value: bd.threads.likes + bd.threads.comments + bd.threads.shares, color: "#10B981" },
+      { name: "Facebook", value: bd.facebook.likes + bd.facebook.comments + bd.facebook.shares, fill: "#1877F2", color: "#1877F2" },
+      { name: "Instagram", value: bd.instagram.likes + bd.instagram.comments + bd.instagram.shares, fill: "#E1306C", color: "#E1306C" },
+      { name: "Threads", value: bd.threads.likes + bd.threads.comments + bd.threads.shares, fill: threadsColor, color: threadsColor },
     ];
 
     const totalVal = data.reduce((acc, curr) => acc + curr.value, 0);
     if (totalVal === 0) {
       data = [
-        { name: "Facebook", value: bd.facebook.posts, color: "#1877F2" },
-        { name: "Instagram", value: bd.instagram.posts, color: "#E1306C" },
-        { name: "Threads", value: bd.threads.posts, color: "#6B7280" },
+        { name: "Facebook", value: bd.facebook.posts, fill: "#1877F2", color: "#1877F2" },
+        { name: "Instagram", value: bd.instagram.posts, fill: "#E1306C", color: "#E1306C" },
+        { name: "Threads", value: bd.threads.posts, fill: threadsColor, color: threadsColor },
       ];
     }
     return data.filter(item => item.value > 0);
@@ -1003,9 +1027,10 @@ export default function ReportsView() {
                             outerRadius={75}
                             paddingAngle={4}
                             dataKey="value"
+                            stroke="none"
                           >
                             {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
+                              <Cell key={`cell-${entry.name}-${index}`} fill={entry.color || entry.fill} stroke={entry.color || entry.fill} />
                             ))}
                           </Pie>
                           <Tooltip
@@ -1146,6 +1171,22 @@ export default function ReportsView() {
                             )}
                           </button>
                         </th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("status")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "status" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>TRẠNG THÁI</span>
+                            {sortField === "status" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
                         <th className="py-3 px-4 text-center w-20">
                           <button
                             type="button"
@@ -1252,6 +1293,25 @@ export default function ReportsView() {
                                   {post.platform.toUpperCase()}
                                 </span>
                               </td>
+                              <td className="py-3.5 px-4 text-center">
+                                {post.status === "posted" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    Đã đăng
+                                  </span>
+                                ) : post.status === "failed" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                    Thất bại
+                                  </span>
+                                ) : post.status === "cancelled" ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-500/10 text-slate-500 dark:text-slate-400">
+                                    Đã hủy
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    Chờ đăng
+                                  </span>
+                                )}
+                              </td>
                               <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.likes || 0}</td>
                               <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.comments || 0}</td>
                               <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.clicks || 0}</td>
@@ -1262,7 +1322,7 @@ export default function ReportsView() {
                         })
                       ) : (
                         <tr>
-                          <td colSpan={9} className="py-8 text-center text-text-muted font-semibold">
+                          <td colSpan={10} className="py-8 text-center text-text-muted font-semibold">
                             {t("reports.noData") || "Chưa có dữ liệu bài viết"}
                           </td>
                         </tr>
@@ -1276,6 +1336,20 @@ export default function ReportsView() {
           )}
         </AnimatePresence>
       )}
+
+      <ReportPreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        onConfirmExport={confirmDownloadExcel}
+        isExporting={isExporting}
+        reportData={reportData}
+        reporterName={reporterName}
+        timeframe={timeframe}
+        platform={platform}
+        startDate={startDate}
+        endDate={endDate}
+        scope={scope}
+      />
 
       <PopupDialog
         isOpen={popup.isOpen}
