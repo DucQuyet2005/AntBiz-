@@ -1210,6 +1210,22 @@ export default function ReportsView() {
                             )}
                           </button>
                         </th>
+                        <th className="py-3 px-4 text-center w-24">
+                          <button
+                            type="button"
+                            onClick={() => handleSort("interactions.impressions")}
+                            className={`inline-flex items-center justify-center gap-1 mx-auto hover:text-primary uppercase font-extrabold text-[10px] tracking-wider transition-colors cursor-pointer border-0 bg-transparent ${
+                              sortField === "interactions.impressions" ? "text-primary font-black" : "text-text-muted hover:text-slate-700 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            <span>HIỂN THỊ</span>
+                            {sortField === "interactions.impressions" ? (
+                              sortDirection === "asc" ? <ArrowUp size={12} className="stroke-[3] text-primary" /> : <ArrowDown size={12} className="stroke-[3] text-primary" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-50" />
+                            )}
+                          </button>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/80 text-xs font-semibold">
@@ -1240,45 +1256,19 @@ export default function ReportsView() {
                               <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.comments || 0}</td>
                               <td className="py-3.5 px-4 text-center text-slate-900 dark:text-slate-100 font-bold">{post.interactions.clicks || 0}</td>
                               <td className="py-3.5 px-4 text-center text-text-muted font-normal">{post.interactions.reach ? post.interactions.reach.toLocaleString("vi-VN") : 0}</td>
+                              <td className="py-3.5 px-4 text-center text-text-muted font-normal">{post.interactions.impressions ? post.interactions.impressions.toLocaleString("vi-VN") : 0}</td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan={8} className="py-8 text-center text-text-muted font-semibold">
+                          <td colSpan={9} className="py-8 text-center text-text-muted font-semibold">
                             {t("reports.noData") || "Chưa có dữ liệu bài viết"}
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
-                </div>
-
-                {/* Pagination footer */}
-                <div className="flex items-center justify-between pt-2 text-xs font-semibold text-text-muted">
-                  <span>Hiển thị 1 - {Math.min(10, filteredTablePosts.length)} của {filteredTablePosts.length} bài viết</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled
-                      className="w-7 h-7 rounded-lg border border-gray-200/60 dark:border-zinc-800 flex items-center justify-center opacity-40 cursor-not-allowed border-0"
-                    >
-                      &lt;
-                    </button>
-                    <button
-                      type="button"
-                      className="w-7 h-7 rounded-lg bg-emerald-500 text-white font-bold flex items-center justify-center shadow-2xs border-0"
-                    >
-                      1
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      className="w-7 h-7 rounded-lg border border-gray-200/60 dark:border-zinc-800 flex items-center justify-center opacity-40 cursor-not-allowed border-0"
-                    >
-                      &gt;
-                    </button>
-                  </div>
                 </div>
               </div>
 
