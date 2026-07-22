@@ -32,6 +32,22 @@ function isAllowedUrl(url: string): boolean {
   }
 }
 
+function normalizeProxyOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.includes('dantri') || host.includes('vcmedia') || host.includes('vccorp')) {
+      return 'https://dantri.com.vn';
+    }
+    if (host.includes('tuoitre')) {
+      return 'https://tuoitre.vn';
+    }
+    if (host.includes('gocnhinmoi')) {
+      return 'https://gocnhinmoi.com.vn';
+    }
+  } catch (_) {}
+  return origin;
+}
+
 export async function GET(request: NextRequest) {
   // Proxy GET request is restricted by ALLOWED_HOSTNAMES, so authentication is not strictly required here.
   // This allows <img> tags to fetch images reliably without cookie/auth issues.
@@ -253,7 +269,7 @@ export async function GET(request: NextRequest) {
           'Cache-Control': res.headers.get('cache-control') || 'no-store',
         },
       });
-      response.cookies.set('active_proxy_origin', targetOrigin, {
+      response.cookies.set('active_proxy_origin', normalizeProxyOrigin(targetOrigin), {
         path: '/',
         maxAge: 3600,
         sameSite: 'lax',
@@ -288,6 +304,10 @@ export async function GET(request: NextRequest) {
       html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
         if (urlStr.includes('/api/proxy?')) return _m;
+
+        const lowerUrl = urlStr.split('?')[0].toLowerCase();
+        const isImage = imageExts.some(ext => lowerUrl.endsWith(ext)) || urlStr.includes('icdn.dantri.com.vn') || urlStr.includes('cdnweb.dantri.com.vn/images');
+        if (!isImage) return _m;
 
         try {
           const absolute = new URL(urlStr, targetUrl).href;

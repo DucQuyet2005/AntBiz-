@@ -41,6 +41,22 @@ function isActualAntBizRoute(pathname: string): boolean {
   return false;
 }
 
+function normalizeProxyOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.includes('dantri') || host.includes('vcmedia') || host.includes('vccorp')) {
+      return 'https://dantri.com.vn';
+    }
+    if (host.includes('tuoitre')) {
+      return 'https://tuoitre.vn';
+    }
+    if (host.includes('gocnhinmoi')) {
+      return 'https://gocnhinmoi.com.vn';
+    }
+  } catch (_) {}
+  return origin;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -60,7 +76,7 @@ export async function proxy(request: NextRequest) {
     try {
       const parsedUrl = new URL(requestUrlParam);
       if (isAllowedHost(parsedUrl.hostname)) {
-        targetOrigin = parsedUrl.origin;
+        targetOrigin = normalizeProxyOrigin(parsedUrl.origin);
         isProxyRequest = true;
       }
     } catch (_) {}
@@ -74,7 +90,7 @@ export async function proxy(request: NextRequest) {
       if (refererUrlParam) {
         const parsedRefererUrl = new URL(refererUrlParam);
         if (isAllowedHost(parsedRefererUrl.hostname)) {
-          targetOrigin = parsedRefererUrl.origin;
+          targetOrigin = normalizeProxyOrigin(parsedRefererUrl.origin);
           isProxyRequest = true;
         }
       } else if (!isActualAntBizRoute(refererUrl.pathname) || refererUrl.pathname === '/api/proxy' || refererUrl.pathname === '/') {
@@ -83,7 +99,7 @@ export async function proxy(request: NextRequest) {
           try {
             const parsedCookie = new URL(cookieOrigin);
             if (isAllowedHost(parsedCookie.hostname)) {
-              targetOrigin = parsedCookie.origin;
+              targetOrigin = normalizeProxyOrigin(parsedCookie.origin);
               isProxyRequest = true;
             }
           } catch (_) {}
@@ -99,7 +115,7 @@ export async function proxy(request: NextRequest) {
       try {
         const parsedCookie = new URL(cookieOrigin);
         if (isAllowedHost(parsedCookie.hostname)) {
-          targetOrigin = parsedCookie.origin;
+          targetOrigin = normalizeProxyOrigin(parsedCookie.origin);
           isProxyRequest = true;
         }
       } catch (_) {}
