@@ -305,18 +305,22 @@ export default function Step2Article({
   React.useEffect(() => {
     uploadedImagesRef.current = uploadedImages;
 
-    // Sync manually uploaded images to global state.crawledImageUrls
+    // Sync manually uploaded images to global state.crawledImageUrls, preserving articleContext images
+    const contextImages = (state.articleContext as any)?.imageUrls || (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
     const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
-    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
+    
+    // Existing crawled images or context images
+    const baseCrawled = (state.crawledImageUrls && state.crawledImageUrls.length > 0) ? state.crawledImageUrls : contextImages;
+    const crawledOnly = baseCrawled.filter((url: string) => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const uploadedUrls = uploadedImages.map(img => img.url);
-    const combined = [...crawledOnly, ...uploadedUrls];
+    const combined = Array.from(new Set([...crawledOnly, ...uploadedUrls]));
     
     const currentCombinedStr = JSON.stringify(state.crawledImageUrls || []);
     const newCombinedStr = JSON.stringify(combined);
-    if (currentCombinedStr !== newCombinedStr) {
+    if (currentCombinedStr !== newCombinedStr && combined.length > 0) {
       dispatch({ type: 'SET_CRAWLED_IMAGES', payload: combined });
     }
-  }, [uploadedImages, state.crawledImageUrls, dispatch]);
+  }, [uploadedImages, state.crawledImageUrls, state.articleContext, dispatch]);
 
   const getAllItems = React.useCallback(() => {
     const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
