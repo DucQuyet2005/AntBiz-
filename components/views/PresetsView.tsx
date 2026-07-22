@@ -1559,7 +1559,7 @@ export default function PresetsView() {
       </div>
 
       {/* Tabs & Search Row */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs mt-2">
         <div className="bg-gray-100 dark:bg-zinc-950 p-1 rounded-xl flex items-center gap-1 shrink-0 overflow-x-auto">
           <button
             type="button"
