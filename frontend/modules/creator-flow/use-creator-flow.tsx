@@ -35,6 +35,7 @@ export const initialCreatorFlowState: CreatorFlowState = {
   crawlStatus: 'idle',
   articleContext: null,
   crawledImageUrls: [],
+  croppedImageUrls: [],
   presets: [],
   selectedPresetId: null,
   searchPresetQuery: '',
@@ -117,6 +118,8 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       return { ...state, articleContext: action.payload, drafts: {}, postContent: '' };
     case 'SET_CRAWLED_IMAGES':
       return { ...state, crawledImageUrls: action.payload };
+    case 'SET_CROPPED_IMAGES':
+      return { ...state, croppedImageUrls: action.payload };
     case 'SET_PRESETS':
       return { ...state, presets: action.payload };
     case 'SET_SELECTED_PRESET':
@@ -778,40 +781,64 @@ export function CreatorFlowProvider({
     const connectedPlatforms = state.platforms
       .filter((platform) => platform.connected)
       .map((platform) => platform.id);
-    let imageUrls = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
-      ? state.crawledImageUrls
-      : (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
+    // Prefer smart-cropped URLs if available, otherwise fall back to crawled/thumbnail
+    let imageUrls = (state.croppedImageUrls && state.croppedImageUrls.length > 0)
+      ? state.croppedImageUrls
+      : (state.crawledImageUrls && state.crawledImageUrls.length > 0)
+        ? state.crawledImageUrls
+        : (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
 
-    // Upload any local (blob: or data:) images to Supabase avatars bucket before scheduling
-    if (imageUrls.some(url => url.startsWith('blob:') || url.startsWith('data:'))) {
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          const uploadedUrls = await Promise.all(imageUrls.map(async (url) => {
-            if (url.startsWith('blob:') || url.startsWith('data:')) {
-              try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                const ext = blob.type.split('/')[1] || 'png';
-                const path = `${user.id}/post_media_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-                const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true });
-                if (!error) {
-                  return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
-                }
-              } catch (e) {
-                console.error('Failed to upload local image', e);
-              }
-            }
+    // Ensure ALL imageUrls are 1080x1080 1:1 square JPEGs hosted on Supabase Storage before publishing
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const { smartCropToBlob } = await import('@/frontend/modules/smart-crop');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const folder = user?.id || 'public';
+
+      const processedUrls = await Promise.all(
+        imageUrls.map(async (url, idx) => {
+          // If URL is already a public Supabase Storage smart-cropped image, use it directly
+          if (url.includes('supabase.co') && url.includes('smart_crop')) {
             return url;
-          }));
-          imageUrls = uploadedUrls;
-        }
-      } catch (e) {
-        console.error('Failed to initialize Supabase client for upload', e);
-      }
+          }
+
+          try {
+            // 1. Smart-crop image to 1:1 square 1080x1080 JPEG blob
+            const { blob } = await smartCropToBlob(url);
+            
+            let uploadBlob: Blob;
+            if (blob) {
+              uploadBlob = blob;
+            } else {
+              // If already 1:1 square ratio, fetch image as blob
+              const proxyUrl = url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(url)}` : url;
+              const res = await fetch(proxyUrl);
+              uploadBlob = await res.blob();
+            }
+
+            // 2. Upload 1:1 1080x1080 JPEG to Supabase Storage
+            const ext = (uploadBlob.type || 'image/jpeg').split('/')[1] || 'jpg';
+            const path = `${folder}/smart_crop_${Date.now()}_${Math.random().toString(36).substring(7)}_${idx}.${ext}`;
+            const { error: uploadErr } = await supabase.storage
+              .from('avatars')
+              .upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || 'image/jpeg' });
+
+            if (!uploadErr) {
+              const publicUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+              return publicUrl;
+            } else {
+              console.warn('[Publish] Supabase storage upload error:', uploadErr);
+            }
+          } catch (e) {
+            console.error('[Publish] Failed to smart crop / upload image:', url, e);
+          }
+          return url;
+        })
+      );
+      imageUrls = processedUrls;
+    } catch (e) {
+      console.error('[Publish] Image processing error:', e);
     }
     let successful: PlatformType[] = [];
     let failed: PlatformType[] = [];

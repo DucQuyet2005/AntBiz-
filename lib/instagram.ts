@@ -36,10 +36,11 @@ export async function publishToInstagram(
     // 1. Tạo Instagram Media Container
     let containerId = '';
 
-    // Auto pad hình ảnh về tỷ lệ chuẩn 1:1 (1080x1080) bằng public proxy (tránh lỗi Aspect Ratio)
+    // Crop hình ảnh về tỷ lệ chuẩn 1:1 (1080x1080) bằng fit=cover nếu chưa qua Smart Crop
     const paddedImageUrls = imageUrls.map(url => {
       if (!url.startsWith('http')) return url;
-      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1080&h=1080&fit=contain&we&bg=white`;
+      if (url.includes('supabase.co') || url.includes('smart_crop')) return url;
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1080&h=1080&fit=cover&a=attention`;
     });
 
     if (paddedImageUrls.length === 1) {
@@ -83,6 +84,14 @@ export async function publishToInstagram(
 
       const childIds = await Promise.all(childPromises);
 
+      // Poll each child container until FINISHED before creating parent
+      for (const childId of childIds) {
+        const childReady = await waitForContainerReady(childId, token);
+        if (!childReady.ok) {
+          return { success: false, error: `Ảnh con trong carousel thất bại: ${childReady.error}` };
+        }
+      }
+
       const parentRes = await fetch(`https://graph.facebook.com/v19.0/${igId}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +114,13 @@ export async function publishToInstagram(
 
     console.log(`[Instagram API] Đang tiến hành đăng bài với ${paddedImageUrls.length} hình ảnh...`);
 
-    // 2. Publish Instagram Container
+    // 2. Poll container status until FINISHED (Instagram requires this before media_publish)
+    const statusReady = await waitForContainerReady(containerId, token);
+    if (!statusReady.ok) {
+      return { success: false, error: statusReady.error };
+    }
+
+    // 3. Publish Instagram Container
     const publishRes = await fetch(`https://graph.facebook.com/v19.0/${igId}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -148,4 +163,42 @@ export async function publishMedia(
   caption: string
 ): Promise<InstagramPublishResult> {
   return publishToInstagram(caption, mediaUrl ? [mediaUrl] : [], undefined, accessToken);
+}
+
+/**
+ * Poll Instagram container status until FINISHED.
+ * Instagram processes media asynchronously; publishing before FINISHED results in "Media ID is not available".
+ * @see https://developers.facebook.com/docs/instagram-api/reference/ig-media
+ */
+async function waitForContainerReady(
+  containerId: string,
+  token: string,
+  maxAttempts = 30,
+  intervalMs = 2000
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${containerId}?fields=status_code,status&access_token=${token}`
+    );
+    const data = await res.json();
+    const status: string = data.status_code || '';
+
+    if (status === 'FINISHED') {
+      console.log(`[Instagram API] Container ${containerId} sẵn sàng sau ${attempt} lần kiểm tra`);
+      return { ok: true };
+    }
+    if (status === 'ERROR' || status === 'EXPIRED') {
+      const reason = data.status || status;
+      console.error(`[Instagram API] Container ${containerId} thất bại: ${reason}`);
+      return { ok: false, error: `Instagram từ chối xử lý ảnh (${reason}). Có thể ảnh không đạt yêu cầu tỷ lệ hoặc kích thước.` };
+    }
+
+    // IN_PROGRESS or PUBLISHED — keep waiting
+    console.log(`[Instagram API] Container ${containerId} đang xử lý (${status || 'IN_PROGRESS'}), thử lại lần ${attempt}/${maxAttempts}...`);
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return {
+    ok: false,
+    error: `Container ${containerId} chưa sẵn sàng sau ${maxAttempts * intervalMs / 1000}s. Vui lòng thử lại sau.`,
+  };
 }
