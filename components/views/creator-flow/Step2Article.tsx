@@ -1340,7 +1340,7 @@ export default function Step2Article({
                   ref={iframeRef}
                   src={`/api/proxy?url=${encodeURIComponent(currentBrowserUrl || getBaseUrl(activeBrowserSite))}`}
                   className="w-full h-full border-none"
-                  sandbox="allow-same-origin allow-scripts allow-forms"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
                 />
               </div>
             </div>

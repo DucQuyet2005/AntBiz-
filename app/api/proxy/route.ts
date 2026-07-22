@@ -212,39 +212,36 @@ export async function GET(request: NextRequest) {
     var el = e.target;
     while (el && el.tagName !== 'A') el = el.parentElement;
     if (!el) return;
+
+    // Force target to _self so links stay inside iframe
+    if (el.getAttribute('target') === '_blank') {
+      el.setAttribute('target', '_self');
+    }
+
     var href = el.getAttribute('href');
     if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+
     try {
-      if (href.indexOf('/api/proxy?') !== -1) {
-        window.location.href = new URL(href, window.location.origin).href;
+      var abs = new URL(href, _currentTarget || TARGET).href;
+      if (!isAllowedHost(abs)) {
+        // Block navigation to external ad domains
+        e.preventDefault();
         return;
       }
-      var abs = new URL(href, _currentTarget || TARGET).href;
-      if (!isAllowedHost(abs)) return; // Block navigation to non-allowed hosts (ads, trackers)
-      window.location.href = PROXY + encodeURIComponent(abs);
+      _currentTarget = abs;
+      report();
     } catch (err) {}
-  }, true);
+  }, false);
 
-  // Remove ad iframes/scripts injected dynamically by ad networks
-  if (typeof MutationObserver !== 'undefined') {
-    var adPatterns = /doubleclick|googlesyndication|googleadservices|adnxs|facebook\\.net\\/signals|ads\\.|tracker|analytics/i;
-    new MutationObserver(function(mutations) {
-      mutations.forEach(function(m) {
-        m.addedNodes.forEach(function(node) {
-          if (node.nodeType !== 1) return;
-          var tag = node.tagName;
-          if (tag === 'IFRAME' || tag === 'SCRIPT') {
-            var src = node.getAttribute('src') || '';
-            if (adPatterns.test(src)) {
-              node.remove();
-            }
-          }
-        });
-      });
-    }).observe(document.documentElement, { childList: true, subtree: true });
-  }
+  // Lightweight periodic cleanup of ad iframes without layout thrashing
+  setInterval(function() {
+    try {
+      var iframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="googlesyndication"], iframe[src*="adnxs"]');
+      for (var i = 0; i < iframes.length; i++) {
+        iframes[i].remove();
+      }
+    } catch (_) {}
+  }, 3000);
 })();
 </script>`;
 
