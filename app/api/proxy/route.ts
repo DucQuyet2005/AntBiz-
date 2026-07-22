@@ -141,6 +141,11 @@ export async function GET(request: NextRequest) {
     opacity: 0 !important;
     pointer-events: none !important;
   }
+  /* Auto-hide empty stagnant skeleton placeholders */
+  [class*="skeleton"]:not(:has(img)):not(:has(a)),
+  .dt-skeleton:not(:has(img)):not(:has(a)) {
+    display: none !important;
+  }
 </style>
 <script>
 (function () {
