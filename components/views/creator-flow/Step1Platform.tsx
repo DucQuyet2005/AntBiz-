@@ -17,7 +17,7 @@ const ThreadsIcon = ({ className = '' }: { className?: string }) => (
 interface Step1PlatformProps {
   selectedPlatforms: PlatformType[];
   onSelect: (platforms: PlatformType[]) => void;
-  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean }>;
+  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }>;
   isLoadingPlatforms?: boolean;
 }
 
@@ -27,9 +27,9 @@ export default function Step1Platform({
   platformsList,
   isLoadingPlatforms: isLoadingProp,
 }: Step1PlatformProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean }> = [];
+  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }> = [];
   let contextIsLoading = false;
   try {
     const flow = useCreatorFlow();
@@ -167,34 +167,59 @@ export default function Step1Platform({
               </p>
 
               {/* Connected State vs Unconnected State */}
+              {/* Connected State vs Unconnected State */}
               {isConnected ? (
-                <>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-5">
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>{t('creator.step1.connectedBadge')}</span>
-                  </div>
+                (() => {
+                  const actualAccountName = platformsState.find(p => p.id === platform.id)?.accountName || 'AntBiz Official';
+                  const initials = actualAccountName
+                    .split(' ')
+                    .filter(Boolean)
+                    .map((n: string) => n[0])
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase() || 'AB';
 
-                  {/* Connected Fanpage Card Preview */}
-                  <div className="w-full bg-white dark:bg-zinc-800/90 border border-emerald-500/20 rounded-2xl p-3 flex items-center justify-between shadow-xs mt-auto">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-black flex items-center justify-center shrink-0 text-xs overflow-hidden border border-primary/20">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          src="/images/avatar-placeholder.png" 
-                          onError={(e) => (e.currentTarget.style.display = 'none')} 
-                          className="w-full h-full object-cover" 
-                          alt="Avatar"
-                        />
-                        <span>AB</span>
+                  let platformLabel = 'Fanpage';
+                  if (platform.id === 'instagram') {
+                    platformLabel = 'Instagram';
+                  } else if (platform.id === 'threads') {
+                    platformLabel = 'Threads';
+                  } else {
+                    platformLabel = 'Fanpage';
+                  }
+
+                  const subtitleText = platformLabel;
+
+                  return (
+                    <>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-5">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>{t('creator.step1.connectedBadge')}</span>
                       </div>
-                      <div className="min-w-0 text-left">
-                        <p className="text-xs font-bold text-text truncate">AntBiz Official</p>
-                        <p className="text-[10px] text-text-muted mt-0.5 truncate">{t('creator.step1.followersCount')}</p>
+
+                      {/* Connected Fanpage Card Preview */}
+                      <div className="w-full bg-white dark:bg-zinc-800/90 border border-emerald-500/20 rounded-2xl p-3 flex items-center justify-between shadow-xs mt-auto">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-black flex items-center justify-center shrink-0 text-xs overflow-hidden border border-primary/20">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src="/images/avatar-placeholder.png" 
+                              onError={(e) => (e.currentTarget.style.display = 'none')} 
+                              className="w-full h-full object-cover" 
+                              alt="Avatar"
+                            />
+                            <span>{initials}</span>
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className="text-xs font-bold text-text truncate">{actualAccountName}</p>
+                            <p className="text-[10px] text-text-muted mt-0.5 truncate">{subtitleText}</p>
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-text-muted/70 hover:text-primary shrink-0 transition-colors" />
                       </div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-text-muted/70 hover:text-primary shrink-0 transition-colors" />
-                  </div>
-                </>
+                    </>
+                  );
+                })()
               ) : (
                 <div className="w-full flex flex-col items-center mt-auto">
                   <Link

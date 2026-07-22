@@ -111,6 +111,30 @@ export class SocialAccountConnectionsModule implements SocialAccountConnectionsM
   async disconnect(userId: string, platform: unknown) {
     await this.repository.disconnect(userId, parseDisconnectPlatform(platform));
   }
+
+  async refresh(userId: string, platform: string): Promise<{ success: boolean; expiresAt?: string }> {
+    const dbPlatform = platform === 'threads' ? 'thread' : platform;
+    if (dbPlatform !== 'thread') {
+      throw new SocialAccountConnectionsError(
+        'invalid_state',
+        400,
+        'Nền tảng này không hỗ trợ gia hạn token tự động'
+      );
+    }
+
+    const tokenData = await this.repository.findAccessToken(userId, 'thread');
+    if (!tokenData) {
+      throw new SocialAccountConnectionsError(
+        'no_accounts',
+        404,
+        'Không tìm thấy tài khoản liên kết phù hợp để gia hạn'
+      );
+    }
+
+    const { accessToken, expiresAt } = await this.threadsProvider.refreshAccessToken(tokenData.accessToken);
+    const success = await this.repository.updateToken(userId, 'thread', accessToken, expiresAt);
+    return { success, expiresAt };
+  }
 }
 
 function validateProviderIntent(provider: ConnectionProvider, intent: ConnectionIntent) {

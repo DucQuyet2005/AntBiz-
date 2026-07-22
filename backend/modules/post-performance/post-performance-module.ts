@@ -1,7 +1,15 @@
-import type { PerformanceCollector, PostPerformanceRepository } from './post-performance-types';
+import type { PerformanceCollector, PostPerformanceRepository, GoldenHoursResult } from './post-performance-types';
+import { GoldenHoursCalculator } from './golden-hours-calculator';
+
+interface CacheEntry {
+  timestamp: number;
+  data: GoldenHoursResult;
+}
 
 export class PostPerformanceModule {
   private readonly collectorMap = new Map<string, PerformanceCollector>();
+  private readonly goldenHoursCache = new Map<string, CacheEntry>();
+  private readonly cacheTtlMs = 15 * 60 * 1000; // 15 phút
 
   constructor(
     private readonly repository: PostPerformanceRepository,
@@ -11,6 +19,45 @@ export class PostPerformanceModule {
     collectorArray.forEach(c => {
       this.collectorMap.set(c.platform, c);
     });
+  }
+
+  /**
+   * Tính toán và trả về giờ vàng phân tích từ lịch sử 30 ngày cho một người dùng & nền tảng (có cache)
+   */
+  async getGoldenHours(userId: string, platform: string = 'all'): Promise<GoldenHoursResult> {
+    const normalizedPlatform = platform.toLowerCase() === 'thread' ? 'threads' : platform.toLowerCase();
+    const cacheKey = `${userId}_${normalizedPlatform}`;
+    const now = Date.now();
+
+    const cached = this.goldenHoursCache.get(cacheKey);
+    if (cached && now - cached.timestamp < this.cacheTtlMs) {
+      return cached.data;
+    }
+
+    const posts = await this.repository.findPostsWithInteractions(userId, normalizedPlatform, 30);
+    const result = GoldenHoursCalculator.calculateGoldenHours(posts, normalizedPlatform);
+
+    this.goldenHoursCache.set(cacheKey, {
+      timestamp: now,
+      data: result,
+    });
+
+    return result;
+  }
+
+  /**
+   * Xóa cache giờ vàng khi cần
+   */
+  clearGoldenHoursCache(userId?: string) {
+    if (!userId) {
+      this.goldenHoursCache.clear();
+      return;
+    }
+    for (const key of this.goldenHoursCache.keys()) {
+      if (key.startsWith(`${userId}_`)) {
+        this.goldenHoursCache.delete(key);
+      }
+    }
   }
 
   /**
@@ -81,3 +128,4 @@ export class PostPerformanceModule {
     return results;
   }
 }
+

@@ -48,6 +48,33 @@ export class SupabaseLinkedAccountRepository implements LinkedAccountRepository 
       .eq('platform', platform);
     if (error) throw repositoryFailure('disconnect', error);
   }
+
+  async findAccessToken(userId: string, platform: StoredConnectionPlatform): Promise<{ accessToken: string; refreshToken?: string | null } | null> {
+    const { data, error } = await this.supabase
+      .from('linked_accounts')
+      .select('access_token, refresh_token')
+      .eq('user_id', userId)
+      .eq('platform', platform)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+    };
+  }
+
+  async updateToken(userId: string, platform: StoredConnectionPlatform, accessToken: string, expiresAt: string | null): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('linked_accounts')
+      .update({
+        access_token: accessToken,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('platform', platform);
+    return !error;
+  }
 }
 
 function repositoryFailure(operation: string, cause: unknown) {

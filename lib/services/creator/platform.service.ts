@@ -7,6 +7,7 @@ export interface PlatformConnection {
   name: string;
   connected: boolean;
   avatarUrl?: string;
+  accountName?: string;
 }
 
 export const platformService = {

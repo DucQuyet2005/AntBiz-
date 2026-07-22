@@ -98,6 +98,45 @@ export default function SettingsView() {
     }
   };
 
+  const handleRefreshSocial = async (platform: string) => {
+    const platformLabel = platform === 'thread' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram';
+    setSocialLoading(true);
+    try {
+      const res = await fetch(`/api/linked-accounts?platform=${platform}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? `Đã gia hạn thành công tài khoản ${platformLabel}!` 
+                : `${platformLabel} account renewed successfully!`,
+              type: 'success',
+            }
+          })
+        );
+        await loadSocialAccounts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? `Gia hạn thất bại: ${errorData.error || 'Lỗi hệ thống'}` 
+                : `Renewal failed: ${errorData.error || 'System error'}`,
+              type: 'error',
+            }
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Error renewing social account:', err);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
@@ -351,6 +390,7 @@ export default function SettingsView() {
               {/* Facebook Connection */}
               {(() => {
                 const conn = socialAccounts.find(a => a.platform === 'facebook');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
                 return (
                   <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
                     <div className="flex items-center gap-3">
@@ -366,9 +406,15 @@ export default function SettingsView() {
                               {t('common.updating')}
                             </span>
                           ) : conn ? (
-                            <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
-                              {t('settings.connected')}: {conn.account_name}
-                            </span>
+                            isExpired ? (
+                              <span className="text-red-500 font-extrabold text-[10px]">
+                                {language === 'vi' ? 'Hết hạn' : 'Expired'}: {conn.account_name}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                                {t('settings.connected')}: {conn.account_name}
+                              </span>
+                            )
                           ) : (
                             <span className="text-text-muted">{t('common.notConnected')}</span>
                           )}
@@ -376,16 +422,16 @@ export default function SettingsView() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => conn ? handleDisconnectSocial('facebook') : handleConnectSocial('facebook')}
+                      onClick={() => (conn && !isExpired) ? handleDisconnectSocial('facebook') : handleConnectSocial('facebook')}
                       disabled={socialLoading}
                       className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                        conn 
+                        (conn && !isExpired)
                           ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
                           : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
                       }`}
                     >
                       {socialLoading && <Loader2 size={11} className="animate-spin" />}
-                      {conn ? t('settings.disconnect') : t('settings.connect')}
+                      {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
                     </button>
                   </div>
                 );
@@ -394,42 +440,72 @@ export default function SettingsView() {
               {/* Threads Connection */}
               {(() => {
                 const conn = socialAccounts.find(a => a.platform === 'thread');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
+                
+                const diffTime = conn?.expires_at ? new Date(conn.expires_at).getTime() - Date.now() : 0;
+                const remainingDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+                const isExpiringSoon = conn?.expires_at && !isExpired && remainingDays <= 7;
+
                 return (
-                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 text-black dark:text-white flex items-center justify-center shrink-0 border dark:border-white/5">
-                        <ThreadsIcon size={20} className="text-black dark:text-white" />
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex flex-col gap-3 text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 text-black dark:text-white flex items-center justify-center shrink-0 border dark:border-white/5">
+                          <ThreadsIcon size={20} className="text-black dark:text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Meta Threads</h3>
+                          <span className="text-[10px] font-bold block mt-[2px]">
+                            {socialLoading ? (
+                              <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                                <Loader2 size={10} className="animate-spin" />
+                                {t('common.updating')}
+                              </span>
+                            ) : conn ? (
+                              isExpired ? (
+                                <span className="text-red-500 font-extrabold text-[10px]">
+                                  {language === 'vi' ? 'Hết hạn' : 'Expired'}: @{conn.account_name}
+                                </span>
+                              ) : (
+                                <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                                  {t('settings.connected')}: @{conn.account_name}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-text-muted">{t('common.notConnected')}</span>
+                            )}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold">Meta Threads</h3>
-                        <span className="text-[10px] font-bold block mt-[2px]">
-                          {socialLoading ? (
-                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
-                              <Loader2 size={10} className="animate-spin" />
-                              {t('common.updating')}
-                            </span>
-                          ) : conn ? (
-                            <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
-                              {t('settings.connected')}: @{conn.account_name}
-                            </span>
-                          ) : (
-                            <span className="text-text-muted">{t('common.notConnected')}</span>
-                          )}
-                        </span>
-                      </div>
+                      <button 
+                        onClick={() => (conn && !isExpired) ? handleDisconnectSocial('thread') : handleConnectSocial('threads')}
+                        disabled={socialLoading}
+                        className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                          (conn && !isExpired)
+                            ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                            : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                        }`}
+                      >
+                        {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                        {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => conn ? handleDisconnectSocial('thread') : handleConnectSocial('threads')}
-                      disabled={socialLoading}
-                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                        conn 
-                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
-                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
-                      }`}
-                    >
-                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
-                      {conn ? t('settings.disconnect') : t('settings.connect')}
-                    </button>
+                    {isExpiringSoon && (
+                      <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                        <span>
+                          {language === 'vi' 
+                            ? `Token sắp hết hạn (Còn lại ${remainingDays} ngày)` 
+                            : `Token expiring soon (${remainingDays} days remaining)`}
+                        </span>
+                        <button
+                          onClick={() => handleRefreshSocial('thread')}
+                          disabled={socialLoading}
+                          className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 transition-all font-bold px-2 py-1 rounded-md text-amber-900 dark:text-amber-200 cursor-pointer"
+                        >
+                          {language === 'vi' ? 'Gia hạn ngay' : 'Renew now'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -437,6 +513,7 @@ export default function SettingsView() {
               {/* Instagram Connection */}
               {(() => {
                 const conn = socialAccounts.find(a => a.platform === 'instagram');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
                 return (
                   <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
                     <div className="flex items-center gap-3">
@@ -452,9 +529,15 @@ export default function SettingsView() {
                               {t('common.updating')}
                             </span>
                           ) : conn ? (
-                            <span className="text-emerald-655 dark:text-emerald-400 font-extrabold text-[10px] line-clamp-1 max-w-[200px]">
-                              {t('settings.connected')}: {conn.account_name}
-                            </span>
+                            isExpired ? (
+                              <span className="text-red-500 font-extrabold text-[10px]">
+                                {language === 'vi' ? 'Hết hạn' : 'Expired'}: {conn.account_name}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-655 dark:text-emerald-400 font-extrabold text-[10px] line-clamp-1 max-w-[200px]">
+                                {t('settings.connected')}: {conn.account_name}
+                              </span>
+                            )
                           ) : (
                             <span className="text-text-muted">{t('common.notConnected')}</span>
                           )}
@@ -462,16 +545,16 @@ export default function SettingsView() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => conn ? handleDisconnectSocial('instagram') : handleConnectSocial('instagram')}
+                      onClick={() => (conn && !isExpired) ? handleDisconnectSocial('instagram') : handleConnectSocial('instagram')}
                       disabled={socialLoading}
                       className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                        conn 
+                        (conn && !isExpired)
                           ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
                           : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
                       }`}
                     >
                       {socialLoading && <Loader2 size={11} className="animate-spin" />}
-                      {conn ? t('settings.disconnect') : t('settings.connect')}
+                      {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
                     </button>
                   </div>
                 );

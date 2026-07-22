@@ -74,12 +74,15 @@ export interface FacebookConnectionProvider {
 export interface ThreadsConnectionProvider {
   buildAuthorizationUrl(state: string): string;
   discoverAccount(code: string): Promise<LinkedAccountCandidate>;
+  refreshAccessToken(accessToken: string): Promise<{ accessToken: string; expiresAt: string }>;
 }
 
 export interface LinkedAccountRepository {
   list(userId: string): Promise<LinkedAccountPublicRecord[]>;
   upsert(userId: string, candidate: LinkedAccountCandidate): Promise<boolean>;
   disconnect(userId: string, platform: StoredConnectionPlatform): Promise<void>;
+  findAccessToken(userId: string, platform: StoredConnectionPlatform): Promise<{ accessToken: string; refreshToken?: string | null } | null>;
+  updateToken(userId: string, platform: StoredConnectionPlatform, accessToken: string, expiresAt: string | null): Promise<boolean>;
 }
 
 export interface SocialAccountConnectionsLogger {
@@ -97,4 +100,5 @@ export interface SocialAccountConnectionsModuleInterface {
   complete(input: CompleteConnectionInput): Promise<CompleteConnectionResult>;
   list(userId: string): Promise<LinkedAccountPublicRecord[]>;
   disconnect(userId: string, platform: unknown): Promise<void>;
+  refresh(userId: string, platform: string): Promise<{ success: boolean; expiresAt?: string }>;
 }
