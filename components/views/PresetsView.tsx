@@ -75,13 +75,13 @@ const PLATFORM_OPTIONS: { value: Platform; label: string; color: string }[] = [
 ];
 
 const CATEGORIES = [
-  { id: "all", label: "Tất cả danh mục" },
-  { id: "Bán hàng", label: "Bán hàng & Doanh số" },
-  { id: "Thương hiệu", label: "Nhận diện Thương hiệu" },
-  { id: "Tương tác", label: "Tương tác & Cộng đồng" },
-  { id: "Giáo dục", label: "Giáo dục & Kiến thức" },
-  { id: "Tuyển dụng", label: "Tuyển dụng" },
-  { id: "Sự kiện", label: "Sự kiện & Truyền thông" },
+  { id: "all", labelVi: "Tất cả danh mục", labelEn: "All Categories" },
+  { id: "Bán hàng", labelVi: "Bán hàng & Doanh số", labelEn: "Sales & Revenue" },
+  { id: "Thương hiệu", labelVi: "Nhận diện Thương hiệu", labelEn: "Brand Identity" },
+  { id: "Tương tác", labelVi: "Tương tác & Cộng đồng", labelEn: "Engagement & Community" },
+  { id: "Giáo dục", labelVi: "Giáo dục & Kiến thức", labelEn: "Education & Knowledge" },
+  { id: "Tuyển dụng", labelVi: "Tuyển dụng", labelEn: "Recruitment" },
+  { id: "Sự kiện", labelVi: "Sự kiện & Truyền thông", labelEn: "Events & Media" },
 ];
 
 // ─── PlatformIcon ────────────────────────────────────────────────────────────
@@ -1612,7 +1612,7 @@ export default function PresetsView() {
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.label}
+                  {lang === "vi" ? cat.labelVi : cat.labelEn}
                 </option>
               ))}
             </select>
