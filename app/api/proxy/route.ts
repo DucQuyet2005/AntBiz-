@@ -497,3 +497,62 @@ export async function GET(request: NextRequest) {
     return new NextResponse(`Error proxying page: ${error.message}`, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const targetUrl = searchParams.get('url');
+
+  if (!targetUrl) {
+    return new NextResponse('Missing url parameter', { status: 400 });
+  }
+
+  if (!isAllowedUrl(targetUrl)) {
+    return new NextResponse('URL not allowed', { status: 403 });
+  }
+
+  try {
+    const bodyText = await request.text();
+    const parsedTarget = new URL(targetUrl);
+    
+    let spoofReferer = parsedTarget.origin + '/';
+    if (spoofReferer.includes('dantri.com.vn') || spoofReferer.includes('vcmedia.vn') || spoofReferer.includes('dantricdn.com') || spoofReferer.includes('vccorp.vn')) {
+      spoofReferer = 'https://dantri.com.vn/';
+    } else if (spoofReferer.includes('tuoitre.vn') || spoofReferer.includes('tuoitrecdn.net')) {
+      spoofReferer = 'https://tuoitre.vn/';
+    }
+    
+    const reqHeaders = new Headers();
+    reqHeaders.set('Referer', spoofReferer);
+    reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
+    const clientContentType = request.headers.get('content-type');
+    if (clientContentType) reqHeaders.set('Content-Type', clientContentType);
+
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: reqHeaders,
+      body: bodyText,
+    });
+
+    const resBody = await res.arrayBuffer();
+    return new NextResponse(resBody, {
+      status: res.status,
+      headers: {
+        'Content-Type': res.headers.get('content-type') || 'application/json',
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (err: any) {
+    return new NextResponse('Proxy POST Error: ' + err.message, { status: 500 });
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+    },
+  });
+}
