@@ -737,17 +737,21 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
   let description = jsonLdDescription;
   if (!description) {
     if (url.includes('dantri.com.vn')) {
-      description = cleanText($('h2.sapo, h2.sing-sapo, h2.detail-sapo').first().text()) || 
-                    cleanText($('h2').first().text());
+      // Dantri sapo elements usually have class sapo, sing-sapo, detail-sapo, singular-sapo
+      const candidateSapo = cleanText($('h2.sapo, h2.sing-sapo, h2.detail-sapo, h2.singular-sapo, .singular-sapo, h2.dt-sapo').first().text());
+      if (candidateSapo && candidateSapo.length > 20) {
+        description = candidateSapo;
+      }
     } else if (url.includes('tuoitre.vn')) {
       description = cleanText($('.detail-sapo, .sapo').first().text());
     }
 
     if (!description) {
-      // Try h4 (often used as sapo in Spotlight layouts)
-      const h4Text = cleanText($('h4').first().text());
-      description = cleanText(scope.find('p.mb-5').first().text()) || h4Text ||
-        cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+      // Fall back to og:description / meta description
+      const metaDesc = cleanText($('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '');
+      if (metaDesc && metaDesc.length > 15) {
+        description = metaDesc;
+      }
     }
   }
 
