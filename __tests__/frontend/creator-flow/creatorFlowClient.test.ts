@@ -16,6 +16,16 @@ describe('BrowserCreatorFlowClient', () => {
     ]);
   });
 
+  it('generates clean Instagram URL without auxiliary text', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
+      { platform: 'instagram', account_id: '178414', account_name: 'ngquoctoan662005 (qua Page: AntBiz)' },
+    ] }), { status: 200 }));
+    const client = new BrowserCreatorFlowClient(request);
+    const platforms = await client.listConnectedPlatforms();
+    const ig = platforms.find((p) => p.id === 'instagram');
+    expect(ig?.profileUrl).toBe('https://instagram.com/ngquoctoan662005');
+  });
+
   it('persists manual content and returns the real article identifier', async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       id: 'article-1', title: 'Title', full_text: 'Body', description: 'Summary',

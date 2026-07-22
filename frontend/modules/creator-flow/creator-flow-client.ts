@@ -80,11 +80,30 @@ export class BrowserCreatorFlowClient implements CreatorFlowClient {
     }
     return (['facebook', 'threads', 'instagram'] as PlatformType[]).map((platform) => {
       const record = connected.get(platform);
+      const accountId = record ? String((record as any).account_id || '') : undefined;
+      let profileUrl: string | undefined;
+
+      if (record && accountId) {
+        if (platform === 'facebook') {
+          profileUrl = `https://facebook.com/${accountId}`;
+        } else if (platform === 'threads') {
+          const rawName = record ? String((record as any).account_name || '') : '';
+          const handle = rawName.split(/\s*\(/)[0].trim().replace(/^@/, '');
+          profileUrl = handle ? `https://threads.net/@${handle}` : `https://threads.net`;
+        } else if (platform === 'instagram') {
+          const rawName = record ? String((record as any).account_name || '') : '';
+          const handle = rawName.split(/\s*\(/)[0].trim().replace(/^@/, '');
+          profileUrl = handle ? `https://instagram.com/${handle}` : `https://instagram.com`;
+        }
+      }
+
       return {
         id: platform,
         name: platform === 'threads' ? 'Threads' : `${platform[0].toUpperCase()}${platform.slice(1)}`,
         connected: !!record,
         accountName: record ? String((record as any).account_name || '') : undefined,
+        accountId,
+        profileUrl,
       };
     });
   }

@@ -17,7 +17,7 @@ const ThreadsIcon = ({ className = '' }: { className?: string }) => (
 interface Step1PlatformProps {
   selectedPlatforms: PlatformType[];
   onSelect: (platforms: PlatformType[]) => void;
-  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }>;
+  platformsList?: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string; profileUrl?: string }>;
   isLoadingPlatforms?: boolean;
 }
 
@@ -29,7 +29,7 @@ export default function Step1Platform({
 }: Step1PlatformProps) {
   const { t, language } = useLanguage();
 
-  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string }> = [];
+  let contextPlatforms: Array<{ id: PlatformType; name: string; connected: boolean; accountName?: string; profileUrl?: string }> = [];
   let contextIsLoading = false;
   try {
     const flow = useCreatorFlow();
@@ -167,10 +167,10 @@ export default function Step1Platform({
               </p>
 
               {/* Connected State vs Unconnected State */}
-              {/* Connected State vs Unconnected State */}
               {isConnected ? (
                 (() => {
-                  const actualAccountName = platformsState.find(p => p.id === platform.id)?.accountName || 'AntBiz Official';
+                  const matchedPlatform = platformsState.find(p => p.id === platform.id);
+                  const actualAccountName = matchedPlatform?.accountName || 'AntBiz Official';
                   const initials = actualAccountName
                     .split(' ')
                     .filter(Boolean)
@@ -211,11 +211,36 @@ export default function Step1Platform({
                             <span>{initials}</span>
                           </div>
                           <div className="min-w-0 text-left">
-                            <p className="text-xs font-bold text-text truncate">{actualAccountName}</p>
+                            {matchedPlatform?.profileUrl ? (
+                              <a
+                                href={matchedPlatform.profileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs font-bold text-text hover:text-primary hover:underline truncate block"
+                              >
+                                {actualAccountName}
+                              </a>
+                            ) : (
+                              <p className="text-xs font-bold text-text truncate">{actualAccountName}</p>
+                            )}
                             <p className="text-[10px] text-text-muted mt-0.5 truncate">{subtitleText}</p>
                           </div>
                         </div>
-                        <ExternalLink className="w-4 h-4 text-text-muted/70 hover:text-primary shrink-0 transition-colors" />
+                        {matchedPlatform?.profileUrl ? (
+                          <a
+                            href={matchedPlatform.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Mở trang ${platform.name}`}
+                            className="p-1 -mr-1 hover:bg-gray-100 dark:hover:bg-zinc-700/50 rounded-lg transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4 text-text-muted/70 hover:text-primary shrink-0 transition-colors" />
+                          </a>
+                        ) : (
+                          <ExternalLink className="w-4 h-4 text-text-muted/70 shrink-0 opacity-50" />
+                        )}
                       </div>
                     </>
                   );
