@@ -958,11 +958,17 @@ export function preprocessArticle(raw: CrawlResult): ArticleData | ListingData {
           if (text) bodyBlocks.push({ type: `heading${level}` as 'heading2' | 'heading3', text });
         } else if (btype === 'image') {
           let imgUrl = block.attr('data-url') || block.attr('data-src') || block.attr('src') || '';
+          if (!imgUrl) {
+            const innerImg = block.find('img').first();
+            imgUrl = innerImg.attr('data-url') || innerImg.attr('data-src') || innerImg.attr('src') || '';
+          }
           if (imgUrl) {
             imgUrl = resolveUrl(imgUrl, raw.url);
-            const caption = cleanCaption(block.attr('data-caption') || block.attr('alt'));
+            const caption = cleanCaption(block.attr('data-caption') || block.find('img').attr('alt') || block.attr('alt'));
             if (!isInvalidImage(imgUrl, caption)) {
-              images.push({ url: imgUrl, caption });
+              if (!images.some((i) => i.url === imgUrl)) {
+                images.push({ url: imgUrl, caption });
+              }
               bodyBlocks.push({ type: 'image', url: imgUrl, caption });
             }
           }
