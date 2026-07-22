@@ -139,7 +139,8 @@ function normalizeCrawledArticle(article: ArticleSourceResult) {
     ? article.category.startsWith('#') ? article.category : `#${article.category}`
     : '';
   
-  const images: Array<{ url: string; caption?: string }> = [...(article.images || [])];
+  // Prefer images from body (internal images inside the article content)
+  let images: Array<{ url: string; caption?: string }> = [];
   if (Array.isArray(article.body)) {
     for (const block of article.body) {
       const b = block as any;
@@ -150,6 +151,11 @@ function normalizeCrawledArticle(article: ArticleSourceResult) {
         }
       }
     }
+  }
+
+  // Fall back to article.images if no body images were found
+  if (images.length === 0 && Array.isArray(article.images)) {
+    images = [...article.images];
   }
 
   const tags = article.tags || [];

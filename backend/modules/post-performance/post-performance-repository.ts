@@ -10,7 +10,7 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     let query = this.supabase
       .from('scheduled_posts')
-      .select('id, platform, fb_post_id, threads_post_id, instagram_media_id, created_by')
+      .select('id, platform, fb_post_id, threads_post_id, instagram_media_id, created_by, posted_at, post_interactions(updated_at)')
       .eq('status', 'posted')
       .gte('posted_at', cutoffDate.toISOString())
       .order('posted_at', { ascending: false })
@@ -43,11 +43,18 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
         externalPostId = post.instagram_media_id;
       }
 
+      const interactionRaw = Array.isArray(post.post_interactions)
+        ? post.post_interactions[0]
+        : post.post_interactions;
+      const lastSyncedAt = interactionRaw?.updated_at || null;
+
       return {
         id: post.id,
         platform: post.platform === 'thread' ? 'threads' : post.platform,
         externalPostId: externalPostId || '',
         userId: post.created_by,
+        postedAt: post.posted_at,
+        lastSyncedAt,
       };
     }).filter(post => post.externalPostId !== '');
   }

@@ -86,7 +86,27 @@ export class PostPerformanceModule {
     let succeeded = 0;
     const errors: Array<{ postId: string; error: string }> = [];
 
+    const now = Date.now();
+    const HOUR_MS = 60 * 60 * 1000;
+
     for (const post of posts) {
+      // Tiered Syncing Rule:
+      // Tier 1: Bài đăng < 24 giờ -> crawl mỗi 30 phút (0.5h)
+      // Tier 2: Bài đăng 1 - 7 ngày -> crawl mỗi 6 giờ
+      // Tier 3: Bài đăng > 7 ngày -> crawl mỗi 24 giờ
+      if (post.postedAt && post.lastSyncedAt) {
+        const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
+        const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
+
+        if (postAgeHours <= 24) {
+          if (timeSinceLastSyncHours < 0.5) continue;
+        } else if (postAgeHours <= 7 * 24) {
+          if (timeSinceLastSyncHours < 6) continue;
+        } else {
+          if (timeSinceLastSyncHours < 24) continue;
+        }
+      }
+
       attempted += 1;
       try {
         const token = await this.repository.findPageAccessToken(post.userId, platform);

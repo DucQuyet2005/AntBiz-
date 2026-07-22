@@ -24,7 +24,8 @@ export class PromptModule {
 
   async list(actor: PromptActor, input: PromptListInput): Promise<PromptListResult> {
     try {
-      return await this.repository.list(input, actor.role === 'admin' ? undefined : actor.id);
+      const isFullOrAdmin = actor.role === 'admin' || actor.role === 'marketer_full';
+      return await this.repository.list(input, isFullOrAdmin ? undefined : actor.id);
     } catch (error) {
       throw this.persistenceFailure('Không thể tải danh sách prompt', error, { actorId: actor.id });
     }

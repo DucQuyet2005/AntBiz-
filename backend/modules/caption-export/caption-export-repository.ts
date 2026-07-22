@@ -60,6 +60,7 @@ function applyFilters<T extends {
   lte(column: string, value: string): T;
 }>(query: T, filters: CaptionExportFilters) {
   if (filters.platform) query = query.eq('platform', filters.platform);
+  if (filters.creatorId) query = query.eq('created_by', filters.creatorId);
   if (filters.search) query = query.or(buildCaptionSearchFilter(filters.search));
   if (filters.startDate) query = query.gte('created_at', filters.startDate);
   if (filters.endDate) query = query.lte('created_at', filters.endDate);

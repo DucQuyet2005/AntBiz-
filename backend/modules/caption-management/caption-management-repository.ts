@@ -35,15 +35,18 @@ export class SupabaseCaptionManagementRepository implements CaptionManagementRep
       edited_content,
       status,
       is_favorite_template,
+      created_by,
       created_at,
       updated_at,
       article_id,
       articles!inner (id, title, url),
       prompt_id,
-      prompts (id, name)
+      prompts (id, name),
+      users:created_by (id, email)
     `, { count: 'exact' });
 
     if (input.platform) query = query.eq('platform', input.platform);
+    if (input.creatorId) query = query.eq('created_by', input.creatorId);
     if (input.search) {
       const pattern = `%${input.search}%`;
       query = query.or(`ai_content.ilike.${pattern},edited_content.ilike.${pattern},articles.title.ilike.${pattern}`);

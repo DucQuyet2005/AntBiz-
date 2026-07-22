@@ -10,8 +10,10 @@ import {
   CheckCircle2, 
   X,
   Loader2,
-  CalendarDays
+  CalendarDays,
+  Calendar
 } from 'lucide-react';
+import { buildGoogleCalendarUrl } from '@/frontend/modules/scheduled-publishing/google-calendar-helper';
 
 const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor" className={className}>
@@ -200,7 +202,28 @@ export default function ContentListView({ selectedPlatforms, searchQuery = '', o
           </span>
         </div>
 
-        <div className="shrink-0 ml-auto flex items-center">
+        <div className="shrink-0 ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const postTitle = post.captions?.articles?.title || post.captions?.ai_content || 'Bài đăng AntBiz';
+              const details = post.captions?.edited_content || post.captions?.ai_content || '';
+              const gcalUrl = buildGoogleCalendarUrl({
+                title: postTitle,
+                scheduledAt: post.scheduled_at,
+                details,
+                postId: post.id,
+                platform: post.platform,
+              });
+              window.open(gcalUrl, '_blank');
+            }}
+            className="p-1.5 rounded-xl text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors border border-blue-200/50 dark:border-blue-800/40 cursor-pointer active:scale-95 flex items-center gap-1 text-[10px] font-extrabold"
+            title={language === 'vi' ? 'Thêm bài đăng này vào Google Calendar' : 'Add to Google Calendar'}
+          >
+            <Calendar size={12} />
+            <span className="hidden sm:inline">+ Google Calendar</span>
+          </button>
           {statusBadge}
         </div>
       </div>

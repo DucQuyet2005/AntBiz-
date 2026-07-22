@@ -305,10 +305,9 @@ export default function Step2Article({
   React.useEffect(() => {
     uploadedImagesRef.current = uploadedImages;
 
-    // Sync manually uploaded images to global state.crawledImageUrls
-    const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
-    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const uploadedUrls = uploadedImages.map(img => img.url);
+    const uploadedUrlsSet = new Set(uploadedUrls);
+    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const combined = [...crawledOnly, ...uploadedUrls];
 
     const currentCombinedStr = JSON.stringify(state.crawledImageUrls || []);
@@ -358,16 +357,10 @@ export default function Step2Article({
       // ONLY auto-fill and show animation for web crawl sources. Manual sources (like Audio/File uploads) 
       // already handle their own state in useCreatorFlow to support appending.
       if (articleContext && sourceType !== 'manual') {
-        let newTitle = articleContext.title || '';
-        let newContent = articleContext.content || '';
+        const newTitle = articleContext.title || '';
+        const newContent = articleContext.content || '';
 
-        // Preserve manual text and append if already exists
-        if (state.manualContent && state.manualContent.trim().length > 0) {
-          newTitle = state.manualTitle || newTitle;
-          newContent = `${state.manualContent}\n\n[Nội dung bổ sung từ nguồn dữ liệu]:\n${newContent}`;
-        }
-
-        // Fill data IMMEDIATELY — do not rely on onAnimationComplete
+        // Fill data IMMEDIATELY with the new crawled article
         dispatch({
           type: 'SET_MANUAL_CONTENT',
           payload: { title: newTitle, content: newContent }
@@ -605,6 +598,15 @@ export default function Step2Article({
     if (!activeBrowserSite) return;
     if (crawlStatus === 'crawling' || isCrawlingActive) return;
 
+    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
+    setUploadedImages([]);
+    setUploadedFiles([]);
+    setAudioUrls({});
+    if (audioPlaybackRef.current) {
+      audioPlaybackRef.current.pause();
+    }
+    setPlayingAudio(null);
+
     // Lọc bỏ bài cào cũ để chuẩn bị thay bằng bài cào mới
     let previousManualOnly = state.manualContent;
     const markerIndex = previousManualOnly.indexOf('[Nội dung bổ sung từ nguồn dữ liệu]:');
@@ -616,7 +618,10 @@ export default function Step2Article({
         type: 'SET_MANUAL_CONTENT',
         payload: { title: previousManualOnly ? state.manualTitle : '', content: previousManualOnly }
       });
+    } else {
+      dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
     }
+    dispatch({ type: 'SET_CRAWLED_IMAGES', payload: [] });
 
     const site = activeBrowserSite;
     setActiveBrowserSite(null);
@@ -1464,7 +1469,7 @@ export default function Step2Article({
             <div className="p-6 overflow-y-auto flex-grow bg-gray-55 dark:bg-zinc-950/20">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {getAllItems().map((item, index) => (
-                  <div key={index} className="flex flex-col items-center gap-1.5 group relative select-none">
+                  <div key={`${item.type}-${item.url}-${index}`} className="flex flex-col items-center gap-1.5 group relative select-none">
                     <div
                       onClick={() => setActiveLightboxImage(item.url)}
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"

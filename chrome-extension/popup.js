@@ -9,13 +9,6 @@ const stateHome = document.getElementById('state-home');
 const stateError = document.getElementById('state-error');
 const stateExtracted = document.getElementById('state-extracted');
 const stateSuccess = document.getElementById('state-success');
-const stateHistory = document.getElementById('state-history');
-
-// Lịch sử
-const btnShowHistory = document.getElementById('btn-show-history');
-const btnCloseHistory = document.getElementById('btn-close-history');
-const historyList = document.getElementById('history-list');
-const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
 
 // Màn hình ghi âm & Xác nhận mới
 const stateRecording = document.getElementById('state-recording');
@@ -36,6 +29,13 @@ const loginErrorMessage = document.getElementById('login-error-message');
 const userProfile = document.getElementById('user-profile');
 const userNameEl = document.getElementById('user-name');
 const loadingText = document.getElementById('loading-text');
+
+// Màn hình Lịch sử bài đăng
+const stateHistory = document.getElementById('state-history');
+const btnShowHistory = document.getElementById('btn-show-history');
+const btnCloseHistory = document.getElementById('btn-close-history');
+const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
+const historyList = document.getElementById('history-list');
 
 // Màn hình lỗi
 const errorTitle = document.getElementById('error-title');
@@ -112,20 +112,20 @@ const MAX_RECORDING_SECONDS = 300; // 5 phút
 
 // Hiển thị trạng thái/màn hình
 function showState(stateEl, message = '') {
-  stateLoading.classList.add('hidden');
-  stateUnauth.classList.add('hidden');
-  stateHome.classList.add('hidden');
-  stateError.classList.add('hidden');
-  stateExtracted.classList.add('hidden');
-  stateSuccess.classList.add('hidden');
-  if (stateRecording) stateRecording.classList.add('hidden');
-  if (stateVoiceConfirm) stateVoiceConfirm.classList.add('hidden');
-  if (stateHistory) stateHistory.classList.add('hidden');
+  const allStates = [
+    stateLoading, stateUnauth, stateHome, stateError,
+    stateExtracted, stateSuccess, stateRecording, stateVoiceConfirm, stateHistory
+  ];
+  allStates.forEach(st => {
+    if (st) st.classList.add('hidden');
+  });
 
-  if (stateEl === stateLoading && message) {
+  if (stateEl === stateLoading && message && loadingText) {
     loadingText.textContent = message;
   }
-  stateEl.classList.remove('hidden');
+  if (stateEl) {
+    stateEl.classList.remove('hidden');
+  }
 }
 
 // Ẩn/Hiện bước Wizard con
@@ -246,7 +246,7 @@ function loadPromptConfigs(callback) {
 
     if (response && response.success && response.data && Array.isArray(response.data.data)) {
       activePresets = response.data.data;
-      
+
       // Lưu lại giá trị hiện tại trước khi cập nhật
       const currentValue = selectPreset.value;
 
@@ -270,7 +270,7 @@ function loadPromptConfigs(callback) {
       activePresets.forEach(config => {
         const option = document.createElement('option');
         option.value = config.id;
-        
+
         let displayName = config.name;
         if (config.is_system) {
           displayName += ' (Mẫu hệ thống)';
@@ -296,7 +296,7 @@ function loadPromptConfigs(callback) {
     } else {
       console.warn('Không thể lấy danh sách văn phong từ API:', response?.error);
     }
-    
+
     if (callback) callback();
   });
 }
@@ -342,7 +342,7 @@ function checkAuthAndInitialize() {
             }
             if (state.socialConfig) {
               selectPlatform.value = state.socialConfig.platform || 'facebook';
-              
+
               const savedPresetId = state.socialConfig.presetId;
               const hasSavedPreset = savedPresetId && Array.from(selectPreset.options).some(opt => opt.value === savedPresetId);
               if (hasSavedPreset) {
@@ -430,8 +430,11 @@ function initEventListeners() {
   }
 
   function fetchExtensionHistory() {
-    historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
-    
+    if (historyList) {
+      historyList.classList.remove('hidden');
+      historyList.innerHTML = '<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>';
+    }
+
     chrome.runtime.sendMessage({ action: 'api_get', endpoint: '/api/scheduled-posts/extension-history' }, (response) => {
       if (chrome.runtime.lastError || !response || response.error) {
         historyList.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 12px; padding: 20px 0;">Lỗi tải dữ liệu.</div>`;
@@ -448,7 +451,7 @@ function initEventListeners() {
       items.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        
+
         let statusName = item.status;
         if (item.status === 'pending') statusName = 'Chờ duyệt';
         if (item.status === 'scheduled') statusName = 'Đã lên lịch';
@@ -466,7 +469,7 @@ function initEventListeners() {
           <div class="history-item-title" title="${item.title}">${item.title}</div>
           <div class="history-item-time">Lịch: ${timeStr}</div>
         `;
-        
+
         div.style.cursor = 'pointer';
         div.addEventListener('click', () => {
           if (item.articleId) {
@@ -516,11 +519,11 @@ function initEventListeners() {
 
         if (response && response.success) {
           authToken = response.session.access_token;
-          
+
           // Reset form
           inputLoginEmail.value = '';
           inputLoginPassword.value = '';
-          
+
           // Khởi chạy lại kiểm tra session để load dữ liệu
           checkAuthAndInitialize();
         } else {
@@ -875,14 +878,14 @@ Yêu cầu định dạng:
       wrapper.style.display = 'none';
       return;
     }
-    
+
     wrapper.style.display = 'block';
     hours.forEach(hour => {
       const chip = document.createElement('div');
       const hourStr = hour < 10 ? `0${hour}:00` : `${hour}:00`;
       chip.textContent = hourStr;
       chip.style.cssText = 'padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;';
-      
+
       chip.onmouseover = () => {
         chip.style.background = '#fef3c7';
         chip.style.borderColor = '#f59e0b';
@@ -898,18 +901,18 @@ Yêu cầu định dạng:
           d.setDate(d.getDate() + 1);
         }
         d.setHours(hour, 0, 0, 0);
-        
+
         const pad = (n) => n < 10 ? '0' + n : n;
         const localIso = d.getFullYear() + '-' +
           pad(d.getMonth() + 1) + '-' +
           pad(d.getDate()) + 'T' +
           pad(d.getHours()) + ':' +
           pad(d.getMinutes());
-        
+
         inputScheduleTime.value = localIso;
         saveCurrentState();
       };
-      
+
       container.appendChild(chip);
     });
   }
@@ -1585,7 +1588,10 @@ function updateFbPreview() {
 
 // Lấy ID trạng thái màn hình hiện tại
 function getActiveStateId() {
-  const states = [stateLoading, stateUnauth, stateHome, stateError, stateExtracted, stateSuccess];
+  const states = [
+    stateLoading, stateUnauth, stateHome, stateError,
+    stateExtracted, stateSuccess, stateRecording, stateVoiceConfirm, stateHistory
+  ];
   for (const st of states) {
     if (st && !st.classList.contains('hidden')) {
       return st.id;

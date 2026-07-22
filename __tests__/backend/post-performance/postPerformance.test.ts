@@ -6,15 +6,16 @@ import type { PostPerformanceRepository, PostToUpdate, PerformanceMetrics } from
 describe('FacebookPerformanceCollector', () => {
   it('successfully fetches public metrics and insights', async () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('insights')) {
+      if (url.includes('metric=')) {
+        let val = 100;
+        if (url.includes('post_impressions_unique')) val = 80;
+        if (url.includes('post_clicks')) val = 15;
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
               data: [
-                { name: 'post_impressions', values: [{ value: 100 }] },
-                { name: 'post_impressions_unique', values: [{ value: 80 }] },
-                { name: 'post_clicks', values: [{ value: 15 }] },
+                { values: [{ value: val }] },
               ],
             }),
         } as Response);
@@ -100,10 +101,12 @@ describe('PostPerformanceModule', () => {
   beforeEach(() => {
     mockRepo = {
       findRecentPostedPosts: vi.fn(),
+      findPostsWithInteractions: vi.fn(),
       findPageAccessToken: vi.fn(),
       upsertInteractions: vi.fn(),
     };
     mockCollector = {
+      platform: 'facebook',
       fetchPostMetrics: vi.fn(),
     };
   });

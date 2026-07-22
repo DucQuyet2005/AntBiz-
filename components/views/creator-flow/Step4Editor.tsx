@@ -59,10 +59,11 @@ export default function Step4Editor() {
   // Default fallback image when no article/crawled image exists
   const fallbackImage = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000';
 
-  // Determine active post preview images (prefer custom uploaded/crawled list first, then thumbnail fallback)
+  // Determine active post preview images (prefer custom uploaded/crawled list first, then articleContext imageUrls/thumbnail, then fallback)
+  const contextImages = (state.articleContext as any)?.imageUrls || (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
   const postImages: string[] = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
     ? state.crawledImageUrls
-    : state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : [fallbackImage];
+    : (contextImages.length > 0 ? contextImages : [fallbackImage]);
   const postImage = postImages[0] || fallbackImage;
 
   const getTagColorClass = (tag: string) => {
