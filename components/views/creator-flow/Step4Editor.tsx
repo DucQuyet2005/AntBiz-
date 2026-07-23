@@ -12,6 +12,7 @@ import {
   Scissors, Crop
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useQuickPublishing } from '@/frontend/modules/quick-publishing';
 import { useSmartCrop } from '@/frontend/modules/smart-crop';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
@@ -52,6 +53,7 @@ export default function Step4Editor() {
     editHighlighted,
     restoreChatState,
   } = useCreatorFlow();
+  const quickPublishing = useQuickPublishing();
 
   // Style Presets states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
@@ -201,14 +203,6 @@ export default function Step4Editor() {
   const cleanBodyText = postContentText.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
   const displayedContent = cleanBodyText || postContentText;
 
-  const contentLength = displayedContent.length;
-  const wordCount = displayedContent.trim() ? displayedContent.trim().split(/\s+/).length : 0;
-
-  const isLongContent = contentLength > 500;
-
-  const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
-  const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
-
   const validKeywords = (state.articleContext?.keywords || []).filter(
     k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
   );
@@ -224,6 +218,57 @@ export default function Step4Editor() {
 
   // Unique merged hashtags
   const hashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
+
+  // Build the compiled text that will actually be published (Title + Body + Source + Hashtags string)
+  const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : hashtags;
+  const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
+  
+  const isCrawledSource = state.sourceType === 'gocnhinmoi' || state.sourceType === 'tuoitre' || state.sourceType === 'dantri';
+  const sourceName = isCrawledSource ? (() => {
+    if (state.sourceType === 'gocnhinmoi') return 'GOCNHINMOI';
+    if (state.sourceType === 'tuoitre') return 'TUOITRE';
+    if (state.sourceType === 'dantri') return 'DANTRI';
+    return '';
+  })() : '';
+
+  const displayOptions = state.displayOptions || {
+    showTitle: true,
+    showContent: true,
+    showImages: true,
+    showAuthor: true,
+    showHashtags: true,
+  };
+  const visibleOptionsList = [
+    { key: 'showTitle', val: displayOptions.showTitle },
+    { key: 'showContent', val: displayOptions.showContent },
+    ...(currentPlatform !== 'instagram' ? [{ key: 'showImages', val: displayOptions.showImages }] : []),
+    ...(isCrawledSource ? [{ key: 'showAuthor', val: displayOptions.showAuthor }] : []),
+    { key: 'showHashtags', val: displayOptions.showHashtags },
+  ];
+  const hiddenOptionsCount = visibleOptionsList.filter(opt => opt.val === false).length;
+
+  const compiledFullTextParts = [];
+  if (displayOptions.showTitle && currentTitle) {
+    compiledFullTextParts.push(currentTitle.trim());
+  }
+  if (displayOptions.showContent && displayedContent) {
+    compiledFullTextParts.push(displayedContent.trim());
+  }
+  if (displayOptions.showAuthor && isCrawledSource && sourceName) {
+    compiledFullTextParts.push(`Nguồn: ${sourceName}`);
+  }
+  if (displayOptions.showHashtags && effectiveHashtagsList.length > 0) {
+    compiledFullTextParts.push(effectiveHashtagsList.join(' '));
+  }
+  const compiledFullText = compiledFullTextParts.filter(Boolean).join('\n\n');
+
+  const contentLength = compiledFullText.length;
+  const wordCount = compiledFullText.trim() ? compiledFullText.trim().split(/\s+/).length : 0;
+
+  const isLongContent = displayedContent.length > 500;
+
+  const maxCharLimit = currentPlatform === 'threads' ? '500' : currentPlatform === 'instagram' ? '2,200' : '63,206';
+  const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
 
   const handleRestore = (idx: number) => {
     const result = restoreChatState(idx);
@@ -484,21 +529,12 @@ export default function Step4Editor() {
 
   // Floating display options popover state
   const [showDisplayOptionsPopover, setShowDisplayOptionsPopover] = useState<boolean>(false);
-  const displayOptions = state.displayOptions || {
-    showTitle: true,
-    showContent: true,
-    showImages: true,
-    showAuthor: true,
-    showHashtags: true,
-  };
-  const hiddenOptionsCount = Object.values(displayOptions).filter(v => v === false).length;
 
   // New hashtag input & state
   const [newHashtagInput, setNewHashtagInput] = useState<string>('');
   const [isAddingHashtag, setIsAddingHashtag] = useState<boolean>(false);
 
   const effectiveHashtags = state.customHashtags !== null ? state.customHashtags : hashtags;
-  const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
 
   const handleAddHashtag = (tag: string) => {
     const cleanTag = tag.trim().replace(/^#+/, '');
@@ -517,7 +553,25 @@ export default function Step4Editor() {
     dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: updated });
   };
 
+  const draftInputFor = (platform: 'facebook' | 'threads' | 'instagram') => {
+    const draft = state.drafts[platform];
+    if (!draft) return null;
+    return {
+      variantId: platform,
+      platform,
+      articleId: state.articleId || undefined,
+      captionId: draft.postId || undefined,
+      originalContent: draft.generatedPost?.content || draft.content,
+      currentContent: draft.content,
+      compiledContent: draft.content,
+    };
+  };
+
   const generateAITitle = async () => {
+    if (!state.selectedPlatform) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -528,24 +582,28 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
-      const prompt = `Yêu cầu: Viết lại 1 TIÊU ĐỀ bài viết thật hấp dẫn, giật gân, thu hút độc giả.\nQUY TẮC BẮT BUỘC: CHỈ trả về đúng 1 câu tiêu đề ngắn gọn (dưới 50 từ), KHÔNG chào hỏi, KHÔNG giải thích, KHÔNG thêm bớt ký tự dẫn dắt.\nTitle hiện tại: ${currentTitle}\nNội dung bài viết: ${contentContext}`;
-      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
-      let rawText = (res.data?.text || '').trim();
-      // Remove leading markdown headers or quotes
-      rawText = rawText.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
-      // Extract the first non-empty line in case AI returned multiple lines
-      const newTitle = rawText.split('\n').map(l => l.trim()).find(l => l.length > 0) || rawText;
+      const captionId = await quickPublishing.saveEdit(draft);
+      const res = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'full',
+        instruction: 'Hãy viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên nội dung bài viết này. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn (dưới 15 từ), không giải thích hay dẫn dắt.',
+        presetMode: 'auto',
+      });
 
-      if (newTitle) {
-        setEditableTitle(newTitle);
-        dispatch({ type: 'SET_CUSTOM_TITLE', payload: newTitle });
+      let newTitle = (res.generatedText || '').trim();
+      newTitle = newTitle.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
+      const cleanTitle = newTitle.split('\n').map(l => l.trim()).find(l => l.length > 0) || newTitle;
+
+      if (cleanTitle) {
+        setEditableTitle(cleanTitle);
+        dispatch({ type: 'SET_CUSTOM_TITLE', payload: cleanTitle });
         const aiMsg: ChatMessage = {
           id: `ai_${Date.now()}`,
           sender: 'ai',
-          text: `Đã cập nhật tiêu đề mới:\n✨ "${newTitle}"`,
+          text: `Đã cập nhật tiêu đề mới:\n✨ "${cleanTitle}"`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          modelUsed: 'Gemini 2.5 Flash',
+          modelUsed: 'Gemini 3.1 Flash Lite',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       }
@@ -564,6 +622,10 @@ export default function Step4Editor() {
   };
 
   const generateAIHashtags = async () => {
+    if (!state.selectedPlatform) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -574,13 +636,18 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
-      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. QUY TẮC BẮT BUỘC: CHỈ trả về danh sách các hashtag cách nhau bởi dấu cách, không giải thích hay chào hỏi (ví dụ: #AntBiz #Marketing #AI):\nNội dung bài viết: ${contentContext}`;
-      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
-      const reply = res.data?.text || '';
+      const captionId = await quickPublishing.saveEdit(draft);
+      const res = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'full',
+        instruction: 'Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết này. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI), không giải thích hay dẫn dắt.',
+        presetMode: 'auto',
+      });
+
+      const reply = res.generatedText || '';
       let parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
 
-      // Fallback: If AI returned plain words without '#', parse words and convert to hashtags
       if (parsedTags.length === 0 && reply.trim()) {
         const plainWords = reply
           .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
@@ -597,7 +664,7 @@ export default function Step4Editor() {
           sender: 'ai',
           text: `Đã cập nhật bộ Hashtags xu hướng mới:\n🏷️ ${parsedTags.join(' ')}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          modelUsed: 'Gemini 2.5 Flash',
+          modelUsed: 'Gemini 3.1 Flash Lite',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       } else {
@@ -1131,10 +1198,10 @@ export default function Step4Editor() {
                         {[
                           { key: 'showTitle', label: t('creator.step4.displayOptions.showTitle') },
                           { key: 'showContent', label: t('creator.step4.displayOptions.showContent') },
-                          { key: 'showImages', label: t('creator.step4.displayOptions.showImages') },
-                          { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') },
+                          currentPlatform !== 'instagram' ? { key: 'showImages', label: t('creator.step4.displayOptions.showImages') } : null,
+                          isCrawledSource ? { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') } : null,
                           { key: 'showHashtags', label: t('creator.step4.displayOptions.showHashtags') },
-                        ].map((opt) => {
+                        ].filter((opt): opt is { key: string; label: string } => opt !== null).map((opt) => {
                           const isChecked = displayOptions[opt.key as keyof typeof displayOptions] ?? true;
                           return (
                             <label
@@ -1241,8 +1308,7 @@ export default function Step4Editor() {
                             suppressContentEditableWarning
                             onBlur={(e) => {
                               const newText = e.currentTarget.innerText;
-                              const hashtagsStr = effectiveHashtags.length > 0 ? '\n\n' + effectiveHashtags.join(' ') : '';
-                              dispatch({ type: 'SET_POST_CONTENT', payload: newText + hashtagsStr });
+                              dispatch({ type: 'SET_POST_CONTENT', payload: newText });
                             }}
                             className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                           >
@@ -1271,10 +1337,10 @@ export default function Step4Editor() {
                       </>
                     )}
 
-                    {/* Author & Hashtags */}
-                    {displayOptions.showAuthor && (
+                    {/* Source & Hashtags */}
+                    {displayOptions.showAuthor && isCrawledSource && sourceName && (
                       <div className="text-xs text-slate-500 font-medium mb-2">
-                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                        Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                       </div>
                     )}
 
@@ -1308,7 +1374,7 @@ export default function Step4Editor() {
                   }`}>
                   {/* MAIN POST 1 BLOCK */}
                   <div className="flex gap-4">
-                    {/* Left Column: Avatar 1 + Connecting Line */}
+                    {/* Left Column: Avatar 1 */}
                     <div className="flex flex-col items-center shrink-0">
                       <div className="relative shrink-0">
                         <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
@@ -1318,9 +1384,6 @@ export default function Step4Editor() {
                           +
                         </div>
                       </div>
-
-                      {/* Vertical Thread Line running to bottom of Post 1 */}
-                      <div className="w-0.5 flex-grow bg-slate-200 dark:bg-zinc-700 mt-2 -mb-5 rounded-full min-h-[40px]" />
                     </div>
 
                     {/* Right Content 1 */}
@@ -1385,15 +1448,10 @@ export default function Step4Editor() {
                         </>
                       )}
 
-                      {/* 1/2 Badge */}
-                      <div className="mb-3">
-                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-md">1/2</span>
-                      </div>
-
-                      {/* Author & Hashtags */}
-                      {displayOptions.showAuthor && (
+                      {/* Source & Hashtags */}
+                      {displayOptions.showAuthor && isCrawledSource && sourceName && (
                         <div className="text-xs text-slate-500 font-medium mb-2">
-                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                          Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                         </div>
                       )}
 
@@ -1404,45 +1462,6 @@ export default function Step4Editor() {
 
                       {/* Action icons */}
                       <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300 pt-1">
-                        <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
-                        <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
-                        <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
-                        <Send size={18} className="cursor-pointer hover:text-primary transition-colors" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* THREAD REPLY POST 2 BLOCK */}
-                  <div className="flex gap-4 pt-4 border-t border-slate-100 dark:border-zinc-800/80">
-                    {/* Left Column: Avatar 2 */}
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className="relative shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
-                          A
-                        </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black border-2 border-white dark:border-zinc-900">
-                          +
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Content 2 */}
-                    <div className="flex-1 min-w-0 select-text">
-                      <div className="flex items-center justify-between select-none mb-2">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                          <span>1 giờ trước</span>
-                          <MoreHorizontal className="w-4 h-4 cursor-pointer" />
-                        </div>
-                      </div>
-
-                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400 truncate flex items-center gap-2 mb-3">
-                        <span className="text-slate-700 dark:text-slate-300 font-bold shrink-0">&gt;&gt;&gt; Xem chi tiết:</span>
-                        <span className="underline truncate">{state.articleContext?.sourceUrl || 'https://gocnhinmoi.com.vn/tay-...'}</span>
-                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0">2/2</span>
-                      </div>
-
-                      <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300">
                         <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
                         <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
                         <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
@@ -1477,7 +1496,7 @@ export default function Step4Editor() {
                   </div>
 
                   {/* MEDIA IMAGES CAROUSEL FOR INSTAGRAM */}
-                  {displayOptions.showImages && renderInstagramCarousel(postImages)}
+                  {renderInstagramCarousel(postImages)}
 
                   {/* Instagram Action Icons & Likes */}
                   <div className="p-4 pb-6 select-none">
@@ -1548,10 +1567,10 @@ export default function Step4Editor() {
                         </>
                       )}
 
-                      {/* Author & Hashtags */}
-                      {displayOptions.showAuthor && (
+                      {/* Source & Hashtags */}
+                      {displayOptions.showAuthor && isCrawledSource && sourceName && (
                         <div className="text-xs text-slate-500 font-medium mb-2">
-                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                          Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                         </div>
                       )}
 
@@ -1870,13 +1889,7 @@ export default function Step4Editor() {
               }}
             />
             {/* Input Bottom Action Toolbar */}
-            <div className="flex items-center justify-between pt-1 px-1 select-none">
-              <div className="flex items-center gap-1.5 text-text-muted">
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Đính kèm tệp"><ImageIcon className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Ghi âm"><Mic className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Mẫu câu"><Paperclip className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Tối ưu AI"><Sparkles className="w-4 h-4 text-amber-500" /></button>
-              </div>
+            <div className="flex items-center justify-end pt-1 px-1 select-none">
               <button
                 type="submit"
                 disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
@@ -1959,82 +1972,82 @@ export default function Step4Editor() {
                   </div>
                 </div>
 
-            {/* Presets List */}
-            <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
-              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
-                {state.presets
-                  .filter((preset) => {
-                    return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
-                      preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  })
-                  .sort((a, b) => {
-                    if (a.id === state.selectedPresetId) return -1;
-                    if (b.id === state.selectedPresetId) return 1;
-                    return 0;
-                  })
-                  .map((preset) => {
-                    const isSelected = state.selectedPresetId === preset.id;
-                    const isGeneratingThis = isSelected && state.isGeneratingPost;
-                    return (
-                      <div
-                        key={preset.id}
-                        onClick={() => {
-                          if (state.isGeneratingPost) return; // Prevent clicking while generating
-                          const newId = isSelected ? null : preset.id;
-                          dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
-                          regeneratePostContent(newId);
-                        }}
-                        className={`flex items-center justify-between p-4 transition-all ${
-                          state.isGeneratingPost ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                        } ${isSelected
-                          ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
-                          : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
-                            {getPlatformIcon(preset.platform)}
-                          </span>
-                          <div className="min-w-0">
-                            <h4 className={`text-xs font-bold text-text truncate flex items-center gap-2 ${isSelected ? 'text-primary' : ''}`}>
-                              <span>{preset.name}</span>
-                              {isGeneratingThis && (
-                                <span className="text-[9px] font-medium text-primary animate-pulse bg-primary/10 px-2 py-0.5 rounded-md">
-                                  Đang áp dụng...
-                                </span>
-                              )}
-                            </h4>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="hidden md:flex flex-wrap gap-1">
-                            {preset.tags.slice(0, 2).map((tag, tIdx) => (
-                              <span key={tIdx} className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${getTagColorClass(tag)}`}>
-                                {tag}
+                {/* Presets List */}
+                <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
+                  <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
+                    {state.presets
+                      .filter((preset) => {
+                        return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
+                          preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
+                      })
+                      .sort((a, b) => {
+                        if (a.id === initialSelectedPresetId) return -1;
+                        if (b.id === initialSelectedPresetId) return 1;
+                        return 0;
+                      })
+                      .map((preset) => {
+                        const isSelected = state.selectedPresetId === preset.id;
+                        const isGeneratingThis = isSelected && state.isGeneratingPost;
+                        return (
+                          <div
+                            key={preset.id}
+                            onClick={() => {
+                              if (state.isGeneratingPost) return; // Prevent clicking while generating
+                              const newId = isSelected ? null : preset.id;
+                              dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
+                              regeneratePostContent(newId);
+                            }}
+                            className={`flex items-center justify-between p-4 transition-all ${
+                              state.isGeneratingPost ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                            } ${isSelected
+                                ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
+                                : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
+                              }`}
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
+                                {getPlatformIcon(preset.platform)}
                               </span>
-                            ))}
-                            {preset.tags.length > 2 && (
-                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-text-muted">
-                                +{preset.tags.length - 2}
-                              </span>
-                            )}
-                          </div>
+                              <div className="min-w-0">
+                                <h4 className={`text-xs font-bold text-text truncate flex items-center gap-2 ${isSelected ? 'text-primary' : ''}`}>
+                                  <span>{preset.name}</span>
+                                  {isGeneratingThis && (
+                                    <span className="text-[9px] font-medium text-primary animate-pulse bg-primary/10 px-2 py-0.5 rounded-md">
+                                      Đang áp dụng...
+                                    </span>
+                                  )}
+                                </h4>
+                              </div>
+                            </div>
 
-                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
-                            ? 'border-primary bg-primary text-white shadow-sm'
-                            : 'border-gray-300 dark:border-zinc-700 bg-transparent'
-                            }`}>
-                            {isGeneratingThis ? (
-                              <Loader2 className="w-3 h-3 animate-spin text-white" />
-                            ) : isSelected ? (
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            ) : null}
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="hidden md:flex flex-wrap gap-1">
+                                {preset.tags.slice(0, 2).map((tag, tIdx) => (
+                                  <span key={tIdx} className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${getTagColorClass(tag)}`}>
+                                    {tag}
+                                  </span>
+                                ))}
+                                {preset.tags.length > 2 && (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-text-muted">
+                                    +{preset.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
+                                  ? 'border-primary bg-primary text-white shadow-sm'
+                                  : 'border-gray-300 dark:border-zinc-700 bg-transparent'
+                                }`}>
+                                {isGeneratingThis ? (
+                                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                                ) : isSelected ? (
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
 
                     {state.presets.filter((preset) => {
                       const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
@@ -2049,6 +2062,7 @@ export default function Step4Editor() {
                       )}
                   </div>
                 </div>
+
 
                 {/* Modal Footer */}
                 <div className="p-4 bg-gray-55 dark:bg-zinc-950 flex items-center justify-end gap-3">
