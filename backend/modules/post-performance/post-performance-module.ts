@@ -94,7 +94,8 @@ export class PostPerformanceModule {
     const HOUR_MS = 60 * 60 * 1000;
 
     let isRateLimited = false;
-    const batchSize = 5;
+    const batchSize = 10; // Tăng lên 10 để nhanh hơn
+    const tokenCache = new Map<string, string>();
     
     for (let i = 0; i < posts.length; i += batchSize) {
       if (isRateLimited) break;
@@ -124,7 +125,12 @@ export class PostPerformanceModule {
 
         attempted += 1;
         try {
-          const token = await this.repository.findPageAccessToken(post.userId, platform, post.externalPostId);
+          const cacheKey = `${post.userId}_${platform}_${post.externalPostId}`;
+          let token = tokenCache.get(cacheKey);
+          if (!token) {
+            token = await this.repository.findPageAccessToken(post.userId, platform, post.externalPostId);
+            if (token) tokenCache.set(cacheKey, token);
+          }
           if (!token) {
             throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
           }
@@ -156,9 +162,12 @@ export class PostPerformanceModule {
    */
   async syncAllPerformance(limit: number = 50, force: boolean = false) {
     const results: Record<string, { attempted: number; succeeded: number }> = {};
-    for (const platform of Array.from(this.collectorMap.keys())) {
+    const platforms = Array.from(this.collectorMap.keys());
+    
+    await Promise.all(platforms.map(async (platform) => {
       results[platform] = await this.syncPlatformPerformance(platform as any, limit, force);
-    }
+    }));
+    
     return results;
   }
 }
