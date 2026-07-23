@@ -530,7 +530,7 @@ export default function Step5Schedule() {
     }
   }, []);
 
-  const currentPlatform = state.selectedPlatform || 'facebook';
+  const currentPlatform = (Array.isArray(state.selectedPlatforms) && state.selectedPlatforms[0]) || state.selectedPlatform || 'facebook';
   const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
   const today = new Date();

@@ -138,8 +138,12 @@ export function useScheduleDragDrop(
 
   // ─── Golden Hour helpers ───
 
+  const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
+
   const isHourInDynamicList = useCallback((hour: number) => {
-    if (!Array.isArray(dynamicGoldenHours)) return false;
+    if (!Array.isArray(dynamicGoldenHours) || dynamicGoldenHours.length === 0) {
+      return DEFAULT_GOLDEN_HOURS.includes(hour);
+    }
     return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
   }, [dynamicGoldenHours]);
 
