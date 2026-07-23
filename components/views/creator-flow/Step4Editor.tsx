@@ -212,15 +212,32 @@ export default function Step4Editor() {
   // Unique merged hashtags
   const hashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
 
-  // Build the compiled text that will actually be published (Title + Body + Hashtags string)
+  // Build the compiled text that will actually be published (Title + Body + Source + Hashtags string)
   const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : hashtags;
   const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
   
-  const compiledFullText = [
-    currentTitle ? currentTitle.trim() : '',
-    displayedContent ? displayedContent.trim() : '',
-    effectiveHashtagsList.length > 0 ? effectiveHashtagsList.join(' ') : ''
-  ].filter(Boolean).join('\n\n');
+  const isCrawledSource = state.sourceType === 'gocnhinmoi' || state.sourceType === 'tuoitre' || state.sourceType === 'dantri';
+  const sourceName = isCrawledSource ? (() => {
+    if (state.sourceType === 'gocnhinmoi') return 'GOCNHINMOI';
+    if (state.sourceType === 'tuoitre') return 'TUOITRE';
+    if (state.sourceType === 'dantri') return 'DANTRI';
+    return '';
+  })() : '';
+
+  const compiledFullTextParts = [];
+  if (displayOptions.showTitle && currentTitle) {
+    compiledFullTextParts.push(currentTitle.trim());
+  }
+  if (displayOptions.showContent && displayedContent) {
+    compiledFullTextParts.push(displayedContent.trim());
+  }
+  if (displayOptions.showAuthor && isCrawledSource && sourceName) {
+    compiledFullTextParts.push(`Nguồn: ${sourceName}`);
+  }
+  if (displayOptions.showHashtags && effectiveHashtagsList.length > 0) {
+    compiledFullTextParts.push(effectiveHashtagsList.join(' '));
+  }
+  const compiledFullText = compiledFullTextParts.filter(Boolean).join('\n\n');
 
   const contentLength = compiledFullText.length;
   const wordCount = compiledFullText.trim() ? compiledFullText.trim().split(/\s+/).length : 0;
@@ -496,7 +513,14 @@ export default function Step4Editor() {
     showAuthor: true,
     showHashtags: true,
   };
-  const hiddenOptionsCount = Object.values(displayOptions).filter(v => v === false).length;
+  const visibleOptionsList = [
+    { key: 'showTitle', val: displayOptions.showTitle },
+    { key: 'showContent', val: displayOptions.showContent },
+    ...(currentPlatform !== 'instagram' ? [{ key: 'showImages', val: displayOptions.showImages }] : []),
+    ...(isCrawledSource ? [{ key: 'showAuthor', val: displayOptions.showAuthor }] : []),
+    { key: 'showHashtags', val: displayOptions.showHashtags },
+  ];
+  const hiddenOptionsCount = visibleOptionsList.filter(opt => opt.val === false).length;
 
   // New hashtag input & state
   const [newHashtagInput, setNewHashtagInput] = useState<string>('');
@@ -1166,10 +1190,10 @@ export default function Step4Editor() {
                         {[
                           { key: 'showTitle', label: t('creator.step4.displayOptions.showTitle') },
                           { key: 'showContent', label: t('creator.step4.displayOptions.showContent') },
-                          { key: 'showImages', label: t('creator.step4.displayOptions.showImages') },
-                          { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') },
+                          currentPlatform !== 'instagram' ? { key: 'showImages', label: t('creator.step4.displayOptions.showImages') } : null,
+                          isCrawledSource ? { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') } : null,
                           { key: 'showHashtags', label: t('creator.step4.displayOptions.showHashtags') },
-                        ].map((opt) => {
+                        ].filter((opt): opt is { key: string; label: string } => opt !== null).map((opt) => {
                           const isChecked = displayOptions[opt.key as keyof typeof displayOptions] ?? true;
                           return (
                             <label
@@ -1276,8 +1300,7 @@ export default function Step4Editor() {
                             suppressContentEditableWarning
                             onBlur={(e) => {
                               const newText = e.currentTarget.innerText;
-                              const hashtagsStr = effectiveHashtags.length > 0 ? '\n\n' + effectiveHashtags.join(' ') : '';
-                              dispatch({ type: 'SET_POST_CONTENT', payload: newText + hashtagsStr });
+                              dispatch({ type: 'SET_POST_CONTENT', payload: newText });
                             }}
                             className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
                           >
@@ -1306,10 +1329,10 @@ export default function Step4Editor() {
                       </>
                     )}
 
-                    {/* Author & Hashtags */}
-                    {displayOptions.showAuthor && (
+                    {/* Source & Hashtags */}
+                    {displayOptions.showAuthor && isCrawledSource && sourceName && (
                       <div className="text-xs text-slate-500 font-medium mb-2">
-                        Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                        Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                       </div>
                     )}
 
@@ -1417,10 +1440,10 @@ export default function Step4Editor() {
                         </>
                       )}
 
-                      {/* Author & Hashtags */}
-                      {displayOptions.showAuthor && (
+                      {/* Source & Hashtags */}
+                      {displayOptions.showAuthor && isCrawledSource && sourceName && (
                         <div className="text-xs text-slate-500 font-medium mb-2">
-                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                          Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                         </div>
                       )}
 
@@ -1465,7 +1488,7 @@ export default function Step4Editor() {
                   </div>
 
                   {/* MEDIA IMAGES CAROUSEL FOR INSTAGRAM */}
-                  {displayOptions.showImages && renderInstagramCarousel(postImages)}
+                  {renderInstagramCarousel(postImages)}
 
                   {/* Instagram Action Icons & Likes */}
                   <div className="p-4 pb-6 select-none">
@@ -1536,10 +1559,10 @@ export default function Step4Editor() {
                         </>
                       )}
 
-                      {/* Author & Hashtags */}
-                      {displayOptions.showAuthor && (
+                      {/* Source & Hashtags */}
+                      {displayOptions.showAuthor && isCrawledSource && sourceName && (
                         <div className="text-xs text-slate-500 font-medium mb-2">
-                          Tác giả: <span className="font-bold text-slate-700 dark:text-slate-300">{authorName}</span>
+                          Nguồn: <span className="font-bold text-slate-700 dark:text-slate-300">{sourceName}</span>
                         </div>
                       )}
 
