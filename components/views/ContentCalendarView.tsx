@@ -611,7 +611,7 @@ export default function ContentCalendarView() {
       );
     }
 
-    const isGoldenHour = (postPlatform: string, scheduledAt: string) => {
+    const isGoldenHour = (postPlatform: string, scheduledAt: string | Date) => {
       if (!postPlatform || !scheduledAt) return false;
       const plat = postPlatform.toLowerCase() === 'thread' ? 'threads' : postPlatform.toLowerCase();
       
@@ -622,7 +622,7 @@ export default function ContentCalendarView() {
   
       const hoursToUse = dynamicList.length > 0 ? dynamicList : (STATIC_GOLDEN_HOURS[plat as keyof typeof STATIC_GOLDEN_HOURS] || []);
       
-      const dateObj = new Date(scheduledAt);
+      const dateObj = typeof scheduledAt === 'string' ? new Date(scheduledAt) : scheduledAt;
       if (isNaN(dateObj.getTime())) return false;
       const h = dateObj.getHours();
   
@@ -677,7 +677,7 @@ export default function ContentCalendarView() {
             {(posts || []).map((post: any, i: number) => {
               const platform = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
               const title = post.captions?.articles?.title || post.captions?.ai_content || 'Bài viết...';
-              const isGolden = isGoldenHour(platform, post.scheduled_at);
+              const isGolden = isGoldenHour(platform, eventInfo.event.start || post.scheduled_at);
               
               let barColor = 'bg-emerald-500';
               if (platform === 'facebook') barColor = 'bg-[#1877F2]';
@@ -699,7 +699,7 @@ export default function ContentCalendarView() {
       const time = new Date(eventInfo.event.start).toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       const title = eventInfo.event.title;
       const post = eventInfo.event.extendedProps.post;
-      const isGolden = post ? isGoldenHour(platform, post.scheduled_at) : false;
+      const isGolden = post ? isGoldenHour(platform, eventInfo.event.start || post.scheduled_at) : false;
 
       let bgClass = '';
       let borderClass = '';
