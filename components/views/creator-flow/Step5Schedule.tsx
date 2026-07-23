@@ -167,6 +167,7 @@ export function PublishingSettings({
             <input
               type="date"
               value={dateValue}
+              min={new Date().toISOString().split('T')[0]}
               onChange={onDateChange}
               className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
@@ -450,14 +451,21 @@ export function WeeklyTimeline({
                                 key={minute}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (isPast) return;
                                   handleCellClick(e, dayIdx, hourVal, minute);
                                 }}
-                                onMouseEnter={() => setHoveredSubSlot({ dayIdx, hour: hourVal, minute })}
+                                onMouseEnter={() => {
+                                  if (!isPast) setHoveredSubSlot({ dayIdx, hour: hourVal, minute });
+                                }}
                                 onMouseLeave={() => setHoveredSubSlot(null)}
-                                className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 cursor-pointer ${
-                                  isSubDragOver
+                                className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 ${
+                                  isPast
+                                    ? 'cursor-not-allowed opacity-50'
+                                    : 'cursor-pointer'
+                                } ${
+                                  isSubDragOver && !isPast
                                     ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20'
-                                    : isSubHovered
+                                    : isSubHovered && !isPast
                                     ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10'
                                     : ''
                                 }`}
@@ -602,7 +610,15 @@ export default function Step5Schedule() {
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
-    const timePad = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    const hourPad = hour.toString().padStart(2, '0');
+    const minPad = minute.toString().padStart(2, '0');
+    const targetDateTime = new Date(`${targetDay.fullDateStr}T${hourPad}:${minPad}:00`);
+
+    if (targetDateTime.getTime() < now.getTime()) {
+      return; // Do NOT allow picking past date/time
+    }
+
+    const timePad = `${hourPad}:${minPad}`;
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   };
