@@ -103,6 +103,7 @@ export interface SchedulePlatformInput {
   platform: QuickPublishingPlatform;
   scheduledAt: string;
   draft: DraftInput;
+  imageUrls?: string[];
 }
 
 export interface ScheduleInput {
@@ -141,6 +142,7 @@ export interface RegenerateCaptionResult {
 export interface PublishPlatformInput {
   platform: QuickPublishingPlatform;
   draft: DraftInput;
+  imageUrls?: string[];
 }
 
 export interface PublishInput {
