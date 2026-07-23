@@ -12,6 +12,7 @@ import {
   Scissors, Crop
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useQuickPublishing } from '@/frontend/modules/quick-publishing';
 import { useSmartCrop } from '@/frontend/modules/smart-crop';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
@@ -52,6 +53,7 @@ export default function Step4Editor() {
     editHighlighted,
     restoreChatState,
   } = useCreatorFlow();
+  const quickPublishing = useQuickPublishing();
 
   // Style Presets states
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
@@ -508,6 +510,20 @@ export default function Step4Editor() {
   const handleRemoveHashtag = (tagToRemove: string) => {
     const updated = effectiveHashtags.filter(h => h !== tagToRemove);
     dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: updated });
+  };
+
+  const draftInputFor = (platform: 'facebook' | 'threads' | 'instagram') => {
+    const draft = state.drafts[platform];
+    if (!draft) return null;
+    return {
+      variantId: platform,
+      platform,
+      articleId: state.articleId || undefined,
+      captionId: draft.postId || undefined,
+      originalContent: draft.generatedPost?.content || draft.content,
+      currentContent: draft.content,
+      compiledContent: draft.content,
+    };
   };
 
   const generateAITitle = async () => {
