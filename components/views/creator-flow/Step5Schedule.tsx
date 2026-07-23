@@ -31,6 +31,7 @@ export function ScheduledPostCard({
   time,
   title,
   thumbnail,
+  isGoldenHour,
   onClick,
   onDragStart,
   onDragEnd,
@@ -39,6 +40,7 @@ export function ScheduledPostCard({
   time: string;
   title: string;
   thumbnail?: string;
+  isGoldenHour?: boolean;
   onClick?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
@@ -70,11 +72,16 @@ export function ScheduledPostCard({
         isDraggingSelf ? 'opacity-0' : 'opacity-100 hover:scale-[1.02]'
       }`}
     >
-      <div className="flex items-center gap-1 min-w-0">
-        <div className="w-3.5 h-3.5 rounded-full bg-[#1877F2]/10 flex items-center justify-center shrink-0">
-          {getPlatformIcon(platform)}
+      <div className="flex items-center justify-between gap-1 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          <div className="w-3.5 h-3.5 rounded-full bg-[#1877F2]/10 flex items-center justify-center shrink-0">
+            {getPlatformIcon(platform)}
+          </div>
+          <span className="text-[10px] font-bold text-text truncate">{time}</span>
         </div>
-        <span className="text-[10px] font-bold text-text truncate">{time}</span>
+        {isGoldenHour && (
+          <Star size={11} className="fill-amber-400 text-amber-500 shrink-0" />
+        )}
       </div>
 
       <p className="text-[9.5px] font-bold text-text leading-tight line-clamp-1">
@@ -406,8 +413,11 @@ export function WeeklyTimeline({
                               ? 'bg-[#f0fdf9]/80 dark:bg-emerald-950/20'
                               : isTodayCol
                               ? 'bg-[#f0fdf9]/50 dark:bg-emerald-950/15'
-                              : 'bg-white dark:bg-zinc-900'
+                              : ''
                           }`}
+                          style={showGolden ? {
+                            backgroundColor: goldenStyle?.bg || 'rgba(225,48,108,0.12)',
+                          } : undefined}
                         >
                           {/* Red current time indicator */}
                           {targetDay?.isToday && now.getHours() === hourVal && (
@@ -466,18 +476,24 @@ export function WeeklyTimeline({
                           {/* Scheduled Post Card Overlay */}
                           {isCurrentPostInCell && (
                             <div className="absolute inset-1 z-30 flex items-center justify-center">
-                              <ScheduledPostCard
-                                platform={currentPlatform}
-                                time={state.scheduledDateTime.split('T')[1] || `${hour}:00`}
-                                title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
-                                thumbnail={state.articleContext?.thumbnail}
-                                onDragStart={(e) => dnd.handleDragStart(e, {
-                                  id: 'scheduled-post',
-                                  type: 'scheduled',
-                                  platform: currentPlatform
-                                })}
-                                onDragEnd={dnd.handleDragEnd}
-                              />
+                              {(() => {
+                                const timeStr = state.scheduledDateTime.split('T')[1] || `${hour}:00`;
+                                return (
+                                  <ScheduledPostCard
+                                    platform={currentPlatform}
+                                    time={timeStr}
+                                    title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
+                                    thumbnail={state.articleContext?.thumbnail}
+                                    isGoldenHour={showGolden}
+                                    onDragStart={(e) => dnd.handleDragStart(e, {
+                                      id: 'scheduled-post',
+                                      type: 'scheduled',
+                                      platform: currentPlatform
+                                    })}
+                                    onDragEnd={dnd.handleDragEnd}
+                                  />
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
