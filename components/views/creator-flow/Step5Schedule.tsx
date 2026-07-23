@@ -325,17 +325,22 @@ export function WeeklyTimeline({
           </div>
           <div className="grid grid-cols-7 flex-1">
             {days.map((day) => {
-              const isWed22 = day.label === 'WED' && day.date === '22';
-              const isHighlighted = isWed22 || day.index === currentPostDayIndex;
+              const isSelectedDay = day.index === currentPostDayIndex;
+              const isToday = day.isToday;
+              const isHighlighted = isSelectedDay || isToday;
               return (
                 <div
                   key={day.index}
                   className={`py-2 px-1 border-r border-gray-200 dark:border-zinc-800/60 last:border-r-0 transition-all ${
-                    isHighlighted ? 'bg-emerald-50/70 dark:bg-emerald-950/20 text-primary font-bold border-b-2 border-b-primary' : 'text-text'
+                    isSelectedDay
+                      ? 'bg-emerald-100/60 dark:bg-emerald-950/40 text-primary font-black border-b-2 border-b-primary shadow-sm'
+                      : isToday
+                      ? 'bg-emerald-50/40 dark:bg-emerald-950/20 text-primary font-bold border-b-2 border-b-primary/50'
+                      : 'text-text'
                   }`}
                 >
-                  <div className={`text-[9px] font-bold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
-                  <div className={`text-xs font-extrabold mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
+                  <div className={`text-[9px] font-extrabold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
+                  <div className={`text-xs font-black mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
                 </div>
               );
             })}
@@ -362,7 +367,8 @@ export function WeeklyTimeline({
                   <div className="grid grid-cols-7 flex-1 relative">
                     {Array.from({ length: 7 }).map((_, dayIdx) => {
                       const targetDay = days.find(d => d.index === dayIdx);
-                      const isTodayCol = targetDay?.isToday || dayIdx === currentPostDayIndex || (targetDay?.label === 'WED' && targetDay?.date === '22');
+                      const isTodayCol = targetDay?.isToday;
+                      const isSelectedCol = dayIdx === currentPostDayIndex;
 
                       const isCurrentPostInCell = 
                         currentPostDayIndex === dayIdx && 
@@ -395,11 +401,11 @@ export function WeeklyTimeline({
                           onDrop={(e) => dnd.handleCellDrop(e, dayIdx, hourVal)}
                           className={`border-r border-gray-100 dark:border-zinc-800/50 last:border-r-0 relative flex flex-col h-full transition-all ${
                             isCurrentPostInCell
-                              ? 'bg-emerald-100/50 dark:bg-emerald-950/35'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/50'
+                              : isSelectedCol
+                              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-semibold'
                               : isTodayCol
-                              ? 'bg-emerald-50/35 dark:bg-emerald-950/20'
-                              : isHighlighted
-                              ? 'bg-primary/[0.02]'
+                              ? 'bg-emerald-50/40 dark:bg-emerald-950/20'
                               : ''
                           }`}
                           style={showGolden ? {
@@ -591,7 +597,7 @@ export default function Step5Schedule() {
 
   const handleMinuteSelect = (minuteStr: string) => {
     const currentHour = timePart ? timePart.split(':')[0] || '09' : '09';
-    const currentDate = datePart || '2026-07-22';
+    const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${currentHour}:${minuteStr}` });
   };
 
