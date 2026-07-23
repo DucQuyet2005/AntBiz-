@@ -44,7 +44,8 @@ export async function resolveCaptionPlatformRules(
 }
 
 function normalizePlatform(platform: string) {
-  return platform === 'threads' ? 'thread' : platform;
+  const p = platform.toLowerCase();
+  return p === 'threads' ? 'thread' : p;
 }
 
 function selectPlatformPreset(presets: PlatformPresetRecord[], userId: string) {

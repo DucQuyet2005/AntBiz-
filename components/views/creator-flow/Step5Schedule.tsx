@@ -429,8 +429,9 @@ export function WeeklyTimeline({
 
                           {/* Render 4 Quarter Sub-Slots (00, 15, 30, 45) */}
                           {[0, 15, 30, 45].map((minute) => {
-                            const isSubHovered = hoveredSubSlot?.dayIdx === dayIdx && hoveredSubSlot?.hour === hourVal && hoveredSubSlot?.minute === minute;
-                            const isSubDragOver = isCellDragOver && activeDragMinute === minute;
+                            const isSubPast = Boolean(targetDay?.isPastDay || (targetDay?.isToday && (hourVal < now.getHours() || (hourVal === now.getHours() && minute < now.getMinutes()))));
+                            const isSubHovered = !isSubPast && hoveredSubSlot?.dayIdx === dayIdx && hoveredSubSlot?.hour === hourVal && hoveredSubSlot?.minute === minute;
+                            const isSubDragOver = !isSubPast && isCellDragOver && activeDragMinute === minute;
                             const displayTimeStr = `${hourVal.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 
                             return (
@@ -438,16 +439,22 @@ export function WeeklyTimeline({
                                 key={minute}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleCellClick(e, dayIdx, hourVal, minute);
+                                  if (!isSubPast) {
+                                    handleCellClick(e, dayIdx, hourVal, minute);
+                                  }
                                 }}
-                                onMouseEnter={() => setHoveredSubSlot({ dayIdx, hour: hourVal, minute })}
+                                onMouseEnter={() => {
+                                  if (!isSubPast) setHoveredSubSlot({ dayIdx, hour: hourVal, minute });
+                                }}
                                 onMouseLeave={() => setHoveredSubSlot(null)}
-                                className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 cursor-pointer ${
-                                  isSubDragOver
-                                    ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20'
+                                className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 ${
+                                  isSubPast
+                                    ? 'bg-gray-100/60 dark:bg-zinc-950/70 text-gray-400 dark:text-zinc-600 cursor-not-allowed select-none opacity-50 backdrop-blur-[0.5px]'
+                                    : isSubDragOver
+                                    ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20 cursor-pointer'
                                     : isSubHovered
-                                    ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10'
-                                    : ''
+                                    ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10 cursor-pointer'
+                                    : 'cursor-pointer'
                                 }`}
                               >
                                 {(isSubHovered || isSubDragOver) && !isCurrentPostInCell && (
@@ -548,7 +555,19 @@ export default function Step5Schedule() {
     };
   });
 
+  const checkIsPast = useCallback((dayIdx: number, hour: number, minute: number = 0) => {
+    const targetDay = days.find(d => d.index === dayIdx);
+    if (!targetDay) return true;
+    if (targetDay.isPastDay) return true;
+    if (targetDay.isToday) {
+      if (hour < now.getHours()) return true;
+      if (hour === now.getHours() && minute < now.getMinutes()) return true;
+    }
+    return false;
+  }, [days, now]);
+
   const handleScheduleChange = useCallback((dayIdx: number, hour: number, minute: number = 0) => {
+    if (checkIsPast(dayIdx, hour, minute)) return;
     const targetDay = days.find(d => d.index === dayIdx);
     if (!targetDay) return;
 
@@ -558,9 +577,9 @@ export default function Step5Schedule() {
 
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
-  }, [dispatch, days]);
+  }, [dispatch, days, checkIsPast]);
 
-  const dnd = useScheduleDragDrop(handleScheduleChange, dynamicGoldenHours);
+  const dnd = useScheduleDragDrop(handleScheduleChange, dynamicGoldenHours, checkIsPast);
 
   // Full 24 Hours: 00:00 to 23:00
   const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);

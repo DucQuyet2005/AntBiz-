@@ -16,7 +16,8 @@ import type { GoldenHourData } from '@/frontend/modules/scheduled-publishing/use
  */
 export function useScheduleDragDrop(
   onScheduleChange: (dayIdx: number, hour: number, minute: number) => void,
-  dynamicGoldenHours: GoldenHourData[] = []
+  dynamicGoldenHours: GoldenHourData[] = [],
+  checkIsPast?: (dayIdx: number, hour: number, minute: number) => boolean
 ) {
   const [state, setState] = useState<ScheduleDndState>({
     dragOverCell: null,
@@ -56,7 +57,6 @@ export function useScheduleDragDrop(
     hour: number
   ) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -75,11 +75,21 @@ export function useScheduleDragDrop(
       minute = 0;
     }
 
+    if (checkIsPast && checkIsPast(dayIdx, hour, minute)) {
+      e.dataTransfer.dropEffect = 'none';
+      setState(prev => ({
+        ...prev,
+        dragOverCell: null,
+      }));
+      return;
+    }
+
+    e.dataTransfer.dropEffect = 'move';
     setState(prev => ({
       ...prev,
       dragOverCell: { dayIdx, hour, minute },
     }));
-  }, []);
+  }, [checkIsPast]);
 
   // ─── Drag Leave (cell) ───
   const handleCellDragLeave = useCallback(() => {
@@ -122,6 +132,15 @@ export function useScheduleDragDrop(
           minute = 0;
         }
 
+        if (checkIsPast && checkIsPast(dayIdx, hour, minute)) {
+          setState({
+            dragOverCell: null,
+            draggedPlatform: null,
+            isDragging: false,
+          });
+          return;
+        }
+
         onScheduleChange(dayIdx, hour, minute);
       }
     } catch (err) {
@@ -134,7 +153,7 @@ export function useScheduleDragDrop(
       draggedPlatform: null,
       isDragging: false,
     });
-  }, [onScheduleChange]);
+  }, [onScheduleChange, checkIsPast]);
 
   // ─── Golden Hour helpers ───
 
