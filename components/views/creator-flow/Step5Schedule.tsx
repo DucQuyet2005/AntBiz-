@@ -133,7 +133,8 @@ export function PublishingSettings({
   reportToggle,
   onDateChange,
   onTimeChange,
-  onMinuteSelect,
+  onDateBlur,
+  onTimeBlur,
   onReportToggleChange,
 }: {
   dateValue: string;
@@ -142,7 +143,8 @@ export function PublishingSettings({
   reportToggle: boolean;
   onDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onTimeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onMinuteSelect: (minuteStr: string) => void;
+  onDateBlur?: () => void;
+  onTimeBlur?: () => void;
   onReportToggleChange: () => void;
 }) {
   const { t } = useLanguage();
@@ -150,100 +152,81 @@ export function PublishingSettings({
   const scheduleTimeText = `${timeValue || '09:00'} ${formattedDate}`;
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 font-sans select-none">
-      {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-primary flex items-center justify-center shrink-0">
-          <Settings className="w-3.5 h-3.5" />
+    <div className="bg-white dark:bg-zinc-900 border border-gray-150 dark:border-zinc-800 rounded-3xl p-6 shadow-xl sticky top-28 border-primary/20 ring-1 ring-primary/5 select-none">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+          <Settings className="w-4.5 h-4.5 text-white" />
         </div>
-        <h3 className="text-xs font-extrabold text-text tracking-wide uppercase">{t('creator.step5.settingsTitle')}</h3>
+        <h3 className="text-base font-bold text-text uppercase tracking-wide">Cài đặt đăng bài</h3>
       </div>
 
-      <div className="space-y-3">
-        {/* NGÀY ĐĂNG Input */}
-        <div className="space-y-1">
-          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.dateLabel')}</label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-            <input
-              type="date"
-              value={dateValue}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={onDateChange}
-              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
-            />
+      <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Date Input */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Ngày đăng</label>
+            <div className="relative">
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              <input 
+                type="date"
+                value={dateValue || ''}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={onDateChange}
+                onBlur={onDateBlur}
+                className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
+              />
+            </div>
+          </div>
+
+          {/* Time Input */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Giờ đăng</label>
+            <div className="relative">
+              <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              <input 
+                type="time"
+                value={timeValue || ''}
+                onChange={onTimeChange}
+                onBlur={onTimeBlur}
+                className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-250 dark:border-zinc-800 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-zinc-900 text-sm font-semibold text-text"
+              />
+            </div>
           </div>
         </div>
 
-        {/* GIỜ ĐĂNG Input & Quick Minute Selectors */}
-        <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.timeLabel')}</label>
-          <div className="relative">
-            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-            <input
-              type="time"
-              value={timeValue}
-              onChange={onTimeChange}
-              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
-            />
-          </div>
-
-          {/* Quick Minute Selector Buttons (00, 15, 30, 45) */}
-          <div className="flex items-center gap-1.5 pt-1">
-            {['00', '15', '30', '45'].map((m) => {
-              const currentMin = timeValue ? timeValue.split(':')[1] || '00' : '00';
-              const isSelected = currentMin === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => onMinuteSelect(m)}
-                  className={`flex-1 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer border ${
-                    isSelected
-                      ? 'bg-primary text-white border-primary shadow-2xs'
-                      : 'bg-gray-50 dark:bg-zinc-800/40 border-gray-200 dark:border-zinc-800 text-text-muted hover:text-text hover:border-gray-300'
-                  }`}
-                >
-                  :{m}
-                </button>
-              );
-            })}
+        {/* Extra Toggle Panel */}
+        <div className="pt-4 border-t border-gray-150 dark:border-zinc-800/80">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-text-muted">Báo cáo sau đăng bài</span>
+            <label className="relative inline-flex items-center cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                checked={reportToggle}
+                onChange={onReportToggleChange}
+                className="sr-only peer" 
+              />
+              <div className="w-11 h-6 bg-gray-250 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
           </div>
         </div>
-      </div>
 
-      {/* Divider */}
-      <div className="border-b border-gray-100 dark:border-zinc-800/80" />
-
-      {/* BÁO CÁO SAU ĐĂNG BÀI Toggle */}
-      <div className="flex items-center justify-between py-0.5">
-        <span className="text-xs font-bold text-text">{t('creator.step5.postReportLabel')}</span>
-        <button
-          type="button"
-          onClick={onReportToggleChange}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            reportToggle ? 'bg-primary' : 'bg-gray-200 dark:bg-zinc-700'
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-              reportToggle ? 'translate-x-4' : 'translate-x-0'
-            }`}
-          />
-        </button>
-      </div>
-
-      {/* Divider */}
-      <div className="border-b border-gray-100 dark:border-zinc-800/80" />
-
-      {/* KÊNH XUẤT BẢN Summary Card */}
-      <div className="space-y-1.5">
-        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.channelLabel')}</label>
-        <ChannelSummary
-          platform={platform}
-          channelName={platform === 'facebook' ? 'Facebook' : platform}
-          scheduleTimeText={scheduleTimeText}
-        />
+        {/* Compact Publishing Schedule Info Card */}
+        <div className="pt-4 border-t border-gray-150 dark:border-zinc-800/80 space-y-2">
+          <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Lịch xuất bản của bạn</label>
+          <div className="bg-primary/5 dark:bg-primary/10 border border-primary/25 rounded-xl p-3.5 flex items-center justify-between text-xs text-text font-bold">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm">
+                {getPlatformIcon(platform)}
+              </div>
+              <span className="capitalize">{platform}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-text font-black">
+                {timeValue || '09:00'} ngày {dateValue ? dateValue.split('-').reverse().join('/') : '17/07/2026'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -634,13 +617,24 @@ export default function Step5Schedule() {
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
-    const hourPad = hour.toString().padStart(2, '0');
-    const minPad = minute.toString().padStart(2, '0');
-    const targetDateTime = new Date(`${targetDay.fullDateStr}T${hourPad}:${minPad}:00`);
+    let targetHour = hour;
+    let targetMinute = minute;
+    const targetDateTime = new Date(`${targetDay.fullDateStr}T${targetHour.toString().padStart(2, '0')}:${targetMinute.toString().padStart(2, '0')}:00`);
 
     if (targetDateTime.getTime() <= now.getTime()) {
-      return; // Do NOT allow picking past date/time
+      if (targetDay.isToday && targetHour === now.getHours()) {
+        targetMinute = now.getMinutes() + 5;
+        if (targetMinute >= 60) {
+          targetMinute -= 60;
+          targetHour += 1;
+        }
+      } else {
+        return; // Do NOT allow picking past date/time
+      }
     }
+
+    const hourPad = targetHour.toString().padStart(2, '0');
+    const minPad = targetMinute.toString().padStart(2, '0');
 
     const timePad = `${hourPad}:${minPad}`;
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
@@ -692,22 +686,37 @@ export default function Step5Schedule() {
             onDateChange={(e) => {
               const selectedDate = e.target.value;
               const currentTime = timePart || '09:00';
-              const targetDateTime = new Date(`${selectedDate}T${currentTime}:00`);
-              if (targetDateTime.getTime() <= now.getTime()) {
-                return;
-              }
               dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${selectedDate}T${currentTime}` });
             }}
             onTimeChange={(e) => {
               const selectedTime = e.target.value;
-              const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
-              const targetDateTime = new Date(`${currentDate}T${selectedTime}:00`);
-              if (targetDateTime.getTime() <= now.getTime()) {
-                return;
-              }
+              const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr || '2026-07-23';
               dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${selectedTime}` });
             }}
-            onMinuteSelect={handleMinuteSelect}
+            onDateBlur={() => {
+              const targetTime = new Date(state.scheduledDateTime || '').getTime();
+              if (targetTime && targetTime <= now.getTime()) {
+                const futureDate = new Date(now.getTime() + 5 * 60000);
+                const year = futureDate.getFullYear();
+                const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                const day = String(futureDate.getDate()).padStart(2, '0');
+                const hours = String(futureDate.getHours()).padStart(2, '0');
+                const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+                dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${year}-${month}-${day}T${hours}:${minutes}` });
+              }
+            }}
+            onTimeBlur={() => {
+              const targetTime = new Date(state.scheduledDateTime || '').getTime();
+              if (targetTime && targetTime <= now.getTime()) {
+                const futureDate = new Date(now.getTime() + 5 * 60000);
+                const year = futureDate.getFullYear();
+                const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                const day = String(futureDate.getDate()).padStart(2, '0');
+                const hours = String(futureDate.getHours()).padStart(2, '0');
+                const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+                dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${year}-${month}-${day}T${hours}:${minutes}` });
+              }
+            }}
             onReportToggleChange={() => setReportToggle(prev => !prev)}
           />
         </div>

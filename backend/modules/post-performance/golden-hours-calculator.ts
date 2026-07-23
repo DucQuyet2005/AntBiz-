@@ -107,8 +107,8 @@ export class GoldenHoursCalculator {
     // Sắp xếp các slot theo tỷ lệ tương tác trung bình giảm dần
     const sortedSlots = [...slots].sort((a, b) => b.avgEngagementRate - a.avgEngagementRate);
 
-    // Lấy Top 5 khung giờ vàng động tốt nhất (nếu có dữ liệu bài đăng)
-    const activeOptimal = sortedSlots.filter(s => s.avgEngagementRate > 0).slice(0, 5);
+    // Lấy Top 3 khung giờ vàng động tốt nhất (nếu có dữ liệu bài đăng)
+    const activeOptimal = sortedSlots.filter(s => s.avgEngagementRate > 0).slice(0, 3);
     const optimalKeys = new Set(activeOptimal.map(s => `${s.dayOfWeek}_${s.hourOfDay}`));
 
     // Đánh dấu isOptimal
