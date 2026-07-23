@@ -661,8 +661,8 @@ export default function ContentCalendarView() {
       }
 
       return (
-        <div className="w-full h-auto bg-[#EDF3FF] dark:bg-blue-950/40 rounded-xl overflow-hidden cursor-pointer shadow-sm select-none border border-blue-100 dark:border-blue-900/30">
-          <div className="flex items-center justify-between px-1.5 py-1 bg-[#E2EAFB] dark:bg-blue-900/40 border-b border-blue-200/50 dark:border-blue-900/50">
+        <div className="w-full h-full flex flex-col bg-[#EDF3FF] dark:bg-blue-950/40 rounded-xl overflow-hidden cursor-pointer shadow-sm select-none border border-blue-100 dark:border-blue-900/30">
+          <div className="flex shrink-0 items-center justify-between px-1.5 py-1 bg-[#E2EAFB] dark:bg-blue-900/40 border-b border-blue-200/50 dark:border-blue-900/50">
             <div className="flex items-center gap-1 text-[#1E40AF] dark:text-blue-300 font-black min-w-0">
               <Layers size={12} className="stroke-[2.5] shrink-0" />
               <div className="flex flex-col leading-none text-center justify-center pt-0.5 shrink-0">
@@ -679,7 +679,7 @@ export default function ContentCalendarView() {
               })}
             </div>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1 overflow-y-auto scrollbar-thin">
             {(posts || []).map((post: any, i: number) => {
               const platform = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
               const title = post.captions?.articles?.title || post.captions?.ai_content || 'Bài viết...';
@@ -695,6 +695,13 @@ export default function ContentCalendarView() {
                   <div className={`w-0.5 h-2.5 rounded-full shrink-0 ${barColor}`} />
                   {isGolden ? <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
                   <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300 truncate flex-1 min-w-0">{title}</span>
+                  {post.status === 'failed' ? (
+                    <AlertTriangle size={9} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />
+                  ) : post.status === 'cancelled' ? (
+                    <X size={9} className="text-slate-500 shrink-0 font-bold" />
+                  ) : post.status === 'posted' ? (
+                    <CheckCircle2 size={9} className="text-emerald-500 fill-emerald-100 shrink-0" />
+                  ) : null}
                 </div>
               );
             })}

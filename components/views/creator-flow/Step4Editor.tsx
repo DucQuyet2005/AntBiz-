@@ -1986,8 +1986,8 @@ export default function Step4Editor() {
                           preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
                       })
                       .sort((a, b) => {
-                        if (a.id === initialSelectedPresetId) return -1;
-                        if (b.id === initialSelectedPresetId) return 1;
+                        if (a.id === state.selectedPresetId) return -1;
+                        if (b.id === state.selectedPresetId) return 1;
                         return 0;
                       })
                       .map((preset) => {
