@@ -384,7 +384,7 @@ export function WeeklyTimeline({
                       const isHighlighted = dayIdx === currentPostDayIndex;
 
                       const isPast = targetDay?.isPastDay || (targetDay?.isToday && hourVal < now.getHours());
-                      const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal, targetDay?.dayOfWeek);
+                      const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal);
                       const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
                       const showGolden = (isDefaultGolden || isDragGolden) && !isPast;
                       const goldenStyle = showGolden ? dnd.getGoldenHourStyle(currentPlatform) : null;

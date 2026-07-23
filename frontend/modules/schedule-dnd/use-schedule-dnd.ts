@@ -140,17 +140,10 @@ export function useScheduleDragDrop(
 
   const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
 
-  const isHourInDynamicList = useCallback((hour: number, dayOfWeek?: number) => {
-    // Nếu có dữ liệu Giờ Vàng Động từ DB analytics, CHỈ dùng Giờ Vàng Động 100%
+  const isHourInDynamicList = useCallback((hour: number) => {
+    // Nếu có dữ liệu Giờ Vàng Động từ DB analytics, kiểm tra theo khung giờ của hàng ngang
     if (Array.isArray(dynamicGoldenHours) && dynamicGoldenHours.length > 0) {
-      return dynamicGoldenHours.some(gh => {
-        if (!gh) return false;
-        const matchesHour = gh.hour === hour;
-        if (dayOfWeek !== undefined && gh.dayOfWeek !== undefined) {
-          return matchesHour && gh.dayOfWeek === dayOfWeek;
-        }
-        return matchesHour;
-      });
+      return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
     }
 
     // Chỉ khi DB chưa có dữ liệu bài đăng nào mới fallback sang giờ mặc định
@@ -160,17 +153,17 @@ export function useScheduleDragDrop(
   /**
    * Kiểm tra xem ô có phải giờ vàng của một platform cụ thể không (dùng dynamic list)
    */
-  const isCellGoldenHourForPlatform = useCallback((platform: string, hour: number, dayOfWeek?: number): boolean => {
-    return isHourInDynamicList(hour, dayOfWeek);
+  const isCellGoldenHourForPlatform = useCallback((platform: string, hour: number): boolean => {
+    return isHourInDynamicList(hour);
   }, [isHourInDynamicList]);
 
   /**
    * Giờ vàng mặc định (hiển thị luôn, không cần kéo)
    * Trả về true nếu ô này là giờ vàng cho platform được truyền vào
    */
-  const isDefaultGoldenHour = useCallback((platform: string | null, hour: number, dayOfWeek?: number): boolean => {
+  const isDefaultGoldenHour = useCallback((platform: string | null, hour: number): boolean => {
     if (!platform) return false;
-    return isHourInDynamicList(hour, dayOfWeek);
+    return isHourInDynamicList(hour);
   }, [isHourInDynamicList]);
 
   /**
