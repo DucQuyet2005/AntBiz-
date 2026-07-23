@@ -42,6 +42,16 @@ function QuotedTextBubble({ text }: { text: string }) {
   );
 }
 
+function escapeHtml(unsafe: string) {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?: (text: string) => void }) {
   const { t } = useLanguage();
   const {
@@ -724,9 +734,10 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
           }}
           className="font-black text-slate-900 dark:text-white text-sm md:text-base inline-block leading-snug outline-none focus:ring-1 focus:ring-primary/50 focus:bg-primary/5 rounded px-1.5 py-0.5 transition-all cursor-text hover:bg-slate-100/70 dark:hover:bg-zinc-800/50"
           title="Bấm vào đây để tự sửa tiêu đề"
-        >
-          {currentTitle || "Nhập tiêu đề bài viết..."}
-        </h3>
+          dangerouslySetInnerHTML={{
+            __html: currentTitle ? escapeHtml(currentTitle) : "Nhập tiêu đề bài viết..."
+          }}
+        />
       </div>
     );
   };
@@ -1329,9 +1340,10 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                               dispatch({ type: 'SET_POST_CONTENT', payload: newText });
                             }}
                             className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                          >
-                            {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                          </div>
+                            dangerouslySetInnerHTML={{
+                              __html: displayedContent ? escapeHtml(displayedContent) : "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."
+                            }}
+                          />
                           {isLongContent && !isExpanded && (
                             <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                           )}
@@ -1448,9 +1460,10 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
                               className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                            >
-                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                            </div>
+                              dangerouslySetInnerHTML={{
+                                __html: displayedContent ? escapeHtml(displayedContent) : "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."
+                              }}
+                            />
                             {isLongContent && !isExpanded && (
                               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                             )}
@@ -1575,9 +1588,10 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
                               className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                            >
-                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                            </div>
+                              dangerouslySetInnerHTML={{
+                                __html: displayedContent ? escapeHtml(displayedContent) : "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."
+                              }}
+                            />
                             {isLongContent && !isExpanded && (
                               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                             )}
