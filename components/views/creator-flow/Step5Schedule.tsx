@@ -72,16 +72,11 @@ export function ScheduledPostCard({
         isDraggingSelf ? 'opacity-0' : 'opacity-100 hover:scale-[1.02]'
       }`}
     >
-      <div className="flex items-center justify-between gap-1 min-w-0">
-        <div className="flex items-center gap-1 min-w-0">
-          <div className="w-3.5 h-3.5 rounded-full bg-[#1877F2]/10 flex items-center justify-center shrink-0">
-            {getPlatformIcon(platform)}
-          </div>
-          <span className="text-[10px] font-bold text-text truncate">{time}</span>
+      <div className="flex items-center gap-1 min-w-0">
+        <div className="w-3.5 h-3.5 rounded-full bg-[#1877F2]/10 flex items-center justify-center shrink-0">
+          {getPlatformIcon(platform)}
         </div>
-        {isGoldenHour && (
-          <Star size={11} className="fill-amber-400 text-amber-500 shrink-0" />
-        )}
+        <span className="text-[10px] font-bold text-text truncate">{time}</span>
       </div>
 
       <p className="text-[9.5px] font-bold text-text leading-tight line-clamp-1">
@@ -96,6 +91,9 @@ export function ScheduledPostCard({
           className="w-5 h-5 rounded object-cover shadow-sm bg-gray-100 dark:bg-zinc-800 shrink-0 border border-black/5 dark:border-white/5"
           draggable={false}
         />
+        {isGoldenHour && (
+          <Star size={11} className="fill-[#fbbf24] text-[#f59e0b] shrink-0 ml-auto" />
+        )}
       </div>
     </div>
   );

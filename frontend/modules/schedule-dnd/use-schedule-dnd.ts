@@ -195,29 +195,29 @@ export function useScheduleDragDrop(
     switch (p) {
       case 'facebook':
         return {
-          bg: 'rgba(24,119,242,0.14)',
-          border: 'rgba(24,119,242,0.35)',
+          bg: 'rgba(24,119,242,0.04)',
+          border: 'rgba(24,119,242,0.2)',
           text: '#1d4ed8',
           iconClass: 'text-[#1877F2]',
         };
       case 'instagram':
         return {
-          bg: 'rgba(225,48,108,0.14)',
-          border: 'rgba(225,48,108,0.35)',
+          bg: 'rgba(225,48,108,0.04)',
+          border: 'rgba(225,48,108,0.2)',
           text: '#be185d',
           iconClass: 'text-[#E1306C]',
         };
       case 'threads':
         return {
-          bg: 'rgba(245,158,11,0.14)',
-          border: 'rgba(245,158,11,0.35)',
+          bg: 'rgba(245,158,11,0.04)',
+          border: 'rgba(245,158,11,0.2)',
           text: '#b45309',
           iconClass: 'text-amber-500',
         };
       default:
         return {
-          bg: 'rgba(245,158,11,0.14)',
-          border: 'rgba(245,158,11,0.35)',
+          bg: 'rgba(245,158,11,0.04)',
+          border: 'rgba(245,158,11,0.2)',
           text: '#b45309',
           iconClass: 'text-amber-500',
         };
