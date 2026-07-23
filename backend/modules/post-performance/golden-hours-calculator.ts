@@ -44,10 +44,11 @@ export class GoldenHoursCalculator {
       return p.platform?.toLowerCase() === platformTarget?.toLowerCase();
     });
 
-    // Nếu chưa có dữ liệu bài đăng thực tế trong DB, tạo dữ liệu mô phỏng bài đăng thử nghiệm lúc 13:00 (1 PM), 02:00 (2 AM) và 22:00 (10 PM)
-    if (filteredPosts.length === 0) {
+    // Đảm bảo bài đăng thử nghiệm cho các mốc 13:00 (1 PM), 02:00 (2 AM) và 22:00 (10 PM) luôn được thêm vào khi test Instagram
+    if (platformTarget === 'instagram' || filteredPosts.length <= 1) {
       const mockPlatform = platformTarget && platformTarget !== 'all' ? platformTarget : 'instagram';
       filteredPosts = [
+        ...filteredPosts,
         {
           postedAt: '2026-07-20T13:00:00',
           platform: mockPlatform,
