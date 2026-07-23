@@ -90,20 +90,21 @@ export class PostPerformanceModule {
     const HOUR_MS = 60 * 60 * 1000;
 
     for (const post of posts) {
-      // Tiered Syncing Rule:
-      // Tier 1: Bài đăng < 24 giờ -> crawl mỗi 30 phút (0.5h)
-      // Tier 2: Bài đăng 1 - 7 ngày -> crawl mỗi 6 giờ
-      // Tier 3: Bài đăng > 7 ngày -> crawl mỗi 24 giờ
+      // Giải pháp phân tầng (Tiered Syncing) để tối ưu hóa tần suất gọi API:
+      // - Không cần cập nhật đồng đều tất cả bài viết: Tương tác thường bùng nổ mạnh nhất trong 24 - 48 giờ đầu tiên và đạt trạng thái bão hòa sau 72 giờ.
+      // - Tier 1 (Bài đăng < 24 giờ): Crawl mỗi 30 phút - 1 giờ / lần. Khoảng thời gian vàng để bắt trọn tiến trình tăng trưởng tương tác.
+      // - Tier 2 (Bài đăng từ 1 - 7 ngày): Crawl mỗi 6 giờ - 12 giờ / lần.
+      // - Tier 3 (Bài đăng > 7 ngày): Chỉ crawl 24 giờ / lần hoặc ngưng crawl (ở đây tối đa 30 ngày, sau 30 ngày sẽ dừng crawl hoàn toàn).
       if (post.postedAt && post.lastSyncedAt) {
         const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
         const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
 
         if (postAgeHours <= 24) {
-          if (timeSinceLastSyncHours < 0.5) continue;
+          if (timeSinceLastSyncHours < 0.5) continue; // Tier 1: 30 phút/lần
         } else if (postAgeHours <= 7 * 24) {
-          if (timeSinceLastSyncHours < 6) continue;
+          if (timeSinceLastSyncHours < 6) continue; // Tier 2: 6 giờ/lần
         } else {
-          if (timeSinceLastSyncHours < 24) continue;
+          if (timeSinceLastSyncHours < 24) continue; // Tier 3: 24 giờ/lần
         }
       }
 
