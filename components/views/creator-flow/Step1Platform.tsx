@@ -119,13 +119,12 @@ export default function Step1Platform({
                   onSelect([platform.id]);
                 }
               }}
-              className={`group relative flex flex-col items-center text-center p-8 rounded-[24px] transition-all duration-200 select-none ${
-                !isConnected
+              className={`group relative flex flex-col items-center text-center p-8 rounded-[24px] transition-all duration-200 select-none ${!isConnected
                   ? 'bg-white dark:bg-zinc-900 border border-[#E8ECF3] dark:border-zinc-800 hover:-translate-y-1 hover:shadow-md cursor-pointer'
                   : isSelected
-                  ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-2 border-primary shadow-lg shadow-primary/5 cursor-pointer'
-                  : 'bg-white dark:bg-zinc-900 border border-[#E8ECF3] dark:border-zinc-800 hover:-translate-y-1 hover:shadow-md cursor-pointer'
-              }`}
+                    ? 'bg-emerald-50/20 dark:bg-emerald-950/10 border-2 border-primary shadow-lg shadow-primary/5 cursor-pointer'
+                    : 'bg-white dark:bg-zinc-900 border border-[#E8ECF3] dark:border-zinc-800 hover:-translate-y-1 hover:shadow-md cursor-pointer'
+                }`}
             >
               {/* Top right status badge */}
               <div className="absolute top-5 right-5 flex items-center gap-1.5">
@@ -147,9 +146,8 @@ export default function Step1Platform({
 
               {/* Platform Icon */}
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-transform duration-200 ${
-                  platform.bgClass
-                } ${isSelected ? 'scale-105' : 'group-hover:scale-105'}`}
+                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-transform duration-200 ${platform.bgClass
+                  } ${isSelected ? 'scale-105' : 'group-hover:scale-105'}`}
               >
                 {platform.id === 'threads' ? (
                   <ThreadsIcon className={`w-8 h-8 ${platform.colorClass}`} />
@@ -202,10 +200,10 @@ export default function Step1Platform({
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-black flex items-center justify-center shrink-0 text-xs overflow-hidden border border-primary/20">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                              src="/images/avatar-placeholder.png" 
-                              onError={(e) => (e.currentTarget.style.display = 'none')} 
-                              className="w-full h-full object-cover" 
+                            <img
+                              src="/images/avatar-placeholder.png"
+                              onError={(e) => (e.currentTarget.style.display = 'none')}
+                              className="w-full h-full object-cover"
                               alt="Avatar"
                             />
                             <span>{initials}</span>

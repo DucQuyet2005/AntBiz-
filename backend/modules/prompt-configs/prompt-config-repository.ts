@@ -12,13 +12,13 @@ import type {
 export class SupabasePromptConfigRepository implements PromptConfigRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async list(userId: string, platform?: string): Promise<PromptConfigRecord[]> {
+  async list(userId?: string, platform?: string): Promise<PromptConfigRecord[]> {
     let query = this.supabase
       .from('prompt_configs')
-      .select('*')
-      .eq('user_id', userId)
+      .select('*, users:user_id(id, email)')
       .order('created_at', { ascending: false });
 
+    if (userId) query = query.eq('user_id', userId);
     if (platform) query = query.eq('platform', platform);
 
     const { data, error } = await query;

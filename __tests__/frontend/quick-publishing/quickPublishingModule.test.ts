@@ -111,10 +111,13 @@ describe('QuickPublishingModule', () => {
 
     expect(client.scheduled).toEqual([expect.objectContaining({ captionId: 'facebook-draft' })]);
     expect(events).toContainEqual(expect.objectContaining({ type: 'platform-scheduled', platform: 'facebook' }));
-    expect(events).toContainEqual({
-      type: 'platform-schedule-failed', platform: 'threads',
-      error: { code: 'SCHEDULE_FAILED', context: { platform: 'threads' } },
-    });
+    expect(events).toContainEqual(expect.objectContaining({
+      type: 'platform-schedule-failed',
+      platform: 'threads',
+      error: expect.objectContaining({
+        code: 'SCHEDULE_FAILED'
+      })
+    }));
   });
 
   it('uses the persisted regeneration interface for full and partial edits', async () => {

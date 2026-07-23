@@ -104,7 +104,7 @@ describe('CaptionManagementModule', () => {
     const result = await new CaptionManagementModule(repository).list(actor, {
       platform: 'Threads', search: 'sale', page: 2, limit: 10,
     });
-    expect(repository.listQuery).toEqual({ platform: 'thread', search: 'sale', from: 10, to: 19 });
+    expect(repository.listQuery).toEqual({ platform: 'thread', search: 'sale', creatorId: 'user-1', from: 10, to: 19 });
     expect(result).toMatchObject({ total: 21, page: 2, limit: 10, totalPages: 3 });
   });
 

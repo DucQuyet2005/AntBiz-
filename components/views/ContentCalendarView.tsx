@@ -42,6 +42,7 @@ import dynamic from 'next/dynamic';
 const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
 const ContentListView = dynamic(() => import('./ContentListView'), { ssr: false });
 import { STATIC_GOLDEN_HOURS } from '@/frontend/modules/scheduled-publishing/golden-hour';
+import { buildGoogleCalendarUrl } from '@/frontend/modules/scheduled-publishing/google-calendar-helper';
 
 
 // Threads Custom SVG Logo
@@ -165,14 +166,9 @@ export default function ContentCalendarView() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
   });
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const gridContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedCell, setSelectedCell] = useState<{ date: Date; hour: number; posts: any[] } | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{ date: Date; hour?: number; title?: string; posts: any[] } | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(() => new Date());
-  const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
-  const [draggedPlatforms, setDraggedPlatforms] = useState<string[]>([]);
-  const [dragOverTime, setDragOverTime] = useState<{ dayIndex: number; timeStr: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleExport = (type: 'ical' | 'csv') => {
@@ -359,12 +355,7 @@ export default function ContentCalendarView() {
     }
   }, [targetPostId, posts]);
 
-  useEffect(() => {
-    if (scrollRef.current && !loading) {
-      // Pre-scroll to 8 AM (8 * 60 = 480)
-      scrollRef.current.scrollTop = 480;
-    }
-  }, [loading]);
+
 
   const handleCancel = useCallback(async (postId: string) => {
     setActionLoadingId(postId);
@@ -417,158 +408,7 @@ export default function ContentCalendarView() {
     }
   }, [fetchPosts, showPopup, language, clearCache]);
 
-  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, postId: string) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top;
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'single', postId, offsetY }));
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedPostId(postId);
-    const post = posts.find(p => p.id === postId);
-    if (post) {
-      setDraggedPlatforms([post.platform === 'thread' ? 'threads' : post.platform]);
-    }
-  }, [posts]);
 
-  const handleDragEnd = useCallback(() => {
-    setDraggedPostId(null);
-    setDragOverTime(null);
-    setDraggedPlatforms([]);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, dayIdx: number, targetHour: number) => {
-    e.preventDefault();
-    const cellRect = e.currentTarget.getBoundingClientRect();
-    const localOffsetY = e.clientY - cellRect.top;
-    
-    // Mỗi ô cao 120px tương ứng 60 phút => 2px = 1 phút
-    let minutes = Math.floor(localOffsetY / 2);
-    minutes = Math.max(0, Math.min(59, minutes));
-    minutes = Math.round(minutes / 15) * 15;
-    if (minutes === 60) minutes = 45; // Tránh tràn sang giờ tiếp theo
-
-
-    const timeStr = `${targetHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    setDragOverTime({ dayIndex: dayIdx, timeStr });
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setDragOverTime(null);
-  }, []);
-
-  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>, dayIdx: number, date: Date, targetHour: number) => {
-    e.preventDefault();
-    setDraggedPostId(null);
-    setDragOverTime(null);
-    setDraggedPlatforms([]);
-    const dataStr = e.dataTransfer.getData('text/plain');
-    if (!dataStr) return;
-
-    let draggedIds: string[] = [];
-    let dragOffsetY = 0;
-    try {
-      if (dataStr.startsWith('{')) {
-        const parsed = JSON.parse(dataStr);
-        if (parsed.type === 'single') {
-          draggedIds = [parsed.postId];
-          dragOffsetY = parsed.offsetY || 0;
-        } else {
-          draggedIds = parsed.postIds || [];
-          dragOffsetY = parsed.offsetY || 0;
-        }
-      } else {
-        draggedIds = [dataStr];
-      }
-    } catch {
-      draggedIds = [dataStr];
-    }
-
-    if (draggedIds.length === 0) return;
-
-    // Lọc ra các bài chưa đăng
-    const draggedPosts = posts.filter(p => draggedIds.includes(p.id) && p.status === 'pending');
-    if (draggedPosts.length === 0) return;
-
-    const cellRect = e.currentTarget.getBoundingClientRect();
-    let localOffsetY = e.clientY - cellRect.top - dragOffsetY;
-    if (localOffsetY < 0) localOffsetY = 0;
-    
-    let minutes = Math.floor(localOffsetY / 2);
-    minutes = Math.max(0, Math.min(59, minutes));
-    minutes = Math.round(minutes / 15) * 15;
-    if (minutes === 60) minutes = 45;
-
-    const newScheduledDate = new Date(date);
-    newScheduledDate.setHours(targetHour, minutes, 0, 0);
-
-    if (newScheduledDate < new Date()) {
-      showPopup(
-        language === 'vi'
-          ? 'Không thể dời lịch đăng bài viết về thời gian trong quá khứ.'
-          : 'Cannot reschedule a post to a past date/time.',
-        'error'
-      );
-      return;
-    }
-
-    const firstPost = draggedPosts[0];
-    
-    // Bỏ qua nếu kéo về đúng vị trí (thời gian) cũ
-    const originalDate = new Date(firstPost.scheduled_at);
-    if (
-      newScheduledDate.getFullYear() === originalDate.getFullYear() &&
-      newScheduledDate.getMonth() === originalDate.getMonth() &&
-      newScheduledDate.getDate() === originalDate.getDate() &&
-      newScheduledDate.getHours() === originalDate.getHours() &&
-      newScheduledDate.getMinutes() === originalDate.getMinutes()
-    ) {
-      return;
-    }
-
-    const title = draggedPosts.length > 1 
-        ? (language === 'vi' ? `${draggedPosts.length} bài viết` : `${draggedPosts.length} posts`) 
-        : (firstPost.captions?.articles?.title || firstPost.captions?.edited_content || 'Bài viết');
-
-    setConfirmDrop({
-      isOpen: true,
-      isMultiple: draggedPosts.length > 1,
-      posts: draggedPosts,
-      selectedPostIds: draggedPosts.map(p => p.id),
-      eventId: firstPost.id,
-      newStart: newScheduledDate.toISOString(),
-      oldStart: firstPost.scheduled_at,
-      title: title,
-      revert: () => {}, // Không cần revert UI vì HTML Drag Drop không tự đổi DOM
-      commit: async (selectedIds?: string[]) => {
-        const idsToUpdate = selectedIds || draggedPosts.map(p => p.id);
-        if (idsToUpdate.length === 0) return;
-
-
-        if (idsToUpdate.length === 1) {
-          await handleReschedule(idsToUpdate[0], newScheduledDate.toISOString());
-        } else {
-          setActionLoadingId('bulk');
-          try {
-            const res = await fetch('/api/scheduled-posts/bulk-reschedule', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ids: idsToUpdate, scheduledAt: newScheduledDate.toISOString() }),
-            });
-            if (res.ok) {
-              showPopup(language === 'vi' ? 'Đã dời lịch các bài đăng thành công!' : 'Successfully rescheduled posts!', 'success');
-              clearCache();
-              await fetchPosts();
-            } else {
-              showPopup(language === 'vi' ? 'Lỗi khi thay đổi lịch đăng bài' : 'Error rescheduling posts', 'error');
-            }
-          } catch (err) {
-            showPopup(language === 'vi' ? 'Lỗi kết nối khi dời lịch đăng bài' : 'Connection error', 'error');
-          } finally {
-            setActionLoadingId(null);
-          }
-        }
-      }
-    });
-  }, [handleReschedule, posts, language, showPopup, clearCache, fetchPosts]);
 
   // Check if today is within current week
   const isCurrentWeekToday = () => {
@@ -589,28 +429,15 @@ export default function ContentCalendarView() {
   });
 
   const handlePrevWeek = useCallback(() => {
-    setCurrentWeekStart(prev => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() - 7);
-      return d;
-    });
+    calendarRef.current?.getApi()?.prev();
   }, []);
 
   const handleNextWeek = useCallback(() => {
-    setCurrentWeekStart(prev => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + 7);
-      return d;
-    });
+    calendarRef.current?.getApi()?.next();
   }, []);
 
   const handleToday = useCallback(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day;
-    const sunday = new Date(today.setDate(diff));
-    sunday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(sunday);
+    calendarRef.current?.getApi()?.today();
     setHighlightedDate(new Date());
   }, []);
 
@@ -727,6 +554,7 @@ export default function ContentCalendarView() {
   }, [handleReschedule, showPopup, language, clearCache, fetchPosts]);
 
   const renderEventContent = useCallback((eventInfo: any) => {
+    const isMonthView = eventInfo.view.type === 'dayGridMonth';
     const { platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
 
     const isGoldenHour = (postPlatform: string, scheduledAt: string) => {
@@ -738,6 +566,27 @@ export default function ContentCalendarView() {
     if (isMultiple) {
       const postsCount = posts ? posts.length : 0;
       const uniquePlatforms = platforms || [];
+
+      if (isMonthView) {
+        return (
+          <div className="w-full bg-[#EDF3FF] dark:bg-blue-950/40 rounded-lg border border-blue-200/60 dark:border-blue-900/40 px-1.5 py-0.5 flex items-center justify-between cursor-pointer select-none shadow-2xs hover:bg-[#E2EAFB] dark:hover:bg-blue-900/50 transition-colors my-0.5">
+            <div className="flex items-center gap-1 min-w-0">
+              <Layers size={11} className="text-[#1E40AF] dark:text-blue-300 stroke-[2.5] shrink-0" />
+              <span className="text-[9.5px] font-black text-[#1E40AF] dark:text-blue-300 truncate">
+                {postsCount} {language === 'vi' ? 'bài' : 'posts'}
+              </span>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {uniquePlatforms.map((plat: string, idx: number) => {
+                if (plat === 'facebook') return <Facebook key={idx} size={10} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+                if (plat === 'instagram') return <Instagram key={idx} size={10} className="text-[#E4405F] shrink-0" />;
+                if (plat === 'threads') return <ThreadsIcon key={idx} size={10} className="text-black dark:text-white shrink-0" />;
+                return <Globe key={idx} size={10} className="text-emerald-700 shrink-0" />;
+              })}
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="w-full h-auto bg-[#EDF3FF] dark:bg-blue-950/40 rounded-xl overflow-hidden cursor-pointer shadow-sm select-none border border-blue-100 dark:border-blue-900/30">
@@ -795,31 +644,49 @@ export default function ContentCalendarView() {
         bgClass = 'bg-[#EDF3FF] dark:bg-blue-950/20';
         borderClass = 'border-[#D1E2FF] dark:border-blue-900/30';
         textClass = 'text-[#1E40AF] dark:text-blue-400';
-        icon = <Facebook size={12} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
+        icon = <Facebook size={11} className="text-[#1877F2] fill-[#1877F2] shrink-0" />;
       } else if (platform === 'instagram') {
         bgClass = 'bg-[#FFF0F2] dark:bg-pink-950/20';
         borderClass = 'border-[#FFB8C6] dark:border-pink-900/30';
         textClass = 'text-[#900A22] dark:text-pink-400';
-        icon = <Instagram size={12} className="text-[#E4405F] shrink-0" />;
+        icon = <Instagram size={11} className="text-[#E4405F] shrink-0" />;
       } else if (platform === 'threads') {
         bgClass = 'bg-[#F8F9FA] dark:bg-zinc-900/40';
         borderClass = 'border-[#E9ECEF] dark:border-zinc-800';
         textClass = 'text-[#212529] dark:text-zinc-300';
-        icon = <ThreadsIcon size={12} className="text-black dark:text-white shrink-0" />;
+        icon = <ThreadsIcon size={11} className="text-black dark:text-white shrink-0" />;
       } else {
         bgClass = 'bg-[#E8F5E9] dark:bg-emerald-950/20';
         borderClass = 'border-[#C8E6C9] dark:border-emerald-900/30';
         textClass = 'text-[#2E7D32] dark:text-emerald-400';
-        icon = <Globe size={12} className="text-[#2E7D32] shrink-0" />;
+        icon = <Globe size={11} className="text-[#2E7D32] shrink-0" />;
       }
 
       let statusIcon = null;
       if (status === 'failed') {
-        statusIcon = <AlertTriangle size={10} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
+        statusIcon = <AlertTriangle size={9} className="text-rose-500 fill-rose-100 shrink-0 animate-pulse" />;
       } else if (status === 'cancelled') {
-        statusIcon = <X size={10} className="text-slate-500 shrink-0 font-bold" />;
+        statusIcon = <X size={9} className="text-slate-500 shrink-0 font-bold" />;
       } else if (status === 'posted') {
-        statusIcon = <CheckCircle2 size={10} className="text-emerald-500 fill-emerald-100 shrink-0" />;
+        statusIcon = <CheckCircle2 size={9} className="text-emerald-500 fill-emerald-100 shrink-0" />;
+      }
+
+      if (isMonthView) {
+        return (
+          <div className={`w-full rounded-lg border ${borderClass} ${bgClass} px-1.5 py-0.5 flex items-center justify-between gap-1 overflow-hidden cursor-pointer select-none shadow-2xs my-0.5`}>
+            <div className="flex items-center gap-1 min-w-0 flex-1">
+              {icon}
+              <span className={`text-[9px] font-extrabold font-mono shrink-0 ${textClass}`}>
+                {time}
+              </span>
+              {isGolden && <Star size={8} className="text-amber-500 fill-amber-400 shrink-0" />}
+              <span className={`text-[9.5px] font-bold truncate min-w-0 leading-none ${textClass}`}>
+                {title}
+              </span>
+            </div>
+            {statusIcon}
+          </div>
+        );
       }
 
       return (
@@ -842,27 +709,57 @@ export default function ContentCalendarView() {
     }
   }, [language]);
 
-  const getDayAndPosition = (scheduledAtStr: string, weekStart: Date) => {
-    const scheduledDate = new Date(scheduledAtStr);
-    const weekStartMs = weekStart.getTime();
-    const oneDayMs = 24 * 60 * 60 * 1000;
+  const handleMoreLinkClick = useCallback((arg: any) => {
+    const extraPosts: any[] = [];
+    const segsToProcess = (arg.hiddenSegs && arg.hiddenSegs.length > 0) ? arg.hiddenSegs : arg.allSegs;
 
-    const diffDays = Math.floor((scheduledDate.getTime() - weekStartMs) / oneDayMs);
+    segsToProcess.forEach((seg: any) => {
+      const post = seg.event?.extendedProps?.post;
+      const postsList = seg.event?.extendedProps?.posts;
+      if (postsList && Array.isArray(postsList)) {
+        extraPosts.push(...postsList);
+      } else if (post) {
+        extraPosts.push(post);
+      }
+    });
 
-    if (diffDays < 0 || diffDays > 6) {
-      return null;
-    }
+    const uniqueMap = new Map();
+    extraPosts.forEach((p) => {
+      if (p && p.id) uniqueMap.set(p.id, p);
+    });
+    const uniquePosts = Array.from(uniqueMap.values());
 
-    const hours = scheduledDate.getHours();
-    const minutes = scheduledDate.getMinutes();
+    const clickDate = arg.date ? new Date(arg.date) : new Date();
 
-    return {
-      dayIndex: diffDays,
-      hours,
-      minutes,
-      timeStr: scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-  };
+    setSelectedCell({
+      date: clickDate,
+      hour: clickDate.getHours(),
+      title: language === 'vi' ? 'Danh sách bài đăng nhóm thêm' : 'Extra Posts Group',
+      posts: uniquePosts,
+    });
+
+    return 'none';
+  }, [language]);
+
+  const handleDateClick = useCallback((info: any) => {
+    const clickedDate = new Date(info.dateStr || info.date);
+    const dayPosts = posts.filter(post => {
+      const d = new Date(post.scheduled_at);
+      return d.getDate() === clickedDate.getDate() &&
+             d.getMonth() === clickedDate.getMonth() &&
+             d.getFullYear() === clickedDate.getFullYear();
+    });
+
+    if (dayPosts.length === 0) return;
+
+    setSelectedCell({
+      date: clickedDate,
+      title: language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details',
+      posts: dayPosts,
+    });
+  }, [posts, language]);
+
+
 
   const getDayLabel = (date: Date) => {
     const day = date.getDay();
@@ -1108,6 +1005,38 @@ export default function ContentCalendarView() {
         .fc .fc-daygrid-event {
           margin-top: 2px !important;
           margin-bottom: 2px !important;
+          padding: 1px 2px !important;
+        }
+        .fc .fc-daygrid-more-link {
+          font-size: 10px !important;
+          font-weight: 800 !important;
+          color: #1E40AF !important;
+          background: #EDF3FF !important;
+          border: 1px solid #D1E2FF !important;
+          border-radius: 8px !important;
+          padding: 2px 6px !important;
+          margin-top: 2px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          transition: all 0.15s ease !important;
+          text-decoration: none !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+        .fc .fc-daygrid-more-link:hover {
+          background: #D1E2FF !important;
+          color: #1e3a8a !important;
+          transform: translateY(-1px) !important;
+        }
+        .dark .fc .fc-daygrid-more-link {
+          color: #60a5fa !important;
+          background: rgba(30, 58, 138, 0.4) !important;
+          border-color: rgba(30, 64, 175, 0.5) !important;
+        }
+        .dark .fc .fc-daygrid-more-link:hover {
+          background: rgba(30, 58, 138, 0.7) !important;
+          color: #93c5fd !important;
+        }
+        .fc .fc-daygrid-day-frame {
           padding: 2px 4px !important;
         }
       `}</style>
@@ -1425,182 +1354,25 @@ export default function ContentCalendarView() {
               />
             </div>
           ) : (
-            <div className="flex-1 mt-4 overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative scrollbar-thin" ref={gridContainerRef}>
-            <div className="min-w-[700px] h-full relative">
-              {/* Header Row */}
-              <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-100 dark:border-zinc-850 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-30 shadow-sm">
-                <div className="p-3 flex items-center justify-center border-r border-slate-100 dark:border-zinc-850">
-                  {/* Empty corner */}
-                </div>
-                {weekDates.map((date, idx) => {
-                  const isTodayDate = isToday(date);
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-3 text-center border-r border-slate-100 dark:border-zinc-850 last:border-0 flex flex-col items-center justify-center gap-1 transition-all ${
-                        isTodayDate ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-b-2 border-b-primary' : ''
-                      }`}
-                    >
-                      <span className={`text-[11px] font-black uppercase tracking-wider ${isTodayDate ? 'text-primary' : 'text-slate-500 dark:text-zinc-400'}`}>
-                        {getDayLabel(date)} {date.getDate()}/{date.getMonth() + 1}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Grid Body */}
-              <div className="relative">
-                {hoursArray.map(hour => (
-                  <div key={hour} className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-slate-50 dark:border-zinc-800/50 min-h-[120px] group relative">
-                    <div className="border-r border-slate-100 dark:border-zinc-850 p-2 text-right relative bg-white dark:bg-slate-900 z-10">
-                      <span className="text-[10px] font-bold text-slate-400 absolute -top-2.5 right-2 bg-white dark:bg-slate-900 px-1">
-                        {hour.toString().padStart(2, '0')} giờ
-                      </span>
-                    </div>
-                    {/* Day Columns */}
-                    {Array.from({ length: 7 }).map((_, colIdx) => {
-                      const isTodayCol = isToday(weekDates[colIdx]);
-
-                      // Lọc các bài viết
-                      const cellPosts = filteredPosts.filter(post => {
-                        const dayPos = getDayAndPosition(post.scheduled_at, currentWeekStart);
-                        return dayPos && dayPos.dayIndex === colIdx && dayPos.hours === hour;
-                      }).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-
-                      // Tính toán Golden Hours
-                      const platformsToCheck = draggedPlatforms.length > 0 ? draggedPlatforms : selectedPlatforms;
-                      const goldenPlatformsForHour = platformsToCheck.filter(plat => {
-                        const platHours = STATIC_GOLDEN_HOURS[plat as keyof typeof STATIC_GOLDEN_HOURS] || [];
-                        return platHours.some(gh => gh.hour === hour);
-                      });
-
-                      return (
-                        <div
-                          key={colIdx}
-                          className={`border-r border-slate-50 dark:border-zinc-800/50 last:border-0 relative hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-crosshair group/cell ${
-                            isTodayCol ? 'bg-emerald-50/35 dark:bg-emerald-950/20' : ''
-                          }`}
-                          onDragOver={(e) => handleDragOver(e, colIdx, hour)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, colIdx, weekDates[colIdx], hour)}
-                        >
-                          {/* Golden Hours Background Indicator */}
-                          {goldenPlatformsForHour.length > 0 && dragOverTime && dragOverTime.dayIndex === colIdx && (
-                            <div className="absolute inset-1 rounded-lg border border-dashed pointer-events-none z-0 flex flex-col p-1.5 opacity-40 dark:opacity-20"
-                                 style={{
-                                   backgroundColor: goldenPlatformsForHour.length > 1 ? '#fffbeb' :
-                                                    goldenPlatformsForHour[0] === 'facebook' ? '#eff6ff' :
-                                                    goldenPlatformsForHour[0] === 'instagram' ? '#fdf2f8' :
-                                                    '#f8fafc',
-                                   borderColor: goldenPlatformsForHour.length > 1 ? '#fcd34d' :
-                                                goldenPlatformsForHour[0] === 'facebook' ? '#93c5fd' :
-                                                goldenPlatformsForHour[0] === 'instagram' ? '#f9a8d4' :
-                                                '#cbd5e1'
-                                 }}>
-                              <div className="flex gap-1 justify-end opacity-100">
-                                {goldenPlatformsForHour.includes('facebook') && <Facebook size={12} className="text-blue-600" />}
-                                {goldenPlatformsForHour.includes('instagram') && <Instagram size={12} className="text-pink-600" />}
-                                {goldenPlatformsForHour.includes('threads') && <ThreadsIcon size={12} className="text-slate-900 dark:text-white" />}
-                              </div>
-                              <span className="text-[9px] font-bold text-right mt-0.5 opacity-100"
-                                    style={{
-                                      color: goldenPlatformsForHour.length > 1 ? '#b45309' :
-                                             goldenPlatformsForHour[0] === 'facebook' ? '#1d4ed8' :
-                                             goldenPlatformsForHour[0] === 'instagram' ? '#be185d' :
-                                             '#334155'
-                                    }}>
-                                Giờ vàng
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Drag Over Indicator */}
-                          {dragOverTime && dragOverTime.dayIndex === colIdx && (
-                            <div className="absolute left-0 right-0 h-0.5 bg-primary/50 z-20 pointer-events-none" style={{ top: `${parseInt(dragOverTime.timeStr.split(':')[1])}px` }} />
-                          )}
-                          
-                          {/* Render Events */}
-                          {cellPosts.length > 0 && (
-                            <div className="relative w-full h-full px-1 py-1 z-20 flex flex-col">
-                              {(() => {
-                                // Group logic matching backend
-                                if (cellPosts.length === 1) {
-                                  const post = cellPosts[0];
-                                  const minutes = new Date(post.scheduled_at).getMinutes();
-                                  const topOffset = (minutes / 60) * 65; // Max offset 65px for a 120px cell
-
-                                  
-                                  const eventInfo = {
-                                    event: {
-                                      start: post.scheduled_at,
-                                      title: post.captions?.articles?.title || post.captions?.edited_content || post.captions?.ai_content || 'Bài viết không tên',
-                                      extendedProps: {
-                                        platform: post.platform === 'thread' ? 'threads' : post.platform,
-                                        status: post.status,
-                                        post: post,
-                                        isMultiple: false
-                                      }
-                                    }
-                                  };
-                                  return (
-                                    <div 
-                                      className="w-full"
-                                      style={{ marginTop: `${topOffset}px` }}
-                                      draggable={post.status === 'pending'}
-                                      onDragStart={(e) => handleDragStart(e, post.id)}
-                                      onDragEnd={handleDragEnd}
-                                      onClick={(e) => { e.stopPropagation(); setSelectedCell({ date: new Date(post.scheduled_at), hour, posts: [post] }); }}
-                                    >
-                                      {renderEventContent(eventInfo)}
-                                    </div>
-                                  );
-                                } else {
-                                  // Multiple events
-                                  const uniquePlatforms = Array.from(new Set(cellPosts.map(p => p.platform === 'thread' ? 'threads' : p.platform)));
-                                  const eventInfo = {
-                                    event: {
-                                      start: cellPosts[0].scheduled_at,
-                                      extendedProps: {
-                                        platform: 'multiple',
-                                        platforms: uniquePlatforms,
-                                        posts: cellPosts,
-                                        isMultiple: true
-                                      }
-                                    }
-                                  };
-                                  return (
-                                    <div 
-                                      className="w-full"
-                                      draggable={cellPosts.some(p => p.status === 'pending')}
-                                      onDragStart={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const offsetY = e.clientY - rect.top;
-                                        const pendingPosts = cellPosts.filter(p => p.status === 'pending');
-                                        const pendingIds = pendingPosts.map(p => p.id);
-                                        const platforms = Array.from(new Set(pendingPosts.map(p => p.platform === 'thread' ? 'threads' : p.platform)));
-                                        e.dataTransfer.setData('text/plain', JSON.stringify({ isMultiple: true, postIds: pendingIds, offsetY }));
-                                        e.dataTransfer.effectAllowed = 'move';
-                                        setDraggedPlatforms(platforms);
-                                      }}
-                                      onDragEnd={handleDragEnd}
-                                      onClick={(e) => { e.stopPropagation(); setSelectedCell({ date: new Date(cellPosts[0].scheduled_at), hour, posts: cellPosts }); }}
-                                    >
-                                      {renderEventContent(eventInfo)}
-                                    </div>
-                                  );
-                                }
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+            <div className="flex-1 mt-4 overflow-hidden rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative p-2 h-full">
+              <CalendarComponent
+                ref={calendarRef}
+                initialView={activeView}
+                headerToolbar={false}
+                allDaySlot={false}
+                events={fetchCalendarEvents}
+                editable={true}
+                eventDrop={handleEventDrop}
+                eventClick={handleEventClick}
+                eventContent={renderEventContent}
+                datesSet={handleDatesSet}
+                dateClick={handleDateClick}
+                dayMaxEvents={3}
+                moreLinkText={(num: number) => language === 'vi' ? `+${num} bài nữa` : `+${num} more`}
+                moreLinkClick={handleMoreLinkClick}
+                height="100%"
+              />
             </div>
-          </div>
           )}
 
         </div>
@@ -1608,8 +1380,11 @@ export default function ContentCalendarView() {
         {/* Mobile Timeline List View */}
         {(() => {
           const currentWeekPosts = filteredPosts.filter(post => {
-            const dayPos = getDayAndPosition(post.scheduled_at, currentWeekStart);
-            return dayPos !== null;
+            const postDate = new Date(post.scheduled_at);
+            const start = new Date(currentWeekStart);
+            const end = new Date(currentWeekStart);
+            end.setDate(start.getDate() + 7);
+            return postDate >= start && postDate < end;
           }).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
           return (
@@ -1726,12 +1501,12 @@ export default function ContentCalendarView() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex flex-col">
                   <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-                    {language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details'}
+                    {selectedCell.title || (language === 'vi' ? 'Chi tiết lịch đăng bài' : 'Schedule Details')}
                   </h3>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                     {language === 'vi'
-                      ? `Ngày ${selectedCell.date.getDate()}/${selectedCell.date.getMonth() + 1}/${selectedCell.date.getFullYear()} · Khung giờ ${selectedCell.hour}:00`
-                      : `Date: ${selectedCell.date.getMonth() + 1}/${selectedCell.date.getDate()}/${selectedCell.date.getFullYear()} · Time slot: ${selectedCell.hour}:00`}
+                      ? `Ngày ${selectedCell.date.getDate()}/${selectedCell.date.getMonth() + 1}/${selectedCell.date.getFullYear()}`
+                      : `Date: ${selectedCell.date.getMonth() + 1}/${selectedCell.date.getDate()}/${selectedCell.date.getFullYear()}`}
                   </span>
                 </div>
                 <button
@@ -1829,6 +1604,12 @@ export default function ContentCalendarView() {
                                 {postTitle}
                               </p>
                             )}
+
+                            {post.users?.email && (
+                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold block">
+                                👤 Tác giả: {post.users.email}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1838,7 +1619,29 @@ export default function ContentCalendarView() {
                           </p>
                         ) : null}
 
-                        <div className="flex justify-end gap-2 mt-1">
+                        <div className="flex justify-end items-center gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const title = post.captions?.articles?.title || post.captions?.ai_content || 'Bài đăng AntBiz';
+                              const details = post.captions?.edited_content || post.captions?.ai_content || '';
+                              const gcalUrl = buildGoogleCalendarUrl({
+                                title,
+                                scheduledAt: post.scheduled_at,
+                                details,
+                                postId: post.id,
+                                platform: post.platform,
+                              });
+                              window.open(gcalUrl, '_blank');
+                            }}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 text-[9px] font-black px-2.5 py-1.5 rounded-xl transition-all border border-blue-200/50 dark:border-blue-800/40 cursor-pointer active:scale-95 flex items-center gap-1"
+                            title={language === 'vi' ? 'Thêm bài đăng vào Google Calendar' : 'Add to Google Calendar'}
+                          >
+                            <Calendar size={10} />
+                            <span>{language === 'vi' ? '+ Google Calendar' : '+ Google Calendar'}</span>
+                          </button>
+
                           {post.status === 'pending' && (
                             <button
                               onClick={(e) => {

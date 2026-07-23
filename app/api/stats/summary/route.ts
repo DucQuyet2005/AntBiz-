@@ -10,10 +10,16 @@ export async function GET(request: NextRequest) {
   const days = timeframe === 'month' ? 30 : 7;
   const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: posts, error } = await supabase
+  let query = supabase
     .from('scheduled_posts')
     .select('platform, status, scheduled_at')
     .gte('scheduled_at', fromDate);
+
+  if (role === 'marketer_content' && user) {
+    query = query.eq('created_by', user.id);
+  }
+
+  const { data: posts, error } = await query;
 
   if (error) {
     console.error('[GET /api/stats/summary] Supabase error:', error);

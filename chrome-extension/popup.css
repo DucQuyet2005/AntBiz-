@@ -22,13 +22,16 @@ body {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
@@ -65,7 +68,8 @@ body {
 .logo-text {
   font-size: 15px;
   font-weight: 800;
-  color: #4f46e5; /* Indigo */
+  color: #4f46e5;
+  /* Indigo */
   letter-spacing: -0.025em;
 }
 
@@ -97,8 +101,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hidden {
@@ -119,7 +130,8 @@ body {
   line-height: 1.5;
 }
 
-.error-icon, .success-icon {
+.error-icon,
+.success-icon {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -150,8 +162,13 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Cấu trúc Form xem trước */
@@ -176,7 +193,8 @@ body {
   letter-spacing: 0.05em;
 }
 
-.form-group input, .form-group textarea {
+.form-group input,
+.form-group textarea {
   width: 100%;
   background-color: #ffffff;
   border: 1px solid #d1d5db;
@@ -188,7 +206,8 @@ body {
   transition: all 0.15s ease;
 }
 
-.form-group input:focus, .form-group textarea:focus {
+.form-group input:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: #4f46e5;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
@@ -467,8 +486,15 @@ body {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 #record-timer {
@@ -601,8 +627,10 @@ body {
   width: 100%;
   height: auto;
   display: block;
-  max-height: 380px; /* Giới hạn chiều cao tối đa của ảnh đơn để tránh quá dài */
-  object-fit: contain; /* Giữ nguyên tỉ lệ, không bị crop */
+  max-height: 380px;
+  /* Giới hạn chiều cao tối đa của ảnh đơn để tránh quá dài */
+  object-fit: contain;
+  /* Giữ nguyên tỉ lệ, không bị crop */
 }
 
 /* Layout 2 ảnh */
@@ -610,6 +638,7 @@ body {
   flex-direction: row;
   height: 180px;
 }
+
 .fb-img-half {
   width: calc(50% - 1px);
   height: 100%;
@@ -620,21 +649,25 @@ body {
 .fb-preview-image-container.layout-3 {
   height: 260px;
 }
+
 .fb-grid-top {
   width: 100%;
   height: 170px;
 }
+
 .fb-img-top-large {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .fb-grid-bottom {
   display: flex;
   flex-direction: row;
   height: 88px;
   gap: 2px;
 }
+
 .fb-img-bottom-small {
   width: calc(50% - 1px);
   height: 100%;
@@ -645,22 +678,26 @@ body {
 .fb-preview-image-container.layout-4 {
   height: 260px;
 }
+
 .fb-grid-bottom-three {
   display: flex;
   flex-direction: row;
   height: 88px;
   gap: 2px;
 }
+
 .fb-bottom-img-wrapper {
   position: relative;
   width: calc(33.33% - 1.33px);
   height: 100%;
 }
+
 .fb-img-bottom-small-three {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .fb-img-overlay {
   position: absolute;
   top: 0;
@@ -759,6 +796,7 @@ body {
     transform: scale(1);
     opacity: 1;
   }
+
   100% {
     transform: scale(2.2);
     opacity: 0;
@@ -821,27 +859,47 @@ body {
   border: 1px solid #f3f4f6;
   gap: 4px;
 }
+
 .history-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .history-item-platform {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   color: #4b5563;
 }
+
 .history-item-status {
   font-size: 10px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 12px;
 }
-.status-pending { background-color: #fef3c7; color: #92400e; }
-.status-scheduled { background-color: #dbeafe; color: #1e40af; }
-.status-posted { background-color: #d1fae5; color: #065f46; }
-.status-failed { background-color: #fee2e2; color: #991b1b; }
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-scheduled {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.status-posted {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-failed {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
 .history-item-title {
   font-size: 13px;
   font-weight: 500;
@@ -850,8 +908,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .history-item-time {
   font-size: 11px;
   color: #6b7280;
 }
-

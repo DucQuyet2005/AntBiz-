@@ -45,15 +45,17 @@ export class CaptionManagementModule implements CaptionManagementModuleInterface
     return caption;
   }
 
-  async list(_actor: CaptionManagementActor, input: ListCaptionsInput) {
+  async list(actor: CaptionManagementActor, input: ListCaptionsInput) {
     const platform = input.platform !== 'all' && input.platform !== 'All Platforms'
       ? normalizePlatform(input.platform.toLowerCase())
       : undefined;
     const from = (input.page - 1) * input.limit;
+    const creatorId = actor.role === 'marketer_content' ? actor.id : undefined;
     try {
       const result = await this.repository.listCaptions({
         platform,
         search: input.search || undefined,
+        creatorId,
         from,
         to: from + input.limit - 1,
       });

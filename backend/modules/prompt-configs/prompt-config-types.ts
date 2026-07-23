@@ -25,7 +25,7 @@ export interface PromptConfigRecord {
 }
 
 export interface PromptConfigRepository {
-  list(userId: string, platform?: string): Promise<PromptConfigRecord[]>;
+  list(userId?: string, platform?: string): Promise<PromptConfigRecord[]>;
   findById(id: string): Promise<PromptConfigRecord | null>;
   findDuplicateName(userId: string, name: string, excludeId?: string): Promise<PromptConfigRecord | null>;
   resetDefaults(userId: string, excludeId?: string): Promise<void>;

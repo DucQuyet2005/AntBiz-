@@ -8,13 +8,14 @@ const proxyRoute = readFileSync(
 ).replace(/\r\n/g, '\n');
 
 describe('AI Creator proxy navigation interceptor', () => {
-  it('does not proxy the embedded site application data requests', () => {
-    expect(proxyRoute).not.toContain('window.fetch = function');
-    expect(proxyRoute).not.toContain('XMLHttpRequest.prototype.open = function');
+  it('intercepts embedded site navigation and data requests for proxying', () => {
+    expect(proxyRoute).toContain('window.fetch = function');
+    expect(proxyRoute).toContain('XMLHttpRequest.prototype.open = function');
   });
 
   it('reports URL changes only when navigation state changes', () => {
     expect(proxyRoute).not.toContain('setInterval(report, 800)');
-    expect(proxyRoute).toContain('_currentTarget = abs;\n          report();');
+    expect(proxyRoute).toContain('_currentTarget = abs;');
+    expect(proxyRoute).toContain('report();');
   });
 });

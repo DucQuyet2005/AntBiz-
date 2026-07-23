@@ -138,8 +138,8 @@ export const postService = {
         if (data.success && Array.isArray(data.suggestions)) {
           return {
             data: { suggestions: data.suggestions, modelUsed: 'Gemini 3.1 Flash Lite' },
-            error: null,
-            status: 200,
+            error: undefined,
+            status: 'success',
           };
         }
       }
