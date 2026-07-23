@@ -7,6 +7,8 @@ import {
   platformPresetErrorResponse,
 } from '../_adapter';
 
+import { createAdminClient } from '@/utils/supabase/admin';
+
 type RouteParams = { params: Promise<{ id: string }> };
 const PLATFORM_PRESET_ROLES = ['admin', 'marketer_full', 'marketer_content'] as const;
 
@@ -33,7 +35,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const data = await buildPlatformPresetModule(supabase).update(
+    const client = role === 'admin' ? createAdminClient() : supabase;
+    const data = await buildPlatformPresetModule(client).update(
       platformPresetActor(user.id, role),
       id,
       parsed.data
@@ -52,7 +55,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     ]);
     if (unauthorized) return unauthorized;
 
-    const result = await buildPlatformPresetModule(supabase).delete(
+    const client = role === 'admin' ? createAdminClient() : supabase;
+    const result = await buildPlatformPresetModule(client).delete(
       platformPresetActor(user.id, role),
       id
     );

@@ -18,21 +18,20 @@ export class PlatformPresetModule {
 
   async list(actor: PlatformPresetActor, requestedPlatform: string): Promise<PlatformPresetRecord[]> {
     const platform = normalizePresetPlatform(requestedPlatform);
-    let userPresets: PlatformPresetRecord[] = [];
-    let systemPresets: PlatformPresetRecord[] = [];
-
     try {
-      userPresets = await this.repository.listUserPresets(actor.id, platform);
-      systemPresets = await this.repository.listSystemPresets(platform);
+      if (actor.role === 'admin') {
+        const allPresets = await this.repository.listAllPresets(platform);
+        return this.sortPresets(allPresets);
+      }
+      const userPresets = await this.repository.listUserPresets(actor.id, platform);
+      const systemPresets = await this.repository.listSystemPresets(platform);
+      return this.sortPresets([...userPresets, ...systemPresets]);
     } catch (error) {
       throw this.persistenceFailure('Không thể tải danh sách quy chuẩn', error, {
         actorId: actor.id,
         platform,
       });
     }
-
-    const allPresets = [...userPresets, ...systemPresets];
-    return this.sortPresets(allPresets);
   }
 
   async create(
@@ -168,6 +167,7 @@ export class PlatformPresetModule {
     operation: 'chỉnh sửa' | 'xóa'
   ) {
     if (!preset.user_id) {
+      if (actor.role === 'admin') return;
       throw new PlatformPresetModuleError(
         'PRESET_ACCESS_DENIED',
         `Không thể ${operation} quy chuẩn gốc của hệ thống`,
@@ -176,7 +176,7 @@ export class PlatformPresetModule {
       );
     }
 
-    if (preset.user_id !== actor.id) {
+    if (preset.user_id !== actor.id && actor.role !== 'admin') {
       throw new PlatformPresetModuleError(
         'PRESET_ACCESS_DENIED',
         `Bạn không có quyền ${operation} quy chuẩn này`,

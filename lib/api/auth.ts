@@ -15,7 +15,7 @@ export async function requireUser() {
   try {
     const { data, error } = await supabase.auth.getUser();
     user = data?.user ?? null;
-    authError = error; z
+    authError = error;
   } catch (err: any) {
     authError = err;
   }
