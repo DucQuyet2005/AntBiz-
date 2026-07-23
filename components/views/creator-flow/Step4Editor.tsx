@@ -545,8 +545,7 @@ export default function Step4Editor() {
       const res = await quickPublishing.regenerateCaption({
         captionId,
         platform: state.selectedPlatform,
-        mode: 'partial',
-        selections: [],
+        mode: 'full',
         instruction: 'Hãy viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên nội dung bài viết này. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn (dưới 15 từ), không giải thích hay dẫn dắt.',
         presetMode: 'auto',
       });
@@ -600,8 +599,7 @@ export default function Step4Editor() {
       const res = await quickPublishing.regenerateCaption({
         captionId,
         platform: state.selectedPlatform,
-        mode: 'partial',
-        selections: [],
+        mode: 'full',
         instruction: 'Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết này. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI), không giải thích hay dẫn dắt.',
         presetMode: 'auto',
       });
