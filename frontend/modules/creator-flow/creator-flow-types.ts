@@ -31,6 +31,7 @@ export interface CreatorFlowState {
   crawlStatus: 'idle' | 'crawling' | 'done' | 'error';
   articleContext: ArticleContext | null;
   crawledImageUrls: string[]; // Images extracted from crawled article
+  croppedImageUrls: string[]; // Auto smart-cropped 1:1 versions of crawledImageUrls
 
   // Step 3: Presets
   presets: Preset[];
@@ -79,6 +80,7 @@ export type CreatorFlowAction =
   | { type: 'SET_CRAWL_STATUS'; payload: 'idle' | 'crawling' | 'done' | 'error' }
   | { type: 'SET_ARTICLE_CONTEXT'; payload: ArticleContext | null }
   | { type: 'SET_CRAWLED_IMAGES'; payload: string[] }
+  | { type: 'SET_CROPPED_IMAGES'; payload: string[] }
   | { type: 'SET_PRESETS'; payload: Preset[] }
   | { type: 'SET_SELECTED_PRESET'; payload: string | null }
   | { type: 'SET_SEARCH_PRESET'; payload: string }

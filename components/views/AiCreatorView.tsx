@@ -81,6 +81,9 @@ function AiCreatorContent() {
       case 1:
         return state.selectedPlatforms.length > 0;
       case 2:
+        if (state.sourceType === 'manual') {
+          return Boolean(state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0);
+        }
         return (
           Boolean(state.articleId && state.articleContext && state.crawlStatus === 'done') ||
           Boolean(state.manualTitle.trim().length > 0 && state.manualContent.trim().length > 0)
@@ -102,15 +105,24 @@ function AiCreatorContent() {
       } else {
         goToStep(targetStep);
       }
-    } else {
-      // Validate intermediate steps
-      let valid = true;
-      if (state.currentStep === 1 && state.selectedPlatforms.length === 0) valid = false;
-      if (state.currentStep === 2 && (!state.articleId || state.crawlStatus !== 'done')) valid = false;
-
-      if (valid) {
-        goToStep(targetStep);
+    } else if (targetStep > state.currentStep) {
+      // Instagram image check
+      if (state.currentStep === 2 && targetStep === 3) {
+        if (state.selectedPlatforms.includes('instagram') && (!state.crawledImageUrls || state.crawledImageUrls.length === 0)) {
+          showToast("Instagram bắt buộc phải có ít nhất 1 hình ảnh để đăng bài", "error");
+          return;
+        }
       }
+
+      if (!isStepValid()) return;
+
+      // If moving forward from Step 2, use handleContinue to ensure manual content is auto-submitted
+      if (state.currentStep === 2 && targetStep === 3) {
+        handleContinue();
+        return;
+      }
+
+      goToStep(targetStep);
     }
   };
 
@@ -124,15 +136,12 @@ function AiCreatorContent() {
     try {
       const result = await confirmPostSchedule('now');
       if (result.success) {
-        showToast(t('creator.step5.successToast'), 'success');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
           router.push('/content-calendar');
         }, 1500);
       } else {
-        const failed = result.failed.join(', ');
-        showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setIsPublishingNow(false);
       }
@@ -144,6 +153,12 @@ function AiCreatorContent() {
 
   const handleContinue = async () => {
     if (state.currentStep === 2) {
+      // Instagram image check
+      if (state.selectedPlatforms.includes('instagram') && (!state.crawledImageUrls || state.crawledImageUrls.length === 0)) {
+        showToast("Instagram bắt buộc phải có ít nhất 1 hình ảnh để đăng bài", "error");
+        return;
+      }
+
       // Auto-submit manual article if manual title and content are entered and not yet matching the saved article
       if (state.manualTitle.trim() && state.manualContent.trim()) {
         const isDirty = !state.articleId ||
@@ -171,7 +186,6 @@ function AiCreatorContent() {
       // Submit and publish/schedule
       const result = await confirmPostSchedule('scheduled');
       if (result.success) {
-        showToast(t('creator.step5.successToast'), 'success');
         window.dispatchEvent(new CustomEvent('notification-updated'));
         setTimeout(() => {
           dispatch({ type: 'RESET_FLOW' });
@@ -181,9 +195,6 @@ function AiCreatorContent() {
         if ('errors' in result && result.errors && Object.keys(result.errors).length > 0) {
           const msgs = Object.entries(result.errors).map(([plat, msg]) => `${plat}: ${msg}`).join(' | ');
           showToast(`Lỗi: ${msgs}`, 'error');
-        } else {
-          const failed = result.failed.join(', ');
-          showToast(`${t('creator.step5.errorToast')}${failed ? `: ${failed}` : ''}`, 'error');
         }
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }

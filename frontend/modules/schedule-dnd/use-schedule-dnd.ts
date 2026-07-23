@@ -139,7 +139,8 @@ export function useScheduleDragDrop(
   // ─── Golden Hour helpers ───
 
   const isHourInDynamicList = useCallback((hour: number) => {
-    return dynamicGoldenHours.some(gh => gh.hour === hour);
+    if (!Array.isArray(dynamicGoldenHours)) return false;
+    return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
   }, [dynamicGoldenHours]);
 
   /**

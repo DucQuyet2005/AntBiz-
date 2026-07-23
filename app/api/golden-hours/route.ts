@@ -1,28 +1,36 @@
 import { NextResponse } from 'next/server';
-import { analyzeGoldenHours, PostEngagementData } from '@/backend/modules/scheduled-publishing/golden-hour-analyzer';
+import { createClient } from '@/utils/supabase/server';
+import { createPostPerformanceModule } from '@/backend/modules/post-performance';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const platform = searchParams.get('platform') || 'facebook';
-  const accountId = searchParams.get('accountId'); // Will be used later when querying DB
+  const platform = searchParams.get('platform') || 'all';
 
   try {
-    // Tạm thời mock data từ DB.
-    // Vì chưa có module Scraper, chúng ta trả về mảng rỗng để analyzer tự động fallback về giờ vàng tĩnh.
-    // Sau này thay đoạn này bằng `await repository.getPostEngagements(accountId, platform)`
-    const mockDbPosts: PostEngagementData[] = [];
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    const goldenHours = analyzeGoldenHours(mockDbPosts, platform);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const postPerformanceModule = createPostPerformanceModule(supabase);
+    const goldenHours = await postPerformanceModule.getGoldenHours(user.id, platform);
 
     return NextResponse.json({
       success: true,
       data: goldenHours,
     });
-  } catch (error) {
-    console.error('Error fetching golden hours:', error);
+  } catch (error: any) {
+    console.error('[API /api/golden-hours] Error fetching golden hours:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal Server Error' },
+      { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }
     );
   }
 }
+

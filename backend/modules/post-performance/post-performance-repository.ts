@@ -10,7 +10,7 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     let query = this.supabase
       .from('scheduled_posts')
-      .select('id, platform, fb_post_id, threads_post_id, instagram_media_id, created_by')
+      .select('id, platform, fb_post_id, threads_post_id, instagram_media_id, created_by, posted_at, post_interactions(updated_at)')
       .eq('status', 'posted')
       .gte('posted_at', cutoffDate.toISOString())
       .order('posted_at', { ascending: false })
@@ -43,14 +43,82 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
         externalPostId = post.instagram_media_id;
       }
 
+      const interactionRaw = Array.isArray(post.post_interactions)
+        ? post.post_interactions[0]
+        : post.post_interactions;
+      const lastSyncedAt = interactionRaw?.updated_at || null;
+
       return {
         id: post.id,
         platform: post.platform === 'thread' ? 'threads' : post.platform,
         externalPostId: externalPostId || '',
         userId: post.created_by,
+        postedAt: post.posted_at,
+        lastSyncedAt,
       };
     }).filter(post => post.externalPostId !== '');
   }
+
+  async findPostsWithInteractions(userId: string, platform?: string, daysAgo: number = 30): Promise<import('./post-performance-types').PostWithInteractions[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+
+    let query = this.supabase
+      .from('scheduled_posts')
+      .select(`
+        id,
+        posted_at,
+        platform,
+        post_interactions (
+          likes,
+          comments,
+          shares,
+          clicks,
+          reach,
+          impressions
+        )
+      `)
+      .eq('created_by', userId)
+      .eq('status', 'posted')
+      .gte('posted_at', cutoffDate.toISOString());
+
+    if (platform && platform !== 'all') {
+      const dbPlatform = platform === 'threads' ? 'thread' : platform;
+      query = query.eq('platform', dbPlatform);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[PostPerformanceRepository] Lỗi khi lấy danh sách bài đăng kèm tương tác:', error);
+      return [];
+    }
+
+    return (data || []).map((post: any) => {
+      const interactionRaw = Array.isArray(post.post_interactions)
+        ? post.post_interactions[0]
+        : post.post_interactions;
+
+      const interactions: PerformanceMetrics | undefined = interactionRaw
+        ? {
+            likes: Number(interactionRaw.likes || 0),
+            comments: Number(interactionRaw.comments || 0),
+            shares: Number(interactionRaw.shares || 0),
+            clicks: Number(interactionRaw.clicks || 0),
+            reach: Number(interactionRaw.reach || 0),
+            impressions: Number(interactionRaw.impressions || 0),
+          }
+        : undefined;
+
+      return {
+        id: post.id,
+        postedAt: post.posted_at,
+        platform: post.platform === 'thread' ? 'threads' : post.platform,
+        interactions,
+      };
+    });
+  }
+
 
   async findPageAccessToken(userId: string, platform: string = 'facebook', accountId?: string): Promise<string | null> {
     const dbPlatform = platform === 'threads' ? 'thread' : platform;

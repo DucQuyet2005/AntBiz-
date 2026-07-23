@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   RefreshCw, Send, Sparkles,
@@ -8,9 +8,11 @@ import {
   Bookmark, Check, Search, EyeOff, MoreHorizontal,
   ThumbsUp, MessageSquare, Share2, Heart, MessageCircle,
   Repeat2, CheckCircle2, ChevronLeft, ChevronRight, Wand2,
-  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic, SlidersHorizontal
+  History, RotateCcw, RotateCw, ChevronDown, Minus, MoreVertical, Image as ImageIcon, Paperclip, Mic, SlidersHorizontal,
+  Scissors, Crop
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
+import { useSmartCrop } from '@/frontend/modules/smart-crop';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,11 +43,11 @@ function QuotedTextBubble({ text }: { text: string }) {
 
 export default function Step4Editor() {
   const { t } = useLanguage();
-  const { 
-    state, 
+  const {
+    state,
     dispatch,
-    generateAIContent, 
-    regeneratePostContent, 
+    generateAIContent,
+    regeneratePostContent,
     sendAssistantChat,
     editHighlighted,
     restoreChatState,
@@ -59,10 +61,31 @@ export default function Step4Editor() {
   // Default fallback image when no article/crawled image exists
   const fallbackImage = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000';
 
-  // Determine active post preview images (prefer custom uploaded/crawled list first, then thumbnail fallback)
-  const postImages: string[] = (state.crawledImageUrls && state.crawledImageUrls.length > 0)
-    ? state.crawledImageUrls
-    : state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : [fallbackImage];
+  // ─── Smart Crop: auto-detect focal point & crop all crawled images to 1:1 ───
+  const rawImagesForCrop = useMemo(() => {
+    if (state.crawledImageUrls && state.crawledImageUrls.length > 0) return state.crawledImageUrls;
+    const contextImages = (state.articleContext as any)?.imageUrls || (state.articleContext?.thumbnail ? [state.articleContext.thumbnail] : []);
+    if (contextImages.length > 0) return contextImages;
+    return [];
+  }, [state.crawledImageUrls, state.articleContext]);
+
+  const { croppedUrls, isCropping, cropProgress } = useSmartCrop(rawImagesForCrop);
+
+  // Sync cropped URLs into global state when processing completes
+  useEffect(() => {
+    if (!isCropping && croppedUrls.length > 0) {
+      if ((state.croppedImageUrls || []).join('|') !== croppedUrls.join('|')) {
+        dispatch({ type: 'SET_CROPPED_IMAGES', payload: croppedUrls });
+      }
+    }
+  }, [croppedUrls, isCropping, dispatch, state.croppedImageUrls]);
+
+  // ─── Active images for preview: prefer cropped, fall back to crawled/thumbnail ───
+  const postImages: string[] = (
+    (state.croppedImageUrls && state.croppedImageUrls.length > 0)
+      ? state.croppedImageUrls
+      : (rawImagesForCrop.length > 0 ? rawImagesForCrop : [fallbackImage])
+  );
   const postImage = postImages[0] || fallbackImage;
 
   const getTagColorClass = (tag: string) => {
@@ -163,17 +186,17 @@ export default function Step4Editor() {
   const currentPlatform = state.selectedPlatform || 'facebook';
 
   const postContentText = state.postContent || '';
-  
+
   // Extract inline hashtags from postContentText if present
   const inlineHashtags = (postContentText.match(/#[^\s#]+/g) || []);
-  
+
   // Clean body text by stripping inline hashtags for clear separation
   const cleanBodyText = postContentText.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
   const displayedContent = cleanBodyText || postContentText;
 
   const contentLength = displayedContent.length;
   const wordCount = displayedContent.trim() ? displayedContent.trim().split(/\s+/).length : 0;
-  
+
   const isLongContent = contentLength > 500;
 
   const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
@@ -322,7 +345,7 @@ export default function Step4Editor() {
           <img
             src={displayImages[0]}
             alt="Instagram Post Media"
-            className="w-full aspect-square max-h-[500px] object-cover"
+            className="w-full h-auto max-h-[550px] object-cover"
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
           />
         </div>
@@ -334,19 +357,19 @@ export default function Step4Editor() {
     return (
       <div className="w-full select-none flex flex-col items-center">
         {/* Main Carousel Image Container */}
-        <div className="w-full relative border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden bg-black aspect-square max-h-[500px]">
+        <div className="w-full relative border-t border-b border-slate-100 dark:border-zinc-800 overflow-hidden">
           {/* Horizontal Sliding Track */}
           <div
-            className="flex w-full h-full transition-transform duration-300 ease-out"
+            className="flex items-start w-full transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-${safeIndex * 100}%)` }}
           >
             {displayImages.map((img, idx) => (
-              <div key={idx} className="w-full h-full shrink-0 flex-none relative">
+              <div key={idx} className="w-full shrink-0 flex-none relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img}
                   alt={`Instagram Post Media ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto max-h-[550px] object-cover"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
                 />
               </div>
@@ -385,11 +408,10 @@ export default function Step4Editor() {
               key={idx}
               type="button"
               onClick={() => setIgImageIndex(idx)}
-              className={`rounded-full transition-all duration-200 border-0 p-0 cursor-pointer ${
-                idx === safeIndex
-                  ? 'w-2 h-2 bg-[#1877F2] scale-110'
-                  : 'w-1.5 h-1.5 bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400'
-              }`}
+              className={`rounded-full transition-all duration-200 border-0 p-0 cursor-pointer ${idx === safeIndex
+                ? 'w-2 h-2 bg-[#1877F2] scale-110'
+                : 'w-1.5 h-1.5 bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400'
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
@@ -443,13 +465,13 @@ export default function Step4Editor() {
       </div>
     );
   };
-  
+
   // Highlighting popover state
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [showPopover, setShowPopover] = useState<boolean>(false);
   const [currentSelection, setCurrentSelection] = useState<{ id: string; text: string; start: number; end: number } | null>(null);
   const [instructionText, setInstructionText] = useState<string>('');
-  
+
   // Track visual flash transition state on update
   const [flashContent, setFlashContent] = useState<boolean>(false);
 
@@ -499,9 +521,14 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const prompt = `Viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên bài viết sau. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn:\nTitle cũ: ${currentTitle}\nNội dung: ${displayedContent.slice(0, 300)}`;
-      const res = await postService.sendChatMessage(prompt, state.postContent);
-      const newTitle = (res.data?.reply || '').replace(/^["'«»]|["'«»]$/g, '').trim();
+      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
+      const prompt = `Yêu cầu: Viết lại 1 TIÊU ĐỀ bài viết thật hấp dẫn, giật gân, thu hút độc giả.\nQUY TẮC BẮT BUỘC: CHỈ trả về đúng 1 câu tiêu đề ngắn gọn (dưới 50 từ), KHÔNG chào hỏi, KHÔNG giải thích, KHÔNG thêm bớt ký tự dẫn dắt.\nTitle hiện tại: ${currentTitle}\nNội dung bài viết: ${contentContext}`;
+      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
+      let rawText = (res.data?.text || '').trim();
+      // Remove leading markdown headers or quotes
+      rawText = rawText.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
+      // Extract the first non-empty line in case AI returned multiple lines
+      const newTitle = rawText.split('\n').map(l => l.trim()).find(l => l.length > 0) || rawText;
 
       if (newTitle) {
         setEditableTitle(newTitle);
@@ -517,6 +544,13 @@ export default function Step4Editor() {
       }
     } catch (err) {
       console.error('[AI Title Error]', err);
+      const errMsg: ChatMessage = {
+        id: `ai_err_${Date.now()}`,
+        sender: 'ai',
+        text: '❌ Rất tiếc, không thể tạo tiêu đề mới lúc này. Vui lòng thử lại sau!',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: errMsg });
     } finally {
       dispatch({ type: 'SET_CHAT_SENDING', payload: false });
     }
@@ -533,10 +567,21 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI):\nNội dung: ${displayedContent.slice(0, 300)}`;
-      const res = await postService.sendChatMessage(prompt, state.postContent);
-      const reply = res.data?.reply || '';
-      const parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
+      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
+      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. QUY TẮC BẮT BUỘC: CHỈ trả về danh sách các hashtag cách nhau bởi dấu cách, không giải thích hay chào hỏi (ví dụ: #AntBiz #Marketing #AI):\nNội dung bài viết: ${contentContext}`;
+      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
+      const reply = res.data?.text || '';
+      let parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
+
+      // Fallback: If AI returned plain words without '#', parse words and convert to hashtags
+      if (parsedTags.length === 0 && reply.trim()) {
+        const plainWords = reply
+          .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
+          .split(/\s+/)
+          .filter(w => w.length > 1 && !['và', 'hoặc', 'là', 'các', 'cho', 'với'].includes(w.toLowerCase()))
+          .slice(0, 8);
+        parsedTags = plainWords.map(w => w.startsWith('#') ? w : `#${w}`);
+      }
 
       if (parsedTags.length > 0) {
         dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: parsedTags });
@@ -548,13 +593,36 @@ export default function Step4Editor() {
           modelUsed: 'Gemini 2.5 Flash',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+      } else {
+        const aiMsg: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          sender: 'ai',
+          text: `Không tìm thấy hashtag mới từ phản hồi AI. Vui lòng thử lại!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       }
     } catch (err) {
       console.error('[AI Hashtag Error]', err);
+      const errMsg: ChatMessage = {
+        id: `ai_err_${Date.now()}`,
+        sender: 'ai',
+        text: '❌ Rất tiếc, không thể tạo hashtag mới lúc này. Vui lòng thử lại sau!',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: errMsg });
     } finally {
       dispatch({ type: 'SET_CHAT_SENDING', payload: false });
     }
   };
+
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (titleRef.current && document.activeElement !== titleRef.current) {
+      titleRef.current.innerText = currentTitle || "Nhập tiêu đề bài viết...";
+    }
+  }, [currentTitle]);
 
   const renderEditableTitle = () => {
     if (!displayOptions.showTitle) return null;
@@ -562,6 +630,7 @@ export default function Step4Editor() {
     return (
       <div className="mb-2 group relative">
         <h3
+          ref={titleRef}
           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
           suppressContentEditableWarning
           onBlur={(e) => {
@@ -726,7 +795,7 @@ export default function Step4Editor() {
     // Verify selection is within the editor
     if (editorRef.current && editorRef.current.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
-      
+
       let selectionStart = 0;
       const preRange = range.cloneRange();
       preRange.selectNodeContents(editorRef.current);
@@ -747,7 +816,7 @@ export default function Step4Editor() {
       }
 
       if (occurrences.length > 0) {
-        selectionStart = occurrences.reduce((prev, curr) => 
+        selectionStart = occurrences.reduce((prev, curr) =>
           Math.abs(curr - approxStart) < Math.abs(prev - approxStart) ? curr : prev
         );
       } else {
@@ -758,7 +827,7 @@ export default function Step4Editor() {
       const existing = state.highlightSelections || [];
 
       // 1. Check for exact match (same text or same start/end bounds)
-      const exactMatch = existing.find(s => 
+      const exactMatch = existing.find(s =>
         s.text.trim() === cleanText ||
         (Math.abs(s.start - selectionStart) <= 1 && Math.abs(s.end - selectionEnd) <= 1)
       );
@@ -820,12 +889,12 @@ export default function Step4Editor() {
     setCurrentSelection(null);
   };
 
-  const renderHighlightedBackdrop = (text: string, selections: Array<{start: number, end: number}>) => {
+  const renderHighlightedBackdrop = (text: string, selections: Array<{ start: number, end: number }>) => {
     if (!text || selections.length === 0) return text;
     const sorted = [...selections].sort((a, b) => a.start - b.start);
     let lastIndex = 0;
     const elements: React.ReactNode[] = [];
-    
+
     sorted.forEach((sel, idx) => {
       if (sel.start > lastIndex) {
         elements.push(<span key={`text-${idx}`}>{text.slice(lastIndex, sel.start)}</span>);
@@ -840,7 +909,7 @@ export default function Step4Editor() {
     if (lastIndex < text.length) {
       elements.push(<span key="text-last">{text.slice(lastIndex)}</span>);
     }
-    
+
     return elements;
   };
 
@@ -920,32 +989,29 @@ export default function Step4Editor() {
 
   return (
     <div className="w-full flex-grow flex flex-col md:flex-row h-[calc(100vh-130px)] min-h-[720px] overflow-hidden relative border border-gray-200 dark:border-zinc-800/60 rounded-3xl bg-card">
-      
+
       {/* Mobile Tab Swapper */}
       <div className="md:hidden flex border-b border-gray-150 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900">
         <button
           onClick={() => setMobileMode('canvas')}
-          className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${
-            mobileMode === 'canvas' ? 'border-primary text-primary' : 'border-transparent text-text-muted'
-          }`}
+          className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${mobileMode === 'canvas' ? 'border-primary text-primary' : 'border-transparent text-text-muted'
+            }`}
         >
           {t('creator.stepper.step3')}
         </button>
         <button
           onClick={() => setMobileMode('chat')}
-          className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${
-            mobileMode === 'chat' ? 'border-primary text-primary' : 'border-transparent text-text-muted'
-          }`}
+          className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${mobileMode === 'chat' ? 'border-primary text-primary' : 'border-transparent text-text-muted'
+            }`}
         >
           {t('creator.step4.assistantTitle')}
         </button>
       </div>
 
       {/* LEFT COLUMN: CANVAS POST PREVIEW (63% width) */}
-      <section 
-        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800/60 transition-all relative ${
-          mobileMode === 'canvas' ? 'flex' : 'hidden md:flex'
-        }`}
+      <section
+        className={`w-full md:w-[63%] h-full flex flex-col border-r border-gray-200 dark:border-zinc-800/60 transition-all relative ${mobileMode === 'canvas' ? 'flex' : 'hidden md:flex'
+          }`}
       >
         {/* Editor Top Toolbar */}
         <div className="px-6 h-[64px] flex items-center justify-between gap-4 border-b border-gray-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900 select-none flex-shrink-0">
@@ -986,11 +1052,10 @@ export default function Step4Editor() {
                     generateAIContent();
                   }
                 }}
-                className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${
-                  isActive 
-                    ? 'border-primary text-primary' 
-                    : 'border-transparent text-text-muted hover:text-text'
-                }`}
+                className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-muted hover:text-text'
+                  }`}
               >
                 <span className="flex-shrink-0">{getPlatformIcon(platform)}</span>
                 <span className="capitalize">{platform}</span>
@@ -1001,7 +1066,7 @@ export default function Step4Editor() {
         </div>
 
         {/* Canvas Post Preview Area */}
-        <div 
+        <div
           className="flex-grow overflow-y-auto p-4 md:p-8 bg-gray-55 dark:bg-zinc-950/20 select-text relative"
           onMouseUp={handleSelectionCheck}
         >
@@ -1120,9 +1185,8 @@ export default function Step4Editor() {
 
               {/* FACEBOOK PREVIEW */}
               {currentPlatform === 'facebook' && (
-                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${
-                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
-                }`}>
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                  }`}>
                   {/* Post Header */}
                   <div className="p-6 pb-3 flex items-center justify-between select-none">
                     <div className="flex items-center gap-3">
@@ -1233,9 +1297,8 @@ export default function Step4Editor() {
 
               {/* THREADS PREVIEW */}
               {currentPlatform === 'threads' && (
-                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 transition-all space-y-4 ${
-                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
-                }`}>
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 transition-all space-y-4 ${flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                  }`}>
                   {/* MAIN POST 1 BLOCK */}
                   <div className="flex gap-4">
                     {/* Left Column: Avatar 1 + Connecting Line */}
@@ -1385,9 +1448,8 @@ export default function Step4Editor() {
 
               {/* INSTAGRAM PREVIEW */}
               {currentPlatform === 'instagram' && (
-                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${
-                  flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
-                }`}>
+                <div className={`w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 transition-all overflow-hidden ${flashContent ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-black scale-[1.01]' : ''
+                  }`}>
                   {/* Post Header */}
                   <div className="p-4 flex items-center justify-between select-none">
                     <div className="flex items-center gap-3">
@@ -1500,10 +1562,9 @@ export default function Step4Editor() {
       </section>
 
       {/* RIGHT COLUMN: AI CHAT SIDEBAR (37% width) */}
-      <aside 
-        className={`w-full md:w-[37%] h-full flex flex-col bg-gray-55 dark:bg-zinc-900/10 backdrop-blur-md transition-all ${
-          mobileMode === 'chat' ? 'flex' : 'hidden md:flex'
-        }`}
+      <aside
+        className={`w-full md:w-[37%] h-full flex flex-col bg-gray-55 dark:bg-zinc-900/10 backdrop-blur-md transition-all ${mobileMode === 'chat' ? 'flex' : 'hidden md:flex'
+          }`}
       >
         {/* Chat sidebar header */}
         <div className="px-4 h-[64px] flex items-center justify-between border-b border-gray-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900 flex-shrink-0 select-none">
@@ -1541,7 +1602,7 @@ export default function Step4Editor() {
               let userPrompt = msg.text;
 
               if (!quotedText && msg.text.startsWith('[Sửa đoạn:')) {
-                const match = msg.text.match(/^\[Sửa đoạn:\s*(.+?)\]:\s*(.+)$/s);
+                const match = msg.text.match(/^\[Sửa đoạn:\s*([\s\S]+?)\]:\s*([\s\S]+)$/);
                 if (match) {
                   quotedText = match[1];
                   userPrompt = match[2];
@@ -1584,8 +1645,8 @@ export default function Step4Editor() {
               }
 
               return (
-                <motion.div 
-                  key={msg.id} 
+                <motion.div
+                  key={msg.id}
                   initial={{ opacity: 0, y: 10, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9, y: -10, transition: { duration: 0.2 } }}
@@ -1598,11 +1659,10 @@ export default function Step4Editor() {
                     </div>
                   )}
                   <div className="flex flex-col min-w-0 w-full">
-                    <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
-                      isAI 
-                        ? 'bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-tl-none border border-gray-100 dark:border-zinc-800/55 whitespace-pre-wrap' 
-                        : 'bg-primary text-white rounded-tr-none whitespace-pre-wrap flex flex-col gap-1.5 w-full'
-                    }`}>
+                    <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${isAI
+                      ? 'bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-tl-none border border-gray-100 dark:border-zinc-800/55 whitespace-pre-wrap'
+                      : 'bg-primary text-white rounded-tr-none whitespace-pre-wrap flex flex-col gap-1.5 w-full'
+                      }`}>
                       {isAI ? (
                         msg.text
                       ) : (
@@ -1626,7 +1686,7 @@ export default function Step4Editor() {
                         </>
                       )}
                     </div>
-                    
+
                     {isAI && msg.modelUsed && (
                       <div className="flex items-center gap-1.5 mt-1.5 px-1 select-none">
                         <span className="text-[9px] font-bold text-text-muted/70 flex items-center gap-1 uppercase tracking-wider">
@@ -1775,8 +1835,8 @@ export default function Step4Editor() {
                 {state.highlightSelections.map(sel => (
                   <div key={sel.id} className="flex items-center justify-between gap-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
                     <span className="italic text-text-muted truncate">"{sel.text}"</span>
-                    <button 
-                      onClick={() => dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: sel.id })} 
+                    <button
+                      onClick={() => dispatch({ type: 'REMOVE_HIGHLIGHT_SELECTION', payload: sel.id })}
                       className="text-text-muted hover:text-red-500 shrink-0 transition-colors"
                       title="Xóa đoạn này"
                     >
@@ -1810,7 +1870,7 @@ export default function Step4Editor() {
                 <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Mẫu câu"><Paperclip className="w-4 h-4" /></button>
                 <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Tối ưu AI"><Sparkles className="w-4 h-4 text-amber-500" /></button>
               </div>
-              <button 
+              <button
                 type="submit"
                 disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
                 onClick={(e) => {
@@ -1819,11 +1879,10 @@ export default function Step4Editor() {
                     editHighlighted("Viết lại đoạn này hay hơn và tự nhiên hơn");
                   }
                 }}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${
-                  state.highlightSelections.length > 0 && !chatInput.trim()
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
-                    : 'bg-primary hover:bg-primary-hover text-white disabled:opacity-40 shadow-xs cursor-pointer'
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${state.highlightSelections.length > 0 && !chatInput.trim()
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
+                  : 'bg-primary hover:bg-primary-hover text-white disabled:opacity-40 shadow-xs cursor-pointer'
+                  }`}
                 title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
               >
                 {state.highlightSelections.length > 0 && !chatInput.trim() ? (
@@ -1845,21 +1904,21 @@ export default function Step4Editor() {
       {isPresetsOpen && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 select-text font-sans">
           {/* Backdrop */}
-          <div 
+          <div
             onClick={() => setIsPresetsOpen(false)}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[101] animate-fade-in"
           />
-          
+
           {/* Centered Modal Panel */}
           <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
                 <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsPresetsOpen(false)}
                 className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-850 transition-colors"
               >
@@ -1907,11 +1966,10 @@ export default function Step4Editor() {
                           dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
                           regeneratePostContent(newId);
                         }}
-                        className={`flex items-center justify-between p-4 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
-                            : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
-                        }`}
+                        className={`flex items-center justify-between p-4 transition-all cursor-pointer ${isSelected
+                          ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
+                          : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
+                          }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
                           <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
@@ -1938,11 +1996,10 @@ export default function Step4Editor() {
                             )}
                           </div>
 
-                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                            isSelected 
-                              ? 'border-primary bg-primary text-white' 
-                              : 'border-gray-300 dark:border-zinc-700 bg-transparent'
-                          }`}>
+                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-300 dark:border-zinc-700 bg-transparent'
+                            }`}>
                             {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
                         </div>
@@ -1957,10 +2014,10 @@ export default function Step4Editor() {
                   const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
                   return matchesSearch && matchesTab;
                 }).length === 0 && (
-                  <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
-                    Không tìm thấy phong cách nào phù hợp.
-                  </div>
-                )}
+                    <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
+                      Không tìm thấy phong cách nào phù hợp.
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -1981,7 +2038,7 @@ export default function Step4Editor() {
       )}
 
       {/* Floating Style Presets Trigger Button */}
-      <div 
+      <div
         className="fixed right-6 bottom-24 z-40 select-none"
       >
         <button

@@ -19,7 +19,8 @@ const DOCUMENT_EXTENSIONS = new Set(['pdf', 'docx']);
 
 export async function uploadCreatorSource(
   client: CreatorFlowClient,
-  file: File
+  file: File,
+  bullets?: string
 ): Promise<CreatorUploadedSource> {
   const extension = fileExtension(file.name);
   const titleFromFile = fileStem(file.name);
@@ -29,7 +30,7 @@ export async function uploadCreatorSource(
 
   if (AUDIO_EXTENSIONS.has(extension)) {
     type = 'audio';
-    const result = await client.processSpeech(file);
+    const result = await client.processSpeech(file, bullets);
     content = result.text.trim();
     title = result.title?.trim() || titleFromFile;
   } else if (DOCUMENT_EXTENSIONS.has(extension)) {

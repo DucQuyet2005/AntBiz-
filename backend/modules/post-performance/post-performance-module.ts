@@ -1,7 +1,15 @@
-import type { PerformanceCollector, PostPerformanceRepository } from './post-performance-types';
+import type { PerformanceCollector, PostPerformanceRepository, GoldenHoursResult } from './post-performance-types';
+import { GoldenHoursCalculator } from './golden-hours-calculator';
+
+interface CacheEntry {
+  timestamp: number;
+  data: GoldenHoursResult;
+}
 
 export class PostPerformanceModule {
   private readonly collectorMap = new Map<string, PerformanceCollector>();
+  private readonly goldenHoursCache = new Map<string, CacheEntry>();
+  private readonly cacheTtlMs = 15 * 60 * 1000; // 15 phút
 
   constructor(
     private readonly repository: PostPerformanceRepository,
@@ -11,6 +19,45 @@ export class PostPerformanceModule {
     collectorArray.forEach(c => {
       this.collectorMap.set(c.platform, c);
     });
+  }
+
+  /**
+   * Tính toán và trả về giờ vàng phân tích từ lịch sử 30 ngày cho một người dùng & nền tảng (có cache)
+   */
+  async getGoldenHours(userId: string, platform: string = 'all'): Promise<GoldenHoursResult> {
+    const normalizedPlatform = platform.toLowerCase() === 'thread' ? 'threads' : platform.toLowerCase();
+    const cacheKey = `${userId}_${normalizedPlatform}`;
+    const now = Date.now();
+
+    const cached = this.goldenHoursCache.get(cacheKey);
+    if (cached && now - cached.timestamp < this.cacheTtlMs) {
+      return cached.data;
+    }
+
+    const posts = await this.repository.findPostsWithInteractions(userId, normalizedPlatform, 30);
+    const result = GoldenHoursCalculator.calculateGoldenHours(posts, normalizedPlatform);
+
+    this.goldenHoursCache.set(cacheKey, {
+      timestamp: now,
+      data: result,
+    });
+
+    return result;
+  }
+
+  /**
+   * Xóa cache giờ vàng khi cần
+   */
+  clearGoldenHoursCache(userId?: string) {
+    if (!userId) {
+      this.goldenHoursCache.clear();
+      return;
+    }
+    for (const key of this.goldenHoursCache.keys()) {
+      if (key.startsWith(`${userId}_`)) {
+        this.goldenHoursCache.delete(key);
+      }
+    }
   }
 
   /**
@@ -39,7 +86,27 @@ export class PostPerformanceModule {
     let succeeded = 0;
     const errors: Array<{ postId: string; error: string }> = [];
 
+    const now = Date.now();
+    const HOUR_MS = 60 * 60 * 1000;
+
     for (const post of posts) {
+      // Tiered Syncing Rule:
+      // Tier 1: Bài đăng < 24 giờ -> crawl mỗi 30 phút (0.5h)
+      // Tier 2: Bài đăng 1 - 7 ngày -> crawl mỗi 6 giờ
+      // Tier 3: Bài đăng > 7 ngày -> crawl mỗi 24 giờ
+      if (post.postedAt && post.lastSyncedAt) {
+        const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
+        const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
+
+        if (postAgeHours <= 24) {
+          if (timeSinceLastSyncHours < 0.5) continue;
+        } else if (postAgeHours <= 7 * 24) {
+          if (timeSinceLastSyncHours < 6) continue;
+        } else {
+          if (timeSinceLastSyncHours < 24) continue;
+        }
+      }
+
       attempted += 1;
       try {
         const token = await this.repository.findPageAccessToken(post.userId, platform);
@@ -81,3 +148,4 @@ export class PostPerformanceModule {
     return results;
   }
 }
+

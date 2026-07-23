@@ -35,7 +35,7 @@ describe('creator source upload workflow', () => {
     await expect(uploadCreatorSource(client, file)).resolves.toMatchObject({
       name: 'interview.mp3', type: 'audio', content: 'Corrected transcript', article,
     });
-    expect(client.processSpeech).toHaveBeenCalledWith(file);
+    expect(client.processSpeech).toHaveBeenCalledWith(file, undefined);
     expect(client.createManualArticle).toHaveBeenCalledWith('AI title', 'Corrected transcript');
   });
 

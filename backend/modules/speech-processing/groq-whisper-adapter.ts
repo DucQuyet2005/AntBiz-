@@ -2,7 +2,8 @@ import { SpeechProcessingError } from './speech-processing-errors';
 import type { SpeechTranscriber } from './speech-processing-types';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
-const GROQ_STT_MODEL = 'whisper-large-v3-turbo';
+const GROQ_STT_MODEL = 'whisper-large-v3';
+
 
 type ApiKeyProvider = () => string | undefined;
 
