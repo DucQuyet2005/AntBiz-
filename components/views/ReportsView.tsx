@@ -397,6 +397,104 @@ export default function ReportsView() {
     return list;
   }, [reportData?.topPosts, tablePlatformFilter, tableSearchQuery, sortField, sortDirection]);
 
+  const processedChartData = useMemo(() => {
+    if (!reportData?.chartData || reportData.chartData.length === 0) return [];
+    
+    if (chartGranularity === "day") {
+      return reportData.chartData;
+    }
+    
+    const currentYear = new Date().getFullYear();
+    const parseDate = (dStr: string) => {
+      const parts = dStr.split(/[-/]/);
+      if (parts.length >= 2) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        return new Date(currentYear, month, day);
+      }
+      return new Date();
+    };
+
+    if (chartGranularity === "week") {
+      const groups: { [weekKey: string]: typeof reportData.chartData } = {};
+      const weekKeysOrder: string[] = [];
+      
+      reportData.chartData.forEach(item => {
+        const dateObj = parseDate(item.date);
+        const day = dateObj.getDay();
+        const diff = dateObj.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(dateObj.getFullYear(), dateObj.getMonth(), diff);
+        const weekKey = `${monday.getDate().toString().padStart(2, '0')}/${(monday.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        if (!groups[weekKey]) {
+          groups[weekKey] = [];
+          weekKeysOrder.push(weekKey);
+        }
+        groups[weekKey].push(item);
+      });
+      
+      return weekKeysOrder.map(weekKey => {
+        const items = groups[weekKey];
+        const likes = items.reduce((sum, i) => sum + (i.likes || 0), 0);
+        const comments = items.reduce((sum, i) => sum + (i.comments || 0), 0);
+        const shares = items.reduce((sum, i) => sum + (i.shares || 0), 0);
+        const clicks = items.reduce((sum, i) => sum + (i.clicks || 0), 0);
+        const reach = items.reduce((sum, i) => sum + (i.reach || 0), 0);
+        const impressions = items.reduce((sum, i) => sum + (i.impressions || 0), 0);
+        
+        return {
+          date: `Tuần ${weekKey}`,
+          likes,
+          comments,
+          shares,
+          clicks,
+          reach,
+          impressions,
+          count: items.length
+        };
+      });
+    }
+    
+    if (chartGranularity === "month") {
+      const groups: { [monthKey: string]: typeof reportData.chartData } = {};
+      const monthKeysOrder: string[] = [];
+      
+      reportData.chartData.forEach(item => {
+        const dateObj = parseDate(item.date);
+        const monthKey = `T. ${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        if (!groups[monthKey]) {
+          groups[monthKey] = [];
+          monthKeysOrder.push(monthKey);
+        }
+        groups[monthKey].push(item);
+      });
+      
+      return monthKeysOrder.map(monthKey => {
+        const items = groups[monthKey];
+        const likes = items.reduce((sum, i) => sum + (i.likes || 0), 0);
+        const comments = items.reduce((sum, i) => sum + (i.comments || 0), 0);
+        const shares = items.reduce((sum, i) => sum + (i.shares || 0), 0);
+        const clicks = items.reduce((sum, i) => sum + (i.clicks || 0), 0);
+        const reach = items.reduce((sum, i) => sum + (i.reach || 0), 0);
+        const impressions = items.reduce((sum, i) => sum + (i.impressions || 0), 0);
+        
+        return {
+          date: monthKey,
+          likes,
+          comments,
+          shares,
+          clicks,
+          reach,
+          impressions,
+          count: items.length
+        };
+      });
+    }
+    
+    return reportData.chartData;
+  }, [reportData?.chartData, chartGranularity]);
+
   const totalEngagements = reportData
     ? (reportData.summary.totalLikes + reportData.summary.totalComments + reportData.summary.totalShares)
     : 0;
@@ -887,14 +985,19 @@ export default function ReportsView() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-black text-slate-900 dark:text-white">
-                        {t("reports.chartTitle") || "Biểu đồ xu hướng tương tác theo ngày"}
+                        {chartGranularity === "day"
+                          ? (t("reports.chartTitleDay") || "Biểu đồ xu hướng tương tác theo ngày")
+                          : chartGranularity === "week"
+                          ? (t("reports.chartTitleWeek") || "Biểu đồ xu hướng tương tác theo tuần")
+                          : (t("reports.chartTitleMonth") || "Biểu đồ xu hướng tương tác theo tháng")
+                        }
                       </h3>
                       <p className="text-xs text-text-muted font-medium mt-0.5">
                         Thống kê chi tiết bình luận và lượt thích theo thời gian
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1 bg-gray-100/70 dark:bg-zinc-950 p-1 rounded-xl border border-gray-200/60 dark:border-zinc-800 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-1 bg-gray-100/70 dark:bg-zinc-950 p-1 rounded-xl border border-gray-250/60 dark:border-zinc-800 shrink-0 self-start sm:self-auto">
                       <button
                         type="button"
                         onClick={() => setChartGranularity("day")}
@@ -932,10 +1035,10 @@ export default function ReportsView() {
                   </div>
 
                   <div className="h-[320px] w-full mt-2">
-                    {reportData.chartData.length > 0 ? (
+                    {processedChartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart
-                          data={reportData.chartData}
+                          data={processedChartData}
                           margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                         >
                           <defs>

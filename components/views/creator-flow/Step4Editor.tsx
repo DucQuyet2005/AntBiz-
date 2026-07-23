@@ -57,6 +57,13 @@ export default function Step4Editor() {
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
   const [presetTab, setPresetTab] = useState<'system' | 'personal'>('personal');
+  const [initialSelectedPresetId, setInitialSelectedPresetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isPresetsOpen) {
+      setInitialSelectedPresetId(state.selectedPresetId);
+    }
+  }, [isPresetsOpen]);
 
   // Default fallback image when no article/crawled image exists
   const fallbackImage = 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000';
@@ -1901,139 +1908,162 @@ export default function Step4Editor() {
 
 
       {/* Style Presets Modal Portal */}
-      {isPresetsOpen && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 select-text font-sans">
-          {/* Backdrop */}
-          <div
-            onClick={() => setIsPresetsOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[101] animate-fade-in"
-          />
-
-          {/* Centered Modal Panel */}
-          <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
-
-            {/* Modal Header */}
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
-                <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
-              </div>
-              <button
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isPresetsOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 select-text font-sans">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 onClick={() => setIsPresetsOpen(false)}
-                className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-850 transition-colors"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[101]"
+              />
+
+              {/* Centered Modal Panel */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', duration: 0.35 }}
+                className="relative w-full max-w-2xl bg-white dark:bg-zinc-955 border border-gray-250 dark:border-zinc-850 z-[102] shadow-2xl rounded-3xl flex flex-col max-h-[85vh] overflow-hidden"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Sub-header: Search and System/Personal tabs */}
-            <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
-              {/* Search bar */}
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <input
-                  type="text"
-                  className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-800 rounded-xl text-xs text-text focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-text-muted/60"
-                  placeholder={t('creator.step3.searchPlaceholder') || 'Tìm kiếm Presets...'}
-                  value={presetSearch}
-                  onChange={(e) => setPresetSearch(e.target.value)}
-                />
-              </div>
+                {/* Modal Header */}
+                <div className="px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-text">Chọn phong cách AI (Style Presets)</h3>
+                    <p className="text-[11px] text-text-muted mt-0.5">Đặt cấu hình định dạng, tone giọng và độ dài bài viết.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsPresetsOpen(false)}
+                    className="text-text-muted hover:text-text p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-850 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
 
+                {/* Sub-header: Search and System/Personal tabs */}
+                <div className="px-6 py-3 bg-gray-55 dark:bg-zinc-900/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 select-none">
+                  {/* Search bar */}
+                  <div className="relative flex-grow">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <input
+                      type="text"
+                      className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-950 border border-gray-250 dark:border-zinc-800 rounded-xl text-xs text-text focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-text-muted/60"
+                      placeholder={t('creator.step3.searchPlaceholder') || 'Tìm kiếm Presets...'}
+                      value={presetSearch}
+                      onChange={(e) => setPresetSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            </div>
-
-            {/* Presets List */}
-            <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
-              <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
-                {state.presets
-                  .filter((preset) => {
-                    return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
-                      preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  })
-                  .sort((a, b) => {
-                    if (a.id === state.selectedPresetId) return -1;
-                    if (b.id === state.selectedPresetId) return 1;
-                    return 0;
-                  })
-                  .map((preset) => {
-                    const isSelected = state.selectedPresetId === preset.id;
-                    return (
-                      <div
-                        key={preset.id}
-                        onClick={() => {
-                          const newId = isSelected ? null : preset.id;
-                          dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
-                          regeneratePostContent(newId);
-                        }}
-                        className={`flex items-center justify-between p-4 transition-all cursor-pointer ${isSelected
-                          ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
-                          : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
-                            {getPlatformIcon(preset.platform)}
-                          </span>
-                          <div className="min-w-0">
-                            <h4 className={`text-xs font-bold text-text truncate ${isSelected ? 'text-primary' : ''}`}>
-                              {preset.name}
-                            </h4>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="hidden md:flex flex-wrap gap-1">
-                            {preset.tags.slice(0, 2).map((tag, tIdx) => (
-                              <span key={tIdx} className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${getTagColorClass(tag)}`}>
-                                {tag}
+                {/* Presets List */}
+                <div className="px-6 py-4 flex-grow flex-shrink min-h-0">
+                  <div className="h-[300px] max-h-full overflow-y-auto pr-1 no-scrollbar border border-gray-250 dark:border-zinc-850 rounded-2xl">
+                    {state.presets
+                      .filter((preset) => {
+                        return preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
+                          preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
+                      })
+                      .sort((a, b) => {
+                        if (a.id === initialSelectedPresetId) return -1;
+                        if (b.id === initialSelectedPresetId) return 1;
+                        return 0;
+                      })
+                      .map((preset) => {
+                        const isSelected = state.selectedPresetId === preset.id;
+                        const isGeneratingThis = isSelected && state.isGeneratingPost;
+                        return (
+                          <div
+                            key={preset.id}
+                            onClick={() => {
+                              if (state.isGeneratingPost) return; // Prevent clicking while generating
+                              const newId = isSelected ? null : preset.id;
+                              dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
+                              regeneratePostContent(newId);
+                            }}
+                            className={`flex items-center justify-between p-4 transition-all ${state.isGeneratingPost ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                              } ${isSelected
+                                ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
+                                : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
+                              }`}
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex-shrink-0 text-text shadow-sm border border-gray-200/20">
+                                {getPlatformIcon(preset.platform)}
                               </span>
-                            ))}
-                            {preset.tags.length > 2 && (
-                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-text-muted">
-                                +{preset.tags.length - 2}
-                              </span>
-                            )}
-                          </div>
+                              <div className="min-w-0">
+                                <h4 className={`text-xs font-bold text-text truncate flex items-center gap-2 ${isSelected ? 'text-primary' : ''}`}>
+                                  <span>{preset.name}</span>
+                                  {isGeneratingThis && (
+                                    <span className="text-[9px] font-medium text-primary animate-pulse bg-primary/10 px-2 py-0.5 rounded-md">
+                                      Đang áp dụng...
+                                    </span>
+                                  )}
+                                </h4>
+                              </div>
+                            </div>
 
-                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-gray-300 dark:border-zinc-700 bg-transparent'
-                            }`}>
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="hidden md:flex flex-wrap gap-1">
+                                {preset.tags.slice(0, 2).map((tag, tIdx) => (
+                                  <span key={tIdx} className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${getTagColorClass(tag)}`}>
+                                    {tag}
+                                  </span>
+                                ))}
+                                {preset.tags.length > 2 && (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-text-muted">
+                                    +{preset.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
+                                ? 'border-primary bg-primary text-white shadow-sm'
+                                : 'border-gray-300 dark:border-zinc-700 bg-transparent'
+                                }`}>
+                                {isGeneratingThis ? (
+                                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                                ) : isSelected ? (
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
+                        );
+                      })}
+
+                    {state.presets.filter((preset) => {
+                      const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
+                        preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
+                      const isSystem = Boolean(preset.isSystem);
+                      const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
+                      return matchesSearch && matchesTab;
+                    }).length === 0 && (
+                        <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
+                          Không tìm thấy phong cách nào phù hợp.
                         </div>
-                      </div>
-                    );
-                  })}
+                      )}
+                  </div>
+                </div>
 
-                {state.presets.filter((preset) => {
-                  const matchesSearch = preset.name.toLowerCase().includes(presetSearch.toLowerCase()) ||
-                    preset.tags.some(tag => tag.toLowerCase().includes(presetSearch.toLowerCase()));
-                  const isSystem = Boolean(preset.isSystem);
-                  const matchesTab = presetTab === 'system' ? isSystem : !isSystem;
-                  return matchesSearch && matchesTab;
-                }).length === 0 && (
-                    <div className="p-8 text-center text-xs text-text-muted bg-white dark:bg-zinc-900/40">
-                      Không tìm thấy phong cách nào phù hợp.
-                    </div>
-                  )}
-              </div>
+                {/* Modal Footer */}
+                <div className="p-4 bg-gray-55 dark:bg-zinc-950 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPresetsOpen(false)}
+                    className="px-4 py-2 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10"
+                  >
+                    Đóng
+                  </button>
+                </div>
+
+              </motion.div>
             </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 bg-gray-55 dark:bg-zinc-950 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsPresetsOpen(false)}
-                className="px-4 py-2 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-primary/10"
-              >
-                Đóng
-              </button>
-            </div>
-
-          </div>
-        </div>,
+          )}
+        </AnimatePresence>,
         document.body
       )}
 

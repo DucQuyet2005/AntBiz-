@@ -39,11 +39,14 @@ function setup(intent: 'facebook' | 'instagram' | 'threads' = 'facebook') {
   const threadsProvider: ThreadsConnectionProvider = {
     buildAuthorizationUrl: vi.fn((state) => `https://threads.test/oauth?state=${state}`),
     discoverAccount: vi.fn().mockResolvedValue(threadsCandidate),
+    refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'new-token', expiresAt: '2026-07-23' }),
   };
   const repository: LinkedAccountRepository = {
     list: vi.fn().mockResolvedValue([]),
     upsert: vi.fn().mockResolvedValue(true),
     disconnect: vi.fn().mockResolvedValue(undefined),
+    findAccessToken: vi.fn().mockResolvedValue({ accessToken: 'page-token', refreshToken: null }),
+    updateToken: vi.fn().mockResolvedValue(true),
   };
   const stateProtector: OAuthStateProtector = {
     create: vi.fn().mockReturnValue({ state: 'signed-state', nonce: 'nonce', expiresAt: 123 }),

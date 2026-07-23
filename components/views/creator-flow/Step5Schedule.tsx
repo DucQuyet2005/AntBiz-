@@ -2,9 +2,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  Calendar, Clock, Facebook, Instagram, 
-  Zap, Info, Settings, Star 
+import {
+  Calendar, Clock, Facebook, Instagram,
+  Zap, Info, Settings, Star
 } from 'lucide-react';
 import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
@@ -19,7 +19,7 @@ const ThreadsIcon = ({ className = '', size = 14 }: { className?: string; size?:
 
 export default function Step5Schedule() {
   const { state, dispatch } = useCreatorFlow();
-  
+
   // Local state for week pagination
   const [activeWeekTab, setActiveWeekTab] = useState<'w1' | 'w2' | 'w3'>('w1');
   const currentPlatform = state.selectedPlatform || 'facebook';
@@ -53,7 +53,7 @@ export default function Step5Schedule() {
     if (!targetDay) return;
 
     const hourPad = `${hour.toString().padStart(2, '0')}:00`;
-    
+
     // Prevent scheduling in the past
     const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
     if (targetDate.getTime() < new Date().getTime()) return;
@@ -95,7 +95,7 @@ export default function Step5Schedule() {
     if (!targetDay) return;
 
     const hourPad = hourStr.split(':')[0].padStart(2, '0') + ':00';
-    
+
     // Prevent past scheduling
     const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
     if (targetDate.getTime() < new Date().getTime()) return;
@@ -121,10 +121,10 @@ export default function Step5Schedule() {
     <div className="w-full max-w-7xl mx-auto flex-1 py-6 px-4">
       {/* 2-Column Responsive Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* LEFT COLUMN: TIMELINE WEEK GRID (70% width -> 8 cols) */}
         <div className="lg:col-span-8 bg-card border border-gray-150 dark:border-zinc-800 rounded-3xl p-6 shadow-sm flex flex-col">
-          
+
           {/* Timeline header controls */}
           <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
             <h2 className="text-sm font-bold text-primary tracking-wider flex items-center gap-2 select-none">
@@ -137,11 +137,10 @@ export default function Step5Schedule() {
                   <button
                     key={w}
                     onClick={() => setActiveWeekTab(w)}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      activeWeekTab === w
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${activeWeekTab === w
                         ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm'
                         : 'text-text-muted hover:text-text'
-                    }`}
+                      }`}
                   >
                     {w === 'w1' ? 'Tuần 1' : w === 'w2' ? 'Tuần 2' : 'Tuần 3'}
                   </button>
@@ -152,9 +151,9 @@ export default function Step5Schedule() {
 
           {/* Calendar Grid wrapper */}
           <div className="border border-slate-100 dark:border-zinc-800/80 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-inner">
-            
+
             {/* Days Header Row */}
-            <div 
+            <div
               style={{ scrollbarGutter: 'stable' }}
               className="grid grid-cols-8 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50 text-center select-none"
             >
@@ -164,11 +163,10 @@ export default function Step5Schedule() {
               {days.map((day) => {
                 const isHighlighted = day.index === currentPostDayIndex;
                 return (
-                  <div 
-                    key={day.index} 
-                    className={`p-3.5 border-r border-slate-100 dark:border-zinc-800 last:border-r-0 transition-all ${
-                      isHighlighted ? 'bg-primary/5 text-primary border-b-2 border-b-primary' : 'text-text'
-                    }`}
+                  <div
+                    key={day.index}
+                    className={`p-3.5 border-r border-slate-100 dark:border-zinc-800 last:border-r-0 transition-all ${isHighlighted ? 'bg-primary/5 text-primary border-b-2 border-b-primary' : 'text-text'
+                      }`}
                   >
                     <div className={`text-[9px] font-bold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
                     <div className={`text-sm font-black mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
@@ -178,7 +176,7 @@ export default function Step5Schedule() {
             </div>
 
             {/* Scrollable hourly rows */}
-            <div 
+            <div
               style={{ scrollbarGutter: 'stable' }}
               className="h-[350px] overflow-y-auto bg-white dark:bg-zinc-900 relative scrollbar-thin scrollbar-thumb-gray-250 dark:scrollbar-thumb-zinc-800"
             >
@@ -192,7 +190,7 @@ export default function Step5Schedule() {
                       <div className="flex items-start justify-center pt-2 font-mono text-[9px] font-bold text-text-muted/80 border-r border-slate-100/50 dark:border-zinc-800/40 bg-slate-50/20 dark:bg-zinc-950/10">
                         {hour}
                       </div>
-                      
+
                       {/* Days grid cell slots (7 sibling cells to Hour column) */}
                       {Array.from({ length: 7 }).map((_, dayIdx) => {
                         const targetDay = days.find(d => d.index === dayIdx);
@@ -204,14 +202,14 @@ export default function Step5Schedule() {
                         );
 
                         // Check if the current post we are scheduling belongs to this cell
-                        const isCurrentPostInCell = 
+                        const isCurrentPostInCell =
                           state.scheduleMode === 'scheduled' &&
-                          currentPostDayIndex === dayIdx && 
+                          currentPostDayIndex === dayIdx &&
                           currentPostHourVal === hourVal;
                         const hourPad = `${hourVal.toString().padStart(2, '0')}:00`;
                         const targetDate = new Date(`${targetDay.fullDateStr}T${hourPad}`);
                         const isPast = targetDate.getTime() < new Date().getTime();
-                        
+
                         const isHighlighted = dayIdx === currentPostDayIndex;
 
                         const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal);
@@ -232,17 +230,14 @@ export default function Step5Schedule() {
                             onDragOver={(e) => !isPast && dnd.handleCellDragOver(e, dayIdx, hourVal)}
                             onDragLeave={() => !isPast && dnd.handleCellDragLeave()}
                             onDrop={(e) => !isPast && dnd.handleCellDrop(e, dayIdx, hourVal)}
-                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 ${
-                              isPast
+                            className={`group/cell border-r border-slate-100/40 dark:border-zinc-800/30 last:border-r-0 h-full p-1.5 relative flex flex-col justify-center gap-1 transition-all duration-200 ${isPast
                                 ? 'cursor-not-allowed bg-gray-50/50 dark:bg-zinc-950/20 opacity-60'
                                 : 'cursor-crosshair hover:bg-primary/4 dark:hover:bg-primary/8'
-                            } ${
-                              isCellHover && !isPast
+                              } ${isCellHover && !isPast
                                 ? 'bg-[#F95A19]/8 ring-2 ring-inset ring-[#F95A19]/40 scale-[1.02] z-10'
                                 : 'z-0 hover:z-10'
-                            } ${
-                              isHighlighted ? 'bg-primary/[0.02]' : ''
-                            }`}
+                              } ${isHighlighted ? 'bg-primary/[0.02]' : ''
+                              }`}
                             style={showGolden && !isPast ? {
                               backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
                             } : undefined}
@@ -268,9 +263,8 @@ export default function Step5Schedule() {
                                   label: `Bản thảo`,
                                 })}
                                 onDragEnd={dnd.handleDragEnd}
-                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${
-                                  dnd.isDragging ? 'opacity-40' : 'animate-pulse'
-                                }`}
+                                className={`rounded-xl py-1 px-1.5 text-[8.5px] font-black flex items-center gap-1 truncate border-2 border-dashed border-[#F95A19] bg-[#FFF5F1] dark:bg-[#F95A19]/10 text-[#F95A19] shadow-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${dnd.isDragging ? 'opacity-40' : 'animate-pulse'
+                                  }`}
                               >
                                 <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center flex-shrink-0 shadow-sm border border-[#F95A19]/35">
                                   {getPlatformIcon(state.selectedPlatform || 'facebook')}
@@ -322,7 +316,7 @@ export default function Step5Schedule() {
                 <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Ngày đăng</label>
                 <div className="relative">
                   <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  <input 
+                  <input
                     type="date"
                     value={datePart || ''}
                     onChange={(e) => handleDateChange(e.target.value)}
@@ -336,7 +330,7 @@ export default function Step5Schedule() {
                 <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Giờ đăng</label>
                 <div className="relative">
                   <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                  <input 
+                  <input
                     type="time"
                     value={timePart || ''}
                     onChange={(e) => handleTimeChange(e.target.value)}
@@ -351,10 +345,10 @@ export default function Step5Schedule() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-text-muted">Báo cáo sau đăng bài</span>
                 <label className="relative inline-flex items-center cursor-pointer select-none">
-                  <input 
-                    type="checkbox" 
-                    defaultChecked 
-                    className="sr-only peer" 
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-250 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                 </label>
