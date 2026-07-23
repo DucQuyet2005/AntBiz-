@@ -1896,13 +1896,7 @@ export default function Step4Editor() {
               }}
             />
             {/* Input Bottom Action Toolbar */}
-            <div className="flex items-center justify-between pt-1 px-1 select-none">
-              <div className="flex items-center gap-1.5 text-text-muted">
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Đính kèm tệp"><ImageIcon className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Ghi âm"><Mic className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Mẫu câu"><Paperclip className="w-4 h-4" /></button>
-                <button type="button" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-text-muted hover:text-text cursor-pointer" title="Tối ưu AI"><Sparkles className="w-4 h-4 text-amber-500" /></button>
-              </div>
+            <div className="flex items-center justify-end pt-1 px-1 select-none">
               <button
                 type="submit"
                 disabled={(!chatInput.trim() && state.highlightSelections.length === 0) || state.isChatSending || state.isHighlightEditing || state.isGeneratingPost}
