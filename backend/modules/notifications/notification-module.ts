@@ -18,7 +18,7 @@ interface NotificationMailInput {
 }
 
 export class NotificationModule {
-  constructor(private readonly repository: NotificationRepository) {}
+  constructor(private readonly repository: NotificationRepository) { }
 
   async listInbox(userId: string, rawInput: Parameters<typeof parseNotificationList>[0]) {
     const input = parseNotificationList(rawInput);
@@ -110,7 +110,7 @@ export class NotificationModule {
         return;
       }
 
-      const shouldSend = 
+      const shouldSend =
         (notif.type === 'post_success' && settings.email_on_success !== false) ||
         (notif.type === 'post_failed' && settings.email_on_failure !== false);
 
@@ -119,7 +119,7 @@ export class NotificationModule {
         const subject = notif.type === 'post_success'
           ? `[AntBiz] Đăng bài thành công: ${notif.title}`
           : `[AntBiz] Đăng bài thất bại: ${notif.title}`;
-        
+
         const html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1a202c;">
             <h2 style="color: ${notif.type === 'post_success' ? '#166534' : '#991b1b'}; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0;">
@@ -187,13 +187,17 @@ export class NotificationModule {
     return this.repository.updateUserSettings(userId, settings);
   }
 
-  async processDailyDigests(currentHour: string, sendMailFn: (options: { to: string; subject: string; text: string; html?: string }) => Promise<{ success: boolean; error?: string }>) {
-    const users = await this.repository.findUsersForDigest(currentHour);
+  async processDailyDigests(
+    currentHour: string, 
+    sendMailFn: (options: { to: string; subject: string; text: string; html?: string }) => Promise<{ success: boolean; error?: string }>,
+    bypassLastSent = false
+  ) {
+    const users = await this.repository.findUsersForDigest(currentHour, bypassLastSent);
     let sentEmailsCount = 0;
 
     for (const user of users) {
       const unsent = await this.repository.findUnsentEmailNotifications(user.id);
-      
+
       // Update last_digest_sent_at to mark as processed today
       await this.repository.updateUserSettings(user.id, {
         last_digest_sent_at: new Date().toISOString()
@@ -212,7 +216,7 @@ export class NotificationModule {
 
       // Build beautiful HTML report
       const emailSubject = `[AntBiz] Báo cáo tổng hợp kết quả đăng bài ngày ${new Date().toLocaleDateString('vi-VN')}`;
-      
+
       let htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1a202c;">
           <h2 style="color: #4f46e5; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0;">
@@ -246,14 +250,14 @@ export class NotificationModule {
             </thead>
             <tbody>
         `;
-        
+
         for (const post of unsent) {
           const time = new Date(post.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
           const isSuccess = post.type === 'post_success';
           const statusText = isSuccess ? 'Thành công' : 'Thất bại';
           const statusColor = isSuccess ? '#166534' : '#b91c1c';
           const details = !isSuccess && post.message ? `<br/><span style="font-size: 11px; color: #64748b;">Lý do: ${post.message}</span>` : '';
-          
+
           htmlContent += `
             <tr style="font-size: 13px;">
               <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${post.title}${details}</td>
@@ -262,7 +266,7 @@ export class NotificationModule {
             </tr>
           `;
         }
-        
+
         htmlContent += `</tbody></table>`;
       }
 
