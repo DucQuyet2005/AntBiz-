@@ -1345,6 +1345,14 @@ export default function PresetsView() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const paginationRef = useRef<HTMLDivElement>(null);
+  
+  const handlePageChange = useCallback((updater: number | ((prev: number) => number)) => {
+    setCurrentPage(updater);
+    setTimeout(() => {
+      paginationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
+  }, []);
   const ITEMS_PER_PAGE = 8;
 
   const fetchPresets = useCallback(async (silent = false) => {
@@ -1693,7 +1701,7 @@ export default function PresetsView() {
 
             {/* Pagination Controls - Aligned with ArchiveView */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
+              <div ref={paginationRef} className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
                 <div className="text-xs font-semibold text-text-muted">
                   {lang === 'vi'
                     ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, displayed.length)} trong tổng số ${displayed.length} văn phong`
@@ -1702,7 +1710,7 @@ export default function PresetsView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() => handlePageChange(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >
@@ -1712,7 +1720,7 @@ export default function PresetsView() {
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => handlePageChange(page)}
                       className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'border border-gray-200/80 dark:border-zinc-800 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-white dark:bg-zinc-900'
@@ -1723,7 +1731,7 @@ export default function PresetsView() {
                   ))}
 
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() => handlePageChange(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >
