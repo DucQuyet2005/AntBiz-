@@ -429,7 +429,7 @@ export function WeeklyTimeline({
                           )}
 
                           {/* Golden Hour indicator */}
-                          {showGolden && (
+                          {showGolden && !isCurrentPostInCell && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
                                   <Star size={11} className={`fill-[#fbbf24] text-[#f59e0b] transition-all duration-200 ${isDragGolden ? 'scale-125 opacity-100' : 'opacity-90 group-hover/golden:scale-110'}`} />
