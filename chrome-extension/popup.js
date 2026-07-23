@@ -909,16 +909,24 @@ Yêu cầu định dạng:
 
     chrome.runtime.sendMessage({ action: 'api_get', endpoint: `/api/reports/golden-hours?platform=${platform}`, host: AntBizUrl }, (response) => {
       let hours = [];
-      if (!chrome.runtime.lastError && response && response.topSlots) {
-        hours = response.topSlots.map(item => item.hour);
-      } else {
-        if (platform === 'facebook') {
-          hours = [7, 9, 11, 15, 20];
-        } else if (platform === 'instagram') {
-          hours = [11, 15, 20];
-        } else if (platform === 'thread' || platform === 'threads') {
-          hours = [8, 11, 15, 20];
+      let defaultHours = [];
+      if (platform === 'facebook') {
+        defaultHours = [7, 9, 11, 15, 20];
+      } else if (platform === 'instagram') {
+        defaultHours = [11, 15, 20];
+      } else if (platform === 'thread' || platform === 'threads') {
+        defaultHours = [8, 11, 15, 20];
+      }
+
+      if (!chrome.runtime.lastError && response && response.topSlots && response.topSlots.length > 0) {
+        hours = response.topSlots.map(item => item.hourOfDay);
+        // Bổ sung thêm giờ mặc định nếu chưa đủ 3 giờ
+        for (const dh of defaultHours) {
+          if (hours.length >= 3) break;
+          if (!hours.includes(dh)) hours.push(dh);
         }
+      } else {
+        hours = defaultHours;
       }
 
       container.innerHTML = '';
