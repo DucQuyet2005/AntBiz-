@@ -114,7 +114,9 @@ describe('QuickPublishingModule', () => {
     expect(events).toContainEqual(expect.objectContaining({
       type: 'platform-schedule-failed',
       platform: 'threads',
-      error: expect.objectContaining({ code: 'SCHEDULE_FAILED' }),
+      error: expect.objectContaining({
+        code: 'SCHEDULE_FAILED'
+      })
     }));
   });
 

@@ -145,7 +145,6 @@ export default function Step2Article({
   // Active site simulated browser modal
   const [activeBrowserSite, setActiveBrowserSite] = useState<'gocnhinmoi' | 'tuoitre' | 'dantri' | null>(null);
   const [currentBrowserUrl, setCurrentBrowserUrl] = useState<string>('');
-  const [iframeSrc, setIframeSrc] = useState<string>('');
   const [browserHistory, setBrowserHistory] = useState<string[]>([]);
   const [iframeKey, setIframeKey] = useState(0); // Force iframe remount when needed
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -163,14 +162,12 @@ export default function Step2Article({
       const prevUrl = browserHistory[browserHistory.length - 2];
       setBrowserHistory(prev => prev.slice(0, -1));
       setCurrentBrowserUrl(prevUrl);
-      setIframeSrc(`/api/proxy?url=${encodeURIComponent(prevUrl)}`);
       // Force remount the iframe to guarantee navigation works even after ad redirects
       setIframeKey(k => k + 1);
     } else if (activeBrowserSite) {
       // Fallback: even if history is empty/broken, go back to the site homepage
       const baseUrl = getBaseUrl(activeBrowserSite);
       setCurrentBrowserUrl(baseUrl);
-      setIframeSrc(`/api/proxy?url=${encodeURIComponent(baseUrl)}`);
       setBrowserHistory([baseUrl]);
       setIframeKey(k => k + 1);
     }
@@ -180,11 +177,9 @@ export default function Step2Article({
     if (activeBrowserSite) {
       const baseUrl = getBaseUrl(activeBrowserSite);
       setCurrentBrowserUrl(baseUrl);
-      setIframeSrc(`/api/proxy?url=${encodeURIComponent(baseUrl)}`);
       setBrowserHistory([baseUrl]);
     } else {
       setCurrentBrowserUrl('');
-      setIframeSrc('');
       setBrowserHistory([]);
     }
   }, [activeBrowserSite]);
@@ -581,8 +576,8 @@ export default function Step2Article({
 
   const handleResetAllFields = () => {
     // 1. Clear local uploaded images
-    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
     setUploadedImages([]);
+    // 2. Clear uploaded files (audio/documents)
     setUploadedFiles([]);
     setAudioUrls({});
     if (audioPlaybackRef.current) {
@@ -1315,13 +1310,12 @@ export default function Step2Article({
                 value={currentBrowserUrl}
                 onChange={(e) => setCurrentBrowserUrl(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && currentBrowserUrl.trim()) {
+                  if (e.key === 'Enter' && currentBrowserUrl.trim() && iframeRef.current) {
                     let target = currentBrowserUrl.trim();
                     if (!target.startsWith('http://') && !target.startsWith('https://')) {
                       target = 'https://' + target;
                     }
-                    setIframeSrc(`/api/proxy?url=${encodeURIComponent(target)}`);
-                    setIframeKey(k => k + 1);
+                    iframeRef.current.src = `/api/proxy?url=${encodeURIComponent(target)}`;
                   }
                 }}
                 className="flex-grow bg-white dark:bg-zinc-900 rounded-lg px-3 py-1.5 text-xs text-text border border-gray-200 dark:border-zinc-800 font-semibold focus:ring-1 focus:ring-primary outline-none"
@@ -1361,9 +1355,9 @@ export default function Step2Article({
                 <iframe
                   key={iframeKey}
                   ref={iframeRef}
-                  src={iframeSrc || `/api/proxy?url=${encodeURIComponent(getBaseUrl(activeBrowserSite))}`}
+                  src={`/api/proxy?url=${encodeURIComponent(currentBrowserUrl || getBaseUrl(activeBrowserSite))}`}
                   className="w-full h-full border-none"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+                  sandbox="allow-same-origin allow-scripts allow-forms"
                 />
               </div>
             </div>
@@ -1484,7 +1478,7 @@ export default function Step2Article({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {getAllItems().map((item, index) => (
                   <div key={`${item.type}-${item.url}-${index}`} className="flex flex-col items-center gap-1.5 group relative select-none">
-                    <div 
+                    <div
                       onClick={() => setActiveLightboxImage(item.url)}
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
                     >
