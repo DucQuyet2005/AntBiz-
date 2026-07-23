@@ -51,6 +51,11 @@ function AiCreatorContent() {
   const duplicateCheckTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleEditorTextChange = (text: string) => {
+    // Xóa thông báo cũ ngay khi người dùng bắt đầu gõ để giao diện phản hồi tức thì
+    if (duplicateWarning) {
+      clearDuplicateWarning();
+    }
+    
     if (duplicateCheckTimer.current) clearTimeout(duplicateCheckTimer.current);
     duplicateCheckTimer.current = setTimeout(() => {
       if (text.trim() && text !== ignoreDuplicateCheckForText) {
