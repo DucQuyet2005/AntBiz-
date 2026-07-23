@@ -78,6 +78,36 @@ export default function ContentCalendarView() {
     'threads'
   ]);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [draggingPlatform, setDraggingPlatform] = useState<string | null>(null);
+
+  const goldenHourEvents = useMemo(() => {
+    if (!draggingPlatform) return [];
+    
+    const hours = STATIC_GOLDEN_HOURS[draggingPlatform as keyof typeof STATIC_GOLDEN_HOURS] || [];
+    if (hours.length === 0) return [];
+
+    const events: any[] = [];
+    const platformColors: Record<string, string> = {
+      'facebook': 'rgba(24,119,242,0.04)',
+      'instagram': 'rgba(225,48,108,0.04)',
+      'threads': 'rgba(0,0,0,0.04)'
+    };
+    const bg = platformColors[draggingPlatform] || 'rgba(0,0,0,0.04)';
+
+    hours.forEach((gh: { hour: number; label: string; weight: number }) => {
+      events.push({
+        id: `golden-${draggingPlatform}-${gh.hour}`,
+        title: 'Giờ vàng',
+        startTime: `${gh.hour.toString().padStart(2, '0')}:00:00`,
+        endTime: `${(gh.hour + 1).toString().padStart(2, '0')}:00:00`,
+        daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+        display: 'background',
+        backgroundColor: bg,
+        classNames: ['golden-hour-bg']
+      });
+    });
+    return events;
+  }, [draggingPlatform]);
 
   // 1. Sync from URL on mount & when URL search params change (Back/Forward button support)
   useEffect(() => {
@@ -1360,8 +1390,20 @@ export default function ContentCalendarView() {
                 initialView={activeView}
                 headerToolbar={false}
                 allDaySlot={false}
-                events={fetchCalendarEvents}
+                eventSources={[
+                  { events: fetchCalendarEvents },
+                  { events: goldenHourEvents }
+                ]}
                 editable={true}
+                eventDragStart={(info: any) => {
+                  const post = info.event.extendedProps?.post;
+                  if (post) {
+                    setDraggingPlatform(post.platform === 'thread' ? 'threads' : (post.platform || 'blog'));
+                  }
+                }}
+                eventDragStop={() => {
+                  setDraggingPlatform(null);
+                }}
                 eventDrop={handleEventDrop}
                 eventClick={handleEventClick}
                 eventContent={renderEventContent}
@@ -1371,6 +1413,11 @@ export default function ContentCalendarView() {
                 moreLinkText={(num: number) => language === 'vi' ? `+${num} bài nữa` : `+${num} more`}
                 moreLinkClick={handleMoreLinkClick}
                 height="100%"
+                slotDuration="00:30:00"
+                snapDuration="00:01:00"
+                slotMinTime="00:00:00"
+                slotMaxTime="24:00:00"
+                scrollTime="07:00:00"
               />
             </div>
           )}
