@@ -331,16 +331,16 @@ export function WeeklyTimeline({
               return (
                 <div
                   key={day.index}
-                  className={`py-2 px-1 border-r border-gray-200 dark:border-zinc-800/60 last:border-r-0 transition-all ${
+                  className={`py-2.5 px-1 border-r border-gray-200 dark:border-zinc-800/60 last:border-r-0 transition-all ${
                     isSelectedDay
-                      ? 'bg-emerald-100/60 dark:bg-emerald-950/40 text-primary font-black border-b-2 border-b-primary shadow-sm'
+                      ? 'bg-[#e6f7f2] dark:bg-emerald-950/50 text-[#10b981] font-black border-b-2 border-b-[#10b981] shadow-2xs'
                       : isToday
-                      ? 'bg-emerald-50/40 dark:bg-emerald-950/20 text-primary font-bold border-b-2 border-b-primary/50'
+                      ? 'bg-[#e6f7f2]/60 dark:bg-emerald-950/30 text-[#10b981] font-bold border-b-2 border-b-[#10b981]/60'
                       : 'text-text'
                   }`}
                 >
-                  <div className={`text-[9px] font-extrabold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
-                  <div className={`text-xs font-black mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
+                  <div className={`text-[9.5px] font-extrabold tracking-wider ${isHighlighted ? 'text-[#10b981]' : 'text-text-muted'}`}>{day.label}</div>
+                  <div className={`text-xs font-black mt-0.5 ${isHighlighted ? 'text-[#10b981]' : 'text-text'}`}>{day.date}</div>
                 </div>
               );
             })}
@@ -401,11 +401,13 @@ export function WeeklyTimeline({
                           onDrop={(e) => dnd.handleCellDrop(e, dayIdx, hourVal)}
                           className={`border-r border-gray-100 dark:border-zinc-800/50 last:border-r-0 relative flex flex-col h-full transition-all ${
                             isCurrentPostInCell
-                              ? 'bg-emerald-100 dark:bg-emerald-950/50'
+                              ? 'bg-[#e6f7f2] dark:bg-emerald-950/50'
                               : isSelectedCol
-                              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-semibold'
+                              ? 'bg-[#f0fdf9]/80 dark:bg-emerald-950/20'
                               : isTodayCol
-                              ? 'bg-emerald-50/40 dark:bg-emerald-950/20'
+                              ? 'bg-[#f0fdf9]/50 dark:bg-emerald-950/15'
+                              : showGolden
+                              ? 'bg-[#fffbf5]/90 dark:bg-amber-950/15'
                               : ''
                           }`}
                         >
@@ -419,16 +421,13 @@ export function WeeklyTimeline({
                             </div>
                           )}
 
-                          {/* Sleek Golden Hour indicator badge */}
+                          {/* Golden Hour indicator */}
                           {showGolden && (
-                              <div className="absolute inset-1 pointer-events-none flex items-end justify-end z-20">
-                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help bg-amber-500/10 dark:bg-amber-400/10 border border-amber-400/30 dark:border-amber-500/30 px-1.5 py-0.5 rounded-full backdrop-blur-2xs shadow-2xs hover:bg-amber-500/20 transition-all">
-                                  <Star size={10} className="fill-amber-400 text-amber-500 shrink-0" />
-                                  <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 leading-none">
-                                    Giờ vàng
-                                  </span>
-                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-2 py-1 rounded-lg shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
-                                    Giờ Vàng {currentPlatform} ({hourVal}:00)
+                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
+                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
+                                  <Star size={11} className={`fill-[#fbbf24] text-[#f59e0b] transition-all duration-200 ${isDragGolden ? 'scale-125 opacity-100' : 'opacity-90 group-hover/golden:scale-110'}`} />
+                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                    Giờ Vàng {currentPlatform}
                                   </span>
                                 </div>
                               </div>
@@ -469,18 +468,31 @@ export function WeeklyTimeline({
                           {/* Scheduled Post Card Overlay */}
                           {isCurrentPostInCell && (
                             <div className="absolute inset-1 z-30 flex items-center justify-center">
-                              <ScheduledPostCard
-                                platform={state.selectedPlatform || 'facebook'}
-                                time={state.scheduledDateTime.split('T')[1] || `${hour}:00`}
-                                title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
-                                thumbnail={state.articleContext?.thumbnail}
-                                onDragStart={(e) => dnd.handleDragStart(e, {
-                                  id: 'scheduled-post',
-                                  type: 'scheduled',
-                                  platform: state.selectedPlatform || 'facebook'
-                                })}
-                                onDragEnd={dnd.handleDragEnd}
-                              />
+                              {(() => {
+                                const timeStr = state.scheduledDateTime.split('T')[1] || `${hour}:00`;
+                                const [_, minuteStr] = timeStr.split(':');
+                                return (
+                                  <>
+                                    {minuteStr && minuteStr !== '00' && (
+                                      <div className="absolute -left-11 top-1/2 -translate-y-1/2 bg-[#10b981] text-white text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs z-40 animate-fade-in">
+                                        {timeStr}
+                                      </div>
+                                    )}
+                                    <ScheduledPostCard
+                                      platform={currentPlatform}
+                                      time={timeStr}
+                                      title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
+                                      thumbnail={state.articleContext?.thumbnail}
+                                      onDragStart={(e) => dnd.handleDragStart(e, {
+                                        id: 'scheduled-post',
+                                        type: 'scheduled',
+                                        platform: currentPlatform
+                                      })}
+                                      onDragEnd={dnd.handleDragEnd}
+                                    />
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
