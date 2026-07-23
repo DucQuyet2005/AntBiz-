@@ -442,8 +442,9 @@ export function WeeklyTimeline({
 
                           {/* Render 4 Quarter Sub-Slots (00, 15, 30, 45) */}
                           {[0, 15, 30, 45].map((minute) => {
-                            const isSubHovered = hoveredSubSlot?.dayIdx === dayIdx && hoveredSubSlot?.hour === hourVal && hoveredSubSlot?.minute === minute;
-                            const isSubDragOver = isCellDragOver && activeDragMinute === minute;
+                            const isSubPast = isPast || (targetDay?.isToday && (hourVal * 60 + minute) <= (now.getHours() * 60 + now.getMinutes()));
+                            const isSubHovered = !isSubPast && hoveredSubSlot?.dayIdx === dayIdx && hoveredSubSlot?.hour === hourVal && hoveredSubSlot?.minute === minute;
+                            const isSubDragOver = !isSubPast && isCellDragOver && activeDragMinute === minute;
                             const displayTimeStr = `${hourVal.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 
                             return (
@@ -451,21 +452,21 @@ export function WeeklyTimeline({
                                 key={minute}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isPast) return;
+                                  if (isSubPast) return;
                                   handleCellClick(e, dayIdx, hourVal, minute);
                                 }}
                                 onMouseEnter={() => {
-                                  if (!isPast) setHoveredSubSlot({ dayIdx, hour: hourVal, minute });
+                                  if (!isSubPast) setHoveredSubSlot({ dayIdx, hour: hourVal, minute });
                                 }}
                                 onMouseLeave={() => setHoveredSubSlot(null)}
                                 className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 ${
-                                  isPast
-                                    ? 'cursor-not-allowed opacity-50'
+                                  isSubPast
+                                    ? 'cursor-not-allowed opacity-40 bg-gray-100/30 dark:bg-zinc-800/20'
                                     : 'cursor-pointer'
                                 } ${
-                                  isSubDragOver && !isPast
+                                  isSubDragOver
                                     ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20'
-                                    : isSubHovered && !isPast
+                                    : isSubHovered
                                     ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10'
                                     : ''
                                 }`}
@@ -614,7 +615,7 @@ export default function Step5Schedule() {
     const minPad = minute.toString().padStart(2, '0');
     const targetDateTime = new Date(`${targetDay.fullDateStr}T${hourPad}:${minPad}:00`);
 
-    if (targetDateTime.getTime() < now.getTime()) {
+    if (targetDateTime.getTime() <= now.getTime()) {
       return; // Do NOT allow picking past date/time
     }
 
@@ -626,6 +627,12 @@ export default function Step5Schedule() {
   const handleMinuteSelect = (minuteStr: string) => {
     const currentHour = timePart ? timePart.split(':')[0] || '09' : '09';
     const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
+    const targetDateTime = new Date(`${currentDate}T${currentHour}:${minuteStr}:00`);
+
+    if (targetDateTime.getTime() <= now.getTime()) {
+      return; // Block minute selection in past
+    }
+
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${currentHour}:${minuteStr}` });
   };
 
@@ -655,12 +662,28 @@ export default function Step5Schedule() {
         {/* Right Column: Publishing Settings (30% -> lg:col-span-4) */}
         <div className="lg:col-span-4">
           <PublishingSettings
-            dateValue={datePart || '2026-07-22'}
+            dateValue={datePart || days.find(d => d.isToday)?.fullDateStr || '2026-07-23'}
             timeValue={timePart || '09:00'}
             platform={state.selectedPlatform || 'facebook'}
             reportToggle={reportToggle}
-            onDateChange={(e) => dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${e.target.value}T${timePart || '09:00'}` })}
-            onTimeChange={(e) => dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${datePart || '2026-07-22'}T${e.target.value}` })}
+            onDateChange={(e) => {
+              const selectedDate = e.target.value;
+              const currentTime = timePart || '09:00';
+              const targetDateTime = new Date(`${selectedDate}T${currentTime}:00`);
+              if (targetDateTime.getTime() <= now.getTime()) {
+                return;
+              }
+              dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${selectedDate}T${currentTime}` });
+            }}
+            onTimeChange={(e) => {
+              const selectedTime = e.target.value;
+              const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
+              const targetDateTime = new Date(`${currentDate}T${selectedTime}:00`);
+              if (targetDateTime.getTime() <= now.getTime()) {
+                return;
+              }
+              dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${selectedTime}` });
+            }}
             onMinuteSelect={handleMinuteSelect}
             onReportToggleChange={() => setReportToggle(prev => !prev)}
           />
