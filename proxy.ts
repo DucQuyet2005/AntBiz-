@@ -31,7 +31,7 @@ function isActualAntBizRoute(pathname: string): boolean {
     '/search', '/settings', '/admin', '/reports',
   ]);
 
-  if (ANTBIZ_ROUTES.has(pathname)) return true;
+  if (ANTBIZ_ROUTES.has(pathname) || pathname.startsWith('/admin/')) return true;
 
   if (pathname.startsWith('/api/')) {
     const segment = pathname.split('/')[2];
@@ -60,7 +60,7 @@ export async function proxy(request: NextRequest) {
 
   // 1. Kiểm tra tham số 'url' trong chính request hiện tại (khi load iframe)
   const requestUrlParam = request.nextUrl.searchParams.get('url');
-  if (pathname === '/api/proxy' && requestUrlParam) {
+  if (requestUrlParam) {
     try {
       const parsedUrl = new URL(requestUrlParam);
       if (isAllowedHost(parsedUrl.hostname)) {
@@ -99,8 +99,8 @@ export async function proxy(request: NextRequest) {
     } catch (_) {}
   }
 
-  // Nếu xác định đây là yêu cầu thuộc iframe proxy và KHÔNG PHẢI là yêu cầu đến /api/proxy (tránh lặp vô hạn)
-  if (isProxyRequest && targetOrigin && pathname !== '/api/proxy') {
+  // Nếu xác định đây là yêu cầu thuộc iframe proxy và KHÔNG PHẢI là yêu cầu đến /api/proxy và KHÔNG PHẢI là route nội bộ AntBiz (tránh lặp vô hạn)
+  if (isProxyRequest && targetOrigin && pathname !== '/api/proxy' && !isActualAntBizRoute(pathname)) {
     const dest = request.nextUrl.clone();
     dest.pathname = '/api/proxy';
     
@@ -161,7 +161,13 @@ export async function proxy(request: NextRequest) {
   )
 
   // Kiểm tra Session (Xác thực JWT Token từ Cookie qua Supabase server)
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+  } catch (error) {
+    console.error('[proxy.ts] auth error:', error);
+  }
 
   const url = request.nextUrl.clone()
 

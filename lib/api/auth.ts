@@ -10,12 +10,17 @@ import { NextResponse } from 'next/server';
  */
 export async function requireUser() {
   const supabase = createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  let user = null;
+  let authError = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+    authError = error; z
+  } catch (err: any) {
+    authError = err;
+  }
 
-  if (error || !user) {
+  if (authError || !user) {
     return {
       supabase,
       user: null,
@@ -78,4 +83,4 @@ export function getCalendarToken(userId: string) {
     throw new Error('Thiếu cấu hình SUPABASE_SERVICE_ROLE_KEY để sinh Token Lịch');
   }
   return createHash('sha256').update(`cal-${userId}-${secret}`).digest('hex');
-}
+}

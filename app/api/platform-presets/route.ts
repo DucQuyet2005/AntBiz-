@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import {
   createPlatformPresetSchema,
   platformPresetPlatformSchema,
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
     ]);
     if (unauthorized) return unauthorized;
 
-    const platformParam = request.nextUrl.searchParams.get('platform');
+    const requestUrl = new URL(request.url);
+    const platformParam = requestUrl.searchParams.get('platform');
     if (!platformParam) {
       return NextResponse.json({ error: 'Thiếu tham số platform' }, { status: 400 });
     }
