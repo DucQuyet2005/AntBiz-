@@ -224,6 +224,22 @@ export default function Step4Editor() {
     return '';
   })() : '';
 
+  const displayOptions = state.displayOptions || {
+    showTitle: true,
+    showContent: true,
+    showImages: true,
+    showAuthor: true,
+    showHashtags: true,
+  };
+  const visibleOptionsList = [
+    { key: 'showTitle', val: displayOptions.showTitle },
+    { key: 'showContent', val: displayOptions.showContent },
+    ...(currentPlatform !== 'instagram' ? [{ key: 'showImages', val: displayOptions.showImages }] : []),
+    ...(isCrawledSource ? [{ key: 'showAuthor', val: displayOptions.showAuthor }] : []),
+    { key: 'showHashtags', val: displayOptions.showHashtags },
+  ];
+  const hiddenOptionsCount = visibleOptionsList.filter(opt => opt.val === false).length;
+
   const compiledFullTextParts = [];
   if (displayOptions.showTitle && currentTitle) {
     compiledFullTextParts.push(currentTitle.trim());
@@ -506,21 +522,6 @@ export default function Step4Editor() {
 
   // Floating display options popover state
   const [showDisplayOptionsPopover, setShowDisplayOptionsPopover] = useState<boolean>(false);
-  const displayOptions = state.displayOptions || {
-    showTitle: true,
-    showContent: true,
-    showImages: true,
-    showAuthor: true,
-    showHashtags: true,
-  };
-  const visibleOptionsList = [
-    { key: 'showTitle', val: displayOptions.showTitle },
-    { key: 'showContent', val: displayOptions.showContent },
-    ...(currentPlatform !== 'instagram' ? [{ key: 'showImages', val: displayOptions.showImages }] : []),
-    ...(isCrawledSource ? [{ key: 'showAuthor', val: displayOptions.showAuthor }] : []),
-    { key: 'showHashtags', val: displayOptions.showHashtags },
-  ];
-  const hiddenOptionsCount = visibleOptionsList.filter(opt => opt.val === false).length;
 
   // New hashtag input & state
   const [newHashtagInput, setNewHashtagInput] = useState<string>('');
