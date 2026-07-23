@@ -267,17 +267,36 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
   const fetchDashboardData = async () => {
     try {
-      // 1. Get current user profile
+      // 1. Get current user profile and role
       const { data: { user } } = await supabase.auth.getUser();
+      let userRole = 'marketer_content';
       if (user) {
         const meta = user.user_metadata || {};
         setUserName(meta.full_name || user.email?.split('@')[0] || 'AntBiz Creator');
+        
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (profile) {
+          userRole = profile.role || 'marketer_content';
+        }
       }
 
+      const isContentMarketer = userRole === 'marketer_content';
+
       // 2. Fetch scheduled posts
-      const { data: posts } = await supabase
+      let postsQuery = supabase
         .from('scheduled_posts')
         .select('id, platform, status, scheduled_at, image_urls, captions(ai_content, edited_content, articles(title, images))');
+
+      if (isContentMarketer && user) {
+        postsQuery = postsQuery.eq('created_by', user.id);
+      }
+
+      const { data: posts } = await postsQuery;
 
       if (posts) {
         setAllPosts(posts);
@@ -289,9 +308,15 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         .select('*', { count: 'exact', head: true });
 
       // 4. Fetch captions count
-      const { count: captionsCount } = await supabase
+      let captionsQuery = supabase
         .from('captions')
         .select('*', { count: 'exact', head: true });
+
+      if (isContentMarketer && user) {
+        captionsQuery = captionsQuery.eq('created_by', user.id);
+      }
+
+      const { count: captionsCount } = await captionsQuery;
 
       // Generate dates for the last 7 days (including today)
       const last7Days = Array.from({ length: 7 }, (_, i) => {

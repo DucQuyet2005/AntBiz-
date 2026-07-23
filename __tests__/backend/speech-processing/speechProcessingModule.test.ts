@@ -27,7 +27,7 @@ describe('SpeechProcessingModule', () => {
     const result = await module.process({ file: null, bullets: '  Ý chính  ' });
 
     expect(transcriber.transcribe).not.toHaveBeenCalled();
-    expect(enricher.correct).toHaveBeenCalledWith('Ý chính');
+    expect(enricher.correct).toHaveBeenCalledWith('Ý chính', 'Ý chính');
     expect(enricher.generateMetadata).toHaveBeenCalledWith('Ý chính');
     expect(result.transcript).toBe('Ý chính');
   });
@@ -39,7 +39,7 @@ describe('SpeechProcessingModule', () => {
 
     expect(transcriber.transcribe).toHaveBeenCalledOnce();
     expect(transcriber.transcribe).toHaveBeenCalledWith(file);
-    expect(enricher.correct).toHaveBeenCalledWith('Transcript');
+    expect(enricher.correct).toHaveBeenCalledWith('Transcript', 'Ghi chú');
     expect(enricher.generateMetadata).toHaveBeenCalledWith('Transcript\n\nGhi chú');
   });
 
@@ -97,6 +97,6 @@ describe('SpeechProcessingModule', () => {
     const result = await module.process({ file, bullets: null });
 
     expect(result.transcript).toBe('Đây là nội dung chính.');
-    expect(enricher.correct).toHaveBeenCalledWith('Đây là nội dung chính.');
+    expect(enricher.correct).toHaveBeenCalledWith('Đây là nội dung chính.', '');
   });
 });

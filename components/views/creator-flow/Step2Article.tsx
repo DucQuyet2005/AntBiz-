@@ -310,10 +310,9 @@ export default function Step2Article({
   React.useEffect(() => {
     uploadedImagesRef.current = uploadedImages;
 
-    // Sync manually uploaded images to global state.crawledImageUrls
-    const uploadedUrlsSet = new Set(uploadedImages.map(img => img.url));
-    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const uploadedUrls = uploadedImages.map(img => img.url);
+    const uploadedUrlsSet = new Set(uploadedUrls);
+    const crawledOnly = (state.crawledImageUrls || []).filter(url => !url.startsWith('blob:') && !url.startsWith('data:') && !uploadedUrlsSet.has(url));
     const combined = [...crawledOnly, ...uploadedUrls];
 
     const currentCombinedStr = JSON.stringify(state.crawledImageUrls || []);
@@ -604,6 +603,7 @@ export default function Step2Article({
     if (!activeBrowserSite) return;
     if (crawlStatus === 'crawling' || isCrawlingActive) return;
 
+    // Xóa sạch toàn bộ nội dung, file ghi âm, tài liệu và ảnh đã tải lên trước đó
     setUploadedImages([]);
     setUploadedFiles([]);
     setAudioUrls({});
@@ -611,7 +611,21 @@ export default function Step2Article({
       audioPlaybackRef.current.pause();
     }
     setPlayingAudio(null);
-    dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+
+    // Lọc bỏ bài cào cũ để chuẩn bị thay bằng bài cào mới
+    let previousManualOnly = state.manualContent;
+    const markerIndex = previousManualOnly.indexOf('[Nội dung bổ sung từ nguồn dữ liệu]:');
+    if (markerIndex !== -1) {
+      previousManualOnly = previousManualOnly.substring(0, markerIndex).trim();
+
+      // Update the manual content to remove the old crawl
+      dispatch({
+        type: 'SET_MANUAL_CONTENT',
+        payload: { title: previousManualOnly ? state.manualTitle : '', content: previousManualOnly }
+      });
+    } else {
+      dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+    }
     dispatch({ type: 'SET_CRAWLED_IMAGES', payload: [] });
 
     const site = activeBrowserSite;
@@ -1222,7 +1236,10 @@ export default function Step2Article({
                                   });
                                 }
                                 setUploadedFiles(prev => prev.filter(f => f.name !== file.name));
-                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: '', content: '' } });
+                                
+                                let currentContent = state.manualContent || '';
+                                currentContent = currentContent.replace(file.content, '').replace(/\n{3,}/g, '\n\n').trim();
+                                dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title: state.manualTitle, content: currentContent } });
                               }}
                               className="text-red-500 hover:bg-red-500/5 p-1.5 rounded-full transition-colors flex-shrink-0 cursor-pointer"
                               title="Xóa"
@@ -1423,8 +1440,13 @@ export default function Step2Article({
           <div className="relative max-w-[90vw] max-h-[85vh] select-none" onClick={e => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={activeLightboxImage}
+              src={activeLightboxImage?.startsWith('http://') || activeLightboxImage?.startsWith('https://') ? `/api/proxy?url=${encodeURIComponent(activeLightboxImage)}` : (activeLightboxImage || '')}
               alt="Preview gốc"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).onerror = null;
+                (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+              }}
               className="rounded-2xl max-w-full max-h-[80vh] object-contain shadow-2xl border border-white/10"
             />
             <button
@@ -1467,7 +1489,16 @@ export default function Step2Article({
                       className="w-full aspect-square rounded-2xl border border-gray-250 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-950 relative shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-200"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.url} alt={item.name} className="w-full h-full object-cover select-none" />
+                      <img
+                        src={item.type === 'crawled' || item.url.startsWith('http://') || item.url.startsWith('https://') ? `/api/proxy?url=${encodeURIComponent(item.url)}` : item.url}
+                        alt={item.name}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).onerror = null;
+                          (e.currentTarget as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                        }}
+                        className="w-full h-full object-cover select-none"
+                      />
                       <button
                         type="button"
                         onClick={(e) => {
