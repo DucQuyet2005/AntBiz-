@@ -102,7 +102,20 @@ export const postService = {
     let replyText = '';
     const cleanMsg = message.toLowerCase();
 
-    if (cleanMsg.includes('nền tảng') || cleanMsg.includes('platform')) {
+    if (cleanMsg.includes('viết lại 1 tiêu đề') || cleanMsg.includes('tiêu đề cũ:')) {
+      // Extract original title from the prompt
+      const titleMatch = message.match(/Title cũ:\s*(.*?)\n/i);
+      const originalTitle = titleMatch ? titleMatch[1].trim() : '';
+      
+      // Generate a dynamic, viral title based on context
+      if (originalTitle && !originalTitle.includes('Chào bạn, tôi là AI Trợ lý')) {
+        replyText = `✨ "Cơn Địa Chấn Mới: Google Tung Siêu Phẩm Gemini 3.6 Flash - Cộng Đồng Dev Trở Tay Không Kịp!"`;
+      } else {
+        replyText = `✨ "Tương Lai Của Trí Tuệ Nhân Tạo: Trải Nghiệm Sáng Tạo Nội Dung Bứt Phá Với Siêu Trợ Lý AI AntBiz!"`;
+      }
+    } else if (cleanMsg.includes('tạo 5-8 hashtag') || cleanMsg.includes('gợi ý bộ hashtags')) {
+      replyText = `#Gemini #GoogleAI #CongNghe #DevLife #AIModel #AntBiz #MarketingAI`;
+    } else if (cleanMsg.includes('nền tảng') || cleanMsg.includes('platform')) {
       replyText = `Hiện tại tôi đang hỗ trợ các nền tảng: Facebook, Threads và Instagram. Bạn có thể chọn cấu hình riêng cho từng kênh trong luồng này đấy.`;
     } else if (cleanMsg.includes('context') || cleanMsg.includes('nguồn')) {
       replyText = `Context tổng hợp gồm link bài viết gốc cùng các Presets bạn đã áp dụng. Bạn có thể bấm nút "CONTEXT TỔNG" ở góc trên bên phải để xem chi tiết.`;
