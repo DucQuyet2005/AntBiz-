@@ -408,10 +408,6 @@ export function WeeklyTimeline({
                               ? 'bg-emerald-50/40 dark:bg-emerald-950/20'
                               : ''
                           }`}
-                          style={showGolden ? {
-                            backgroundColor: goldenStyle?.bg || 'rgba(245,158,11,0.12)',
-                            borderColor: goldenStyle?.border || 'rgba(245,158,11,0.3)',
-                          } : undefined}
                         >
                           {/* Red current time indicator */}
                           {targetDay?.isToday && now.getHours() === hourVal && (
@@ -423,13 +419,16 @@ export function WeeklyTimeline({
                             </div>
                           )}
 
-                          {/* Golden Hour indicator */}
+                          {/* Sleek Golden Hour indicator badge */}
                           {showGolden && (
-                              <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
-                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
-                                  <Star size={11} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-125 opacity-100' : 'opacity-90 group-hover/golden:scale-110'}`} />
-                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
-                                    Giờ Vàng {currentPlatform}
+                              <div className="absolute inset-1 pointer-events-none flex items-end justify-end z-20">
+                                <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help bg-amber-500/10 dark:bg-amber-400/10 border border-amber-400/30 dark:border-amber-500/30 px-1.5 py-0.5 rounded-full backdrop-blur-2xs shadow-2xs hover:bg-amber-500/20 transition-all">
+                                  <Star size={10} className="fill-amber-400 text-amber-500 shrink-0" />
+                                  <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 leading-none">
+                                    Giờ vàng
+                                  </span>
+                                  <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-2 py-1 rounded-lg shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
+                                    Giờ Vàng {currentPlatform} ({hourVal}:00)
                                   </span>
                                 </div>
                               </div>
