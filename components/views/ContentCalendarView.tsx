@@ -1445,16 +1445,30 @@ export default function ContentCalendarView() {
                 editable={true}
                 eventDragStart={(info: any) => {
                   const post = info.event.extendedProps?.post;
+                  const isMultiple = info.event.extendedProps?.isMultiple;
+                  
                   if (post) {
                     const plat = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
                     document.body.classList.add(`dragging-${plat}`);
+                  } else if (isMultiple && info.event.extendedProps?.platforms) {
+                    info.event.extendedProps.platforms.forEach((plat: string) => {
+                      const p = plat === 'thread' ? 'threads' : (plat || 'blog');
+                      document.body.classList.add(`dragging-${p}`);
+                    });
                   }
                 }}
                 eventDragStop={(info: any) => {
                   const post = info.event.extendedProps?.post;
+                  const isMultiple = info.event.extendedProps?.isMultiple;
+
                   if (post) {
                     const plat = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
                     document.body.classList.remove(`dragging-${plat}`);
+                  } else if (isMultiple && info.event.extendedProps?.platforms) {
+                    info.event.extendedProps.platforms.forEach((plat: string) => {
+                      const p = plat === 'thread' ? 'threads' : (plat || 'blog');
+                      document.body.classList.remove(`dragging-${p}`);
+                    });
                   }
                 }}
                 eventDrop={handleEventDrop}
