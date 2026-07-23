@@ -42,7 +42,7 @@ function QuotedTextBubble({ text }: { text: string }) {
   );
 }
 
-export default function Step4Editor() {
+export default function Step4Editor({ onTextChange }: { onTextChange?: (text: string) => void }) {
   const { t } = useLanguage();
   const {
     state,
@@ -1321,6 +1321,9 @@ export default function Step4Editor() {
                               const text = e.clipboardData.getData('text/plain');
                               document.execCommand('insertText', false, text);
                             }}
+                            onInput={(e) => {
+                              onTextChange?.(e.currentTarget.innerText);
+                            }}
                             onBlur={(e) => {
                               const newText = e.currentTarget.innerText;
                               dispatch({ type: 'SET_POST_CONTENT', payload: newText });
@@ -1437,6 +1440,9 @@ export default function Step4Editor() {
                                 e.preventDefault();
                                 const text = e.clipboardData.getData('text/plain');
                                 document.execCommand('insertText', false, text);
+                              }}
+                              onInput={(e) => {
+                                onTextChange?.(e.currentTarget.innerText);
                               }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
@@ -1561,6 +1567,9 @@ export default function Step4Editor() {
                                 e.preventDefault();
                                 const text = e.clipboardData.getData('text/plain');
                                 document.execCommand('insertText', false, text);
+                              }}
+                              onInput={(e) => {
+                                onTextChange?.(e.currentTarget.innerText);
                               }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });

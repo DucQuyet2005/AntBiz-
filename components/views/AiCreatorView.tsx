@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -47,6 +47,17 @@ function AiCreatorContent() {
   // Back confirmation dialog states
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [targetStep, setTargetStep] = useState<number | null>(null);
+
+  const duplicateCheckTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const handleEditorTextChange = (text: string) => {
+    if (duplicateCheckTimer.current) clearTimeout(duplicateCheckTimer.current);
+    duplicateCheckTimer.current = setTimeout(() => {
+      if (text.trim() && text !== ignoreDuplicateCheckForText) {
+        checkDuplicate(text);
+      }
+    }, 1500);
+  };
 
   const handleBack = () => {
     if (state.currentStep === 3) {
@@ -332,7 +343,7 @@ function AiCreatorContent() {
           />
         );
       case 3:
-        return <Step4Editor />;
+        return <Step4Editor onTextChange={handleEditorTextChange} />;
       case 4:
         return <Step5Schedule />;
       default:
