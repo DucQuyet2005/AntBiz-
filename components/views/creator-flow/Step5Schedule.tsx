@@ -582,11 +582,33 @@ export default function Step5Schedule() {
 
     const hourStr = hour.toString().padStart(2, '0');
     const minuteStr = minute.toString().padStart(2, '0');
+    const targetDateTime = new Date(`${targetDay.fullDateStr}T${hourStr}:${minuteStr}:00`);
+
+    if (targetDateTime.getTime() <= new Date().getTime()) {
+      return; // Do NOT allow drag & drop to past time
+    }
+
     const timePad = `${hourStr}:${minuteStr}`;
 
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   }, [dispatch, days]);
+
+  useEffect(() => {
+    if (state.scheduledDateTime) {
+      const currentScheduled = new Date(state.scheduledDateTime);
+      if (currentScheduled.getTime() <= new Date().getTime()) {
+        const futureDate = new Date();
+        futureDate.setMinutes(futureDate.getMinutes() + 15);
+        const minVal = Math.ceil(futureDate.getMinutes() / 15) * 15;
+        futureDate.setMinutes(minVal % 60);
+        futureDate.setSeconds(0);
+        const dateStr = `${futureDate.getFullYear()}-${(futureDate.getMonth() + 1).toString().padStart(2, '0')}-${futureDate.getDate().toString().padStart(2, '0')}`;
+        const timeStr = `${futureDate.getHours().toString().padStart(2, '0')}:${(futureDate.getMinutes()).toString().padStart(2, '0')}`;
+        dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${timeStr}` });
+      }
+    }
+  }, []);
 
   const dnd = useScheduleDragDrop(handleScheduleChange, dynamicGoldenHours);
 

@@ -878,7 +878,11 @@ export function CreatorFlowProvider({
           platforms: drafts.map((item) => ({ platform: item.platform, draft: item.draft! })),
         }, onEvent);
       } else {
-        const scheduledAt = new Date(state.scheduledDateTime).toISOString();
+        const scheduledDateObj = new Date(state.scheduledDateTime);
+        if (scheduledDateObj.getTime() <= new Date().getTime()) {
+          throw new Error('Thời gian đặt lịch phải ở trong tương lai!');
+        }
+        const scheduledAt = scheduledDateObj.toISOString();
         await quickPublishing.schedule({
           connectedPlatforms,
           imageUrls,
