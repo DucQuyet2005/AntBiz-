@@ -139,7 +139,8 @@ export class QuickPublishingModule {
     await Promise.all(input.platforms.map(async (item) => {
       try {
         const captionId = await this.ensureDraft(item.draft, emit);
-        await this.client.schedule({ captionId, scheduledAt: item.scheduledAt, imageUrls: input.imageUrls });
+        const platformImageUrls = item.imageUrls !== undefined ? item.imageUrls : input.imageUrls;
+        await this.client.schedule({ captionId, scheduledAt: item.scheduledAt, imageUrls: platformImageUrls });
         successful.push(item.platform);
         emit({ type: 'platform-scheduled', platform: item.platform, captionId });
       } catch (error) {
@@ -167,7 +168,8 @@ export class QuickPublishingModule {
           throw new QuickPublishingError('PLATFORM_NOT_CONNECTED', { platform: item.platform });
         }
         const captionId = await this.ensureDraft(item.draft, emit);
-        await this.client.publishNow({ captionId, imageUrls: input.imageUrls });
+        const platformImageUrls = item.imageUrls !== undefined ? item.imageUrls : input.imageUrls;
+        await this.client.publishNow({ captionId, imageUrls: platformImageUrls });
         successful.push(item.platform);
         emit({ type: 'platform-published', platform: item.platform, captionId });
       } catch (error) {

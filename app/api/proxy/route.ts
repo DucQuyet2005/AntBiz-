@@ -133,6 +133,9 @@ export async function GET(request: NextRequest) {
   #bannerMasthead, .ads-masthead, #desktop-home-top-page, .top-page,
   /* Tuổi Trẻ specific */
   .box-adv, #ads300x250_sticky, #ads300x600,
+  [id*="glia"], [class*="glia"], iframe[src*="gliastudio"], iframe[src*="glia"],
+  .video-sponsor, .popup-ad, .popup-adv, .tto-popup-ad, .tt-popup,
+  .bg-dark-layer, .floating-video,
   /* Generic */
   [data-testid*="ad"], [aria-label*="advertisement"] {
     display: none !important;
@@ -160,6 +163,82 @@ export async function GET(request: NextRequest) {
   var TARGET_ORIGIN = ${JSON.stringify(targetOrigin)};
   var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
   var ALLOWED_HOSTNAMES = ${JSON.stringify(ALLOWED_HOSTNAMES)};
+
+  // ── Client-side Dynamic Ad Blocker ──
+  var AD_PATTERNS = ['glia', 'doubleclick', 'adnxs', 'googlesyndication', 'gliastudio', 'gliastudios'];
+
+  function checkAndBlock(val) {
+    if (!val) return false;
+    var sVal = String(val).toLowerCase();
+    return AD_PATTERNS.some(function(pat) { return sVal.indexOf(pat) !== -1; });
+  }
+
+  // Safe prototype overrides for script and iframe src
+  try {
+    if (typeof HTMLScriptElement !== 'undefined') {
+      var scriptDesc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+      if (scriptDesc && scriptDesc.set) {
+        var origScriptSet = scriptDesc.set;
+        Object.defineProperty(HTMLScriptElement.prototype, 'src', {
+          set: function(val) {
+            if (checkAndBlock(val)) {
+              console.log('[AdBlock] Blocked script src:', val);
+              return;
+            }
+            var resolvedVal = val;
+            if (val && typeof val === 'string' && !val.startsWith('http') && !val.startsWith('//') && !val.startsWith('data:') && !val.startsWith('blob:') && val.indexOf('/api/proxy') === -1) {
+              try { resolvedVal = getAbsoluteUrl(val); } catch(_) {}
+            }
+            origScriptSet.call(this, resolvedVal);
+          },
+          configurable: true,
+          enumerable: true
+        });
+      }
+    }
+
+    if (typeof HTMLIFrameElement !== 'undefined') {
+      var iframeDesc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src');
+      if (iframeDesc && iframeDesc.set) {
+        var origIframeSet = iframeDesc.set;
+        Object.defineProperty(HTMLIFrameElement.prototype, 'src', {
+          set: function(val) {
+            if (checkAndBlock(val)) {
+              console.log('[AdBlock] Blocked iframe src:', val);
+              return;
+            }
+            var resolvedVal = val;
+            if (val && typeof val === 'string' && !val.startsWith('http') && !val.startsWith('//') && !val.startsWith('data:') && !val.startsWith('blob:') && val.indexOf('/api/proxy') === -1) {
+              try { resolvedVal = getAbsoluteUrl(val); } catch(_) {}
+            }
+            origIframeSet.call(this, resolvedVal);
+          },
+          configurable: true,
+          enumerable: true
+        });
+      }
+    }
+  } catch (e) {
+    console.error('[AdBlock] Error patching prototypes:', e);
+  }
+
+  // Override Element.prototype.setAttribute safely
+  try {
+    var _setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function(name, value) {
+      var tag = (this.tagName || '').toLowerCase();
+      if (name && name.toLowerCase() === 'src' && (tag === 'script' || tag === 'iframe')) {
+        if (checkAndBlock(value)) {
+          console.log('[AdBlock] Blocked setAttribute src:', value);
+          return;
+        }
+      }
+      return _setAttribute.call(this, name, value);
+    };
+  } catch (e) {
+    console.error('[AdBlock] Error patching setAttribute:', e);
+  }
+  // ───────────────────────────────────
 
 
 
@@ -218,6 +297,11 @@ export async function GET(request: NextRequest) {
     if (url) {
       try {
         var abs = getAbsoluteUrl(String(url));
+        var absObj = new URL(abs);
+        if (absObj.searchParams.has('url') && absObj.searchParams.get('url').startsWith('http')) {
+           absObj.searchParams.delete('url');
+           abs = absObj.href;
+        }
         if (isAllowedHost(abs)) { _currentTarget = abs; report(); }
       } catch (_) {}
     }
@@ -229,6 +313,11 @@ export async function GET(request: NextRequest) {
     if (url) {
       try {
         var abs = getAbsoluteUrl(String(url));
+        var absObj = new URL(abs);
+        if (absObj.searchParams.has('url') && absObj.searchParams.get('url').startsWith('http')) {
+           absObj.searchParams.delete('url');
+           abs = absObj.href;
+        }
         if (isAllowedHost(abs)) { _currentTarget = abs; report(); }
       } catch (_) {}
     }
@@ -269,8 +358,9 @@ export async function GET(request: NextRequest) {
       var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : null);
       if (urlStr && typeof urlStr === 'string') {
         var proxiedUrl = null;
-        if (urlStr.startsWith('/') && !urlStr.startsWith('//') && !urlStr.startsWith('/api/proxy')) {
-          proxiedUrl = PROXY + encodeURIComponent(TARGET_ORIGIN + urlStr);
+        if (!urlStr.startsWith('http') && !urlStr.startsWith('//') && !urlStr.startsWith('data:') && !urlStr.startsWith('blob:') && urlStr.indexOf('/api/proxy') === -1) {
+          var absUrl = getAbsoluteUrl(urlStr);
+          proxiedUrl = PROXY + encodeURIComponent(absUrl);
         } else if (urlStr.startsWith('http') && urlStr.indexOf('/api/proxy') === -1) {
           if (isAllowedHost(urlStr)) proxiedUrl = PROXY + encodeURIComponent(urlStr);
         }
@@ -291,8 +381,9 @@ export async function GET(request: NextRequest) {
   var _xhrOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     if (typeof url === 'string') {
-      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-        url = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
+      if (!url.startsWith('http') && !url.startsWith('//') && !url.startsWith('data:') && !url.startsWith('blob:') && url.indexOf('/api/proxy') === -1) {
+        var absUrl = getAbsoluteUrl(url);
+        url = PROXY + encodeURIComponent(absUrl);
       } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
         if (isAllowedHost(url)) url = PROXY + encodeURIComponent(url);
       }
@@ -346,16 +437,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Lightweight periodic cleanup of ad iframes and skeleton elements without layout thrashing
+  // Lightweight periodic cleanup of ad iframes without layout thrashing
   setInterval(function() {
     try {
-      var iframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="googlesyndication"], iframe[src*="adnxs"]');
+      var iframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="googlesyndication"], iframe[src*="adnxs"], iframe[src*="gliastudio"]');
       for (var i = 0; i < iframes.length; i++) {
         iframes[i].remove();
-      }
-      var skeletons = document.querySelectorAll('.dt-skeleton, [class*="skeleton"]');
-      for (var j = 0; j < skeletons.length; j++) {
-        skeletons[j].remove();
       }
     } catch (_) {}
   }, 500);
@@ -413,6 +500,12 @@ export async function GET(request: NextRequest) {
 
     let html = await res.text();
 
+    // ── 0. Strip known ad/video scripts to prevent heavy popups ────────
+    html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, (match) => {
+      if (match.toLowerCase().includes('gliastudio')) return '';
+      return match;
+    });
+
     // ── 1. Rewrite relative src to appropriate destination ───────────────
     const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
     const needsImageProxy = parsedTarget.hostname.includes('dantri.com.vn');
@@ -425,6 +518,16 @@ export async function GET(request: NextRequest) {
         return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
       }
       // Everything else goes direct to origin
+      return `${attr}${q}${targetOrigin}/${path}${q}`;
+    });
+
+    // ── 1.1 Rewrite relative src without leading slash (e.g. src="native-content-new.js") ──
+    html = html.replace(/(\bsrc\s*=\s*)(['"])(?!(?:https?:|data:|blob:|javascript:|#|\/|\/\/))([^'"]*)\2/g, (_m, attr, q, path) => {
+      return `${attr}${q}${targetOrigin}/${path}${q}`;
+    });
+
+    // ── 1.2 Rewrite relative href without leading slash (e.g. href="css/style.css") ──
+    html = html.replace(/(\bhref\s*=\s*)(['"])(?!(?:https?:|data:|blob:|javascript:|#|\/|\/\/))([^'"]*)\2/g, (_m, attr, q, path) => {
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
     
