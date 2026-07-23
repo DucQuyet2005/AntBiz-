@@ -133,7 +133,6 @@ export default function ArchiveView() {
             articles (
               id,
               title,
-              category,
               description,
               views,
               images
@@ -347,7 +346,7 @@ export default function ArchiveView() {
 
     return {
       id: cap.id,
-      type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
+      type: 'BÀI VIẾT',
       platform: cap.platform === 'thread' ? 'threads' : (cap.platform || 'facebook'),
       image: mainImage,
       title: art.title || 'Không có tiêu đề',
@@ -572,10 +571,7 @@ export default function ArchiveView() {
                   {/* Overlay Badges */}
 
                   <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
-                    {/* Type Badge */}
-                    <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
-                      {item.type}
-                    </span>
+
 
                     {/* Publish Status Badge */}
                     <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
