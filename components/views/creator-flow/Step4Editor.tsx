@@ -201,7 +201,7 @@ export default function Step4Editor() {
 
   const isLongContent = contentLength > 500;
 
-  const maxCharLimit = currentPlatform === 'threads' ? '5,000' : currentPlatform === 'instagram' ? '2,200' : '63,206';
+  const maxCharLimit = currentPlatform === 'threads' ? '500' : currentPlatform === 'instagram' ? '2,200' : '63,206';
   const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
 
   const validKeywords = (state.articleContext?.keywords || []).filter(
@@ -1345,11 +1345,7 @@ export default function Step4Editor() {
                         </div>
                       </div>
 
-                      {/* Vertical Thread Line running to bottom of Post 1 */}
-                      <div className="w-0.5 flex-grow bg-slate-200 dark:bg-zinc-700 mt-2 -mb-5 rounded-full min-h-[40px]" />
-                    </div>
-
-                    {/* Right Content 1 */}
+                      {/* Right Content 1 */}
                     <div className="flex-1 min-w-0 select-text pb-4">
                       <div className="flex items-center justify-between select-none mb-2">
                         <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
@@ -1411,11 +1407,6 @@ export default function Step4Editor() {
                         </>
                       )}
 
-                      {/* 1/2 Badge */}
-                      <div className="mb-3">
-                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-md">1/2</span>
-                      </div>
-
                       {/* Author & Hashtags */}
                       {displayOptions.showAuthor && (
                         <div className="text-xs text-slate-500 font-medium mb-2">
@@ -1430,45 +1421,6 @@ export default function Step4Editor() {
 
                       {/* Action icons */}
                       <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300 pt-1">
-                        <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
-                        <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
-                        <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
-                        <Send size={18} className="cursor-pointer hover:text-primary transition-colors" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* THREAD REPLY POST 2 BLOCK */}
-                  <div className="flex gap-4 pt-4 border-t border-slate-100 dark:border-zinc-800/80">
-                    {/* Left Column: Avatar 2 */}
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className="relative shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
-                          A
-                        </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black border-2 border-white dark:border-zinc-900">
-                          +
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Content 2 */}
-                    <div className="flex-1 min-w-0 select-text">
-                      <div className="flex items-center justify-between select-none mb-2">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                          <span>1 giờ trước</span>
-                          <MoreHorizontal className="w-4 h-4 cursor-pointer" />
-                        </div>
-                      </div>
-
-                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400 truncate flex items-center gap-2 mb-3">
-                        <span className="text-slate-700 dark:text-slate-300 font-bold shrink-0">&gt;&gt;&gt; Xem chi tiết:</span>
-                        <span className="underline truncate">{state.articleContext?.sourceUrl || 'https://gocnhinmoi.com.vn/tay-...'}</span>
-                        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0">2/2</span>
-                      </div>
-
-                      <div className="flex items-center gap-5 text-slate-600 dark:text-slate-300">
                         <Heart size={18} className="cursor-pointer hover:text-red-500 transition-colors" />
                         <MessageCircle size={18} className="cursor-pointer hover:text-blue-500 transition-colors" />
                         <Repeat2 size={18} className="cursor-pointer hover:text-green-500 transition-colors" />
