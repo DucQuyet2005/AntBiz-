@@ -42,7 +42,7 @@ function QuotedTextBubble({ text }: { text: string }) {
   );
 }
 
-export default function Step4Editor({ onTextChange }: { onTextChange?: (text: string) => void }) {
+export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?: (text: string) => void }) {
   const { t } = useLanguage();
   const {
     state,
@@ -2140,4 +2140,4 @@ export default function Step4Editor({ onTextChange }: { onTextChange?: (text: st
       </div>
     </div>
   );
-}
+});

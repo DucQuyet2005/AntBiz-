@@ -49,20 +49,27 @@ function AiCreatorContent() {
   const [targetStep, setTargetStep] = useState<number | null>(null);
 
   const duplicateCheckTimer = useRef<NodeJS.Timeout | null>(null);
+  const textChangeHandlerRef = useRef((text: string) => {});
 
-  const handleEditorTextChange = (text: string) => {
-    // Xóa thông báo cũ ngay khi người dùng bắt đầu gõ để giao diện phản hồi tức thì
-    if (duplicateWarning) {
-      clearDuplicateWarning();
-    }
-    
-    if (duplicateCheckTimer.current) clearTimeout(duplicateCheckTimer.current);
-    duplicateCheckTimer.current = setTimeout(() => {
-      if (text.trim() && text !== ignoreDuplicateCheckForText) {
-        checkDuplicate(text);
+  useEffect(() => {
+    textChangeHandlerRef.current = (text: string) => {
+      // Xóa thông báo cũ ngay khi người dùng bắt đầu gõ để giao diện phản hồi tức thì
+      if (duplicateWarning) {
+        clearDuplicateWarning();
       }
-    }, 1500);
-  };
+      
+      if (duplicateCheckTimer.current) clearTimeout(duplicateCheckTimer.current);
+      duplicateCheckTimer.current = setTimeout(() => {
+        if (text.trim() && text !== ignoreDuplicateCheckForText) {
+          checkDuplicate(text);
+        }
+      }, 1500);
+    };
+  });
+
+  const handleEditorTextChange = React.useCallback((text: string) => {
+    textChangeHandlerRef.current(text);
+  }, []);
 
   const handleBack = () => {
     if (state.currentStep === 3) {
