@@ -113,7 +113,7 @@ describe('SocialAccountConnectionsModule', () => {
     await expect(module.complete({
       provider: 'facebook', code: 'code', state: 'state', nonce: 'nonce', userId: 'user-001',
     })).rejects.toMatchObject({ code: 'no_accounts', status: 404 });
-    expect(repository.upsert).toHaveBeenCalledWith('user-001', facebookCandidate);
+    expect(repository.upsert).not.toHaveBeenCalled();
   });
 
   it('returns persistence_failed when no requested account can be stored', async () => {
