@@ -447,7 +447,7 @@ export default function ReportsView() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 p-4 md:p-6 lg:p-8 min-h-screen text-foreground transition-all duration-300 font-sans">
+    <div className="flex flex-col gap-6 text-foreground font-sans">
 
       {/* Page Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
