@@ -24,7 +24,7 @@ export class ThreadsPerformanceCollector implements PerformanceCollector {
     // 1. Fetch Threads Insights (views, likes, replies, reposts, quotes)
     try {
       const insightsUrl = `${baseUrl}/insights?metric=views,likes,replies,reposts,quotes&access_token=${accessToken}`;
-      const response = await this.fetchImplementation(insightsUrl);
+      const response = await this.fetchImplementation(insightsUrl, { cache: 'no-store' });
 
       if (response.ok) {
         const data = await response.json();

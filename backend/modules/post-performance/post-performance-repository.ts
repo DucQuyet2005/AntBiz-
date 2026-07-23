@@ -154,7 +154,7 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
     return data?.access_token || null;
   }
 
-  async upsertInteractions(postId: string, metrics: PerformanceMetrics): Promise<boolean> {
+  async upsertInteractions(postId: string, metrics: PerformanceMetrics): Promise<{ success: boolean; error?: string }> {
     const { error } = await this.supabase
       .from('post_interactions')
       .upsert({
@@ -170,9 +170,9 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     if (error) {
       console.error(`[PostPerformanceRepository] Lỗi khi lưu post_interactions cho post_id ${postId}:`, error);
-      return false;
+      return { success: false, error: error.message };
     }
 
-    return true;
+    return { success: true };
   }
 }

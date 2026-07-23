@@ -124,19 +124,17 @@ export class PostPerformanceModule {
 
         attempted += 1;
         try {
-          const token = await this.repository.findPageAccessToken(post.userId, platform);
+          const token = await this.repository.findPageAccessToken(post.userId, platform, post.externalPostId);
           if (!token) {
             throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
           }
 
           const metrics = await collector.fetchPostMetrics(post.externalPostId, token);
-          const saveSuccess = await this.repository.upsertInteractions(post.id, metrics);
-          
-          if (saveSuccess) {
-            succeeded += 1;
-          } else {
-            throw new Error('Lỗi khi lưu dữ liệu tương tác vào cơ sở dữ liệu');
+          const { success, error: dbError } = await this.repository.upsertInteractions(post.id, metrics);
+          if (!success) {
+            throw new Error(dbError || 'Lỗi khi lưu dữ liệu tương tác vào cơ sở dữ liệu');
           }
+          succeeded += 1;
         } catch (err: any) {
           const errorMsg = err.message || 'Lỗi không xác định';
           console.error(`[PostPerformanceModule] Thất bại khi sync ${platform} cho post_id ${post.id}:`, errorMsg);
