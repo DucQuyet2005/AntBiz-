@@ -900,60 +900,69 @@ Yêu cầu định dạng:
   // Render Golden Hours function
   function renderGoldenHours() {
     const platform = selectPlatform.value || 'facebook';
-    let hours = [];
-    if (platform === 'facebook') {
-      hours = [7, 9, 11, 15, 20];
-    } else if (platform === 'instagram') {
-      hours = [11, 15, 20];
-    } else if (platform === 'thread' || platform === 'threads') {
-      hours = [8, 11, 15, 20];
-    }
-
     const container = document.getElementById('golden-hour-chips');
     const wrapper = document.getElementById('golden-hour-suggestions');
     if (!container || !wrapper) return;
 
-    container.innerHTML = '';
-    if (hours.length === 0) {
-      wrapper.style.display = 'none';
-      return;
-    }
-
+    container.innerHTML = '<span style="font-size:11px;color:#9ca3af;">Đang tải giờ vàng...</span>';
     wrapper.style.display = 'block';
-    hours.forEach(hour => {
-      const chip = document.createElement('div');
-      const hourStr = hour < 10 ? `0${hour}:00` : `${hour}:00`;
-      chip.textContent = hourStr;
-      chip.style.cssText = 'padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;';
 
-      chip.onmouseover = () => {
-        chip.style.background = '#fef3c7';
-        chip.style.borderColor = '#f59e0b';
-      };
-      chip.onmouseout = () => {
-        chip.style.background = '#fffbeb';
-        chip.style.borderColor = '#fcd34d';
-      };
-
-      chip.onclick = () => {
-        const d = new Date();
-        if (d.getHours() >= hour) {
-          d.setDate(d.getDate() + 1);
+    chrome.runtime.sendMessage({ action: 'api_get', endpoint: `/api/reports/golden-hours?platform=${platform}`, host: AntBizUrl }, (response) => {
+      let hours = [];
+      if (!chrome.runtime.lastError && response && response.data) {
+        hours = response.data.map(item => item.hour);
+      } else {
+        if (platform === 'facebook') {
+          hours = [7, 9, 11, 15, 20];
+        } else if (platform === 'instagram') {
+          hours = [11, 15, 20];
+        } else if (platform === 'thread' || platform === 'threads') {
+          hours = [8, 11, 15, 20];
         }
-        d.setHours(hour, 0, 0, 0);
+      }
 
-        const pad = (n) => n < 10 ? '0' + n : n;
-        const localIso = d.getFullYear() + '-' +
-          pad(d.getMonth() + 1) + '-' +
-          pad(d.getDate()) + 'T' +
-          pad(d.getHours()) + ':' +
-          pad(d.getMinutes());
+      container.innerHTML = '';
+      if (hours.length === 0) {
+        wrapper.style.display = 'none';
+        return;
+      }
 
-        inputScheduleTime.value = localIso;
-        saveCurrentState();
-      };
+      wrapper.style.display = 'block';
+      hours.forEach(hour => {
+        const chip = document.createElement('div');
+        const hourStr = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+        chip.textContent = hourStr;
+        chip.style.cssText = 'padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;';
 
-      container.appendChild(chip);
+        chip.onmouseover = () => {
+          chip.style.background = '#fef3c7';
+          chip.style.borderColor = '#f59e0b';
+        };
+        chip.onmouseout = () => {
+          chip.style.background = '#fffbeb';
+          chip.style.borderColor = '#fcd34d';
+        };
+
+        chip.onclick = () => {
+          const d = new Date();
+          if (d.getHours() >= hour) {
+            d.setDate(d.getDate() + 1);
+          }
+          d.setHours(hour, 0, 0, 0);
+
+          const pad = (n) => n < 10 ? '0' + n : n;
+          const localIso = d.getFullYear() + '-' +
+            pad(d.getMonth() + 1) + '-' +
+            pad(d.getDate()) + 'T' +
+            pad(d.getHours()) + ':' +
+            pad(d.getMinutes());
+
+          inputScheduleTime.value = localIso;
+          saveCurrentState();
+        };
+
+        container.appendChild(chip);
+      });
     });
   }
 
