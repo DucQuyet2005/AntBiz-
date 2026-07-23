@@ -2051,7 +2051,6 @@ export default function Step4Editor() {
                               </div>
                             </div>
                           </div>
-                          </div>
                         );
                       })}
 
