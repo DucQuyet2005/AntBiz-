@@ -78,36 +78,31 @@ export default function ContentCalendarView() {
     'threads'
   ]);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [draggingPlatform, setDraggingPlatform] = useState<string | null>(null);
-
   const goldenHourEvents = useMemo(() => {
-    if (!draggingPlatform) return [];
-    
-    const hours = STATIC_GOLDEN_HOURS[draggingPlatform as keyof typeof STATIC_GOLDEN_HOURS] || [];
-    if (hours.length === 0) return [];
-
     const events: any[] = [];
     const platformColors: Record<string, string> = {
       'facebook': 'rgba(24,119,242,0.04)',
       'instagram': 'rgba(225,48,108,0.04)',
       'threads': 'rgba(0,0,0,0.04)'
     };
-    const bg = platformColors[draggingPlatform] || 'rgba(0,0,0,0.04)';
 
-    hours.forEach((gh: { hour: number; label: string; weight: number }) => {
-      events.push({
-        id: `golden-${draggingPlatform}-${gh.hour}`,
-        title: 'Giờ vàng',
-        startTime: `${gh.hour.toString().padStart(2, '0')}:00:00`,
-        endTime: `${(gh.hour + 1).toString().padStart(2, '0')}:00:00`,
-        daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-        display: 'background',
-        backgroundColor: bg,
-        classNames: ['golden-hour-bg']
+    Object.entries(STATIC_GOLDEN_HOURS).forEach(([platform, hours]) => {
+      const bg = platformColors[platform] || 'rgba(0,0,0,0.04)';
+      (hours as any[]).forEach((gh: { hour: number; label: string; weight: number }) => {
+        events.push({
+          id: `golden-${platform}-${gh.hour}`,
+          title: 'Giờ vàng',
+          startTime: `${gh.hour.toString().padStart(2, '0')}:00:00`,
+          endTime: `${(gh.hour + 1).toString().padStart(2, '0')}:00:00`,
+          daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+          display: 'background',
+          backgroundColor: bg,
+          classNames: ['golden-hour-bg', `golden-${platform}`]
+        });
       });
     });
     return events;
-  }, [draggingPlatform]);
+  }, []);
 
   // 1. Sync from URL on mount & when URL search params change (Back/Forward button support)
   useEffect(() => {
@@ -1385,24 +1380,35 @@ export default function ContentCalendarView() {
             </div>
           ) : (
             <div className="flex-1 mt-4 overflow-hidden rounded-xl border border-slate-100 dark:border-zinc-850 bg-white dark:bg-slate-900 shadow-inner relative p-2 h-full">
+              <style>{`
+                .golden-hour-bg { opacity: 0 !important; transition: opacity 0.2s ease; pointer-events: none !important; }
+                body.dragging-facebook .golden-facebook { opacity: 1 !important; }
+                body.dragging-instagram .golden-instagram { opacity: 1 !important; }
+                body.dragging-threads .golden-threads { opacity: 1 !important; }
+              `}</style>
               <CalendarComponent
                 ref={calendarRef}
                 initialView={activeView}
                 headerToolbar={false}
                 allDaySlot={false}
-                eventSources={[
+                eventSources={useMemo(() => [
                   { events: fetchCalendarEvents },
                   { events: goldenHourEvents }
-                ]}
+                ], [fetchCalendarEvents, goldenHourEvents])}
                 editable={true}
                 eventDragStart={(info: any) => {
                   const post = info.event.extendedProps?.post;
                   if (post) {
-                    setDraggingPlatform(post.platform === 'thread' ? 'threads' : (post.platform || 'blog'));
+                    const plat = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
+                    document.body.classList.add(`dragging-${plat}`);
                   }
                 }}
-                eventDragStop={() => {
-                  setDraggingPlatform(null);
+                eventDragStop={(info: any) => {
+                  const post = info.event.extendedProps?.post;
+                  if (post) {
+                    const plat = post.platform === 'thread' ? 'threads' : (post.platform || 'blog');
+                    document.body.classList.remove(`dragging-${plat}`);
+                  }
                 }}
                 eventDrop={handleEventDrop}
                 eventClick={handleEventClick}
