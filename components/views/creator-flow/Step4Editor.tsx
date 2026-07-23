@@ -1334,7 +1334,7 @@ export default function Step4Editor() {
                   }`}>
                   {/* MAIN POST 1 BLOCK */}
                   <div className="flex gap-4">
-                    {/* Left Column: Avatar 1 + Connecting Line */}
+                    {/* Left Column: Avatar 1 */}
                     <div className="flex flex-col items-center shrink-0">
                       <div className="relative shrink-0">
                         <div className="w-10 h-10 rounded-full bg-[#ff6b00] text-white flex items-center justify-center font-extrabold text-lg select-none shadow-sm">
@@ -1344,8 +1344,9 @@ export default function Step4Editor() {
                           +
                         </div>
                       </div>
+                    </div>
 
-                      {/* Right Content 1 */}
+                    {/* Right Content 1 */}
                     <div className="flex-1 min-w-0 select-text pb-4">
                       <div className="flex items-center justify-between select-none mb-2">
                         <span className="text-sm font-black text-slate-900 dark:text-white">antbiz_official</span>
