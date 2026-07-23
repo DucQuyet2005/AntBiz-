@@ -760,12 +760,12 @@ export default function Step4Editor() {
 
   // Update title sync
   useEffect(() => {
-    if (state.articleContext && !editableTitle) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (state.customTitle) {
+      setEditableTitle(state.customTitle);
+    } else if (state.articleContext?.title) {
       setEditableTitle(state.articleContext.title);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.articleContext]);
+  }, [state.customTitle, state.articleContext?.title]);
 
   // Flash highlight effect when post content updates (simulating AI modification flash)
   useEffect(() => {
