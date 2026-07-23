@@ -2002,9 +2002,8 @@ export default function Step4Editor() {
                               dispatch({ type: 'SET_SELECTED_PRESET', payload: newId });
                               regeneratePostContent(newId);
                             }}
-                            className={`flex items-center justify-between p-4 transition-all ${
-                              state.isGeneratingPost ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                            } ${isSelected
+                            className={`flex items-center justify-between p-4 transition-all ${state.isGeneratingPost ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                              } ${isSelected
                                 ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
                                 : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
                               }`}
@@ -2040,8 +2039,8 @@ export default function Step4Editor() {
                               </div>
 
                               <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
-                                  ? 'border-primary bg-primary text-white shadow-sm'
-                                  : 'border-gray-300 dark:border-zinc-700 bg-transparent'
+                                ? 'border-primary bg-primary text-white shadow-sm'
+                                : 'border-gray-300 dark:border-zinc-700 bg-transparent'
                                 }`}>
                                 {isGeneratingThis ? (
                                   <Loader2 className="w-3 h-3 animate-spin text-white" />

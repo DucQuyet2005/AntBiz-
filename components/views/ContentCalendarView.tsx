@@ -1475,7 +1475,6 @@ export default function ContentCalendarView() {
                 eventClick={handleEventClick}
                 eventContent={renderEventContent}
                 datesSet={handleDatesSet}
-                dateClick={handleDateClick}
                 dayMaxEvents={3}
                 moreLinkText={(num: number) => language === 'vi' ? `+${num} bài nữa` : `+${num} more`}
                 moreLinkClick={handleMoreLinkClick}
