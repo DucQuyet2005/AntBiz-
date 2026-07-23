@@ -70,7 +70,11 @@ export class PostPerformanceModule {
   /**
    * Đồng bộ chỉ số tương tác cho một nền tảng cụ thể (facebook, instagram, v.v.)
    */
-  async syncPlatformPerformance(platform: 'facebook' | 'instagram' | 'threads', limit: number = 50): Promise<{
+  async syncPlatformPerformance(
+    platform: 'facebook' | 'instagram' | 'threads',
+    limit: number = 50,
+    force: boolean = false
+  ): Promise<{
     attempted: number;
     succeeded: number;
     errors: Array<{ postId: string; error: string }>;
@@ -95,7 +99,8 @@ export class PostPerformanceModule {
       // - Tier 1 (Bài đăng < 24 giờ): Crawl mỗi 30 phút - 1 giờ / lần. Khoảng thời gian vàng để bắt trọn tiến trình tăng trưởng tương tác.
       // - Tier 2 (Bài đăng từ 1 - 7 ngày): Crawl mỗi 6 giờ - 12 giờ / lần.
       // - Tier 3 (Bài đăng > 7 ngày): Chỉ crawl 24 giờ / lần hoặc ngưng crawl (ở đây tối đa 30 ngày, sau 30 ngày sẽ dừng crawl hoàn toàn).
-      if (post.postedAt && post.lastSyncedAt) {
+      // Bỏ qua kiểm tra phân tầng nếu đây là yêu cầu đồng bộ thủ công (force = true)
+      if (!force && post.postedAt && post.lastSyncedAt) {
         const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
         const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
 
@@ -141,10 +146,10 @@ export class PostPerformanceModule {
   /**
    * Đồng bộ chỉ số cho tất cả các nền tảng đã đăng ký
    */
-  async syncAllPerformance(limit: number = 50) {
+  async syncAllPerformance(limit: number = 50, force: boolean = false) {
     const results: Record<string, { attempted: number; succeeded: number }> = {};
     for (const platform of Array.from(this.collectorMap.keys())) {
-      results[platform] = await this.syncPlatformPerformance(platform as any, limit);
+      results[platform] = await this.syncPlatformPerformance(platform as any, limit, force);
     }
     return results;
   }

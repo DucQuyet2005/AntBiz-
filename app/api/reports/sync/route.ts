@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
 
     let result: any;
     if (platform && (platform === 'facebook' || platform === 'instagram' || platform === 'threads')) {
-      // Đồng bộ riêng một nền tảng (VD: instagram, facebook, threads)
-      result = await postPerformanceModule.syncPlatformPerformance(platform as 'facebook' | 'instagram' | 'threads');
+      // Đồng bộ riêng một nền tảng (VD: instagram, facebook, threads) - Truyền force = true để bỏ qua cooldowns
+      result = await postPerformanceModule.syncPlatformPerformance(platform as 'facebook' | 'instagram' | 'threads', 50, true);
     } else {
-      // Đồng bộ tất cả
-      result = await postPerformanceModule.syncAllPerformance();
+      // Đồng bộ tất cả - Truyền force = true để bỏ qua cooldowns
+      result = await postPerformanceModule.syncAllPerformance(50, true);
     }
 
     if (result && result.attempted > 0 && result.succeeded === 0 && result.errors?.length > 0) {
