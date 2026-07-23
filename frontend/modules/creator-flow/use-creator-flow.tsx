@@ -503,6 +503,61 @@ export function CreatorFlowProvider({
   const draftInputFor = (platform: PlatformType) => {
     const draft = state.drafts[platform];
     if (!draft) return null;
+
+    // Build the compiled text matching UI options
+    const displayOptions = state.displayOptions || {
+      showTitle: true,
+      showContent: true,
+      showImages: true,
+      showAuthor: true,
+      showHashtags: true,
+    };
+
+    const currentTitle = state.customTitle ?? (state.articleContext?.title || '');
+    const cleanBodyText = draft.content.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
+    const bodyContent = cleanBodyText || draft.content;
+
+    const validKeywords = (state.articleContext?.keywords || []).filter(
+      k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
+    );
+    const keywordHashtags = validKeywords
+      .map(k => {
+        let tag = k.startsWith('#') ? k.slice(1) : k;
+        tag = tag.replace(/&/g, 'And');
+        tag = tag.replace(/[^\p{L}\p{N}_]/gu, '');
+        return '#' + tag;
+      })
+      .filter(h => h.toLowerCase() !== '#manual' && h !== '#');
+    const inlineHashtags = (draft.content.match(/#[^\s#]+/g) || []);
+    const uniqueHashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
+    const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : uniqueHashtags;
+
+    const compiledParts: string[] = [];
+    if (displayOptions.showTitle && currentTitle) {
+      compiledParts.push(currentTitle.trim());
+    }
+    if (displayOptions.showContent && bodyContent) {
+      compiledParts.push(bodyContent.trim());
+    }
+
+    const isCrawledSource = state.sourceType === 'gocnhinmoi' || state.sourceType === 'tuoitre' || state.sourceType === 'dantri';
+    const sourceName = isCrawledSource ? (() => {
+      if (state.sourceType === 'gocnhinmoi') return 'GOCNHINMOI';
+      if (state.sourceType === 'tuoitre') return 'TUOITRE';
+      if (state.sourceType === 'dantri') return 'DANTRI';
+      return '';
+    })() : '';
+
+    if (displayOptions.showAuthor && isCrawledSource && sourceName) {
+      compiledParts.push(`Nguồn: ${sourceName}`);
+    }
+
+    if (displayOptions.showHashtags && effectiveHashtagsList.length > 0) {
+      compiledParts.push(effectiveHashtagsList.join(' '));
+    }
+
+    const compiledContent = compiledParts.join('\n\n');
+
     return {
       variantId: platform,
       platform,
@@ -510,7 +565,7 @@ export function CreatorFlowProvider({
       captionId: draft.postId || undefined,
       originalContent: draft.generatedPost?.content || draft.content,
       currentContent: draft.content,
-      compiledContent: draft.content,
+      compiledContent,
     };
   };
 
@@ -878,8 +933,15 @@ export function CreatorFlowProvider({
       if (requestedMode === 'now') {
         await quickPublishing.publishNow({
           connectedPlatforms,
-          imageUrls,
-          platforms: drafts.map((item) => ({ platform: item.platform, draft: item.draft! })),
+          imageUrls: [],
+          platforms: drafts.map((item) => {
+            const hasImages = state.displayOptions.showImages || item.platform === 'instagram';
+            return {
+              platform: item.platform,
+              draft: item.draft!,
+              imageUrls: hasImages ? imageUrls : [],
+            };
+          }),
         }, onEvent);
       } else {
         const scheduledDateObj = new Date(state.scheduledDateTime);
@@ -889,12 +951,16 @@ export function CreatorFlowProvider({
         const scheduledAt = scheduledDateObj.toISOString();
         await quickPublishing.schedule({
           connectedPlatforms,
-          imageUrls,
-          platforms: drafts.map((item) => ({
-            platform: item.platform,
-            scheduledAt,
-            draft: item.draft!,
-          })),
+          imageUrls: [],
+          platforms: drafts.map((item) => {
+            const hasImages = state.displayOptions.showImages || item.platform === 'instagram';
+            return {
+              platform: item.platform,
+              scheduledAt,
+              draft: item.draft!,
+              imageUrls: hasImages ? imageUrls : [],
+            };
+          }),
         }, onEvent);
       }
       return {
