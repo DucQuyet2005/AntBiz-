@@ -29,10 +29,14 @@ function isActualAntBizRoute(pathname: string): boolean {
   if (
     pathname === '/' ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
     pathname.includes('.')
   ) {
     return true;
+  }
+
+  if (pathname.startsWith('/api/')) {
+    const segment = pathname.split('/')[2];
+    return ANTBIZ_API_ROUTES.has(segment);
   }
 
   const ANTBIZ_ROUTES = new Set([
@@ -42,7 +46,7 @@ function isActualAntBizRoute(pathname: string): boolean {
     '/search', '/settings', '/admin', '/reports',
   ]);
 
-  if (ANTBIZ_ROUTES.has(pathname)) return true;
+  if (ANTBIZ_ROUTES.has(pathname) || pathname.startsWith('/admin/')) return true;
 
   return false;
 }
@@ -68,7 +72,10 @@ export async function proxy(request: NextRequest) {
 
   // Never proxy AntBiz API endpoints (like /api/scrape, /api/captions) to external sites
   if (pathname.startsWith('/api/') && pathname !== '/api/proxy') {
-    return NextResponse.next();
+    const segment = pathname.split('/')[2];
+    if (ANTBIZ_API_ROUTES.has(segment)) {
+      return NextResponse.next();
+    }
   }
 
   // Chặn các request quảng cáo/tracker nội bộ của báo để không gây rác log 400
@@ -194,7 +201,13 @@ export async function proxy(request: NextRequest) {
   )
 
   // Kiểm tra Session (Xác thực JWT Token từ Cookie qua Supabase server)
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+  } catch (error) {
+    console.error('[proxy.ts] auth error:', error);
+  }
 
   const url = request.nextUrl.clone()
 

@@ -325,5 +325,7 @@ export class CaptionGenerationModule implements CaptionGenerationModuleInterface
 function normalizePlatform(platform: string): string;
 function normalizePlatform(platform?: string): string | undefined;
 function normalizePlatform(platform?: string) {
-  return platform === 'threads' ? 'thread' : platform;
+  if (!platform) return undefined;
+  const p = platform.toLowerCase();
+  return p === 'threads' ? 'thread' : p;
 }

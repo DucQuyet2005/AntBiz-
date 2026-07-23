@@ -94,7 +94,14 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
     try {
       console.log(`\n📥 [Playwright] Crawling: ${targetUrl}`);
       const { chromium } = await import('playwright');
-      const browser = await chromium.launch({ headless: true });
+      const browser = await chromium.launch({ 
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled'
+        ]
+      });
       try {
         const page = await browser.newPage({
           userAgent:
@@ -107,7 +114,7 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
         await page.route('**/*', (route) => {
           const type = route.request().resourceType();
           const reqUrl = route.request().url().toLowerCase();
-          const blockTypes = ['stylesheet', 'media', 'font'];
+          const blockTypes = ['media', 'font'];
           const blockDomains = [
             'google-analytics', 'googletagmanager', 'facebook', 'connect.facebook',
             'doubleclick', 'adnxs', 'pubmatic', 'adsystem', 'analytics', 'ads'
@@ -125,14 +132,14 @@ export async function crawlUrl(url: string): Promise<CrawlResult> {
 
         // Dùng 'domcontentloaded' cực kỳ ổn định, tránh timeout do quảng cáo load vô tận
         try {
-          await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+          await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
         } catch (e: any) {
           console.warn(`⚠️ [Playwright] page.goto timeout or error, proceeding to parse anyway: ${e.message || e}`);
         }
         
         // Chờ skeleton loading (nếu có) biến mất
         try {
-          await page.waitForSelector('.animate-pulse', { state: 'detached', timeout: 3000 });
+          await page.waitForSelector('.animate-pulse', { state: 'detached', timeout: 8000 });
         } catch (e) {
           // Bỏ qua nếu không có
         }

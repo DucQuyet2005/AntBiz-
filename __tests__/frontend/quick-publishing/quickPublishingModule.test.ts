@@ -76,7 +76,7 @@ describe('QuickPublishingModule', () => {
         presetMode: 'selected',
       });
     expect(client.commands.find((item) => item.platform === 'threads' && item.variantIndex === 0))
-      .toMatchObject({ presetMode: 'none' });
+      .toMatchObject({ presetMode: 'auto' });
     expect(client.commands.find((item) => item.platform === 'threads' && item.variantIndex === 1)?.customPrompt)
       .toContain('Short (Yêu cầu nhanh: Thêm kêu gọi hành động)');
     expect(events).toContainEqual(expect.objectContaining({ type: 'caption-resolved', platform: 'facebook' }));

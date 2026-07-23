@@ -148,17 +148,6 @@ function AiCreatorContent() {
         return;
       }
 
-      if (targetStep === 4) {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
-        dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: formatted });
-      }
-
       goToStep(targetStep);
     }
   };
@@ -235,23 +224,8 @@ function AiCreatorContent() {
       }
 
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
-      dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: formatted });
       nextStep();
     } else if (state.currentStep === 4) {
-      // Validate that scheduled time is in the future
-      const scheduledTime = new Date(state.scheduledDateTime).getTime();
-      if (scheduledTime <= Date.now()) {
-        showToast("Thời gian lên lịch phải lớn hơn thời gian hiện tại.", "error");
-        return;
-      }
-
       // Submit and publish/schedule
       const result = await confirmPostSchedule('scheduled');
       if (result.success) {
@@ -262,10 +236,7 @@ function AiCreatorContent() {
         }, 1500);
       } else {
         if ('errors' in result && result.errors && Object.keys(result.errors).length > 0) {
-          const msgs = Object.entries(result.errors).map(([plat, msg]) => {
-            if (msg === 'SCHEDULE_INVALID') return `${plat}: Thời gian lên lịch không hợp lệ (phải ở tương lai)`;
-            return `${plat}: ${msg}`;
-          }).join(' | ');
+          const msgs = Object.entries(result.errors).map(([plat, msg]) => `${plat}: ${msg}`).join(' | ');
           showToast(`Lỗi: ${msgs}`, 'error');
         }
         window.dispatchEvent(new CustomEvent('notification-updated'));
@@ -570,7 +541,7 @@ function AiCreatorContent() {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className={`fixed bottom-24 right-6 z-[999999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
+              className={`fixed bottom-24 left-6 z-[999999] rounded-2xl p-4 shadow-2xl flex items-center gap-3 border ${toast.type === 'success'
                 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 text-emerald-800 dark:text-emerald-400'
                 : 'bg-red-50 dark:bg-red-950/20 border-red-250 text-red-800 dark:text-red-400'
                 }`}

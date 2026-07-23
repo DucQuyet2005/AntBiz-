@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Plus, Pencil, Trash2, X, Loader2, Save, FileText, CheckCircle2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Save, FileText, CheckCircle2, Star, ChevronDown } from 'lucide-react';
 import { getDefaultTemplateForPlatform } from '@/lib/utils/presetParser';
 
 interface PlatformPreset {
@@ -27,6 +27,7 @@ export default function PlatformPresetsTab() {
   const [editItem, setEditItem] = useState<PlatformPreset | null>(null);
   
   // Form states
+  const [formPlatform, setFormPlatform] = useState<'facebook' | 'instagram' | 'thread'>('facebook');
   const [name, setName] = useState('');
   const [rules, setRules] = useState('');
   const [isDefault, setIsDefault] = useState(false);
@@ -65,11 +66,13 @@ export default function PlatformPresetsTab() {
         return;
       }
       setEditItem(preset);
+      setFormPlatform(preset.platform);
       setName(preset.name);
       setRules(preset.rules);
       setIsDefault(preset.is_default);
     } else {
       setEditItem(null);
+      setFormPlatform(activePlatform);
       setName('');
       setRules(getDefaultTemplateForPlatform(activePlatform));
       setIsDefault(false);
@@ -95,7 +98,7 @@ export default function PlatformPresetsTab() {
       
       const payload = editItem 
         ? { name: name.trim(), rules: rules.trim(), is_default: isDefault }
-        : { platform: activePlatform, name: name.trim(), rules: rules.trim(), is_default: isDefault };
+        : { platform: formPlatform, name: name.trim(), rules: rules.trim(), is_default: isDefault };
 
       const res = await fetch(url, {
         method,
@@ -110,13 +113,38 @@ export default function PlatformPresetsTab() {
         throw new Error(err?.error || 'Failed to save');
       }
 
-      await fetchPresets(activePlatform);
+      if (formPlatform !== activePlatform) {
+        setActivePlatform(formPlatform);
+      } else {
+        await fetchPresets(activePlatform);
+      }
       handleCloseEdit();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error saving preset';
       alert(message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSetDefault = async (preset: PlatformPreset) => {
+    try {
+      const res = await fetch(`/api/platform-presets/${preset.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ is_default: true }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to update default preset');
+      }
+
+      await fetchPresets(activePlatform);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error updating preset';
+      alert(message);
     }
   };
 
@@ -161,27 +189,49 @@ export default function PlatformPresetsTab() {
         </p>
       </div>
 
-      {/* Platform Tabs */}
-      <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-white/5 overflow-x-auto hide-scrollbar">
-        {platforms.map(platform => (
-          <button
-            key={platform.id}
-            onClick={() => setActivePlatform(platform.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap min-w-[120px] ${
-              activePlatform === platform.id
-                ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
-            }`}
+      {/* Platform Controls: Tabs & Select */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-white/5">
+        {/* Button Tabs */}
+        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto hide-scrollbar">
+          {platforms.map(platform => (
+            <button
+              key={platform.id}
+              onClick={() => setActivePlatform(platform.id)}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
+                activePlatform === platform.id
+                  ? 'bg-white dark:bg-black text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
+              {platform.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Platform Dropdown Select */}
+        <div className="relative w-full sm:w-56">
+          <select
+            value={activePlatform}
+            onChange={(e) => setActivePlatform(e.target.value as any)}
+            className="w-full h-10 pl-3.5 pr-8 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer appearance-none shadow-sm"
           >
-            {platform.label}
-          </button>
-        ))}
+            {platforms.map(p => (
+              <option key={p.id} value={p.id}>
+                {language === 'vi' ? `Kênh: ${p.label}` : `Platform: ${p.label}`}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
       </div>
 
       {/* Add new button */}
       <div className="flex justify-between items-center mt-2">
-        <h3 className="font-bold text-text">
-          {language === 'vi' ? 'Danh sách quy chuẩn' : 'List of rules'}
+        <h3 className="font-bold text-text flex items-center gap-2">
+          <span>{language === 'vi' ? 'Danh sách quy chuẩn' : 'List of rules'}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold">
+            {presets.length}
+          </span>
         </h3>
         <button
           onClick={() => handleOpenEdit()}
@@ -195,7 +245,7 @@ export default function PlatformPresetsTab() {
       {/* List Presets */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-          <Loader2 className="animate-spin mb-3" size={32} />
+          <Loader2 className="animate-spin mb-3 text-primary" size={32} />
           <p className="text-sm font-medium">Đang tải...</p>
         </div>
       ) : presets.length === 0 ? (
@@ -204,37 +254,69 @@ export default function PlatformPresetsTab() {
             <FileText size={24} />
           </div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Chưa có quy chuẩn nào</h3>
-          <p className="text-slate-500 text-sm max-w-sm mb-6">Bạn chưa tạo quy chuẩn cá nhân nào cho nền tảng này.</p>
+          <p className="text-slate-500 text-sm max-w-sm mb-6">
+            {language === 'vi' 
+              ? `Bạn chưa tạo quy chuẩn cá nhân nào cho ${platforms.find(p => p.id === activePlatform)?.label}.`
+              : `No custom rules created yet for ${platforms.find(p => p.id === activePlatform)?.label}.`}
+          </p>
           <button
             onClick={() => handleOpenEdit()}
             className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-sm"
           >
             <Plus size={16} />
-            Tạo quy chuẩn đầu tiên
+            {language === 'vi' ? 'Tạo quy chuẩn đầu tiên' : 'Create first preset'}
           </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {presets.map(preset => (
-            <div key={preset.id} className="bg-white dark:bg-card/40 border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex flex-col gap-3 group hover:border-primary/50 transition-colors shadow-sm relative">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-text truncate max-w-[200px]">{preset.name}</h4>
-                  {!preset.user_id && (
-                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      Hệ thống
-                    </span>
-                  )}
-                  {preset.is_default && (
-                    <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
-                      <CheckCircle2 size={10} /> Mặc định
-                    </span>
-                  )}
-                </div>
+      ) : (() => {
+        const activeDefaultPreset = presets.find(p => p.user_id && p.is_default) || presets.find(p => p.is_default);
+        const activeDefaultId = activeDefaultPreset?.id;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {presets.map(preset => {
+              const isEffectiveDefault = preset.id === activeDefaultId;
+              return (
+                <div 
+                  key={preset.id} 
+                  className={`bg-white dark:bg-card/40 border rounded-2xl p-5 flex flex-col gap-3 group transition-all shadow-sm relative ${
+                    isEffectiveDefault 
+                      ? 'border-emerald-500/50 dark:border-emerald-500/30 ring-1 ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/5' 
+                      : 'border-slate-200 dark:border-white/10 hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-bold text-text text-base truncate max-w-[180px]">{preset.name}</h4>
+                      
+                      {!preset.user_id ? (
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                          Hệ thống
+                        </span>
+                      ) : (
+                        <span className="bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                          Cá nhân
+                        </span>
+                      )}
+
+                      {/* Default Tag Badge */}
+                      {isEffectiveDefault ? (
+                        <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm shadow-emerald-500/30">
+                          <CheckCircle2 size={11} /> Mặc định
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleSetDefault(preset)}
+                          className="opacity-75 group-hover:opacity-100 bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full transition-all flex items-center gap-1"
+                          title="Bấm để đặt làm quy chuẩn mặc định"
+                        >
+                          <Star size={10} /> Đặt làm mặc định
+                        </button>
+                      )}
+                    </div>
                 
                 {/* Actions */}
                 {preset.user_id && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={() => handleOpenEdit(preset)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
@@ -259,11 +341,13 @@ export default function PlatformPresetsTab() {
                 </p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
+    );
+  })()}
 
-      {/* Edit Modal */}
+      {/* Add / Edit Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
@@ -271,7 +355,9 @@ export default function PlatformPresetsTab() {
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-white/5">
               <h3 className="text-lg font-bold text-text flex items-center gap-2">
                 <FileText size={18} className="text-primary" />
-                {editItem ? (language === 'vi' ? 'Chỉnh sửa quy chuẩn' : 'Edit preset') : (language === 'vi' ? 'Thêm quy chuẩn mới' : 'Add new preset')}
+                {editItem 
+                  ? (language === 'vi' ? 'Chỉnh sửa quy chuẩn' : 'Edit preset') 
+                  : (language === 'vi' ? 'Thêm quy chuẩn mới' : 'Add new preset')}
               </h3>
               <button
                 onClick={handleCloseEdit}
@@ -283,39 +369,72 @@ export default function PlatformPresetsTab() {
 
             {/* Body */}
             <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
+              {/* Platform Select */}
+              {!editItem && (
+                <div>
+                  <label className="block text-sm font-bold text-text mb-1.5">
+                    Nền tảng mạng xã hội <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={formPlatform}
+                      onChange={(e) => {
+                        const newPlatform = e.target.value as 'facebook' | 'instagram' | 'thread';
+                        setFormPlatform(newPlatform);
+                        if (!name) {
+                          setRules(getDefaultTemplateForPlatform(newPlatform));
+                        }
+                      }}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium text-text focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                    >
+                      {platforms.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
               {/* Name */}
               <div>
-                <label className="block text-sm font-bold text-text mb-1.5">Tên quy chuẩn <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-text mb-1.5">
+                  Tên quy chuẩn <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ví dụ: Dạng ngắn, Phong cách GenZ..."
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="Ví dụ: Dạng ngắn, Phong cách GenZ, Chuyên sâu 5000 từ..."
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium text-text focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
 
               {/* Rules */}
               <div>
-                <label className="block text-sm font-bold text-text mb-1.5">Nội dung quy tắc <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-text mb-1.5">
+                  Nội dung quy tắc <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   value={rules}
                   onChange={(e) => setRules(e.target.value)}
                   placeholder="Mô tả chi tiết các yêu cầu cho AI (độ dài, hashtag, emoji, cách chia đoạn...)"
-                  className="w-full h-80 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                  className="w-full h-72 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-medium text-text focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
                 />
               </div>
 
               {/* Is Default Toggle */}
-              <label className="flex items-center gap-3 cursor-pointer mt-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+              <label className="flex items-center gap-3 cursor-pointer mt-2 p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
                 <input
                   type="checkbox"
                   checked={isDefault}
                   onChange={(e) => setIsDefault(e.target.checked)}
-                  className="w-5 h-5 rounded text-primary border-slate-300 dark:border-slate-600 focus:ring-primary dark:bg-black"
+                  className="w-5 h-5 rounded text-primary border-slate-300 dark:border-slate-600 focus:ring-primary dark:bg-black cursor-pointer"
                 />
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200 select-none">
-                  Đặt làm mặc định cho nền tảng {platforms.find(p => p.id === activePlatform)?.label}
+                  Đặt làm mặc định cho nền tảng {platforms.find(p => p.id === formPlatform)?.label}
                 </span>
               </label>
             </div>
@@ -344,3 +463,4 @@ export default function PlatformPresetsTab() {
     </div>
   );
 }
+

@@ -1642,9 +1642,6 @@ export default function PresetsView() {
           </div>
         </div>
       </div>
-
-
-
       {/* 4. Cards Display Area */}
       {loading ? (
         <div className="flex items-center justify-center py-24">

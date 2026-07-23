@@ -952,10 +952,7 @@ export default function ArticleDetailView() {
 
           {/* Title & Author Card */}
           <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-8 flex flex-col gap-5 border border-slate-200/60 dark:border-zinc-800/60 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-bold text-primary bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full w-fit shadow-sm border border-slate-200/60 dark:border-zinc-800">
-              <span>🏠</span>
-              {activeArticle.category}
-            </div>
+
 
             <h1 className="text-4xl font-extrabold text-text dark:text-zinc-100 leading-[1.15] tracking-tight pr-10">
               {activeArticle.title}
@@ -1054,7 +1051,7 @@ export default function ArticleDetailView() {
                   <div className="px-4 pb-4 pt-1 text-xs text-text leading-relaxed flex flex-col gap-2">
                     {/* Title & Category block */}
                     <div className="font-extrabold text-[13px] text-text mb-0.5">
-                      [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                      {activeArticle.title}
                     </div>
 
                     {/* Caption content */}
@@ -1155,7 +1152,7 @@ export default function ArticleDetailView() {
                       <div className="text-xs text-text dark:text-zinc-150 leading-relaxed flex flex-col gap-2">
                         {/* Title & Category block */}
                         <div className="font-extrabold text-[12px] text-text dark:text-zinc-200">
-                          [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                          {activeArticle.title}
                         </div>
 
                         {/* Caption content */}
@@ -1336,7 +1333,7 @@ export default function ArticleDetailView() {
                       
                       {/* Title & Category block */}
                       <span className="font-extrabold block text-text dark:text-zinc-200 mt-1 mb-1">
-                        [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                        {activeArticle.title}
                       </span>
 
                       {isEditing ? (

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import {
   createPlatformPresetSchema,
   platformPresetPlatformSchema,
@@ -10,6 +11,8 @@ import {
   platformPresetErrorResponse,
 } from './_adapter';
 
+import { createAdminClient } from '@/utils/supabase/admin';
+
 const PLATFORM_PRESET_ROLES = ['admin', 'marketer_full', 'marketer_content'] as const;
 
 export async function GET(request: NextRequest) {
@@ -19,7 +22,8 @@ export async function GET(request: NextRequest) {
     ]);
     if (unauthorized) return unauthorized;
 
-    const platformParam = request.nextUrl.searchParams.get('platform');
+    const requestUrl = new URL(request.url);
+    const platformParam = requestUrl.searchParams.get('platform');
     if (!platformParam) {
       return NextResponse.json({ error: 'Thiếu tham số platform' }, { status: 400 });
     }
@@ -32,7 +36,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await buildPlatformPresetModule(supabase).list(
+    const client = role === 'admin' ? createAdminClient() : supabase;
+    const data = await buildPlatformPresetModule(client).list(
       platformPresetActor(user.id, role),
       parsed.data
     );
@@ -64,7 +69,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await buildPlatformPresetModule(supabase).create(
+    const client = role === 'admin' ? createAdminClient() : supabase;
+    const data = await buildPlatformPresetModule(client).create(
       platformPresetActor(user.id, role),
       parsed.data
     );
