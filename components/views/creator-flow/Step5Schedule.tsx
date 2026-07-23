@@ -164,14 +164,14 @@ export function PublishingSettings({
         <div className="space-y-1">
           <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.dateLabel')}</label>
           <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
             <input
               type="date"
               value={dateValue}
               min={new Date().toISOString().split('T')[0]}
               onChange={onDateChange}
-              className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
-            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
           </div>
         </div>
 
@@ -179,13 +179,13 @@ export function PublishingSettings({
         <div className="space-y-1.5">
           <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.timeLabel')}</label>
           <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
             <input
               type="time"
               value={timeValue}
               onChange={onTimeChange}
-              className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
-            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
           </div>
 
           {/* Quick Minute Selector Buttons (00, 15, 30, 45) */}
@@ -617,13 +617,14 @@ export default function Step5Schedule() {
 
   const [datePart, timePart] = state.scheduledDateTime.split('T');
 
-  let currentPostDayIndex: number | null = 2; // Default WED
+  let currentPostDayIndex: number | null = null;
   let currentPostHourVal: number | null = 9;  // Default 09:00
 
   if (datePart) {
-    const selectedDate = new Date(datePart);
-    const dayOfWeek = selectedDate.getDay();
-    currentPostDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const matchingDay = days.find(d => d.fullDateStr === datePart);
+    if (matchingDay) {
+      currentPostDayIndex = matchingDay.index;
+    }
   }
   if (timePart) {
     currentPostHourVal = parseInt(timePart.split(':')[0]);
