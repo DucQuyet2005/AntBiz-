@@ -566,8 +566,16 @@ export default function ContentCalendarView() {
           return;
         }
 
+        // Revert FullCalendar's UI first so we can apply our optimistic grouped view
+        info.revert();
+        
+        // Optimistic update of local posts state to group events immediately
+        setPosts((prev: any[]) => 
+          prev.map(p => idsToUpdate.includes(p.id) ? { ...p, scheduled_at: newStart.toISOString() } : p)
+        );
+
         if (idsToUpdate.length === 1) {
-          await handleReschedule(idsToUpdate[0], newStart.toISOString(), () => info.revert());
+          await handleReschedule(idsToUpdate[0], newStart.toISOString());
         } else {
           // Bulk reschedule API
           setActionLoadingId('bulk');
@@ -585,12 +593,10 @@ export default function ContentCalendarView() {
             } else {
               const errJson = await res.json().catch(() => ({}));
               showPopup(errJson.error || 'Lỗi khi thay đổi lịch đăng bài', 'error');
-              info.revert();
             }
           } catch (err) {
             console.error('Bulk reschedule error:', err);
             showPopup('Lỗi kết nối khi dời lịch đăng bài', 'error');
-            info.revert();
           } finally {
             setActionLoadingId(null);
           }
