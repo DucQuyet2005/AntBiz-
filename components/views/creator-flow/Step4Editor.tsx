@@ -571,7 +571,17 @@ export default function Step4Editor() {
       const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. QUY TẮC BẮT BUỘC: CHỈ trả về danh sách các hashtag cách nhau bởi dấu cách, không giải thích hay chào hỏi (ví dụ: #AntBiz #Marketing #AI):\nNội dung bài viết: ${contentContext}`;
       const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
       const reply = res.data?.text || '';
-      const parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
+      let parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
+
+      // Fallback: If AI returned plain words without '#', parse words and convert to hashtags
+      if (parsedTags.length === 0 && reply.trim()) {
+        const plainWords = reply
+          .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
+          .split(/\s+/)
+          .filter(w => w.length > 1 && !['và', 'hoặc', 'là', 'các', 'cho', 'với'].includes(w.toLowerCase()))
+          .slice(0, 8);
+        parsedTags = plainWords.map(w => w.startsWith('#') ? w : `#${w}`);
+      }
 
       if (parsedTags.length > 0) {
         dispatch({ type: 'SET_CUSTOM_HASHTAGS', payload: parsedTags });
@@ -606,12 +616,21 @@ export default function Step4Editor() {
     }
   };
 
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (titleRef.current && document.activeElement !== titleRef.current) {
+      titleRef.current.innerText = currentTitle || "Nhập tiêu đề bài viết...";
+    }
+  }, [currentTitle]);
+
   const renderEditableTitle = () => {
     if (!displayOptions.showTitle) return null;
 
     return (
       <div className="mb-2 group relative">
         <h3
+          ref={titleRef}
           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
           suppressContentEditableWarning
           onBlur={(e) => {
