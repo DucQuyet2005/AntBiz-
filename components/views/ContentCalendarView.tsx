@@ -42,6 +42,7 @@ import dynamic from 'next/dynamic';
 const CalendarComponent = dynamic(() => import('./CalendarComponent'), { ssr: false });
 const ContentListView = dynamic(() => import('./ContentListView'), { ssr: false });
 import { STATIC_GOLDEN_HOURS } from '@/frontend/modules/scheduled-publishing/golden-hour';
+import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
 import { buildGoogleCalendarUrl } from '@/frontend/modules/scheduled-publishing/google-calendar-helper';
 
 
@@ -78,6 +79,10 @@ export default function ContentCalendarView() {
     'threads'
   ]);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const fbGolden = useDynamicGoldenHours('facebook');
+  const igGolden = useDynamicGoldenHours('instagram');
+  const thGolden = useDynamicGoldenHours('threads');
+
   const goldenHourEvents = useMemo(() => {
     const events: any[] = [];
     const platformColors: Record<string, string> = {
@@ -86,23 +91,39 @@ export default function ContentCalendarView() {
       'threads': 'rgba(0,0,0,0.04)'
     };
 
-    Object.entries(STATIC_GOLDEN_HOURS).forEach(([platform, hours]) => {
+    const getDynamicHours = (platform: string, queryResult: any) => {
+      if (queryResult.data && queryResult.data.length > 0) {
+        return queryResult.data;
+      }
+      return STATIC_GOLDEN_HOURS[platform as keyof typeof STATIC_GOLDEN_HOURS] || [];
+    };
+
+    const dynamicData = {
+      'facebook': getDynamicHours('facebook', fbGolden),
+      'instagram': getDynamicHours('instagram', igGolden),
+      'threads': getDynamicHours('threads', thGolden)
+    };
+
+    Object.entries(dynamicData).forEach(([platform, hours]) => {
       const bg = platformColors[platform] || 'rgba(0,0,0,0.04)';
-      (hours as any[]).forEach((gh: { hour: number; label: string; weight: number }) => {
+      (hours as any[]).forEach((gh: { hour: number; label: string; weight: number; dayOfWeek?: number }) => {
+        const days = gh.dayOfWeek !== undefined ? [gh.dayOfWeek] : [0, 1, 2, 3, 4, 5, 6];
+
         events.push({
-          id: `golden-${platform}-${gh.hour}`,
+          id: `golden-${platform}-${gh.hour}-${days.join('')}`,
           title: 'Giờ vàng',
           startTime: `${gh.hour.toString().padStart(2, '0')}:00:00`,
           endTime: `${(gh.hour + 1).toString().padStart(2, '0')}:00:00`,
-          daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+          daysOfWeek: days,
           display: 'background',
           backgroundColor: bg,
-          classNames: ['golden-hour-bg', `golden-${platform}`]
+          classNames: ['golden-hour-bg', `golden-${platform}`],
+          extendedProps: { isGoldenBg: true, platform }
         });
       });
     });
     return events;
-  }, []);
+  }, [fbGolden.data, igGolden.data, thGolden.data]);
 
   // 1. Sync from URL on mount & when URL search params change (Back/Forward button support)
   useEffect(() => {
@@ -580,12 +601,33 @@ export default function ContentCalendarView() {
 
   const renderEventContent = useCallback((eventInfo: any) => {
     const isMonthView = eventInfo.view.type === 'dayGridMonth';
-    const { platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
+    const { isGoldenBg, platform, platforms, isMultiple, status, posts } = eventInfo.event.extendedProps;
+
+    if (isGoldenBg) {
+      return (
+        <div className="relative w-full h-full pointer-events-none">
+          <Star size={10} className="text-amber-500 fill-amber-400 absolute bottom-1 right-1" />
+        </div>
+      );
+    }
 
     const isGoldenHour = (postPlatform: string, scheduledAt: string) => {
-      const hour = new Date(scheduledAt).getHours();
-      const platHours = STATIC_GOLDEN_HOURS[postPlatform as keyof typeof STATIC_GOLDEN_HOURS] || [];
-      return platHours.some(gh => gh.hour === hour);
+      if (!postPlatform || !scheduledAt) return false;
+      const plat = postPlatform.toLowerCase() === 'thread' ? 'threads' : postPlatform.toLowerCase();
+      
+      let dynamicList: any[] = [];
+      if (plat === 'facebook') dynamicList = fbGolden.data || [];
+      if (plat === 'instagram') dynamicList = igGolden.data || [];
+      if (plat === 'threads') dynamicList = thGolden.data || [];
+  
+      const hoursToUse = dynamicList.length > 0 ? dynamicList : (STATIC_GOLDEN_HOURS[plat as keyof typeof STATIC_GOLDEN_HOURS] || []);
+      
+      const dateObj = new Date(scheduledAt);
+      if (isNaN(dateObj.getTime())) return false;
+      const h = dateObj.getHours();
+      const d = dateObj.getDay();
+  
+      return hoursToUse.some((gh: any) => gh.hour === h && (gh.dayOfWeek === undefined || gh.dayOfWeek === d));
     };
 
     if (isMultiple) {
@@ -732,7 +774,7 @@ export default function ContentCalendarView() {
         </div>
       );
     }
-  }, [language]);
+  }, [language, fbGolden.data, igGolden.data, thGolden.data]);
 
   const handleMoreLinkClick = useCallback((arg: any) => {
     const extraPosts: any[] = [];
