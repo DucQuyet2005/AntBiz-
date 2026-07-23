@@ -511,6 +511,10 @@ export default function Step4Editor() {
   };
 
   const generateAITitle = async () => {
+    if (!state.selectedPlatform) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -521,24 +525,29 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
-      const prompt = `Yêu cầu: Viết lại 1 TIÊU ĐỀ bài viết thật hấp dẫn, giật gân, thu hút độc giả.\nQUY TẮC BẮT BUỘC: CHỈ trả về đúng 1 câu tiêu đề ngắn gọn (dưới 50 từ), KHÔNG chào hỏi, KHÔNG giải thích, KHÔNG thêm bớt ký tự dẫn dắt.\nTitle hiện tại: ${currentTitle}\nNội dung bài viết: ${contentContext}`;
-      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
-      let rawText = (res.data?.text || '').trim();
-      // Remove leading markdown headers or quotes
-      rawText = rawText.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
-      // Extract the first non-empty line in case AI returned multiple lines
-      const newTitle = rawText.split('\n').map(l => l.trim()).find(l => l.length > 0) || rawText;
+      const captionId = await quickPublishing.saveEdit(draft);
+      const res = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'partial',
+        selections: [],
+        instruction: 'Hãy viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên nội dung bài viết này. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn (dưới 15 từ), không giải thích hay dẫn dắt.',
+        presetMode: 'auto',
+      });
 
-      if (newTitle) {
-        setEditableTitle(newTitle);
-        dispatch({ type: 'SET_CUSTOM_TITLE', payload: newTitle });
+      let newTitle = (res.generatedText || '').trim();
+      newTitle = newTitle.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
+      const cleanTitle = newTitle.split('\n').map(l => l.trim()).find(l => l.length > 0) || newTitle;
+
+      if (cleanTitle) {
+        setEditableTitle(cleanTitle);
+        dispatch({ type: 'SET_CUSTOM_TITLE', payload: cleanTitle });
         const aiMsg: ChatMessage = {
           id: `ai_${Date.now()}`,
           sender: 'ai',
-          text: `Đã cập nhật tiêu đề mới:\n✨ "${newTitle}"`,
+          text: `Đã cập nhật tiêu đề mới:\n✨ "${cleanTitle}"`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          modelUsed: 'Gemini 2.5 Flash',
+          modelUsed: 'Gemini 3.1 Flash Lite',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       }
@@ -557,6 +566,10 @@ export default function Step4Editor() {
   };
 
   const generateAIHashtags = async () => {
+    if (!state.selectedPlatform) return;
+    const draft = draftInputFor(state.selectedPlatform);
+    if (!draft) return;
+
     dispatch({ type: 'SET_CHAT_SENDING', payload: true });
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -567,13 +580,19 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
-      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. QUY TẮC BẮT BUỘC: CHỈ trả về danh sách các hashtag cách nhau bởi dấu cách, không giải thích hay chào hỏi (ví dụ: #AntBiz #Marketing #AI):\nNội dung bài viết: ${contentContext}`;
-      const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
-      const reply = res.data?.text || '';
+      const captionId = await quickPublishing.saveEdit(draft);
+      const res = await quickPublishing.regenerateCaption({
+        captionId,
+        platform: state.selectedPlatform,
+        mode: 'partial',
+        selections: [],
+        instruction: 'Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết này. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI), không giải thích hay dẫn dắt.',
+        presetMode: 'auto',
+      });
+
+      const reply = res.generatedText || '';
       let parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
 
-      // Fallback: If AI returned plain words without '#', parse words and convert to hashtags
       if (parsedTags.length === 0 && reply.trim()) {
         const plainWords = reply
           .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
@@ -590,7 +609,7 @@ export default function Step4Editor() {
           sender: 'ai',
           text: `Đã cập nhật bộ Hashtags xu hướng mới:\n🏷️ ${parsedTags.join(' ')}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          modelUsed: 'Gemini 2.5 Flash',
+          modelUsed: 'Gemini 3.1 Flash Lite',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       } else {
