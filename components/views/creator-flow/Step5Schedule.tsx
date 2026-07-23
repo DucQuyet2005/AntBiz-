@@ -406,9 +406,7 @@ export function WeeklyTimeline({
                               ? 'bg-[#f0fdf9]/80 dark:bg-emerald-950/20'
                               : isTodayCol
                               ? 'bg-[#f0fdf9]/50 dark:bg-emerald-950/15'
-                              : showGolden
-                              ? 'bg-[#fffbf5]/90 dark:bg-amber-950/15'
-                              : ''
+                              : 'bg-white dark:bg-zinc-900'
                           }`}
                         >
                           {/* Red current time indicator */}
@@ -468,31 +466,18 @@ export function WeeklyTimeline({
                           {/* Scheduled Post Card Overlay */}
                           {isCurrentPostInCell && (
                             <div className="absolute inset-1 z-30 flex items-center justify-center">
-                              {(() => {
-                                const timeStr = state.scheduledDateTime.split('T')[1] || `${hour}:00`;
-                                const [_, minuteStr] = timeStr.split(':');
-                                return (
-                                  <>
-                                    {minuteStr && minuteStr !== '00' && (
-                                      <div className="absolute -left-11 top-1/2 -translate-y-1/2 bg-[#10b981] text-white text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs z-40 animate-fade-in">
-                                        {timeStr}
-                                      </div>
-                                    )}
-                                    <ScheduledPostCard
-                                      platform={currentPlatform}
-                                      time={timeStr}
-                                      title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
-                                      thumbnail={state.articleContext?.thumbnail}
-                                      onDragStart={(e) => dnd.handleDragStart(e, {
-                                        id: 'scheduled-post',
-                                        type: 'scheduled',
-                                        platform: currentPlatform
-                                      })}
-                                      onDragEnd={dnd.handleDragEnd}
-                                    />
-                                  </>
-                                );
-                              })()}
+                              <ScheduledPostCard
+                                platform={currentPlatform}
+                                time={state.scheduledDateTime.split('T')[1] || `${hour}:00`}
+                                title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
+                                thumbnail={state.articleContext?.thumbnail}
+                                onDragStart={(e) => dnd.handleDragStart(e, {
+                                  id: 'scheduled-post',
+                                  type: 'scheduled',
+                                  platform: currentPlatform
+                                })}
+                                onDragEnd={dnd.handleDragEnd}
+                              />
                             </div>
                           )}
                         </div>
