@@ -19,7 +19,7 @@ import { useDuplicateCheck } from '@/frontend/modules/caption-generation/use-dup
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const {
     state, dispatch, nextStep, prevStep, goToStep,
