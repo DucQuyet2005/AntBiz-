@@ -257,7 +257,7 @@ function buildGenerateCommand(
     ...(input.oldCaptionId ? { oldCaptionId: input.oldCaptionId } : {}),
     ...(input.model ? { model: input.model } : {}),
     stylePresetId: config.configId || 'none',
-    presetMode: config.presetId ? 'selected' : 'none',
+    presetMode: config.presetId ? 'selected' : 'auto',
     ...(config.presetId ? { platformPresetId: config.presetId } : {}),
     ...(variantIndex === 0 && input.promptId ? { promptId: input.promptId } : {}),
   };

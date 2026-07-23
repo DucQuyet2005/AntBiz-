@@ -184,6 +184,7 @@ describe('Prompt Configs API Endpoints (US-2.07)', () => {
     });
 
     it('returns 200 with configs of current user', async () => {
+      currentRole = 'marketer_content';
       mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
       mockPromptConfigsDb = [
         { id: 'pc1', user_id: 'u1', name: 'Config 1', platform: 'facebook', params: {} },

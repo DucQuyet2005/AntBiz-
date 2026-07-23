@@ -1,6 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+// Presets View Component - AntBiz
+
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -68,21 +70,21 @@ const OBJECTIVES = [
   { id: "Sự kiện", label: "Truyền thông sự kiện mới", icon: "📢" },
 ];
 
-const CATEGORIES = [
-  { id: "all", label: "Tất cả danh mục" },
-  { id: "Bán hàng", label: "Bán hàng & Doanh số" },
-  { id: "Thương hiệu", label: "Nhận diện Thương hiệu" },
-  { id: "Tương tác", label: "Tương tác & Cộng đồng" },
-  { id: "Giáo dục", label: "Giáo dục & Kiến thức" },
-  { id: "Tuyển dụng", label: "Tuyển dụng" },
-  { id: "Sự kiện", label: "Sự kiện & Truyền thông" },
-] as const;
-
 const PLATFORM_OPTIONS: { value: Platform; label: string; color: string }[] = [
   { value: "facebook", label: "Facebook", color: "#1877F2" },
   { value: "thread", label: "Threads", color: "#000000" },
   { value: "instagram", label: "Instagram", color: "#E1306C" },
   { value: "all", label: "Tất cả", color: "#6366F1" },
+];
+
+const CATEGORIES = [
+  { id: "all", labelVi: "Tất cả danh mục", labelEn: "All Categories" },
+  { id: "Bán hàng", labelVi: "Bán hàng & Doanh số", labelEn: "Sales & Revenue" },
+  { id: "Thương hiệu", labelVi: "Nhận diện Thương hiệu", labelEn: "Brand Identity" },
+  { id: "Tương tác", labelVi: "Tương tác & Cộng đồng", labelEn: "Engagement & Community" },
+  { id: "Giáo dục", labelVi: "Giáo dục & Kiến thức", labelEn: "Education & Knowledge" },
+  { id: "Tuyển dụng", labelVi: "Tuyển dụng", labelEn: "Recruitment" },
+  { id: "Sự kiện", labelVi: "Sự kiện & Truyền thông", labelEn: "Events & Media" },
 ];
 
 // ─── PlatformIcon ────────────────────────────────────────────────────────────
@@ -263,26 +265,11 @@ function PresetCard({
         }`}
     >
       <div>
-        {/* Card Header: Icon, Name, Star (Default toggle), 3-dots */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Category Icon Badge */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
-              {categoryIconObj.icon}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-sm text-text leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                {preset.name}
-              </h3>
-
-              {/* Optional Category Tag under title */}
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 truncate max-w-[150px]">
-                  🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
-                </span>
-              </div>
-            </div>
+        {/* Card Header: Icon Badge (Left) & Actions Star/Menu (Right) */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          {/* Category Icon Badge */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
+            {categoryIconObj.icon}
           </div>
 
           {/* Right Action Icons: Star & Kebab Menu */}
@@ -353,25 +340,16 @@ function PresetCard({
         </div>
 
         {/* Name */}
-        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2.5 group-hover:text-primary transition-colors min-h-[44px]">
+        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[44px]">
           {preset.name}
         </h3>
 
-        {/* Objectives as Badges */}
-        {objectives.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {objectives.slice(0, 2).map((obj: string, i: number) => (
-              <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-violet-500/10 dark:bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/15 max-w-[120px] truncate">
-                🎯 {obj}
-              </span>
-            ))}
-            {objectives.length > 2 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-200/50 dark:border-zinc-700/50">
-                +{objectives.length - 2}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Category Tag Badge */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40">
+            🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
+          </span>
+        </div>
 
         {/* Style Properties Grid */}
         {parsedProps.length > 0 && (
@@ -1367,6 +1345,14 @@ export default function PresetsView() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const paginationRef = useRef<HTMLDivElement>(null);
+  
+  const handlePageChange = useCallback((updater: number | ((prev: number) => number)) => {
+    setCurrentPage(updater);
+    setTimeout(() => {
+      paginationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
+  }, []);
   const ITEMS_PER_PAGE = 8;
 
   const fetchPresets = useCallback(async (silent = false) => {
@@ -1488,6 +1474,12 @@ export default function PresetsView() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearch("");
+    setActiveTab("all");
+    setSelectedCategory("all");
+  };
+
   const handleSetDefault = async (preset: PromptConfigRecord) => {
     try {
       const isCurrentlyDefault = preset.is_default;
@@ -1567,52 +1559,51 @@ export default function PresetsView() {
         </button>
       </div>
 
-
-
-      {/* 3. Toolbar: Tabs (Left) & Category Dropdown + Search (Right) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs">
-        {/* Left: Segmented Control Tabs */}
+      {/* Tabs & Search Row */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs mt-2">
         <div className="bg-gray-100 dark:bg-zinc-950 p-1 rounded-xl flex items-center gap-1 shrink-0 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${activeTab === "all"
-              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-              : "text-text-muted hover:text-text"
-              }`}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+              activeTab === "all"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
           >
-            Tất cả
+            {t('presetsPage.tabs.all') || "Tất cả"}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("mine")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "mine"
-              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-              : "text-text-muted hover:text-text"
-              }`}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "mine"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
           >
-            <span>Văn phong của tôi</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-primary text-[10px]">
+            <span>{t('presetsPage.tabs.mine') || "Của tôi"}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-primary text-[10px]">
               {myPresetsCount}
             </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("system")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "system"
-              ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
-              : "text-text-muted hover:text-text"
-              }`}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "system"
+                ? "bg-white dark:bg-zinc-900 text-primary shadow-2xs"
+                : "text-text-muted hover:text-text"
+            }`}
           >
-            <span>Thư viện mẫu</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-zinc-800 text-text-muted text-[10px]">
+            <span>{t('presetsPage.tabs.system') || "Hệ thống"}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-800 text-text-muted text-[10px]">
               {systemPresetsCount}
             </span>
           </button>
         </div>
 
-        {/* Right: Category Dropdown & Search Input */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 justify-end">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           {/* Category Dropdown */}
           <div className="relative shrink-0 min-w-[150px]">
             <select
@@ -1622,7 +1613,7 @@ export default function PresetsView() {
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.label}
+                  {lang === "vi" ? cat.labelVi : cat.labelEn}
                 </option>
               ))}
             </select>
@@ -1636,22 +1627,21 @@ export default function PresetsView() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 Tìm văn phong..."
+              placeholder={t('presetsPage.searchPlaceholder') || "Tìm kiếm Văn phong..."}
               className="w-full h-9 pl-9 pr-8 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-950 text-xs font-semibold text-text outline-none focus:border-primary transition-all"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-0.5 rounded cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-200 dark:bg-zinc-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors"
               >
-                <X size={12} />
+                <X size={10} />
               </button>
             )}
           </div>
         </div>
       </div>
-
       {/* 4. Cards Display Area */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
@@ -1670,13 +1660,21 @@ export default function PresetsView() {
               ? lang === "vi" ? "Thử thay đổi từ khóa tìm kiếm." : "Try changing your search term."
               : lang === "vi" ? "Thiết lập văn phong để AI hiểu rõ cách thương hiệu của bạn giao tiếp với khách hàng." : "Set up brand styles to help AI understand how your brand communicates."}
           </p>
-          {!search && (
+          {!search && selectedCategory === "all" && activeTab === "all" ? (
             <button
               type="button"
               onClick={() => { setEditingPreset(null); setWizardOpen(true); }}
               className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all cursor-pointer border-0"
             >
               <Plus size={14} /> {lang === "vi" ? "Bắt đầu thiết lập" : "Start Setup"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-text hover:bg-gray-200 dark:hover:bg-zinc-700 text-xs font-extrabold transition-all cursor-pointer border-0"
+            >
+              {t('common.cancel') || "Xóa bộ lọc"}
             </button>
           )}
         </div>
@@ -1700,7 +1698,7 @@ export default function PresetsView() {
 
             {/* Pagination Controls - Aligned with ArchiveView */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
+              <div ref={paginationRef} className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
                 <div className="text-xs font-semibold text-text-muted">
                   {lang === 'vi'
                     ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, displayed.length)} trong tổng số ${displayed.length} văn phong`
@@ -1709,7 +1707,7 @@ export default function PresetsView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() => handlePageChange(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >
@@ -1719,7 +1717,7 @@ export default function PresetsView() {
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => handlePageChange(page)}
                       className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'border border-gray-200/80 dark:border-zinc-800 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-white dark:bg-zinc-900'
@@ -1730,7 +1728,7 @@ export default function PresetsView() {
                   ))}
 
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() => handlePageChange(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >

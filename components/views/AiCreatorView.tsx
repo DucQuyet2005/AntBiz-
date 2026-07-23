@@ -185,8 +185,9 @@ function AiCreatorContent() {
             if (savedArticle && savedArticle.articleId) {
               activeArticleId = savedArticle.articleId;
             }
-          } catch (err) {
-            showToast("Không thể lưu bài viết. Vui lòng kiểm tra lại.", "error");
+          } catch (err: any) {
+            console.error('[handleContinue] Lỗi lưu bài viết gốc:', err);
+            showToast(`Không thể lưu bài viết. Lỗi: ${err?.message || err}`, "error");
             setIsSubmitting(false);
             return;
           }

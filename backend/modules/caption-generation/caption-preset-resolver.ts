@@ -44,12 +44,15 @@ export async function resolveCaptionPlatformRules(
 }
 
 function normalizePlatform(platform: string) {
-  return platform === 'threads' ? 'thread' : platform;
+  const p = platform.toLowerCase();
+  return p === 'threads' ? 'thread' : p;
 }
 
 function selectPlatformPreset(presets: PlatformPresetRecord[], userId: string) {
   return presets.find((preset) => preset.user_id === userId && preset.is_default)
     || presets.find((preset) => preset.user_id === userId)
     || presets.find((preset) => !preset.user_id && preset.is_default)
-    || presets.find((preset) => !preset.user_id);
+    || presets.find((preset) => preset.is_default)
+    || presets.find((preset) => !preset.user_id)
+    || presets[0];
 }

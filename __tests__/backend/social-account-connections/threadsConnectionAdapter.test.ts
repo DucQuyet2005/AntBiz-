@@ -20,7 +20,7 @@ describe('ThreadsConnectionAdapter', () => {
     const url = new URL(adapter.buildAuthorizationUrl('signed-state'));
     expect(url.searchParams.get('client_id')).toBe('threads-app');
     expect(url.searchParams.get('state')).toBe('signed-state');
-    expect(url.searchParams.get('scope')).toBe('threads_basic,threads_content_publish');
+    expect(url.searchParams.get('scope')).toBe('threads_basic,threads_content_publish,threads_manage_insights');
   });
 
   it('exchanges tokens and returns a normalized profile candidate', async () => {
@@ -35,6 +35,7 @@ describe('ThreadsConnectionAdapter', () => {
       accountId: 'threads-1',
       accountName: 'thread_user',
       accessToken: 'long-token',
+      expiresAt: null,
     });
     const shortRequest = fetchMock.mock.calls[0][1] as RequestInit;
     expect(shortRequest.method).toBe('POST');

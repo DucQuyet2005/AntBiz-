@@ -9,6 +9,9 @@ const proxyRoute = readFileSync(
 
 describe('AI Creator proxy navigation interceptor', () => {
   it('intercepts embedded site navigation and data requests for proxying', () => {
+    expect(proxyRoute).toContain("postMessage({ type: 'URL_CHANGE'");
+    expect(proxyRoute).toContain('history.pushState = function');
+    expect(proxyRoute).toContain('history.replaceState = function');
     expect(proxyRoute).toContain('window.fetch = function');
     expect(proxyRoute).toContain('XMLHttpRequest.prototype.open = function');
   });

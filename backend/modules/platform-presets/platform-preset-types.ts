@@ -22,6 +22,7 @@ export interface PlatformPresetRecord {
 }
 
 export interface PlatformPresetRepository {
+  listAllPresets(platform: string): Promise<PlatformPresetRecord[]>;
   listUserPresets(userId: string, platform: string): Promise<PlatformPresetRecord[]>;
   listSystemPresets(platform: string): Promise<PlatformPresetRecord[]>;
   cloneForUser(

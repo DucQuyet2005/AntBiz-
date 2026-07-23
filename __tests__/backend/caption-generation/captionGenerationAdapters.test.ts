@@ -48,7 +48,6 @@ describe('Caption Generation production adapters', () => {
     await expect(repository.listPlatformPresets('user-1', 'thread')).resolves.toEqual([]);
     expect(serviceClient.from).toHaveBeenCalledWith('platform_presets');
     expect(builder.eq).toHaveBeenCalledWith('platform', 'thread');
-    expect(builder.or).toHaveBeenCalledWith('user_id.eq.user-1,user_id.is.null');
   });
 
   it('replaces article placeholders in the Threads default prompt', async () => {

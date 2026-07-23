@@ -66,8 +66,7 @@ export class SupabaseCaptionGenerationRepository implements CaptionGenerationRep
     const { data, error } = await this.serviceClient
       .from('platform_presets')
       .select('*')
-      .eq('platform', platform)
-      .or(`user_id.eq.${userId},user_id.is.null`);
+      .eq('platform', platform);
     if (error) throw new CaptionGenerationRepositoryError('listPlatformPresets', error);
     return (data ?? []) as PlatformPresetRecord[];
   }

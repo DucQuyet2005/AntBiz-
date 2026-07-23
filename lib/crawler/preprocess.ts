@@ -174,13 +174,20 @@ function isBoilerplateText(
     lowerText === lowerPub ||
     lowerText === lowerCate ||
     lowerText === lowerTitle ||
-    (lowerTitle && lowerText.includes(lowerTitle)) ||
-    (lowerAuthor && lowerText.includes(lowerAuthor)) ||
-    (lowerDesc && (lowerDesc.includes(lowerText) || lowerText.includes(lowerDesc))) ||
     clean.startsWith('#') ||
     (category && lowerText === category.toLowerCase())
   ) {
     return true;
+  }
+
+  // Nếu là mô tả/sapo giống hệt thì bỏ qua (tránh trùng lặp 100%)
+  if (lowerDesc && lowerText === lowerDesc) {
+    return true;
+  }
+
+  // Nếu đoạn văn dài, chứa từ khóa thì chưa chắc là boilerplate (có thể là bài viết đang nói về chủ đề đó)
+  if (clean.length > 80) {
+    return false; // Đoạn dài thường là nội dung thật
   }
 
   const boilerplateKeywords = [

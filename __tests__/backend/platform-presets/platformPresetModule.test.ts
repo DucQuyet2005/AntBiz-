@@ -30,6 +30,10 @@ class FakePlatformPresetRepository implements PlatformPresetRepository {
   failClone = false;
   failReset = false;
 
+  async listAllPresets(platform: string): Promise<PlatformPresetRecord[]> {
+    return this.presets.filter((item) => item.platform === platform);
+  }
+
   async listUserPresets(userId: string, platform: string): Promise<PlatformPresetRecord[]> {
     return this.presets.filter((item) => item.user_id === userId && item.platform === platform);
   }

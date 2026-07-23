@@ -12,6 +12,16 @@ import type {
 export class SupabasePlatformPresetRepository implements PlatformPresetRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  async listAllPresets(platform: string): Promise<PlatformPresetRecord[]> {
+    const { data, error } = await this.supabase
+      .from('platform_presets')
+      .select('*')
+      .eq('platform', platform);
+
+    if (error) throw new PlatformPresetRepositoryError('listAllPresets', error);
+    return (data ?? []) as PlatformPresetRecord[];
+  }
+
   async listUserPresets(userId: string, platform: string): Promise<PlatformPresetRecord[]> {
     const { data, error } = await this.supabase
       .from('platform_presets')
@@ -50,7 +60,6 @@ export class SupabasePlatformPresetRepository implements PlatformPresetRepositor
     const { error } = await this.supabase
       .from('platform_presets')
       .update({ is_default: false })
-      .eq('user_id', userId)
       .eq('platform', platform);
 
     if (error) throw new PlatformPresetRepositoryError('resetDefaults', error);
@@ -61,7 +70,7 @@ export class SupabasePlatformPresetRepository implements PlatformPresetRepositor
   ): Promise<PlatformPresetRecord> {
     const { data, error } = await this.supabase
       .from('platform_presets')
-      .upsert(input, { onConflict: 'user_id,platform,name' })
+      .insert(input)
       .select()
       .single();
 
