@@ -141,17 +141,21 @@ export function useScheduleDragDrop(
   const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
 
   const isHourInDynamicList = useCallback((hour: number, dayOfWeek?: number) => {
-    if (!Array.isArray(dynamicGoldenHours) || dynamicGoldenHours.length === 0) {
-      return DEFAULT_GOLDEN_HOURS.includes(hour);
+    // 1. Kiểm tra xem ô có khớp với Giờ Vàng động từ dữ liệu phân tích DB không
+    if (Array.isArray(dynamicGoldenHours) && dynamicGoldenHours.length > 0) {
+      const matchesDynamic = dynamicGoldenHours.some(gh => {
+        if (!gh) return false;
+        const matchesHour = gh.hour === hour;
+        if (dayOfWeek !== undefined && gh.dayOfWeek !== undefined) {
+          return matchesHour && gh.dayOfWeek === dayOfWeek;
+        }
+        return matchesHour;
+      });
+      if (matchesDynamic) return true;
     }
-    return dynamicGoldenHours.some(gh => {
-      if (!gh) return false;
-      const matchesHour = gh.hour === hour;
-      if (dayOfWeek !== undefined && gh.dayOfWeek !== undefined) {
-        return matchesHour && gh.dayOfWeek === dayOfWeek;
-      }
-      return matchesHour;
-    });
+
+    // 2. Kết hợp với dải Giờ Vàng mặc định để luôn hiển thị đầy đủ các khung giờ vàng gợi ý trên tuần
+    return DEFAULT_GOLDEN_HOURS.includes(hour);
   }, [dynamicGoldenHours]);
 
   /**
