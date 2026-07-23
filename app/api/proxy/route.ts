@@ -202,11 +202,12 @@ export async function GET(request: NextRequest) {
   function getAbsoluteUrl(urlStr) {
     try {
       var s = String(urlStr);
-      var idx = s.indexOf('/api/proxy?url=');
-      if (idx !== -1) {
-        var params = new URLSearchParams(s.substring(idx).split('?')[1]);
-        var original = params.get('url');
-        if (original) return original;
+      if (s.indexOf('/api/proxy') !== -1) {
+        var match = s.match(/[?&]url=([^&]+)/);
+        if (match && match[1]) {
+          var decoded = decodeURIComponent(match[1]);
+          if (decoded && decoded.startsWith('http')) return decoded;
+        }
       }
       return new URL(s, _currentTarget || TARGET).href;
     } catch(_) { return urlStr; }
@@ -248,14 +249,16 @@ export async function GET(request: NextRequest) {
     if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
 
     try {
-      var abs = new URL(href, _currentTarget || TARGET).href;
+      var abs = getAbsoluteUrl(href);
       if (!isAllowedHost(abs)) {
         // Block navigation to external ad domains
         e.preventDefault();
         return;
       }
+      e.preventDefault();
       _currentTarget = abs;
       report();
+      window.location.href = PROXY + encodeURIComponent(abs);
     } catch (err) {}
   }, false);
 
