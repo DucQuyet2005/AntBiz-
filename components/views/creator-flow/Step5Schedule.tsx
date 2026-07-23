@@ -409,7 +409,8 @@ export function WeeklyTimeline({
                               : ''
                           }`}
                           style={showGolden ? {
-                            backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
+                            backgroundColor: goldenStyle?.bg || 'rgba(245,158,11,0.12)',
+                            borderColor: goldenStyle?.border || 'rgba(245,158,11,0.3)',
                           } : undefined}
                         >
                           {/* Red current time indicator */}
@@ -426,7 +427,7 @@ export function WeeklyTimeline({
                           {showGolden && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
-                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/golden:opacity-100'}`} />
+                                  <Star size={11} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-125 opacity-100' : 'opacity-90 group-hover/golden:scale-110'}`} />
                                   <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
                                     Giờ Vàng {currentPlatform}
                                   </span>
