@@ -196,14 +196,6 @@ export default function Step4Editor() {
   const cleanBodyText = postContentText.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
   const displayedContent = cleanBodyText || postContentText;
 
-  const contentLength = displayedContent.length;
-  const wordCount = displayedContent.trim() ? displayedContent.trim().split(/\s+/).length : 0;
-
-  const isLongContent = contentLength > 500;
-
-  const maxCharLimit = currentPlatform === 'threads' ? '500' : currentPlatform === 'instagram' ? '2,200' : '63,206';
-  const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
-
   const validKeywords = (state.articleContext?.keywords || []).filter(
     k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
   );
@@ -219,6 +211,24 @@ export default function Step4Editor() {
 
   // Unique merged hashtags
   const hashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
+
+  // Build the compiled text that will actually be published (Title + Body + Hashtags string)
+  const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : hashtags;
+  const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
+  
+  const compiledFullText = [
+    currentTitle ? currentTitle.trim() : '',
+    displayedContent ? displayedContent.trim() : '',
+    effectiveHashtagsList.length > 0 ? effectiveHashtagsList.join(' ') : ''
+  ].filter(Boolean).join('\n\n');
+
+  const contentLength = compiledFullText.length;
+  const wordCount = compiledFullText.trim() ? compiledFullText.trim().split(/\s+/).length : 0;
+
+  const isLongContent = displayedContent.length > 500;
+
+  const maxCharLimit = currentPlatform === 'threads' ? '500' : currentPlatform === 'instagram' ? '2,200' : '63,206';
+  const formattedCounter = `${contentLength.toLocaleString()} ký tự (~${wordCount} từ) / ${maxCharLimit} ký tự`;
 
   const handleRestore = (idx: number) => {
     const result = restoreChatState(idx);
@@ -493,7 +503,6 @@ export default function Step4Editor() {
   const [isAddingHashtag, setIsAddingHashtag] = useState<boolean>(false);
 
   const effectiveHashtags = state.customHashtags !== null ? state.customHashtags : hashtags;
-  const currentTitle = state.customTitle ?? (editableTitle || state.articleContext?.title || '');
 
   const handleAddHashtag = (tag: string) => {
     const cleanTag = tag.trim().replace(/^#+/, '');
