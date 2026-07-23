@@ -1323,7 +1323,7 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                             {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                           </div>
                           <div
-                            key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                            key={isExpanded ? 'exp' : 'col'}
                             ref={editorRef}
                             contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                             suppressContentEditableWarning
@@ -1444,7 +1444,7 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                               {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
                             <div
-                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              key={isExpanded ? 'exp' : 'col'}
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
@@ -1572,7 +1572,7 @@ export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?
                               {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
                             <div
-                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              key={isExpanded ? 'exp' : 'col'}
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
