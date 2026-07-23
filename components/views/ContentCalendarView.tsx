@@ -107,10 +107,10 @@ export default function ContentCalendarView() {
     Object.entries(dynamicData).forEach(([platform, hours]) => {
       const bg = platformColors[platform] || 'rgba(0,0,0,0.04)';
       (hours as any[]).forEach((gh: { hour: number; label: string; weight: number; dayOfWeek?: number }) => {
-        const days = gh.dayOfWeek !== undefined ? [gh.dayOfWeek] : [0, 1, 2, 3, 4, 5, 6];
+        const days = [0, 1, 2, 3, 4, 5, 6];
 
         events.push({
-          id: `golden-${platform}-${gh.hour}-${days.join('')}`,
+          id: `golden-${platform}-${gh.hour}`,
           title: 'Giờ vàng',
           startTime: `${gh.hour.toString().padStart(2, '0')}:00:00`,
           endTime: `${(gh.hour + 1).toString().padStart(2, '0')}:00:00`,
@@ -625,9 +625,8 @@ export default function ContentCalendarView() {
       const dateObj = new Date(scheduledAt);
       if (isNaN(dateObj.getTime())) return false;
       const h = dateObj.getHours();
-      const d = dateObj.getDay();
   
-      return hoursToUse.some((gh: any) => gh.hour === h && (gh.dayOfWeek === undefined || gh.dayOfWeek === d));
+      return hoursToUse.some((gh: any) => gh.hour === h);
     };
 
     if (isMultiple) {
