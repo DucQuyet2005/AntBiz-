@@ -712,6 +712,11 @@ export default function Step4Editor() {
           ref={titleRef}
           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
           suppressContentEditableWarning
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+          }}
           onBlur={(e) => {
             const val = e.currentTarget.innerText.trim();
             setEditableTitle(val);
@@ -1311,6 +1316,11 @@ export default function Step4Editor() {
                             ref={editorRef}
                             contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                             suppressContentEditableWarning
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const text = e.clipboardData.getData('text/plain');
+                              document.execCommand('insertText', false, text);
+                            }}
                             onBlur={(e) => {
                               const newText = e.currentTarget.innerText;
                               dispatch({ type: 'SET_POST_CONTENT', payload: newText });
@@ -1423,6 +1433,11 @@ export default function Step4Editor() {
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                              }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
@@ -1542,6 +1557,11 @@ export default function Step4Editor() {
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                              }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
