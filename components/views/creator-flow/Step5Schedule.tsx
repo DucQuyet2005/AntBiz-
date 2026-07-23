@@ -9,6 +9,7 @@ import { useCreatorFlow } from '@/frontend/modules/creator-flow';
 import { useScheduleDragDrop } from '@/frontend/modules/schedule-dnd';
 import { useDynamicGoldenHours } from '@/frontend/modules/scheduled-publishing/use-golden-hours';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { buildGoogleCalendarUrl } from '@/frontend/modules/scheduled-publishing/google-calendar-helper';
 
 // Custom SVG Logo for Threads
 const ThreadsIcon = ({ className = '', size = 13 }: { className?: string; size?: number }) => (
@@ -30,6 +31,7 @@ export function ScheduledPostCard({
   time,
   title,
   thumbnail,
+  isGoldenHour,
   onClick,
   onDragStart,
   onDragEnd,
@@ -38,6 +40,7 @@ export function ScheduledPostCard({
   time: string;
   title: string;
   thumbnail?: string;
+  isGoldenHour?: boolean;
   onClick?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
@@ -88,6 +91,9 @@ export function ScheduledPostCard({
           className="w-5 h-5 rounded object-cover shadow-sm bg-gray-100 dark:bg-zinc-800 shrink-0 border border-black/5 dark:border-white/5"
           draggable={false}
         />
+        {isGoldenHour && (
+          <Star size={11} className="fill-[#fbbf24] text-[#f59e0b] shrink-0 ml-auto" />
+        )}
       </div>
     </div>
   );
@@ -128,6 +134,8 @@ export function PublishingSettings({
   onDateChange,
   onTimeChange,
   onMinuteSelect,
+  onDateBlur,
+  onTimeBlur,
   onReportToggleChange,
 }: {
   dateValue: string;
@@ -137,6 +145,8 @@ export function PublishingSettings({
   onDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onTimeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onMinuteSelect: (minuteStr: string) => void;
+  onDateBlur?: () => void;
+  onTimeBlur?: () => void;
   onReportToggleChange: () => void;
 }) {
   const { t } = useLanguage();
@@ -162,6 +172,7 @@ export function PublishingSettings({
               type="date"
               value={dateValue}
               onChange={onDateChange}
+              onBlur={onDateBlur}
               className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
@@ -176,6 +187,7 @@ export function PublishingSettings({
               type="time"
               value={timeValue}
               onChange={onTimeChange}
+              onBlur={onTimeBlur}
               className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
             <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
@@ -242,6 +254,7 @@ export function PublishingSettings({
   );
 }
 
+
 /* Component: WeeklyTimeline */
 export function WeeklyTimeline({
   activeWeekTab,
@@ -259,7 +272,7 @@ export function WeeklyTimeline({
 }: {
   activeWeekTab: 'w1' | 'w2' | 'w3';
   onWeekTabChange: (w: 'w1' | 'w2' | 'w3') => void;
-  days: Array<{ label: string; date: string; index: number; isToday: boolean; isPastDay: boolean; fullDateStr: string }>;
+  days: Array<{ label: string; date: string; index: number; isToday: boolean; isPastDay: boolean; dayOfWeek?: number; fullDateStr: string }>;
   hours: string[];
   currentPostDayIndex: number | null;
   currentPostHourVal: number | null;
@@ -324,17 +337,22 @@ export function WeeklyTimeline({
           </div>
           <div className="grid grid-cols-7 flex-1">
             {days.map((day) => {
-              const isWed22 = day.label === 'WED' && day.date === '22';
-              const isHighlighted = isWed22 || day.index === currentPostDayIndex;
+              const isSelectedDay = day.index === currentPostDayIndex;
+              const isToday = day.isToday;
+              const isHighlighted = isSelectedDay || isToday;
               return (
                 <div
                   key={day.index}
-                  className={`py-2 px-1 border-r border-gray-200 dark:border-zinc-800/60 last:border-r-0 transition-all ${
-                    isHighlighted ? 'bg-emerald-50/70 dark:bg-emerald-950/20 text-primary font-bold border-b-2 border-b-primary' : 'text-text'
+                  className={`py-2.5 px-1 border-r border-gray-200 dark:border-zinc-800/60 last:border-r-0 transition-all ${
+                    isSelectedDay
+                      ? 'bg-[#e6f7f2] dark:bg-emerald-950/50 text-[#10b981] font-black border-b-2 border-b-[#10b981] shadow-2xs'
+                      : isToday
+                      ? 'bg-[#e6f7f2]/60 dark:bg-emerald-950/30 text-[#10b981] font-bold border-b-2 border-b-[#10b981]/60'
+                      : 'text-text'
                   }`}
                 >
-                  <div className={`text-[9px] font-bold tracking-wider ${isHighlighted ? 'text-primary' : 'text-text-muted'}`}>{day.label}</div>
-                  <div className={`text-xs font-extrabold mt-0.5 ${isHighlighted ? 'text-primary' : 'text-text'}`}>{day.date}</div>
+                  <div className={`text-[9.5px] font-extrabold tracking-wider ${isHighlighted ? 'text-[#10b981]' : 'text-text-muted'}`}>{day.label}</div>
+                  <div className={`text-xs font-black mt-0.5 ${isHighlighted ? 'text-[#10b981]' : 'text-text'}`}>{day.date}</div>
                 </div>
               );
             })}
@@ -361,7 +379,8 @@ export function WeeklyTimeline({
                   <div className="grid grid-cols-7 flex-1 relative">
                     {Array.from({ length: 7 }).map((_, dayIdx) => {
                       const targetDay = days.find(d => d.index === dayIdx);
-                      const isTodayCol = targetDay?.isToday || dayIdx === currentPostDayIndex || (targetDay?.label === 'WED' && targetDay?.date === '22');
+                      const isTodayCol = targetDay?.isToday;
+                      const isSelectedCol = dayIdx === currentPostDayIndex;
 
                       const isCurrentPostInCell = 
                         currentPostDayIndex === dayIdx && 
@@ -394,15 +413,15 @@ export function WeeklyTimeline({
                           onDrop={(e) => dnd.handleCellDrop(e, dayIdx, hourVal)}
                           className={`border-r border-gray-100 dark:border-zinc-800/50 last:border-r-0 relative flex flex-col h-full transition-all ${
                             isCurrentPostInCell
-                              ? 'bg-emerald-100/50 dark:bg-emerald-950/35'
+                              ? 'bg-[#e6f7f2] dark:bg-emerald-950/50'
+                              : isSelectedCol
+                              ? 'bg-[#f0fdf9]/80 dark:bg-emerald-950/20'
                               : isTodayCol
-                              ? 'bg-emerald-50/35 dark:bg-emerald-950/20'
-                              : isHighlighted
-                              ? 'bg-primary/[0.02]'
+                              ? 'bg-[#f0fdf9]/50 dark:bg-emerald-950/15'
                               : ''
                           }`}
                           style={showGolden ? {
-                            backgroundColor: isDragGolden ? goldenStyle?.bg : `${goldenStyle?.bg?.replace('0.06', '0.03') || 'transparent'}`,
+                            backgroundColor: goldenStyle?.bg || 'rgba(225,48,108,0.12)',
                           } : undefined}
                         >
                           {/* Red current time indicator */}
@@ -416,10 +435,10 @@ export function WeeklyTimeline({
                           )}
 
                           {/* Golden Hour indicator */}
-                          {showGolden && (
+                          {showGolden && !isCurrentPostInCell && (
                               <div className="absolute inset-0.5 pointer-events-none flex items-end justify-end z-20">
                                 <div className="flex items-center gap-1 relative group/golden pointer-events-auto cursor-help p-1.5">
-                                  <Star size={10} className={`fill-amber-400 text-amber-500 transition-all duration-200 ${isDragGolden ? 'scale-110 opacity-100' : 'opacity-40 group-hover/golden:opacity-100'}`} />
+                                  <Star size={11} className={`fill-[#fbbf24] text-[#f59e0b] transition-all duration-200 ${isDragGolden ? 'scale-125 opacity-100' : 'opacity-90 group-hover/golden:scale-110'}`} />
                                   <span className={`hidden group-hover/golden:block absolute bottom-6 bg-[#1e293b] dark:bg-zinc-800 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap capitalize z-30 ${tooltipAlignClass}`}>
                                     Giờ Vàng {currentPlatform}
                                   </span>
@@ -429,7 +448,7 @@ export function WeeklyTimeline({
 
                           {/* Render 4 Quarter Sub-Slots (00, 15, 30, 45) */}
                           {[0, 15, 30, 45].map((minute) => {
-                            const isSubPast = Boolean(targetDay?.isPastDay || (targetDay?.isToday && (hourVal < now.getHours() || (hourVal === now.getHours() && minute < now.getMinutes()))));
+                            const isSubPast = isPast || (targetDay?.isToday && (hourVal * 60 + minute) <= (now.getHours() * 60 + now.getMinutes()));
                             const isSubHovered = !isSubPast && hoveredSubSlot?.dayIdx === dayIdx && hoveredSubSlot?.hour === hourVal && hoveredSubSlot?.minute === minute;
                             const isSubDragOver = !isSubPast && isCellDragOver && activeDragMinute === minute;
                             const displayTimeStr = `${hourVal.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -439,9 +458,8 @@ export function WeeklyTimeline({
                                 key={minute}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isSubPast) {
-                                    handleCellClick(e, dayIdx, hourVal, minute);
-                                  }
+                                  if (isSubPast) return;
+                                  handleCellClick(e, dayIdx, hourVal, minute);
                                 }}
                                 onMouseEnter={() => {
                                   if (!isSubPast) setHoveredSubSlot({ dayIdx, hour: hourVal, minute });
@@ -449,12 +467,14 @@ export function WeeklyTimeline({
                                 onMouseLeave={() => setHoveredSubSlot(null)}
                                 className={`flex-1 relative transition-all duration-100 flex items-center justify-end pr-1 ${
                                   isSubPast
-                                    ? 'bg-gray-100/60 dark:bg-zinc-950/70 text-gray-400 dark:text-zinc-600 cursor-not-allowed select-none opacity-50 backdrop-blur-[0.5px]'
-                                    : isSubDragOver
-                                    ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20 cursor-pointer'
-                                    : isSubHovered
-                                    ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10 cursor-pointer'
+                                    ? 'cursor-not-allowed opacity-40 bg-gray-100/30 dark:bg-zinc-800/20'
                                     : 'cursor-pointer'
+                                } ${
+                                  isSubDragOver
+                                    ? 'bg-emerald-200/60 dark:bg-emerald-800/50 border-y border-dashed border-primary z-20'
+                                    : isSubHovered
+                                    ? 'bg-emerald-100/50 dark:bg-emerald-950/40 z-10'
+                                    : ''
                                 }`}
                               >
                                 {(isSubHovered || isSubDragOver) && !isCurrentPostInCell && (
@@ -469,18 +489,24 @@ export function WeeklyTimeline({
                           {/* Scheduled Post Card Overlay */}
                           {isCurrentPostInCell && (
                             <div className="absolute inset-1 z-30 flex items-center justify-center">
-                              <ScheduledPostCard
-                                platform={state.selectedPlatform || 'facebook'}
-                                time={state.scheduledDateTime.split('T')[1] || `${hour}:00`}
-                                title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
-                                thumbnail={state.articleContext?.thumbnail}
-                                onDragStart={(e) => dnd.handleDragStart(e, {
-                                  id: 'scheduled-post',
-                                  type: 'scheduled',
-                                  platform: state.selectedPlatform || 'facebook'
-                                })}
-                                onDragEnd={dnd.handleDragEnd}
-                              />
+                              {(() => {
+                                const timeStr = state.scheduledDateTime.split('T')[1] || `${hour}:00`;
+                                return (
+                                  <ScheduledPostCard
+                                    platform={currentPlatform}
+                                    time={timeStr}
+                                    title={state.articleContext?.title || "5 mẹo sử dụng AI hiệu quả trong marketing"}
+                                    thumbnail={state.articleContext?.thumbnail}
+                                    isGoldenHour={showGolden}
+                                    onDragStart={(e) => dnd.handleDragStart(e, {
+                                      id: 'scheduled-post',
+                                      type: 'scheduled',
+                                      platform: currentPlatform
+                                    })}
+                                    onDragEnd={dnd.handleDragEnd}
+                                  />
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -530,7 +556,7 @@ export default function Step5Schedule() {
     }
   }, []);
 
-  const currentPlatform = state.selectedPlatform || 'facebook';
+  const currentPlatform = (Array.isArray(state.selectedPlatforms) && state.selectedPlatforms[0]) || state.selectedPlatform || 'facebook';
   const { data: dynamicGoldenHours = [] } = useDynamicGoldenHours(currentPlatform);
 
   const today = new Date();
@@ -551,6 +577,7 @@ export default function Step5Schedule() {
       index: idx,
       isToday,
       isPastDay,
+      dayOfWeek: d.getDay(),
       fullDateStr: d.toISOString().split('T')[0]
     };
   });
@@ -565,6 +592,24 @@ export default function Step5Schedule() {
     }
     return false;
   }, [days, now]);
+
+  // Auto-reset if scheduledDateTime is in the past on mount
+  useEffect(() => {
+    if (state.scheduledDateTime) {
+      const currentScheduled = new Date(state.scheduledDateTime);
+      if (currentScheduled.getTime() <= new Date().getTime()) {
+        const futureDate = new Date();
+        futureDate.setMinutes(futureDate.getMinutes() + 15);
+        const minVal = Math.ceil(futureDate.getMinutes() / 15) * 15;
+        futureDate.setMinutes(minVal % 60);
+        futureDate.setSeconds(0);
+        const dateStr = `${futureDate.getFullYear()}-${(futureDate.getMonth() + 1).toString().padStart(2, '0')}-${futureDate.getDate().toString().padStart(2, '0')}`;
+        const timeStr = `${futureDate.getHours().toString().padStart(2, '0')}:${(futureDate.getMinutes()).toString().padStart(2, '0')}`;
+        dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${timeStr}` });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScheduleChange = useCallback((dayIdx: number, hour: number, minute: number = 0) => {
     if (checkIsPast(dayIdx, hour, minute)) return;
@@ -586,13 +631,14 @@ export default function Step5Schedule() {
 
   const [datePart, timePart] = state.scheduledDateTime.split('T');
 
-  let currentPostDayIndex: number | null = 2; // Default WED
+  let currentPostDayIndex: number | null = null;
   let currentPostHourVal: number | null = 9;  // Default 09:00
 
   if (datePart) {
-    const selectedDate = new Date(datePart);
-    const dayOfWeek = selectedDate.getDay();
-    currentPostDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const matchingDay = days.find(d => d.fullDateStr === datePart);
+    if (matchingDay) {
+      currentPostDayIndex = matchingDay.index;
+    }
   }
   if (timePart) {
     currentPostHourVal = parseInt(timePart.split(':')[0]);
@@ -602,6 +648,8 @@ export default function Step5Schedule() {
     const targetDay = days.find(d => d.index === dayIndex);
     if (!targetDay) return;
 
+    // checkIsPast is handled by sub-slot click guard, but guard again here
+    if (checkIsPast(dayIndex, hour, minute)) return;
     const timePad = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${targetDay.fullDateStr}T${timePad}` });
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
@@ -609,7 +657,10 @@ export default function Step5Schedule() {
 
   const handleMinuteSelect = (minuteStr: string) => {
     const currentHour = timePart ? timePart.split(':')[0] || '09' : '09';
-    const currentDate = datePart || '2026-07-22';
+    const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
+    const targetDateTime = new Date(`${currentDate}T${currentHour}:${minuteStr}:00`);
+    if (targetDateTime.getTime() <= now.getTime()) return; // Block past minute
+
     dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${currentHour}:${minuteStr}` });
   };
 
@@ -639,13 +690,35 @@ export default function Step5Schedule() {
         {/* Right Column: Publishing Settings (30% -> lg:col-span-4) */}
         <div className="lg:col-span-4">
           <PublishingSettings
-            dateValue={datePart || '2026-07-22'}
+            dateValue={datePart || days.find(d => d.isToday)?.fullDateStr || ''}
             timeValue={timePart || '09:00'}
-            platform={state.selectedPlatform || 'facebook'}
+            platform={currentPlatform}
             reportToggle={reportToggle}
-            onDateChange={(e) => dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${e.target.value}T${timePart || '09:00'}` })}
-            onTimeChange={(e) => dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${datePart || '2026-07-22'}T${e.target.value}` })}
+            onDateChange={(e) => {
+              const selectedDate = e.target.value;
+              const currentTime = timePart || '09:00';
+              dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${selectedDate}T${currentTime}` });
+            }}
+            onTimeChange={(e) => {
+              const selectedTime = e.target.value;
+              const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr || '';
+              dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${selectedTime}` });
+            }}
             onMinuteSelect={handleMinuteSelect}
+            onDateBlur={() => {
+              const targetTime = new Date(state.scheduledDateTime || '').getTime();
+              if (targetTime && targetTime <= now.getTime()) {
+                const futureDate = new Date(now.getTime() + 5 * 60000);
+                dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}T${String(futureDate.getHours()).padStart(2, '0')}:${String(futureDate.getMinutes()).padStart(2, '0')}` });
+              }
+            }}
+            onTimeBlur={() => {
+              const targetTime = new Date(state.scheduledDateTime || '').getTime();
+              if (targetTime && targetTime <= now.getTime()) {
+                const futureDate = new Date(now.getTime() + 5 * 60000);
+                dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}T${String(futureDate.getHours()).padStart(2, '0')}:${String(futureDate.getMinutes()).padStart(2, '0')}` });
+              }
+            }}
             onReportToggleChange={() => setReportToggle(prev => !prev)}
           />
         </div>

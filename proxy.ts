@@ -5,6 +5,10 @@ const ALLOWED_HOSTNAMES = [
   'gocnhinmoi.com.vn',
   'tuoitre.vn',
   'dantri.com.vn',
+  'dtadnetwork.com',
+  'vcmedia.vn',
+  'dantricdn.com',
+  'vccorp.vn',
 ];
 
 const ANTBIZ_API_ROUTES = new Set([
@@ -22,7 +26,14 @@ function isAllowedHost(hostname: string): boolean {
 }
 
 function isActualAntBizRoute(pathname: string): boolean {
-  if (pathname === '/') return true;
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return true;
+  }
 
   const ANTBIZ_ROUTES = new Set([
     '/login', '/register', '/forgot-password', '/reset-password',
@@ -33,22 +44,33 @@ function isActualAntBizRoute(pathname: string): boolean {
 
   if (ANTBIZ_ROUTES.has(pathname) || pathname.startsWith('/admin/')) return true;
 
-  if (pathname.startsWith('/api/')) {
-    const segment = pathname.split('/')[2];
-    return ANTBIZ_API_ROUTES.has(segment);
-  }
-
-  if (pathname.startsWith('/_next/')) {
-    return true;
-  }
-
   return false;
+}
+
+function normalizeProxyOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.includes('dantri') || host.includes('vcmedia') || host.includes('vccorp')) {
+      return 'https://dantri.com.vn';
+    }
+    if (host.includes('tuoitre')) {
+      return 'https://tuoitre.vn';
+    }
+    if (host.includes('gocnhinmoi')) {
+      return 'https://gocnhinmoi.com.vn';
+    }
+  } catch (_) {}
+  return origin;
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Xử lý định tuyến và viết lại yêu cầu cho Proxy Iframe ────────────────
+  // Never proxy AntBiz API endpoints (like /api/scrape, /api/captions) to external sites
+  if (pathname.startsWith('/api/') && pathname !== '/api/proxy') {
+    return NextResponse.next();
+  }
+
   // Chặn các request quảng cáo/tracker nội bộ của báo để không gây rác log 400
   if (pathname.includes('native-content') || pathname.includes('googlesyndication') || pathname.includes('doubleclick')) {
     return new NextResponse(null, { status: 204 });
@@ -58,13 +80,13 @@ export async function proxy(request: NextRequest) {
   let isProxyRequest = false;
   let targetOrigin: string | null = null;
 
-  // 1. Kiểm tra tham số 'url' trong chính request hiện tại (khi load iframe)
+  // 1. Kiểm tra tham số 'url' trong chính request hiện tại (khi load iframe hoặc link có ?url=)
   const requestUrlParam = request.nextUrl.searchParams.get('url');
   if (requestUrlParam) {
     try {
       const parsedUrl = new URL(requestUrlParam);
       if (isAllowedHost(parsedUrl.hostname)) {
-        targetOrigin = parsedUrl.origin;
+        targetOrigin = normalizeProxyOrigin(parsedUrl.origin);
         isProxyRequest = true;
       }
     } catch (_) {}
@@ -78,29 +100,40 @@ export async function proxy(request: NextRequest) {
       if (refererUrlParam) {
         const parsedRefererUrl = new URL(refererUrlParam);
         if (isAllowedHost(parsedRefererUrl.hostname)) {
-          targetOrigin = parsedRefererUrl.origin;
+          targetOrigin = normalizeProxyOrigin(parsedRefererUrl.origin);
           isProxyRequest = true;
         }
-      } else {
-        // Nếu referrer pathname không thuộc về AntBiz, đây là yêu cầu phát sinh từ iframe (sau khi spoof URL)
-        if (!isActualAntBizRoute(refererUrl.pathname)) {
-          const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
-          if (cookieOrigin) {
-            try {
-              const parsedCookie = new URL(cookieOrigin);
-              if (isAllowedHost(parsedCookie.hostname)) {
-                targetOrigin = parsedCookie.origin;
-                isProxyRequest = true;
-              }
-            } catch (_) {}
-          }
+      } else if (!isActualAntBizRoute(refererUrl.pathname) || refererUrl.pathname === '/api/proxy' || refererUrl.pathname === '/') {
+        const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
+        if (cookieOrigin) {
+          try {
+            const parsedCookie = new URL(cookieOrigin);
+            if (isAllowedHost(parsedCookie.hostname)) {
+              targetOrigin = normalizeProxyOrigin(parsedCookie.origin);
+              isProxyRequest = true;
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {}
   }
 
-  // Nếu xác định đây là yêu cầu thuộc iframe proxy và KHÔNG PHẢI là yêu cầu đến /api/proxy và KHÔNG PHẢI là route nội bộ AntBiz (tránh lặp vô hạn)
-  if (isProxyRequest && targetOrigin && pathname !== '/api/proxy' && !isActualAntBizRoute(pathname)) {
+  // 3. Fallback: Nếu cookie active_proxy_origin tồn tại và pathname hiện tại KHÔNG phải là route AntBiz
+  if (!isProxyRequest && !isActualAntBizRoute(pathname)) {
+    const cookieOrigin = request.cookies.get('active_proxy_origin')?.value;
+    if (cookieOrigin) {
+      try {
+        const parsedCookie = new URL(cookieOrigin);
+        if (isAllowedHost(parsedCookie.hostname)) {
+          targetOrigin = normalizeProxyOrigin(parsedCookie.origin);
+          isProxyRequest = true;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Nếu xác định đây là yêu cầu thuộc iframe proxy và KHÔNG PHẢI là yêu cầu đến /api/proxy (tránh lặp vô hạn)
+  if (isProxyRequest && targetOrigin && pathname !== '/api/proxy') {
     const dest = request.nextUrl.clone();
     dest.pathname = '/api/proxy';
     
@@ -115,7 +148,7 @@ export async function proxy(request: NextRequest) {
     
     const rewriteResponse = NextResponse.rewrite(dest);
     rewriteResponse.cookies.set('active_proxy_origin', targetOrigin, {
-      path: '/',
+      path: '/api/proxy',
       maxAge: 3600,
       sameSite: 'lax',
     });

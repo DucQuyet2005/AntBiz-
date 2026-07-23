@@ -10,6 +10,7 @@ export interface DragOverCell {
 }
 
 export interface DragPayload {
+  id?: string;
   type: 'draft' | 'scheduled';
   platform: string;
   postId?: string;

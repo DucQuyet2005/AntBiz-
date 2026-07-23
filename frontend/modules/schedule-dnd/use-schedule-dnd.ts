@@ -157,9 +157,16 @@ export function useScheduleDragDrop(
 
   // ─── Golden Hour helpers ───
 
+  const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
+
   const isHourInDynamicList = useCallback((hour: number) => {
-    if (!Array.isArray(dynamicGoldenHours)) return false;
-    return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
+    // Nếu có dữ liệu Giờ Vàng Động từ DB analytics, kiểm tra theo khung giờ của hàng ngang
+    if (Array.isArray(dynamicGoldenHours) && dynamicGoldenHours.length > 0) {
+      return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
+    }
+
+    // Chỉ khi DB chưa có dữ liệu bài đăng nào mới fallback sang giờ mặc định
+    return DEFAULT_GOLDEN_HOURS.includes(hour);
   }, [dynamicGoldenHours]);
 
   /**
@@ -210,29 +217,29 @@ export function useScheduleDragDrop(
     switch (p) {
       case 'facebook':
         return {
-          bg: 'rgba(24,119,242,0.06)',
-          border: '#93c5fd',
+          bg: 'rgba(24,119,242,0.04)',
+          border: 'rgba(24,119,242,0.2)',
           text: '#1d4ed8',
           iconClass: 'text-[#1877F2]',
         };
       case 'instagram':
         return {
-          bg: 'rgba(225,48,108,0.06)',
-          border: '#f9a8d4',
+          bg: 'rgba(225,48,108,0.04)',
+          border: 'rgba(225,48,108,0.2)',
           text: '#be185d',
           iconClass: 'text-[#E1306C]',
         };
       case 'threads':
         return {
-          bg: 'rgba(0,0,0,0.04)',
-          border: '#cbd5e1',
-          text: '#334155',
-          iconClass: 'text-black dark:text-white',
+          bg: 'rgba(245,158,11,0.04)',
+          border: 'rgba(245,158,11,0.2)',
+          text: '#b45309',
+          iconClass: 'text-amber-500',
         };
       default:
         return {
-          bg: 'rgba(245,158,11,0.06)',
-          border: '#fcd34d',
+          bg: 'rgba(245,158,11,0.04)',
+          border: 'rgba(245,158,11,0.2)',
           text: '#b45309',
           iconClass: 'text-amber-500',
         };

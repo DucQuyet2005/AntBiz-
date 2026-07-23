@@ -1,6 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+// Presets View Component - AntBiz
+
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -263,26 +265,11 @@ function PresetCard({
         }`}
     >
       <div>
-        {/* Card Header: Icon, Name, Star (Default toggle), 3-dots */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Category Icon Badge */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
-              {categoryIconObj.icon}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-sm text-text leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                {preset.name}
-              </h3>
-
-              {/* Optional Category Tag under title */}
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 truncate max-w-[150px]">
-                  🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
-                </span>
-              </div>
-            </div>
+        {/* Card Header: Icon Badge (Left) & Actions Star/Menu (Right) */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          {/* Category Icon Badge */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${categoryIconObj.bg}`}>
+            {categoryIconObj.icon}
           </div>
 
           {/* Right Action Icons: Star & Kebab Menu */}
@@ -353,25 +340,16 @@ function PresetCard({
         </div>
 
         {/* Name */}
-        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2.5 group-hover:text-primary transition-colors min-h-[44px]">
+        <h3 className="font-bold text-base text-slate-900 dark:text-white line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[44px]">
           {preset.name}
         </h3>
 
-        {/* Objectives as Badges */}
-        {objectives.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {objectives.slice(0, 2).map((obj: string, i: number) => (
-              <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-violet-500/10 dark:bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/15 max-w-[120px] truncate">
-                🎯 {obj}
-              </span>
-            ))}
-            {objectives.length > 2 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-200/50 dark:border-zinc-700/50">
-                +{objectives.length - 2}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Category Tag Badge */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40">
+            🦄 {objectives[0] || (language === "vi" ? "Văn phong đa năng" : "Versatile Style")}
+          </span>
+        </div>
 
         {/* Style Properties Grid */}
         {parsedProps.length > 0 && (
@@ -1367,6 +1345,14 @@ export default function PresetsView() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const paginationRef = useRef<HTMLDivElement>(null);
+  
+  const handlePageChange = useCallback((updater: number | ((prev: number) => number)) => {
+    setCurrentPage(updater);
+    setTimeout(() => {
+      paginationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
+  }, []);
   const ITEMS_PER_PAGE = 8;
 
   const fetchPresets = useCallback(async (silent = false) => {
@@ -1656,8 +1642,6 @@ export default function PresetsView() {
           </div>
         </div>
       </div>
-
-
       {/* 4. Cards Display Area */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
@@ -1714,7 +1698,7 @@ export default function PresetsView() {
 
             {/* Pagination Controls - Aligned with ArchiveView */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
+              <div ref={paginationRef} className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
                 <div className="text-xs font-semibold text-text-muted">
                   {lang === 'vi'
                     ? `Hiển thị ${Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, displayed.length)} - ${Math.min(currentPage * ITEMS_PER_PAGE, displayed.length)} trong tổng số ${displayed.length} văn phong`
@@ -1723,7 +1707,7 @@ export default function PresetsView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() => handlePageChange(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >
@@ -1733,7 +1717,7 @@ export default function PresetsView() {
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => handlePageChange(page)}
                       className={`w-10 h-10 rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer ${currentPage === page
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'border border-gray-200/80 dark:border-zinc-800 text-text hover:bg-gray-50 dark:hover:bg-zinc-800 bg-white dark:bg-zinc-900'
@@ -1744,7 +1728,7 @@ export default function PresetsView() {
                   ))}
 
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() => handlePageChange(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                     className="p-2.5 border border-gray-200/80 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:pointer-events-none text-text-muted active:scale-95 cursor-pointer bg-white dark:bg-zinc-900"
                   >

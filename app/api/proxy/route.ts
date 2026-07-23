@@ -7,7 +7,13 @@ const ALLOWED_HOSTNAMES = [
   'gocnhinmoi.com',
   'cdn.gocnhinmoi.com',
   'tuoitre.vn',
+  'tuoitrecdn.net',
   'dantri.com.vn',
+  'vcmedia.vn',
+  'dantricdn.com',
+  'vccorp.vn',
+  'mediacdn.vn',
+  'dtadnetwork.com',
 ];
 
 function isAllowedUrl(url: string): boolean {
@@ -25,6 +31,22 @@ function isAllowedUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function normalizeProxyOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.includes('dantri') || host.includes('vcmedia') || host.includes('vccorp')) {
+      return 'https://dantri.com.vn';
+    }
+    if (host.includes('tuoitre')) {
+      return 'https://tuoitre.vn';
+    }
+    if (host.includes('gocnhinmoi')) {
+      return 'https://gocnhinmoi.com.vn';
+    }
+  } catch (_) {}
+  return origin;
 }
 
 export async function GET(request: NextRequest) {
@@ -49,15 +71,16 @@ export async function GET(request: NextRequest) {
     const parsedTarget = new URL(targetUrl);
     
     let spoofReferer = parsedTarget.origin + '/';
-    if (spoofReferer.includes('dantri.com.vn')) {
+    if (spoofReferer.includes('dantri.com.vn') || spoofReferer.includes('vcmedia.vn') || spoofReferer.includes('dantricdn.com') || spoofReferer.includes('vccorp.vn')) {
       spoofReferer = 'https://dantri.com.vn/';
-    } else if (spoofReferer.includes('tuoitre.vn')) {
+    } else if (spoofReferer.includes('tuoitre.vn') || spoofReferer.includes('tuoitrecdn.net')) {
       spoofReferer = 'https://tuoitre.vn/';
     } else if (spoofReferer.includes('gocnhinmoi.com.vn') || spoofReferer.includes('gocnhinmoi.com')) {
       spoofReferer = 'https://gocnhinmoi.com.vn/';
     }
     
     reqHeaders.set('Referer', spoofReferer);
+    reqHeaders.set('Origin', spoofReferer.replace(/\/$/, ''));
     reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
     reqHeaders.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8');
     reqHeaders.set('Accept-Language', 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7');
@@ -69,6 +92,8 @@ export async function GET(request: NextRequest) {
     
     const headersToForward = [
       'content-type',
+      'authorization',
+      'x-requested-with',
     ];
     for (const h of headersToForward) {
       const val = request.headers.get(h);
@@ -119,6 +144,14 @@ export async function GET(request: NextRequest) {
     opacity: 0 !important;
     pointer-events: none !important;
   }
+  /* Completely hide "Tin của bạn" skeleton containers */
+  .dt-skeleton,
+  [class*="skeleton"],
+  [data-box*="recommend"] {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
 </style>
 <script>
 (function () {
@@ -128,20 +161,7 @@ export async function GET(request: NextRequest) {
   var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
   var ALLOWED_HOSTNAMES = ${JSON.stringify(ALLOWED_HOSTNAMES)};
 
-  // ── Fix SPA Routers (Dantri) ──
-  // SPA routers read window.location.pathname to determine the page to render.
-  // We cannot spoof window.location via Object.defineProperty because it's non-configurable.
-  // Instead, we use the History API to actually change the browser's URL path to match the target.
-  try {
-    var _parsedTarget = new URL(TARGET);
-    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
-    if (window.location.pathname !== _parsedTarget.pathname) {
-      // Must use window.location.origin to bypass the <base> tag resolution, otherwise SecurityError
-      window.history.replaceState(null, '', window.location.origin + _targetPath);
-    }
-  } catch(_e) {
-    console.error('[Proxy] Failed to rewrite history state:', _e);
-  }
+
 
   function isAllowedHost(url) {
     try {
@@ -152,9 +172,23 @@ export async function GET(request: NextRequest) {
 
   var _currentTarget = TARGET;
   function report() {
-    try { window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*'); } catch (_) {}
+    try {
+      if (!_currentTarget) return;
+      var path = new URL(_currentTarget).pathname.toLowerCase();
+      if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.json') || path.endsWith('.ico') || path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.includes('sw.js')) {
+        return;
+      }
+      window.parent.postMessage({ type: 'URL_CHANGE', url: _currentTarget }, '*');
+    } catch (_) {}
   }
   report();
+
+  // Disable ServiceWorker registration inside proxy iframe to prevent /sw.js 404 navigation errors
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+    navigator.serviceWorker.register = function() {
+      return Promise.reject(new Error('ServiceWorker disabled in proxy'));
+    };
+  }
 
   // Block window.open (ads use this for popup redirects)
   window.open = function() { return null; };
@@ -168,11 +202,12 @@ export async function GET(request: NextRequest) {
   function getAbsoluteUrl(urlStr) {
     try {
       var s = String(urlStr);
-      var idx = s.indexOf('/api/proxy?url=');
-      if (idx !== -1) {
-        var params = new URLSearchParams(s.substring(idx).split('?')[1]);
-        var original = params.get('url');
-        if (original) return original;
+      if (s.indexOf('/api/proxy') !== -1) {
+        var match = s.match(/[?&]url=([^&]+)/);
+        if (match && match[1]) {
+          var decoded = decodeURIComponent(match[1]);
+          if (decoded && decoded.startsWith('http')) return decoded;
+        }
       }
       return new URL(s, _currentTarget || TARGET).href;
     } catch(_) { return urlStr; }
@@ -204,39 +239,126 @@ export async function GET(request: NextRequest) {
     var el = e.target;
     while (el && el.tagName !== 'A') el = el.parentElement;
     if (!el) return;
+
+    // Force target to _self so links stay inside iframe
+    if (el.getAttribute('target') === '_blank') {
+      el.setAttribute('target', '_self');
+    }
+
     var href = el.getAttribute('href');
     if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+
     try {
-      if (href.indexOf('/api/proxy?') !== -1) {
-        window.location.href = new URL(href, window.location.origin).href;
+      var abs = getAbsoluteUrl(href);
+      if (!isAllowedHost(abs)) {
+        // Block navigation to external ad domains
+        e.preventDefault();
         return;
       }
-      var abs = new URL(href, _currentTarget || TARGET).href;
-      if (!isAllowedHost(abs)) return; // Block navigation to non-allowed hosts (ads, trackers)
+      e.preventDefault();
+      _currentTarget = abs;
+      report();
       window.location.href = PROXY + encodeURIComponent(abs);
     } catch (err) {}
-  }, true);
+  }, false);
 
-  // Remove ad iframes/scripts injected dynamically by ad networks
-  if (typeof MutationObserver !== 'undefined') {
-    var adPatterns = /doubleclick|googlesyndication|googleadservices|adnxs|facebook\\.net\\/signals|ads\\.|tracker|analytics/i;
-    new MutationObserver(function(mutations) {
-      mutations.forEach(function(m) {
-        m.addedNodes.forEach(function(node) {
-          if (node.nodeType !== 1) return;
-          var tag = node.tagName;
-          if (tag === 'IFRAME' || tag === 'SCRIPT') {
-            var src = node.getAttribute('src') || '';
-            if (adPatterns.test(src)) {
-              node.remove();
-            }
+  // ── Intercept fetch() so Dantri lazy-loaders & APIs go through proxy ──
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    try {
+      var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : null);
+      if (urlStr && typeof urlStr === 'string') {
+        var proxiedUrl = null;
+        if (urlStr.startsWith('/') && !urlStr.startsWith('//') && !urlStr.startsWith('/api/proxy')) {
+          proxiedUrl = PROXY + encodeURIComponent(TARGET_ORIGIN + urlStr);
+        } else if (urlStr.startsWith('http') && urlStr.indexOf('/api/proxy') === -1) {
+          if (isAllowedHost(urlStr)) proxiedUrl = PROXY + encodeURIComponent(urlStr);
+        }
+
+        if (proxiedUrl) {
+          if (typeof input === 'string') {
+            input = proxiedUrl;
+          } else if (input && typeof input === 'object') {
+            input = new Request(proxiedUrl, input);
           }
-        });
-      });
-    }).observe(document.documentElement, { childList: true, subtree: true });
+        }
+      }
+    } catch (_) {}
+    return _fetch.call(window, input, init);
+  };
+
+  // ── Intercept XMLHttpRequest.open ──
+  var _xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === 'string') {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
+        url = PROXY + encodeURIComponent(TARGET_ORIGIN + url);
+      } else if (url.startsWith('http') && url.indexOf('/api/proxy') === -1) {
+        if (isAllowedHost(url)) url = PROXY + encodeURIComponent(url);
+      }
+    }
+    var args = Array.prototype.slice.call(arguments);
+    args[1] = url;
+    return _xhrOpen.apply(this, args);
+  };
+
+  // ── Lazy-image src promotion (client-side, safe – no infinite loop) ──
+  if (typeof MutationObserver !== 'undefined') {
+    var _imgProcessed = '_proxyDone';
+    function proxyImg(el) {
+      if (el[_imgProcessed]) return;
+      var real = el.getAttribute('data-src') || el.getAttribute('data-original') || el.getAttribute('src');
+      if (real && !real.startsWith('data:') && !real.startsWith('blob:') && real.indexOf('/api/proxy') === -1) {
+        try {
+          var abs = new URL(real, _currentTarget || TARGET).href;
+          if (isAllowedHost(abs)) {
+            el[_imgProcessed] = true;
+            el.setAttribute('src', PROXY + encodeURIComponent(abs));
+          }
+        } catch(_) {}
+      }
+    }
+    new MutationObserver(function(muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === 'childList') {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var n = m.addedNodes[j];
+            if (n.nodeType !== 1) continue;
+            if (n.tagName === 'IMG') proxyImg(n);
+            var imgs = n.querySelectorAll ? n.querySelectorAll('img') : [];
+            for (var k = 0; k < imgs.length; k++) proxyImg(imgs[k]);
+          }
+        } else if (m.type === 'attributes' && m.target.tagName === 'IMG') {
+          if (m.attributeName === 'src' || m.attributeName === 'data-src' || m.attributeName === 'data-original') {
+            proxyImg(m.target);
+          }
+        }
+      }
+    }).observe(document.documentElement, {
+      childList: true, subtree: true,
+      attributes: true, attributeFilter: ['src', 'data-src', 'data-original']
+    });
+    // Process existing images once DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      var imgs = document.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) proxyImg(imgs[i]);
+    });
   }
+
+  // Lightweight periodic cleanup of ad iframes and skeleton elements without layout thrashing
+  setInterval(function() {
+    try {
+      var iframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="googlesyndication"], iframe[src*="adnxs"]');
+      for (var i = 0; i < iframes.length; i++) {
+        iframes[i].remove();
+      }
+      var skeletons = document.querySelectorAll('.dt-skeleton, [class*="skeleton"]');
+      for (var j = 0; j < skeletons.length; j++) {
+        skeletons[j].remove();
+      }
+    } catch (_) {}
+  }, 500);
 })();
 </script>`;
 
@@ -253,6 +375,26 @@ export async function GET(request: NextRequest) {
     const isHtml = contentType.toLowerCase().includes('text/html');
 
     if (!isHtml) {
+      if (contentType.toLowerCase().includes('json')) {
+        let jsonText = await res.text();
+        jsonText = jsonText.replace(/https:\/\/(cdnphoto|icdn|cdnweb)\.dantri\.com\.vn\/[^\s"',\\]+/gi, (imgUrl) => {
+          return `/api/proxy?url=${encodeURIComponent(imgUrl)}`;
+        });
+        const response = new NextResponse(jsonText, {
+          status: res.status,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': res.headers.get('cache-control') || 'no-store',
+          },
+        });
+        response.cookies.set('active_proxy_origin', normalizeProxyOrigin(targetOrigin), {
+          path: '/api/proxy',
+          maxAge: 3600,
+          sameSite: 'lax',
+        });
+        return response;
+      }
+
       const buffer = await res.arrayBuffer();
       const response = new NextResponse(buffer, {
         status: res.status,
@@ -261,8 +403,8 @@ export async function GET(request: NextRequest) {
           'Cache-Control': res.headers.get('cache-control') || 'no-store',
         },
       });
-      response.cookies.set('active_proxy_origin', targetOrigin, {
-        path: '/',
+      response.cookies.set('active_proxy_origin', normalizeProxyOrigin(targetOrigin), {
+        path: '/api/proxy',
         maxAge: 3600,
         sameSite: 'lax',
       });
@@ -275,84 +417,86 @@ export async function GET(request: NextRequest) {
     const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
     const needsImageProxy = parsedTarget.hostname.includes('dantri.com.vn');
     
-    // Double quotes
-    html = html.replace(/(\bsrc\s*=\s*)"\/([^"]*)"/g, (_m, attr, path) => {
-      const q = '"';
+    html = html.replace(/(\bsrc\s*=\s*)(['"])\/([^'"]*)\2/g, (_m, attr, q, path) => {
       const lowerPath = path.split('?')[0].toLowerCase();
       const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
       if (isImage && needsImageProxy) {
+        // Only Dantri images go through proxy to bypass hotlink protection
         return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
       }
-      return `${attr}${q}${targetOrigin}/${path}${q}`;
-    });
-    // Single quotes
-    html = html.replace(/(\bsrc\s*=\s*)'\/([^']*)'/g, (_m, attr, path) => {
-      const q = "'";
-      const lowerPath = path.split('?')[0].toLowerCase();
-      const isImage = imageExts.some(ext => lowerPath.endsWith(ext));
-      if (isImage && needsImageProxy) {
-        return `${attr}${q}/api/proxy?url=${encodeURIComponent(targetOrigin + '/' + path)}${q}`;
-      }
+      // Everything else goes direct to origin
       return `${attr}${q}${targetOrigin}/${path}${q}`;
     });
     
 
-    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri
+    const isTargetDomain = (host: string) => {
+      return ['dantri.com.vn', 'vcmedia.vn', 'dantricdn.com', 'tuoitre.vn', 'tuoitrecdn.net', 'gocnhinmoi.com', 'vccorp.vn', 'mediacdn.vn', 'dtadnetwork.com'].some(h => host.includes(h));
+    };
+
+    // 1.5 Rewrite ALL images (src, data-src, data-original) to use proxy for Dantri & others
     if (needsImageProxy) {
-      const imgReplacer = (attr: string, q: string, urlStr: string, _m: string) => {
+      // Promote data-src / data-original to src so lazy images render immediately without gray boxes
+      html = html.replace(/<img\s+[^>]*>/gi, (imgTag) => {
+        const dataSrcMatch = imgTag.match(/\b(?:data-src|data-original)\s*=\s*(['"])([^'"]+)\1/i);
+        if (dataSrcMatch && dataSrcMatch[2]) {
+          const realUrl = dataSrcMatch[2];
+          if (!realUrl.startsWith('data:') && !realUrl.startsWith('blob:')) {
+            try {
+              const absolute = new URL(realUrl, targetUrl).href;
+              const proxied = `/api/proxy?url=${encodeURIComponent(absolute)}`;
+              if (/\bsrc\s*=\s*(['"])[^'"]*\1/i.test(imgTag)) {
+                return imgTag.replace(/\bsrc\s*=\s*(['"])[^'"]*\1/i, `src="${proxied}"`);
+              } else {
+                return imgTag.replace('<img', `<img src="${proxied}"`);
+              }
+            } catch (_) {}
+          }
+        }
+        return imgTag;
+      });
+
+      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, urlStr) => {
         if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.startsWith('#')) return _m;
         if (urlStr.includes('/api/proxy?')) return _m;
 
         try {
           const absolute = new URL(urlStr, targetUrl).href;
           const u = new URL(absolute);
-          if (u.hostname.includes('dantri.com.vn')) {
+          const cleanPath = u.pathname.toLowerCase();
+          const isImg = isTargetDomain(u.hostname) || /\.(png|jpg|jpeg|gif|webp|svg|avif)$/i.test(cleanPath);
+          if (isImg) {
             return `${attr}${q}/api/proxy?url=${encodeURIComponent(absolute)}${q}`;
           }
           return `${attr}${q}${absolute}${q}`;
         } catch(e) {}
         return _m;
-      };
-
-      // Double quotes
-      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)"([^"]+)"/gi, (m, attr, urlStr) => {
-        return imgReplacer(attr, '"', urlStr, m);
-      });
-      // Single quotes
-      html = html.replace(/(\b(?:src|data-src|data-original)\s*=\s*)'([^']+)'/gi, (m, attr, urlStr) => {
-        return imgReplacer(attr, "'", urlStr, m);
       });
 
-      // Rewrite srcset and data-srcset
-      const srcsetReplacer = (attr: string, q: string, srcset: string) => {
-        const rewritten = srcset.replace(
-          /(^|,\s*)([^\s,]+)/g,
-          (_s: string, sep: string, urlStr: string) => {
-            if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
-              return _s;
-            }
-            try {
-              const absolute = new URL(urlStr, targetUrl).href;
-              const u = new URL(absolute);
-              if (u.hostname.includes('dantri.com.vn')) {
-                return `${sep}/api/proxy?url=${encodeURIComponent(absolute)}`;
-              }
-              return `${sep}${absolute}`;
-            } catch(e) {
-              return _s;
-            }
+      // Rewrite srcset and data-srcset cleanly preserving descriptors like 1x, 2x, 480w
+      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)(['"])([^'"]+)\2/gi, (_m, attr, q, srcset) => {
+        const rewritten = srcset.split(',').map((entry: string) => {
+          const trimmed = entry.trim();
+          if (!trimmed) return entry;
+          const parts = trimmed.split(/\s+/);
+          const urlStr = parts[0];
+          const descriptor = parts.slice(1).join(' ');
+
+          if (urlStr.startsWith('data:') || urlStr.startsWith('blob:') || urlStr.includes('/api/proxy?')) {
+            return entry;
           }
-        );
+          try {
+            const absolute = new URL(urlStr, targetUrl).href;
+            const u = new URL(absolute);
+            if (isTargetDomain(u.hostname)) {
+              const proxied = `/api/proxy?url=${encodeURIComponent(absolute)}`;
+              return descriptor ? `${proxied} ${descriptor}` : proxied;
+            }
+            return descriptor ? `${absolute} ${descriptor}` : absolute;
+          } catch(e) {
+            return entry;
+          }
+        }).join(', ');
         return `${attr}${q}${rewritten}${q}`;
-      };
-
-      // Double quotes
-      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)"([^"]+)"/gi, (_m, attr, srcset) => {
-        return srcsetReplacer(attr, '"', srcset);
-      });
-      // Single quotes
-      html = html.replace(/(\b(?:srcset|data-srcset)\s*=\s*)'([^']+)'/gi, (_m, attr, srcset) => {
-        return srcsetReplacer(attr, "'", srcset);
       });
     }
 
@@ -360,81 +504,7 @@ export async function GET(request: NextRequest) {
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
 
-    // ── 3. Inject navigation interceptor into <head> BEFORE any JS ───────────
-
-    const navigationScript = `
-<script>
-(function() {
-  var TARGET = ${JSON.stringify(targetUrl)};
-  var ALLOWED = ${JSON.stringify(ALLOWED_HOSTNAMES)};
-  
-  // ── 1. Fix SPA Routers (Dantri) ──
-  // SPA routers read window.location.pathname to determine the page to render.
-  try {
-    var _parsedTarget = new URL(TARGET);
-    var _targetPath = _parsedTarget.pathname + _parsedTarget.search + _parsedTarget.hash;
-    if (window.location.pathname !== _parsedTarget.pathname) {
-      window.history.replaceState(null, '', window.location.origin + _targetPath);
-    }
-  } catch(_e) {}
-
-  // ── 2. Intercept Absolute Clicks ──
-  document.addEventListener('click', function(e) {
-    var a = e.target.closest('a');
-    if (a && a.href) {
-      try {
-        var u = new URL(a.href);
-        var isAllowed = ALLOWED.some(function(h) { return u.hostname === h || u.hostname.endsWith('.' + h); });
-        // If it's an allowed absolute URL, route it through proxy
-        if (isAllowed && u.origin !== window.location.origin) {
-          e.preventDefault();
-          window.location.href = '/api/proxy?url=' + encodeURIComponent(a.href);
-        }
-      } catch(ex) {}
-    }
-  }, true);
-
-  // ── 3. Intercept Fetch for Next.js Data ──
-  // Intercept relative fetches (like /_next/data/...) to ensure they go through proxy middleware
-  // We rewrite them to the absolute proxy URL directly to bypass middleware's ignore rules
-  var _fetch = window.fetch;
-  window.fetch = function(input, init) {
-    var url = typeof input === 'string' ? input : (input && input.url ? input.url : null);
-    if (url && typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-      try {
-        var _parsedTarget2 = new URL(TARGET);
-        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget2.origin + url);
-        if (typeof input === 'string') {
-          input = url;
-        } else {
-          input = new Request(url, init);
-        }
-      } catch(e) {}
-    }
-    return _fetch.call(window, input, init);
-  };
-
-  // ── 4. Intercept XMLHttpRequest ──
-  var _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/proxy')) {
-      try {
-        var _parsedTarget3 = new URL(TARGET);
-        url = '/api/proxy?url=' + encodeURIComponent(_parsedTarget3.origin + url);
-      } catch(e) {}
-    }
-    var args = Array.prototype.slice.call(arguments);
-    args[1] = url;
-    return _open.apply(this, args);
-  };
-})();
-</script>
-`;
-
-    // Do NOT inject <base href>. It breaks client-side routing and lazy-loading
-    // because JS resolves paths to the real origin instead of the proxy.
-    // The active_proxy_origin cookie and proxy.ts middleware already handle relative requests.
-    const fullHeaderInjection = interceptorScript + navigationScript;
+    const fullHeaderInjection = interceptorScript;
 
     // Only inject interceptors into full HTML pages, NOT fragments (e.g. AJAX responses)
     // Injecting into fragments causes the script to run when the fragment is inserted into the DOM,
@@ -461,13 +531,81 @@ export async function GET(request: NextRequest) {
       },
     });
     response.cookies.set('active_proxy_origin', targetOrigin, {
-      path: '/',
+      path: '/api/proxy',
       maxAge: 3600,
       sameSite: 'lax',
+    });
+    // Clear legacy root cookie if present
+    response.cookies.set('active_proxy_origin', '', {
+      path: '/',
+      maxAge: 0,
     });
     return response;
   } catch (error: any) {
     console.error(`[Proxy Error] Failed to proxy URL ${targetUrl}:`, error);
     return new NextResponse(`Error proxying page: ${error.message}`, { status: 500 });
   }
+}
+
+export async function POST(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const targetUrl = searchParams.get('url');
+
+  if (!targetUrl) {
+    return new NextResponse('Missing url parameter', { status: 400 });
+  }
+
+  if (!isAllowedUrl(targetUrl)) {
+    return new NextResponse('URL not allowed', { status: 403 });
+  }
+
+  try {
+    const bodyText = await request.text();
+    const parsedTarget = new URL(targetUrl);
+    
+    let spoofReferer = parsedTarget.origin + '/';
+    if (spoofReferer.includes('dantri.com.vn') || spoofReferer.includes('vcmedia.vn') || spoofReferer.includes('dantricdn.com') || spoofReferer.includes('vccorp.vn')) {
+      spoofReferer = 'https://dantri.com.vn/';
+    } else if (spoofReferer.includes('tuoitre.vn') || spoofReferer.includes('tuoitrecdn.net')) {
+      spoofReferer = 'https://tuoitre.vn/';
+    }
+    
+    const reqHeaders = new Headers();
+    reqHeaders.set('Referer', spoofReferer);
+    reqHeaders.set('Origin', spoofReferer.replace(/\/$/, ''));
+    reqHeaders.set('User-Agent', request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
+    const headersToForward = ['content-type', 'authorization', 'x-requested-with'];
+    for (const h of headersToForward) {
+      const val = request.headers.get(h);
+      if (val) reqHeaders.set(h, val);
+    }
+
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: reqHeaders,
+      body: bodyText,
+    });
+
+    const resBody = await res.arrayBuffer();
+    return new NextResponse(resBody, {
+      status: res.status,
+      headers: {
+        'Content-Type': res.headers.get('content-type') || 'application/json',
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (err: any) {
+    return new NextResponse('Proxy POST Error: ' + err.message, { status: 500 });
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+    },
+  });
 }

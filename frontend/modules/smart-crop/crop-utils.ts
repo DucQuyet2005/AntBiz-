@@ -5,6 +5,7 @@
  * rule of thirds) and intelligently crop them into 1:1 square (1080x1080) focusing on the main subject/face.
  */
 
+// @ts-ignore
 import smartcrop from 'smartcrop';
 
 export async function loadImage(src: string): Promise<HTMLImageElement> {
