@@ -66,7 +66,11 @@ function normalizeProxyOrigin(origin: string): string {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Xử lý định tuyến và viết lại yêu cầu cho Proxy Iframe ────────────────
+  // Never proxy AntBiz API endpoints (like /api/scrape, /api/captions) to external sites
+  if (pathname.startsWith('/api/') && pathname !== '/api/proxy') {
+    return NextResponse.next();
+  }
+
   // Chặn các request quảng cáo/tracker nội bộ của báo để không gây rác log 400
   if (pathname.includes('native-content') || pathname.includes('googlesyndication') || pathname.includes('doubleclick')) {
     return new NextResponse(null, { status: 204 });
