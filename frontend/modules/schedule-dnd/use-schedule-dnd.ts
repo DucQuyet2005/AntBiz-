@@ -113,7 +113,7 @@ export function useScheduleDragDrop(
       const payload: DragPayload = JSON.parse(dataStr);
 
       // Support both draft and scheduled post drags
-      if (payload.type === 'draft' || payload.type === 'scheduled' || payload.id) {
+      if (payload.type === 'draft' || payload.type === 'scheduled' || payload.postId) {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const y = e.clientY - rect.top;
         const rawMinute = (y / rect.height) * 60;

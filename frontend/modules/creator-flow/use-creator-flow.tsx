@@ -521,8 +521,13 @@ export function CreatorFlowProvider({
       k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
     );
     const keywordHashtags = validKeywords
-      .map(k => '#' + (k.startsWith('#') ? k.slice(1) : k).replace(/\s+/g, ''))
-      .filter(h => h.toLowerCase() !== '#manual');
+      .map(k => {
+        let tag = k.startsWith('#') ? k.slice(1) : k;
+        tag = tag.replace(/&/g, 'And');
+        tag = tag.replace(/[^\p{L}\p{N}_]/gu, '');
+        return '#' + tag;
+      })
+      .filter(h => h.toLowerCase() !== '#manual' && h !== '#');
     const inlineHashtags = (draft.content.match(/#[^\s#]+/g) || []);
     const uniqueHashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
     const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : uniqueHashtags;

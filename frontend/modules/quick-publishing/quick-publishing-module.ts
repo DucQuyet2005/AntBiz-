@@ -81,7 +81,7 @@ export class QuickPublishingModule {
         article_id: input.articleId,
         platform: input.platform === 'threads' ? 'thread' : input.platform,
         ai_content: input.originalContent || input.currentContent,
-        edited_content: input.currentContent !== input.originalContent ? input.compiledContent : null,
+        edited_content: input.compiledContent,
         ...(input.promptId ? { prompt_id: input.promptId } : {}),
       });
     }

@@ -213,8 +213,13 @@ export default function Step4Editor() {
 
   const authorName = state.articleContext?.author || 'Ngọc Linh';
   const keywordHashtags = validKeywords
-    .map(k => '#' + (k.startsWith('#') ? k.slice(1) : k).replace(/\s+/g, ''))
-    .filter(h => h.toLowerCase() !== '#manual');
+    .map(k => {
+      let tag = k.startsWith('#') ? k.slice(1) : k;
+      tag = tag.replace(/&/g, 'And');
+      tag = tag.replace(/[^\p{L}\p{N}_]/gu, '');
+      return '#' + tag;
+    })
+    .filter(h => h.toLowerCase() !== '#manual' && h !== '#');
 
   // Unique merged hashtags
   const hashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
