@@ -141,9 +141,9 @@ export function useScheduleDragDrop(
   const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
 
   const isHourInDynamicList = useCallback((hour: number, dayOfWeek?: number) => {
-    // 1. Kiểm tra xem ô có khớp với Giờ Vàng động từ dữ liệu phân tích DB không
+    // Nếu có dữ liệu Giờ Vàng Động từ DB analytics, CHỈ dùng Giờ Vàng Động 100%
     if (Array.isArray(dynamicGoldenHours) && dynamicGoldenHours.length > 0) {
-      const matchesDynamic = dynamicGoldenHours.some(gh => {
+      return dynamicGoldenHours.some(gh => {
         if (!gh) return false;
         const matchesHour = gh.hour === hour;
         if (dayOfWeek !== undefined && gh.dayOfWeek !== undefined) {
@@ -151,10 +151,9 @@ export function useScheduleDragDrop(
         }
         return matchesHour;
       });
-      if (matchesDynamic) return true;
     }
 
-    // 2. Kết hợp với dải Giờ Vàng mặc định để luôn hiển thị đầy đủ các khung giờ vàng gợi ý trên tuần
+    // Chỉ khi DB chưa có dữ liệu bài đăng nào mới fallback sang giờ mặc định
     return DEFAULT_GOLDEN_HOURS.includes(hour);
   }, [dynamicGoldenHours]);
 
