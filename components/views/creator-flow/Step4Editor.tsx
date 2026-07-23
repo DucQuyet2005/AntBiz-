@@ -409,8 +409,8 @@ export default function Step4Editor() {
               type="button"
               onClick={() => setIgImageIndex(idx)}
               className={`rounded-full transition-all duration-200 border-0 p-0 cursor-pointer ${idx === safeIndex
-                  ? 'w-2 h-2 bg-[#1877F2] scale-110'
-                  : 'w-1.5 h-1.5 bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400'
+                ? 'w-2 h-2 bg-[#1877F2] scale-110'
+                : 'w-1.5 h-1.5 bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400'
                 }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
@@ -521,9 +521,14 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const prompt = `Viết lại 1 tiêu đề thật hấp dẫn, giật gân và thu hút độc giả dựa trên bài viết sau. Chỉ trả về duy nhất 1 câu tiêu đề ngắn gọn:\nTitle cũ: ${currentTitle}\nNội dung: ${displayedContent.slice(0, 300)}`;
+      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
+      const prompt = `Yêu cầu: Viết lại 1 TIÊU ĐỀ bài viết thật hấp dẫn, giật gân, thu hút độc giả.\nQUY TẮC BẮT BUỘC: CHỈ trả về đúng 1 câu tiêu đề ngắn gọn (dưới 50 từ), KHÔNG chào hỏi, KHÔNG giải thích, KHÔNG thêm bớt ký tự dẫn dắt.\nTitle hiện tại: ${currentTitle}\nNội dung bài viết: ${contentContext}`;
       const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
-      const newTitle = (res.data?.text || '').replace(/^["'«»]|["'«»]$/g, '').trim();
+      let rawText = (res.data?.text || '').trim();
+      // Remove leading markdown headers or quotes
+      rawText = rawText.replace(/^(#+\s*|Tiêu đề:\s*|Title:\s*|["'«»])/, '').replace(/["'«»]$/, '').trim();
+      // Extract the first non-empty line in case AI returned multiple lines
+      const newTitle = rawText.split('\n').map(l => l.trim()).find(l => l.length > 0) || rawText;
 
       if (newTitle) {
         setEditableTitle(newTitle);
@@ -539,6 +544,13 @@ export default function Step4Editor() {
       }
     } catch (err) {
       console.error('[AI Title Error]', err);
+      const errMsg: ChatMessage = {
+        id: `ai_err_${Date.now()}`,
+        sender: 'ai',
+        text: '❌ Rất tiếc, không thể tạo tiêu đề mới lúc này. Vui lòng thử lại sau!',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: errMsg });
     } finally {
       dispatch({ type: 'SET_CHAT_SENDING', payload: false });
     }
@@ -555,7 +567,8 @@ export default function Step4Editor() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. Chỉ trả về danh sách các hashtag cách nhau bởi dấu cách (ví dụ: #AntBiz #Marketing #AI):\nNội dung: ${displayedContent.slice(0, 300)}`;
+      const contentContext = displayedContent.length > 500 ? displayedContent.slice(0, 500) : displayedContent;
+      const prompt = `Tạo 5-8 hashtag tiếng Việt và tiếng Anh phổ biến, viral phù hợp với bài viết sau. QUY TẮC BẮT BUỘC: CHỈ trả về danh sách các hashtag cách nhau bởi dấu cách, không giải thích hay chào hỏi (ví dụ: #AntBiz #Marketing #AI):\nNội dung bài viết: ${contentContext}`;
       const res = await postService.sendChatMessage(state.articleId || 'draft', prompt, []);
       const reply = res.data?.text || '';
       const parsedTags = (reply.match(/#[^\s#]+/g) || []).slice(0, 8);
@@ -570,9 +583,24 @@ export default function Step4Editor() {
           modelUsed: 'Gemini 2.5 Flash',
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+      } else {
+        const aiMsg: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          sender: 'ai',
+          text: `Không tìm thấy hashtag mới từ phản hồi AI. Vui lòng thử lại!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
       }
     } catch (err) {
       console.error('[AI Hashtag Error]', err);
+      const errMsg: ChatMessage = {
+        id: `ai_err_${Date.now()}`,
+        sender: 'ai',
+        text: '❌ Rất tiếc, không thể tạo hashtag mới lúc này. Vui lòng thử lại sau!',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', payload: errMsg });
     } finally {
       dispatch({ type: 'SET_CHAT_SENDING', payload: false });
     }
@@ -1006,8 +1034,8 @@ export default function Step4Editor() {
                   }
                 }}
                 className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-text-muted hover:text-text'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-muted hover:text-text'
                   }`}
               >
                 <span className="flex-shrink-0">{getPlatformIcon(platform)}</span>
@@ -1613,8 +1641,8 @@ export default function Step4Editor() {
                   )}
                   <div className="flex flex-col min-w-0 w-full">
                     <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${isAI
-                        ? 'bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-tl-none border border-gray-100 dark:border-zinc-800/55 whitespace-pre-wrap'
-                        : 'bg-primary text-white rounded-tr-none whitespace-pre-wrap flex flex-col gap-1.5 w-full'
+                      ? 'bg-[#F4F5F9] dark:bg-zinc-800 text-text rounded-tl-none border border-gray-100 dark:border-zinc-800/55 whitespace-pre-wrap'
+                      : 'bg-primary text-white rounded-tr-none whitespace-pre-wrap flex flex-col gap-1.5 w-full'
                       }`}>
                       {isAI ? (
                         msg.text
@@ -1833,8 +1861,8 @@ export default function Step4Editor() {
                   }
                 }}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 duration-100 ${state.highlightSelections.length > 0 && !chatInput.trim()
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
-                    : 'bg-primary hover:bg-primary-hover text-white disabled:opacity-40 shadow-xs cursor-pointer'
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
+                  : 'bg-primary hover:bg-primary-hover text-white disabled:opacity-40 shadow-xs cursor-pointer'
                   }`}
                 title={state.highlightSelections.length > 0 && !chatInput.trim() ? "Sửa nhanh" : "Gửi"}
               >
@@ -1920,8 +1948,8 @@ export default function Step4Editor() {
                           regeneratePostContent(newId);
                         }}
                         className={`flex items-center justify-between p-4 transition-all cursor-pointer ${isSelected
-                            ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
-                            : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
+                          ? 'bg-primary/5 dark:bg-primary/5 hover:bg-primary/8'
+                          : 'bg-white dark:bg-zinc-900/40 hover:bg-gray-55 dark:hover:bg-zinc-850/50'
                           }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
@@ -1950,8 +1978,8 @@ export default function Step4Editor() {
                           </div>
 
                           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-gray-300 dark:border-zinc-700 bg-transparent'
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-300 dark:border-zinc-700 bg-transparent'
                             }`}>
                             {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
