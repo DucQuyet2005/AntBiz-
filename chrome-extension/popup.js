@@ -909,8 +909,8 @@ Yêu cầu định dạng:
 
     chrome.runtime.sendMessage({ action: 'api_get', endpoint: `/api/reports/golden-hours?platform=${platform}`, host: AntBizUrl }, (response) => {
       let hours = [];
-      if (!chrome.runtime.lastError && response && response.data) {
-        hours = response.data.map(item => item.hour);
+      if (!chrome.runtime.lastError && response && response.topSlots) {
+        hours = response.topSlots.map(item => item.hour);
       } else {
         if (platform === 'facebook') {
           hours = [7, 9, 11, 15, 20];
