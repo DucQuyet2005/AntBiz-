@@ -140,27 +140,34 @@ export function useScheduleDragDrop(
 
   const DEFAULT_GOLDEN_HOURS = [9, 11, 14, 19, 21];
 
-  const isHourInDynamicList = useCallback((hour: number) => {
+  const isHourInDynamicList = useCallback((hour: number, dayOfWeek?: number) => {
     if (!Array.isArray(dynamicGoldenHours) || dynamicGoldenHours.length === 0) {
       return DEFAULT_GOLDEN_HOURS.includes(hour);
     }
-    return dynamicGoldenHours.some(gh => gh && gh.hour === hour);
+    return dynamicGoldenHours.some(gh => {
+      if (!gh) return false;
+      const matchesHour = gh.hour === hour;
+      if (dayOfWeek !== undefined && gh.dayOfWeek !== undefined) {
+        return matchesHour && gh.dayOfWeek === dayOfWeek;
+      }
+      return matchesHour;
+    });
   }, [dynamicGoldenHours]);
 
   /**
    * Kiểm tra xem ô có phải giờ vàng của một platform cụ thể không (dùng dynamic list)
    */
-  const isCellGoldenHourForPlatform = useCallback((platform: string, hour: number): boolean => {
-    return isHourInDynamicList(hour);
+  const isCellGoldenHourForPlatform = useCallback((platform: string, hour: number, dayOfWeek?: number): boolean => {
+    return isHourInDynamicList(hour, dayOfWeek);
   }, [isHourInDynamicList]);
 
   /**
    * Giờ vàng mặc định (hiển thị luôn, không cần kéo)
    * Trả về true nếu ô này là giờ vàng cho platform được truyền vào
    */
-  const isDefaultGoldenHour = useCallback((platform: string | null, hour: number): boolean => {
+  const isDefaultGoldenHour = useCallback((platform: string | null, hour: number, dayOfWeek?: number): boolean => {
     if (!platform) return false;
-    return isHourInDynamicList(hour);
+    return isHourInDynamicList(hour, dayOfWeek);
   }, [isHourInDynamicList]);
 
   /**

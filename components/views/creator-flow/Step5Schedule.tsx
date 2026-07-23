@@ -265,7 +265,7 @@ export function WeeklyTimeline({
 }: {
   activeWeekTab: 'w1' | 'w2' | 'w3';
   onWeekTabChange: (w: 'w1' | 'w2' | 'w3') => void;
-  days: Array<{ label: string; date: string; index: number; isToday: boolean; isPastDay: boolean; fullDateStr: string }>;
+  days: Array<{ label: string; date: string; index: number; isToday: boolean; isPastDay: boolean; dayOfWeek?: number; fullDateStr: string }>;
   hours: string[];
   currentPostDayIndex: number | null;
   currentPostHourVal: number | null;
@@ -384,7 +384,7 @@ export function WeeklyTimeline({
                       const isHighlighted = dayIdx === currentPostDayIndex;
 
                       const isPast = targetDay?.isPastDay || (targetDay?.isToday && hourVal < now.getHours());
-                      const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal);
+                      const isDefaultGolden = dnd.isDefaultGoldenHour(currentPlatform, hourVal, targetDay?.dayOfWeek);
                       const isDragGolden = dnd.shouldHighlightGoldenOnDrag(dayIdx, hourVal);
                       const showGolden = (isDefaultGolden || isDragGolden) && !isPast;
                       const goldenStyle = showGolden ? dnd.getGoldenHourStyle(currentPlatform) : null;
@@ -562,6 +562,7 @@ export default function Step5Schedule() {
       index: idx,
       isToday,
       isPastDay,
+      dayOfWeek: d.getDay(),
       fullDateStr: d.toISOString().split('T')[0]
     };
   });
