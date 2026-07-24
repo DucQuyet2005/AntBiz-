@@ -7765,3 +7765,3748 @@
   }
 }
 
+[2026-07-24T06:29:49.749Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:29:49.832Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked",
+  "method": "object"
+}
+
+[2026-07-24T06:29:49.859Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:29:50.390Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:29:52.212Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:29:52.313Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked",
+  "method": "object"
+}
+
+[2026-07-24T06:29:52.347Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:29:52.961Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:30:07.419Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:30:07.459Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:30:23.922Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:30:23.967Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.002Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:30:24.043Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.095Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.156Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.184Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.215Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.326Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.394Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:30:24.451Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:30:24.478Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:30:24.844Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:30:24.887Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:30:25.203Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:30:25.257Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:34:32.395Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:32.429Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:34:32.501Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:33.583Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:33.801Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:34.037Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:34.691Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:35.217Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:35.501Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:37.871Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:37.884Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:34:38.061Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.073Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.085Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.098Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.141Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.152Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:34:38.241Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.253Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.266Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.306Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.318Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.332Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.344Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.357Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.404Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.415Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.427Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.439Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.453Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.494Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.505Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.517Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.532Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.546Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.580Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.593Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.604Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.615Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.629Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.659Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.670Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.682Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:34:38.725Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:34:38.924Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:34:38.945Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:34:39.244Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:34:39.259Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:35:22.152Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:35:22.199Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:35:22.221Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:35:22.250Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T06:35:22.282Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:35:22.309Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:35:22.963Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:35:22.989Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T06:48:01.963Z] {
+  "msg": "popup checkAuthAndInitialize started",
+  "AntBizUrl": "http://localhost:3000"
+}
+
+[2026-07-24T06:48:01.996Z] {
+  "msg": "popup get_session response received",
+  "hasError": false,
+  "hasResponse": true,
+  "hasSession": true,
+  "hasToken": true
+}
+
+[2026-07-24T06:48:02.779Z] {
+  "msg": "background.js getPromptConfigsViaServer result",
+  "tokenSlice": "eyJhbGciOiJFUzI1NiIs...",
+  "host": "http://localhost:3000",
+  "result": {
+    "data": [
+      {
+        "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác",
+        "platform": "all",
+        "params": {},
+        "is_default": true,
+        "created_at": "2026-07-20T02:36:28.40699+00:00",
+        "updated_at": "2026-07-23T08:17:46.575+00:00",
+        "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tuyển dụng",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-20T02:11:35.037785+00:00",
+        "updated_at": "2026-07-21T04:09:57.521+00:00",
+        "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện & Kêu gọi var messi",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T04:15:40.666257+00:00",
+        "updated_at": "2026-07-21T04:09:56.094+00:00",
+        "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Sự kiện",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:33:28.270992+00:00",
+        "updated_at": "2026-07-17T03:33:28.270992+00:00",
+        "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Giáo dục",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:30:18.187096+00:00",
+        "updated_at": "2026-07-17T03:30:18.187096+00:00",
+        "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+        "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+        "name": "Văn phong Tương tác & Thương hiệu",
+        "platform": "all",
+        "params": {},
+        "is_default": false,
+        "created_at": "2026-07-17T03:08:26.160416+00:00",
+        "updated_at": "2026-07-17T03:08:36.227+00:00",
+        "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+        "users": {
+          "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "email": "ducquyet163@gmail.com"
+        }
+      },
+      {
+        "id": "sys-1-professional",
+        "user_id": "system",
+        "name": "Chuyên gia Chuyên nghiệp",
+        "platform": "all",
+        "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+        "params": {
+          "objectives": [
+            "Giáo dục",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Chuyên gia"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Chuyên nghiệp"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Chúng tôi - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-2-friendly",
+        "user_id": "system",
+        "name": "Người bạn Gần gũi",
+        "platform": "all",
+        "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+        "params": {
+          "objectives": [
+            "Tương tác",
+            "Thương hiệu"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người bạn"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Thân thiện"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Mình - Bạn"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-3-dynamic",
+        "user_id": "system",
+        "name": "Năng động & Truyền cảm hứng",
+        "platform": "all",
+        "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+        "params": {
+          "objectives": [
+            "Bán hàng",
+            "Sự kiện"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người truyền cảm hứng"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Năng động"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Admin - Mọi người"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      },
+      {
+        "id": "sys-4-storyteller",
+        "user_id": "system",
+        "name": "Kể chuyện Sáng tạo",
+        "platform": "all",
+        "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+        "params": {
+          "objectives": [
+            "Thương hiệu",
+            "Tương tác"
+          ],
+          "questionnaireAnswers": {
+            "steps": [
+              {
+                "key": "persona",
+                "question": "Vai trò",
+                "answer": "Người kể chuyện"
+              },
+              {
+                "key": "tone",
+                "question": "Tông giọng",
+                "answer": "Cảm xúc, bay bổng"
+              },
+              {
+                "key": "pronoun",
+                "question": "Xưng hô",
+                "answer": "Linh hoạt"
+              }
+            ]
+          }
+        },
+        "is_default": false,
+        "is_system": true
+      }
+    ]
+  }
+}
+
+[2026-07-24T06:48:02.815Z] {
+  "msg": "loadPromptConfigs response",
+  "success": true,
+  "hasData": true,
+  "dataType": "object",
+  "rawResponse": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "72ecb034-0c99-4c84-a9cb-b57f2c24935b",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác",
+          "platform": "all",
+          "params": {},
+          "is_default": true,
+          "created_at": "2026-07-20T02:36:28.40699+00:00",
+          "updated_at": "2026-07-23T08:17:46.575+00:00",
+          "rules": "Mục tiêu: Tương tác\n- Vai trò thương hiệu: Người bạn thân thiết, lắng nghe và chia sẻ\n- Sắc thái cảm xúc: Hóm hỉnh, thông minh và có chút tinh nghịch\n- Cách xưng hô: Thương hiệu - Khách hàng (Chuyên nghiệp, lịch sự)\n- Thúc đẩy hành động: Kêu gọi hành động trực tiếp (Like, Share, Comment)\n- Quy tắc sử dụng Emoji: Sử dụng linh hoạt, biểu cảm để tăng sự sinh động\n\nQuy định bổ sung:\nTối đa 20 ký tự",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "455128eb-6f4c-46ef-98c2-20689385b9fd",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tuyển dụng",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-20T02:11:35.037785+00:00",
+          "updated_at": "2026-07-21T04:09:57.521+00:00",
+          "rules": "Mục tiêu: Tuyển dụng\n- Vai trò thương hiệu: Nhà tuyển dụng chuyên nghiệp (Recruiter)\n- Sắc thái cảm xúc: Chuyên nghiệp, tin cậy và chuẩn mực\n- Ngôn từ ưu tiên: Ngôn ngữ truyền cảm hứng, giàu hình ảnh\n- Thúc đẩy hành động (CTA): Rõ ràng, hướng dẫn (Ví dụ: 'Gửi CV của bạn tại đây')\n- Quy tắc Emoji: Sử dụng linh hoạt, tạo không khí vui vẻ và trẻ trung",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "3ad0351d-9177-4eb2-b541-4d4333f43dd9",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện & Kêu gọi var messi",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T04:15:40.666257+00:00",
+          "updated_at": "2026-07-21T04:09:56.094+00:00",
+          "rules": "Mục tiêu: Sự kiện, Kêu gọi var messi\n- Vai trò thương hiệu: Người dẫn dắt sự kiện đầy năng lượng, Tổng chỉ huy quân đội var messi\n- Sắc thái cảm xúc: Hào hứng, bùng nổ và gấp rút, Sâu sắc, truyền cảm hứng và đầy tự hào\n- Ngôn từ ưu tiên: Thích va chạm, Từ ngữ mạnh, thúc đẩy hành động ngay lập tức\n- Thúc đẩy hành động (CTA): Trực diện, mạnh mẽ (Ví dụ: Tham gia ngay!), Không tham gia = gay\n- Quy tắc Emoji: Thêm siuuu, Sử dụng dày đặc để tạo không khí sôi động",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "df64f035-408d-4ae7-9a0a-e0c5079266dc",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Sự kiện",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:33:28.270992+00:00",
+          "updated_at": "2026-07-17T03:33:28.270992+00:00",
+          "rules": "Mục tiêu: Sự kiện\n- Vai trò thương hiệu: Người dẫn dắt chuyên nghiệp (Chuyên gia)\n- Sắc thái cảm xúc: Sáng tạo, độc đáo và khác biệt\n- Ngôn từ ưu tiên: Từ ngữ bình dân, dễ hiểu, thân thiện (ví dụ: cùng nhau, kết nối, vui vẻ)\n- Thúc đẩy hành động (CTA): Mời gọi nhẹ nhàng (ví dụ: Hãy cùng chúng tôi tạo nên kỷ niệm)\n- Quy tắc Emoji: Sử dụng tiết chế, chỉ dùng các biểu tượng chuyên nghiệp",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "2ef289b0-af8a-44f2-9e4e-f49414729942",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Giáo dục",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:30:18.187096+00:00",
+          "updated_at": "2026-07-17T03:30:18.187096+00:00",
+          "rules": "Mục tiêu: Giáo dục\n- Vai trò thương hiệu: Nữ chính độc ác gặp tổng đài của đời mình\n- Sắc thái cảm xúc: Sự thống khổ và đau đớn khi phải chịu đựng Quyết\n- Ngôn từ ưu tiên: Phế nhân app lỏ\n- Cấu trúc nội dung: Gợi mở, đặt câu hỏi để tư duy\n- Thúc đẩy hành động: Khẳng định giá trị kiến thức",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "91baebf6-57fe-41c0-be08-91e2231a185d",
+          "user_id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+          "name": "Văn phong Tương tác & Thương hiệu",
+          "platform": "all",
+          "params": {},
+          "is_default": false,
+          "created_at": "2026-07-17T03:08:26.160416+00:00",
+          "updated_at": "2026-07-17T03:08:36.227+00:00",
+          "rules": "Mục tiêu: \n\n\nQuy định bổ sung:\nMục tiêu: Tương tác, Thương hiệu\n- Vai trò thương hiệu: Chuyên gia tổ chức chuyên nghiệp, Người truyền cảm hứng (Mentor)\n- Sắc thái cảm xúc: Chuyên nghiệp, điềm tĩnh và đáng tin cậy, Chân thành, ấm áp và gần gũi\n- Ngôn từ ưu tiên: Sử dụng từ ngữ giàu cảm xúc và khơi gợi sự kết nối\n- Thúc đẩy hành động (CTA): Khuyến khích tham gia cộng đồng (Ví dụ: Hãy cùng chúng tôi thảo luận tại...)\n- Quy tắc Emoji: Sử dụng thường xuyên để tăng tính sinh động và tương tác",
+          "users": {
+            "id": "f85670a7-c6eb-4c1c-b159-7717996691a3",
+            "email": "ducquyet163@gmail.com"
+          }
+        },
+        {
+          "id": "sys-1-professional",
+          "user_id": "system",
+          "name": "Chuyên gia Chuyên nghiệp",
+          "platform": "all",
+          "rules": "Vai trò: Chuyên gia hàng đầu, cố vấn đáng tin cậy.\nTông giọng: Chuyên nghiệp, khách quan, rõ ràng, mang tính giáo dục và định hướng.\nXưng hô: Chúng tôi - Bạn / Quý khách.\nCấu trúc: Trình bày mạch lạc, có luận điểm rõ ràng, sử dụng số liệu và thuật ngữ chuyên ngành một cách chuẩn xác.",
+          "params": {
+            "objectives": [
+              "Giáo dục",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Chuyên gia"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Chuyên nghiệp"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Chúng tôi - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-2-friendly",
+          "user_id": "system",
+          "name": "Người bạn Gần gũi",
+          "platform": "all",
+          "rules": "Vai trò: Một người bạn đồng hành thân thiết, thấu hiểu và chia sẻ.\nTông giọng: Gần gũi, ấm áp, thân thiện, mang tính tâm tình và vui vẻ (sử dụng emoji tự nhiên).\nXưng hô: Mình - Bạn / Cậu.\nCấu trúc: Viết như một cuộc trò chuyện, sử dụng câu hỏi tu từ, tạo sự đồng cảm và khuyến khích tương tác.",
+          "params": {
+            "objectives": [
+              "Tương tác",
+              "Thương hiệu"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người bạn"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Thân thiện"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Mình - Bạn"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-3-dynamic",
+          "user_id": "system",
+          "name": "Năng động & Truyền cảm hứng",
+          "platform": "all",
+          "rules": "Vai trò: Người truyền lửa, hoạt náo viên đầy năng lượng.\nTông giọng: Hào hứng, mạnh mẽ, truyền cảm hứng, mang tính hành động cao và thúc đẩy.\nXưng hô: Admin - Các bạn / Mọi người.\nCấu trúc: Câu văn ngắn gọn, nhịp điệu nhanh, sử dụng nhiều động từ mạnh, luôn có Call-to-Action (kêu gọi hành động) mạnh mẽ ở cuối.",
+          "params": {
+            "objectives": [
+              "Bán hàng",
+              "Sự kiện"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người truyền cảm hứng"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Năng động"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Admin - Mọi người"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        },
+        {
+          "id": "sys-4-storyteller",
+          "user_id": "system",
+          "name": "Kể chuyện Sáng tạo",
+          "platform": "all",
+          "rules": "Vai trò: Người kể chuyện cuốn hút, nghệ sĩ sáng tạo.\nTông giọng: Bay bổng, giàu cảm xúc, gợi hình gợi cảm, lôi cuốn sự tò mò.\nXưng hô: Linh hoạt theo câu chuyện (Tôi - Bạn hoặc ẩn danh).\nCấu trúc: Bắt đầu bằng một \"hook\" (điểm nhấn) hấp dẫn, dẫn dắt qua các tình tiết hoặc nỗi đau, và kết thúc bằng một thông điệp sâu sắc hoặc gợi mở.",
+          "params": {
+            "objectives": [
+              "Thương hiệu",
+              "Tương tác"
+            ],
+            "questionnaireAnswers": {
+              "steps": [
+                {
+                  "key": "persona",
+                  "question": "Vai trò",
+                  "answer": "Người kể chuyện"
+                },
+                {
+                  "key": "tone",
+                  "question": "Tông giọng",
+                  "answer": "Cảm xúc, bay bổng"
+                },
+                {
+                  "key": "pronoun",
+                  "question": "Xưng hô",
+                  "answer": "Linh hoạt"
+                }
+              ]
+            }
+          },
+          "is_default": false,
+          "is_system": true
+        }
+      ]
+    }
+  }
+}
+
+[2026-07-24T07:01:12.365Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T07:01:12.431Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T07:04:01.071Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
+[2026-07-24T07:04:01.265Z] {
+  "msg": "Success parse valid token",
+  "baseName": "sb-nttnyvgprhbthsqmvyjp-auth-token_chunked"
+}
+
