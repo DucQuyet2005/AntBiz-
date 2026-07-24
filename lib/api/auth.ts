@@ -21,6 +21,23 @@ export async function requireUser() {
   }
 
   if (authError || !user) {
+    const isNetworkTimeout =
+      authError?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+      authError?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+      authError?.name === 'ConnectTimeoutError' ||
+      (authError?.message && (authError.message.includes('fetch failed') || authError.message.includes('Connect Timeout')));
+
+    if (isNetworkTimeout) {
+      return {
+        supabase,
+        user: null,
+        unauthorized: NextResponse.json(
+          { error: 'Không thể kết nối tới máy chủ Supabase (Connect Timeout). Vui lòng kiểm tra mạng hoặc trạng thái dự án Supabase.' },
+          { status: 504 }
+        ),
+      } as const;
+    }
+
     return {
       supabase,
       user: null,
