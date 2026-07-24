@@ -6,7 +6,7 @@ import { postService, ChatMessage } from '@/lib/services/creator/post.service';
 import { scheduleService } from '@/lib/services/creator/schedule.service';
 import { presetService } from '@/lib/services/creator/preset.service';
 import { CreatorFlowState, CreatorFlowAction } from './creator-flow-types';
-import { PlatformType, PlatformConnection } from '@/lib/services/creator/platform.service';
+import { PlatformType } from '@/lib/services/creator/platform.service';
 import { BrowserCreatorFlowClient, type CreatorFlowClient } from './creator-flow-client';
 import {
   persistManualCreatorSource,
@@ -62,10 +62,10 @@ export const initialCreatorFlowState: CreatorFlowState = {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return `${year}-${month}-${date}T${hours}:${minutes}`;
   })(),
   timelinePosts: [],
   isLoadingTimeline: false,
@@ -124,10 +124,10 @@ export function creatorFlowReducer(state: CreatorFlowState, action: CreatorFlowA
       const validImages = contextImages.filter(
         (u: unknown) => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://'))
       );
-      return { 
-        ...state, 
-        articleContext: action.payload, 
-        drafts: {}, 
+      return {
+        ...state,
+        articleContext: action.payload,
+        drafts: {},
         postContent: '',
         crawledImageUrls: Array.from(new Set(validImages))
       };
@@ -314,6 +314,7 @@ interface CreatorFlowContextProps {
   confirmPostSchedule: (mode?: 'now' | 'scheduled') => Promise<{
     success: boolean;
     failed: PlatformType[];
+    errors?: Record<string, string>;
   }>;
   updateScheduledTime: (postId: string, dayIndex: number, timeStr: string) => void;
 }
@@ -332,7 +333,7 @@ export function CreatorFlowProvider({
   const quickPublishing = useQuickPublishing();
 
   // 1. Fetch platforms connection
-  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery<PlatformConnection[]>({
+  const { data: platforms, isLoading: isLoadingPlatforms } = useQuery({
     queryKey: ['connectedPlatforms'],
     queryFn: () => creatorClient.listConnectedPlatforms(),
   });
@@ -442,7 +443,7 @@ export function CreatorFlowProvider({
     }
   };
 
-  const submitManualArticle = async (title: string, content: string): Promise<any> => {
+  const submitManualArticle = async (title: string, content: string) => {
     dispatch({ type: 'SET_SOURCE_TYPE', payload: 'manual' });
     dispatch({ type: 'SET_MANUAL_CONTENT', payload: { title, content } });
     beginSourceIngestion();
@@ -503,61 +504,6 @@ export function CreatorFlowProvider({
   const draftInputFor = (platform: PlatformType) => {
     const draft = state.drafts[platform];
     if (!draft) return null;
-
-    // Build the compiled text matching UI options
-    const displayOptions = state.displayOptions || {
-      showTitle: true,
-      showContent: true,
-      showImages: true,
-      showAuthor: true,
-      showHashtags: true,
-    };
-
-    const currentTitle = state.customTitle ?? (state.articleContext?.title || '');
-    const cleanBodyText = draft.content.replace(/(?:^|\s)(#[^\s#]+)/g, '').trim();
-    const bodyContent = cleanBodyText || draft.content;
-
-    const validKeywords = (state.articleContext?.keywords || []).filter(
-      k => !['manual', 'bài viết thủ công', 'nhập tay', 'tuoitre', 'dantri', 'gocnhinmoi'].includes(k.trim().toLowerCase())
-    );
-    const keywordHashtags = validKeywords
-      .map(k => {
-        let tag = k.startsWith('#') ? k.slice(1) : k;
-        tag = tag.replace(/&/g, 'And');
-        tag = tag.replace(/[^\p{L}\p{N}_]/gu, '');
-        return '#' + tag;
-      })
-      .filter(h => h.toLowerCase() !== '#manual' && h !== '#');
-    const inlineHashtags = (draft.content.match(/#[^\s#]+/g) || []);
-    const uniqueHashtags = Array.from(new Set([...keywordHashtags, ...inlineHashtags]));
-    const effectiveHashtagsList = state.customHashtags !== null ? state.customHashtags : uniqueHashtags;
-
-    const compiledParts: string[] = [];
-    if (displayOptions.showTitle && currentTitle) {
-      compiledParts.push(currentTitle.trim());
-    }
-    if (displayOptions.showContent && bodyContent) {
-      compiledParts.push(bodyContent.trim());
-    }
-
-    const isCrawledSource = state.sourceType === 'gocnhinmoi' || state.sourceType === 'tuoitre' || state.sourceType === 'dantri';
-    const sourceName = isCrawledSource ? (() => {
-      if (state.sourceType === 'gocnhinmoi') return 'GOCNHINMOI';
-      if (state.sourceType === 'tuoitre') return 'TUOITRE';
-      if (state.sourceType === 'dantri') return 'DANTRI';
-      return '';
-    })() : '';
-
-    if (displayOptions.showAuthor && isCrawledSource && sourceName) {
-      compiledParts.push(`Nguồn: ${sourceName}`);
-    }
-
-    if (displayOptions.showHashtags && effectiveHashtagsList.length > 0) {
-      compiledParts.push(effectiveHashtagsList.join(' '));
-    }
-
-    const compiledContent = compiledParts.join('\n\n');
-
     return {
       variantId: platform,
       platform,
@@ -565,7 +511,7 @@ export function CreatorFlowProvider({
       captionId: draft.postId || undefined,
       originalContent: draft.generatedPost?.content || draft.content,
       currentContent: draft.content,
-      compiledContent,
+      compiledContent: draft.content,
     };
   };
 
@@ -594,7 +540,7 @@ export function CreatorFlowProvider({
       : (state.selectedPlatform ? [state.selectedPlatform] : []);
 
     const articleId = overrideArticleId || state.articleId;
-    if (targetPlatforms.length === 0 || !articleId) return;
+    if (targetPlatforms.length === 0 || !state.articleContext || !articleId) return;
     dispatch({ type: 'SET_GENERATING_POST', payload: true });
 
     // Set first platform as active if not already selected
@@ -879,7 +825,7 @@ export function CreatorFlowProvider({
           try {
             // 1. Smart-crop image to 1:1 square 1080x1080 JPEG blob
             const { blob } = await smartCropToBlob(url);
-            
+
             let uploadBlob: Blob;
             if (blob) {
               uploadBlob = blob;
@@ -916,7 +862,7 @@ export function CreatorFlowProvider({
     let successful: PlatformType[] = [];
     let failed: PlatformType[] = [];
     const errors: Record<string, string> = {};
-    
+
     const onEvent = (event: QuickPublishingEvent) => {
       if (event.type === 'platform-schedule-failed' || event.type === 'platform-publish-failed') {
         const msg = event.error.context?.message as string | undefined;
@@ -933,15 +879,8 @@ export function CreatorFlowProvider({
       if (requestedMode === 'now') {
         await quickPublishing.publishNow({
           connectedPlatforms,
-          imageUrls: [],
-          platforms: drafts.map((item) => {
-            const hasImages = state.displayOptions.showImages || item.platform === 'instagram';
-            return {
-              platform: item.platform,
-              draft: item.draft!,
-              imageUrls: hasImages ? imageUrls : [],
-            };
-          }),
+          imageUrls,
+          platforms: drafts.map((item) => ({ platform: item.platform, draft: item.draft! })),
         }, onEvent);
       } else {
         const scheduledDateObj = new Date(state.scheduledDateTime);
@@ -951,16 +890,12 @@ export function CreatorFlowProvider({
         const scheduledAt = scheduledDateObj.toISOString();
         await quickPublishing.schedule({
           connectedPlatforms,
-          imageUrls: [],
-          platforms: drafts.map((item) => {
-            const hasImages = state.displayOptions.showImages || item.platform === 'instagram';
-            return {
-              platform: item.platform,
-              scheduledAt,
-              draft: item.draft!,
-              imageUrls: hasImages ? imageUrls : [],
-            };
-          }),
+          imageUrls,
+          platforms: drafts.map((item) => ({
+            platform: item.platform,
+            scheduledAt,
+            draft: item.draft!,
+          })),
         }, onEvent);
       }
       return {
@@ -976,12 +911,12 @@ export function CreatorFlowProvider({
           payload: { successful, failed: failedPlatforms },
         });
       }
-      
+
       // Attempt to extract error message if it's a QuickPublishingError thrown synchronously
       if (e?.code && !errors[failedPlatforms[0]]) {
         errors[failedPlatforms[0]] = e.context?.message || e.context?.reason || e.message;
       }
-      
+
       return { success: false, failed: failedPlatforms, errors };
     } finally {
       dispatch({ type: 'SET_SCHEDULING', payload: false });

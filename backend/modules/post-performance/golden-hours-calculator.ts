@@ -46,8 +46,10 @@ export class GoldenHoursCalculator {
 
     for (const post of filteredPosts) {
       const date = new Date(post.postedAt);
-      const d = date.getDay();
-      const h = date.getHours();
+      // Ép kiểu về múi giờ GMT+7 (Việt Nam) để đảm bảo đồng nhất kể cả khi deploy lên server UTC
+      const localTime = new Date(date.getTime() + 7 * 60 * 60_000);
+      const d = localTime.getUTCDay();
+      const h = localTime.getUTCHours();
       const key = `${d}_${h}`;
 
       const likes = post.interactions?.likes || 0;

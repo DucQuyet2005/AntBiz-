@@ -26,13 +26,16 @@ export async function GET(request: NextRequest) {
     // Convert to GMT+7 timezone explicitly
     const gmt7Time = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
     const hours = String(gmt7Time.getHours()).padStart(2, '0');
-    // Default to search by HH:00 schedule
-    const currentHour = `${hours}:00`;
+    
+    // Allow overriding hour via URL query parameter for testing purposes (e.g., ?hour=20:00)
+    const overrideHour = request.nextUrl.searchParams.get('hour');
+    const currentHour = overrideHour || `${hours}:00`;
 
     console.log(`[Cron Send Digests] Running cron at local time: ${gmt7Time.toISOString()} for schedule hour: ${currentHour}`);
 
-    // 3. Process digests using module
-    const result = await notificationModule.processDailyDigests(currentHour, sendEmail);
+    // 3. Process digests using module (bypass duplicate prevention if force=true)
+    const forceBypass = request.nextUrl.searchParams.get('force') === 'true';
+    const result = await notificationModule.processDailyDigests(currentHour, sendEmail, forceBypass);
 
     return NextResponse.json({
       success: true,

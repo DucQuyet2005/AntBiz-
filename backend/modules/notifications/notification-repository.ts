@@ -150,7 +150,7 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     if (error) throw this.failure('markEmailsAsSent', error);
   }
 
-  async findUsersForDigest(currentHour: string) {
+  async findUsersForDigest(currentHour: string, bypassLastSent = false) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -163,6 +163,7 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     if (error) throw this.failure('findUsersForDigest', error);
 
     const users = (data || []).filter((u: any) => {
+      if (bypassLastSent) return true;
       if (!u.last_digest_sent_at) return true;
       const lastSent = new Date(u.last_digest_sent_at);
       return lastSent < todayStart;

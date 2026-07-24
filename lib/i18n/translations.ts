@@ -1297,7 +1297,7 @@ export const translations = {
         hourColumnHeader: "Giờ",
         settingsTitle: "CÀI ĐẶT ĐĂNG BÀI",
         dateLabel: "NGÀY ĐĂNG",
-        timeLabel: "GIỜ & PHÚT ĐĂNG BÀI (0, 15, 30, 45)",
+        timeLabel: "THỜI GIAN ĐĂNG",
         postReportLabel: "Báo cáo sau đăng bài",
         channelLabel: "KÊNH XUẤT BẢN",
       }
@@ -2664,7 +2664,7 @@ export const translations = {
         hourColumnHeader: "Hour",
         settingsTitle: "PUBLISHING SETTINGS",
         dateLabel: "PUBLISH DATE",
-        timeLabel: "PUBLISH HOUR & MINUTE (0, 15, 30, 45)",
+        timeLabel: "PUBLISH TIME",
         postReportLabel: "Post Publication Report",
         channelLabel: "PUBLISHING CHANNEL",
       }

@@ -67,5 +67,5 @@ export interface NotificationRepository {
   updateUserSettings(userId: string, settings: Partial<UserNotificationSettings>): Promise<UserNotificationSettings>;
   findUnsentEmailNotifications(userId: string): Promise<NotificationRecord[]>;
   markEmailsAsSent(notificationIds: string[]): Promise<void>;
-  findUsersForDigest(currentHour: string): Promise<{ id: string; email: string; email_digest_time: string }[]>;
+  findUsersForDigest(currentHour: string, bypassLastSent?: boolean): Promise<{ id: string; email: string; email_digest_time: string }[]>;
 }
