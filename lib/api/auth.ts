@@ -12,25 +12,27 @@ import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
  */
 export async function requireUser() {
   let supabase = null as any;
+  let bearerToken: string | null = null;
   try {
     const headersList = await headers();
     const authHeader = headersList.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
+      bearerToken = authHeader.substring(7).trim();
       supabase = createSupabaseJsClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
+          global: {
+            headers: {
+              Authorization: `Bearer ${bearerToken}`,
+            },
+          },
           auth: {
             persistSession: false,
             autoRefreshToken: false
           }
         }
       );
-      await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: ''
-      });
     }
   } catch (e) {
     // Fallback if headers context is missing
@@ -43,7 +45,9 @@ export async function requireUser() {
   let user = null;
   let authError = null;
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = bearerToken
+      ? await supabase.auth.getUser(bearerToken)
+      : await supabase.auth.getUser();
     user = data?.user ?? null;
     authError = error;
   } catch (err: any) {

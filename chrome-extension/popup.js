@@ -171,8 +171,9 @@ function updateStepperProgress(stateEl) {
 
   if (!globalStepper) return;
 
-  // Ẩn nút quay lại trên trang chủ, trang loading và unauth
-  if (stateEl === stateHome || stateEl === stateLoading || stateEl === stateUnauth) {
+  // Ẩn nút quay lại trên trang chủ, trang loading, unauth, error và success
+  const hideBackOn = [stateHome, stateLoading, stateUnauth, stateError, stateSuccess];
+  if (hideBackOn.includes(stateEl)) {
     if (btnHeaderBack) btnHeaderBack.classList.add('hidden');
   } else {
     if (btnHeaderBack) btnHeaderBack.classList.remove('hidden');
@@ -272,22 +273,38 @@ function cancelActiveRequest() {
 
 // Khởi chạy khi Popup mở
 document.addEventListener('DOMContentLoaded', () => {
-  // Xác định động địa chỉ server AntBiz nếu người dùng đang ở trên trang web dự án (localhost / IP)
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs && tabs[0] && tabs[0].url) {
-      try {
-        const tabUrl = new URL(tabs[0].url);
-        // Nếu là localhost, 127.0.0.1 hoặc mạng nội bộ 172.25.240.1, cập nhật lại AntBizUrl động
-        if (tabUrl.hostname === 'localhost' || tabUrl.hostname === '127.0.0.1' || tabUrl.hostname === '172.25.240.1') {
-          AntBizUrl = tabUrl.origin;
-          console.log('Đã cấu hình động AntBizUrl:', AntBizUrl);
-        }
-      } catch (e) {
-        console.warn('Lỗi phân tích URL tab active:', e);
-      }
+  // Lấy AntBizUrl đã lưu từ storage trước
+  chrome.storage.local.get('antbiz_url', (res) => {
+    if (res && res.antbiz_url) {
+      AntBizUrl = res.antbiz_url;
+      console.log('Đã khôi phục AntBizUrl từ storage:', AntBizUrl);
     }
-    // Chạy kiểm tra phiên làm việc sau khi xác định xong AntBizUrl
-    checkAuthAndInitialize();
+
+    // Xác định động địa chỉ server AntBiz nếu người dùng đang ở trên trang web dự án (localhost / IP / domain dự án)
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0] && tabs[0].url) {
+        try {
+          const tabUrl = new URL(tabs[0].url);
+          const hostname = tabUrl.hostname;
+          // Nếu là localhost, 127.0.0.1, mạng nội bộ 172.25.240.1 hoặc domain *.antbiz.me
+          if (
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname === '172.25.240.1' ||
+            hostname === 'antbiz.me' ||
+            hostname.endsWith('.antbiz.me')
+          ) {
+            AntBizUrl = tabUrl.origin;
+            chrome.storage.local.set({ antbiz_url: AntBizUrl });
+            console.log('Đã cấu hình động và lưu AntBizUrl:', AntBizUrl);
+          }
+        } catch (e) {
+          console.warn('Lỗi phân tích URL tab active:', e);
+        }
+      }
+      // Chạy kiểm tra phiên làm việc sau khi xác định xong AntBizUrl
+      checkAuthAndInitialize();
+    });
   });
 
   initEventListeners();
@@ -298,7 +315,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let prodHostname = 'app.example.com';
     try { prodHostname = new URL(AntBizUrl).hostname; } catch (e) { }
     if (domain.includes('localhost') || domain.includes('127.0.0.1') || domain.includes('172.25.240.1') || domain.includes(prodHostname)) {
+      if (isInitializing) return;
+      chrome.runtime.sendMessage({ action: 'sync_cookies', host: AntBizUrl }, () => {
+        checkAuthAndInitialize();
+      });
+    }
+  });
+
+  // Nhận thông báo đồng bộ session từ Service Worker chạy nền
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'session_changed') {
       checkAuthAndInitialize();
+    }
+    // Sau khi cấp quyền mic từ tab permission.html, tự khởi động ghi âm
+    if (message.action === 'mic_permission_granted') {
+      const activeState = getActiveStateId();
+      if (activeState === 'state-record-input') {
+        startRecording();
+      }
     }
   });
 });
@@ -439,11 +473,35 @@ function loadPromptConfigs(callback) {
   });
 }
 
+let isInitializing = false;
 // Kiểm tra phiên đăng nhập từ Web AntBiz
 function checkAuthAndInitialize() {
+  if (isInitializing) return;
+  isInitializing = true;
   showState(stateLoading, 'Đang kiểm tra kết nối AntBiz...');
 
+  // Gửi log chẩn đoán lên server
+  fetch(`${AntBizUrl}/api/auth/debug`, {
+    method: 'POST',
+    body: JSON.stringify({ msg: 'popup checkAuthAndInitialize started', AntBizUrl })
+  }).catch(() => {});
+
   chrome.runtime.sendMessage({ action: 'get_session', host: AntBizUrl }, (response) => {
+    isInitializing = false;
+
+    // Gửi log chẩn đoán phản hồi
+    fetch(`${AntBizUrl}/api/auth/debug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        msg: 'popup get_session response received',
+        hasError: !!chrome.runtime.lastError,
+        errStr: chrome.runtime.lastError?.message,
+        hasResponse: !!response,
+        hasSession: !!response?.session,
+        hasToken: !!response?.session?.access_token
+      })
+    }).catch(() => {});
+
     if (chrome.runtime.lastError) {
       console.error('Lỗi nhận session:', chrome.runtime.lastError);
       triggerError(
@@ -475,10 +533,24 @@ function checkAuthAndInitialize() {
 
       // Tải văn phong động, sau khi hoàn thành mới khôi phục state để selectPreset nhận được value
       loadPromptConfigs(() => {
+        if (!authToken) return;
         chrome.storage.local.get('antbiz_extension_state', (res) => {
           const state = res.antbiz_extension_state;
           if (state && state.activeState) {
             // Khôi phục giá trị input
+            const textareaIdeaContent = document.getElementById('textarea-idea-content');
+            if (textareaIdeaContent && typeof state.ideaContent === 'string') {
+              textareaIdeaContent.value = state.ideaContent;
+              const ideaCharCount = document.getElementById('idea-char-count');
+              if (ideaCharCount) ideaCharCount.textContent = state.ideaContent.length;
+            }
+            if (inputManualUrl && typeof state.manualUrl === 'string') {
+              inputManualUrl.value = state.manualUrl;
+            }
+            if (voiceTranscriptText && typeof state.voiceTranscript === 'string') {
+              voiceTranscriptText.value = state.voiceTranscript;
+            }
+
             if (state.articleData) {
               inputTitle.value = state.articleData.title || '';
               inputImage.value = state.articleData.imageUrl || '';
@@ -553,9 +625,11 @@ function initEventListeners() {
   }
 
   // Tự động lưu khi thay đổi trường nhập liệu
+  const textareaIdeaContent = document.getElementById('textarea-idea-content');
   const autoSaveElements = [
     inputTitle, inputImage, inputDesc, inputContent,
-    selectPlatform, selectPreset, inputCaption, inputScheduleTime
+    selectPlatform, selectPreset, inputCaption, inputScheduleTime,
+    textareaIdeaContent, inputManualUrl, voiceTranscriptText
   ];
   autoSaveElements.forEach(el => {
     if (el) {
@@ -820,7 +894,6 @@ function initEventListeners() {
   const btnHomeIdea = document.getElementById('btn-home-idea');
   if (btnHomeIdea) {
     btnHomeIdea.addEventListener('click', () => {
-      const textareaIdeaContent = document.getElementById('textarea-idea-content');
       const ideaCharCount = document.getElementById('idea-char-count');
       if (textareaIdeaContent) textareaIdeaContent.value = '';
       if (ideaCharCount) ideaCharCount.textContent = '0';
@@ -829,7 +902,6 @@ function initEventListeners() {
   }
 
   // Xử lý ô nhập Ý tưởng (Đếm chữ & Tiếp tục)
-  const textareaIdeaContent = document.getElementById('textarea-idea-content');
   const ideaCharCount = document.getElementById('idea-char-count');
   if (textareaIdeaContent && ideaCharCount) {
     textareaIdeaContent.addEventListener('input', () => {
@@ -934,6 +1006,20 @@ function initEventListeners() {
       const isRecordingActive = mediaRecorder && mediaRecorder.state !== 'inactive';
       if (isRecordingActive) {
         stopRecording(false); // Dừng & dịch chữ
+      } else {
+        startRecording();
+      }
+    });
+  }
+
+  // Click vào icon mic tròn cũng kích hoạt ghi âm
+  const recordCircleBtn = document.getElementById('record-icon-circle-btn');
+  if (recordCircleBtn) {
+    recordCircleBtn.style.cursor = 'pointer';
+    recordCircleBtn.addEventListener('click', () => {
+      const isRecordingActive = mediaRecorder && mediaRecorder.state !== 'inactive';
+      if (isRecordingActive) {
+        stopRecording(false);
       } else {
         startRecording();
       }
@@ -1469,6 +1555,11 @@ async function startRecording() {
 
       // Nếu chưa cấp quyền (prompt), mở trang trung gian để yêu cầu quyền một cách chính thống
       if (permissionStatus.state === 'prompt') {
+        // Hiển thị trạng thái đang chờ quyền
+        const statusLabel = document.getElementById('record-status-label');
+        const bannerText = document.getElementById('record-banner-text');
+        if (statusLabel) statusLabel.textContent = 'Đang yêu cầu quyền Microphone...';
+        if (bannerText) bannerText.textContent = 'Vui lòng cấp quyền Microphone trong tab vừa mở, sau đó ghi âm sẽ tự khởi động.';
         chrome.tabs.create({ url: chrome.runtime.getURL("permission.html") });
         return;
       }
@@ -1956,12 +2047,28 @@ function updateFbPreview() {
 
 // Lấy ID trạng thái màn hình hiện tại
 function getActiveStateId() {
-  const states = [stateLoading, stateUnauth, stateHome, stateError, stateExtracted, stateSuccess];
+  const states = [
+    stateLoading,
+    stateUnauth,
+    stateHome,
+    stateError,
+    stateExtracted,
+    stateSuccess,
+    stateIdeaInput,
+    stateUrlInput,
+    stateRecordInput,
+    stateUploadInput,
+    stateVoiceConfirm,
+    stateHistory,
+  ];
   for (const st of states) {
     if (st && !st.classList.contains('hidden')) {
       return st.id;
     }
   }
+  // Fallback: quét tất cả .state-container đang hiển thị
+  const all = document.querySelectorAll('.state-container:not(.hidden)');
+  if (all.length > 0) return all[0].id;
   return 'state-home';
 }
 
@@ -1980,9 +2087,17 @@ function getActiveStepId() {
 function saveCurrentState() {
   if (!authToken) return;
 
+  const textareaIdeaContent = document.getElementById('textarea-idea-content');
+  const ideaVal = textareaIdeaContent ? textareaIdeaContent.value : '';
+  const urlVal = inputManualUrl ? inputManualUrl.value : '';
+  const voiceVal = voiceTranscriptText ? voiceTranscriptText.value : '';
+
   const state = {
     activeState: getActiveStateId(),
     activeStep: getActiveStepId(),
+    ideaContent: ideaVal,
+    manualUrl: urlVal,
+    voiceTranscript: voiceVal,
     articleData: {
       title: inputTitle.value,
       imageUrl: inputImage.value,

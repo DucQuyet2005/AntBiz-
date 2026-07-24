@@ -538,10 +538,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const host = message.host || DEFAULT_HOST;
 
   if (message.action === 'get_session') {
-    getSupabaseSession(true, host)
+    getSupabaseSession(false, host)
       .then(session => sendResponse({ session }))
       .catch(error => sendResponse({ error: error.message || error }));
     return true; // Giữ kênh kết nối không đồng bộ
+  }
+
+  if (message.action === 'sync_cookies') {
+    getSupabaseSession(true, host)
+      .then(session => sendResponse({ session }))
+      .catch(error => sendResponse({ error: error.message || error }));
+    return true;
   }
 
   if (message.action === 'get_prompt_configs') {
@@ -660,5 +667,25 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     } catch (e) {
       console.error('Lỗi phân tích URL trong onUpdated:', e);
     }
+  }
+});
+
+// Tự động nhận diện thay đổi Cookie ở mức nền để cập nhật/đồng bộ trạng thái kết nối
+chrome.cookies.onChanged.addListener((changeInfo) => {
+  const domain = changeInfo.cookie.domain;
+  if (domain.includes('localhost') || domain.includes('127.0.0.1') || domain.includes('172.25.240.1') || domain.includes('antbiz.me')) {
+    let host = 'https://dev.antbiz.me';
+    if (domain.includes('localhost') || domain.includes('127.0.0.1') || domain.includes('172.25.240.1')) {
+      host = 'http://localhost:3000';
+    }
+    
+    // Quét cookie mới nhất và cập nhật storage.local
+    getSupabaseSession(true, host).then((session) => {
+      // Gửi thông báo đến popup nếu nó đang mở để tự động làm mới giao diện
+      chrome.runtime.sendMessage({ action: 'session_changed', session }, () => {
+        // Callback rỗng để chặn lỗi "Receiving end does not exist" của Chrome V3 khi popup đóng
+        const err = chrome.runtime.lastError;
+      });
+    }).catch(() => {});
   }
 });
