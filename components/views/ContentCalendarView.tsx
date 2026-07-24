@@ -934,6 +934,11 @@ export default function ContentCalendarView() {
     return days;
   }, [miniCalMonth]);
 
+  const calendarEventSources = useMemo(() => [
+    { events: fetchCalendarEvents },
+    { events: goldenHourEvents }
+  ], [fetchCalendarEvents, goldenHourEvents]);
+
   const getHeaderTitle = () => {
     const midWeek = new Date(currentWeekStart);
     midWeek.setDate(currentWeekStart.getDate() + 3);
@@ -1445,10 +1450,7 @@ export default function ContentCalendarView() {
                 initialView={activeView}
                 headerToolbar={false}
                 allDaySlot={false}
-                eventSources={useMemo(() => [
-                  { events: fetchCalendarEvents },
-                  { events: goldenHourEvents }
-                ], [fetchCalendarEvents, goldenHourEvents])}
+                eventSources={calendarEventSources}
                 editable={true}
                 eventDragStart={(info: any) => {
                   const post = info.event.extendedProps?.post;
