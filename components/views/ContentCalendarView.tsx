@@ -281,6 +281,11 @@ export default function ContentCalendarView() {
     }
   }, [selectedPlatforms]);
 
+  const calendarEventSources = useMemo(() => [
+    { events: fetchCalendarEvents },
+    { events: goldenHourEvents }
+  ], [fetchCalendarEvents, goldenHourEvents]);
+
   // Refetch when platform filter changes
   useEffect(() => {
     clearCache();
@@ -1445,10 +1450,7 @@ export default function ContentCalendarView() {
                 initialView={activeView}
                 headerToolbar={false}
                 allDaySlot={false}
-                eventSources={useMemo(() => [
-                  { events: fetchCalendarEvents },
-                  { events: goldenHourEvents }
-                ], [fetchCalendarEvents, goldenHourEvents])}
+                eventSources={calendarEventSources}
                 editable={true}
                 eventDragStart={(info: any) => {
                   const post = info.event.extendedProps?.post;
