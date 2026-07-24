@@ -303,6 +303,15 @@ document.addEventListener('DOMContentLoaded', () => {
             AntBizUrl = tabUrl.origin;
             chrome.storage.local.set({ antbiz_url: AntBizUrl });
             console.log('Đã cấu hình động và lưu AntBizUrl:', AntBizUrl);
+          } else {
+            // NẾU tab hiện tại KHÔNG PHẢI dự án (VD: đang ở trang VNExpress, Dân Trí...)
+            // VÀ AntBizUrl đang bị kẹt ở localhost (do lần trước bật dev)
+            // => Tự động Fallback về VPS Production để extension không bị chết khi tắt local
+            if (AntBizUrl.includes('localhost') || AntBizUrl.includes('127.0.0.1') || AntBizUrl.includes('172.25.240.1')) {
+              AntBizUrl = 'https://dev.antbiz.me'; // Đổi thành URL VPS của bạn nếu khác dev.antbiz.me
+              chrome.storage.local.set({ antbiz_url: AntBizUrl });
+              console.log('Đã tự động Fallback AntBizUrl về VPS Production:', AntBizUrl);
+            }
           }
         } catch (e) {
           console.warn('Lỗi phân tích URL tab active:', e);
@@ -1344,9 +1353,8 @@ ${combinedInstruction}
         return;
       }
 
-      if (confirm(`Bạn có chắc chắn muốn đăng ngay lên ${platform.toUpperCase()} không?`)) {
-        submitArticle('publish_now', { platform, postContent });
-      }
+      // Bỏ qua bước hỏi (confirm) theo yêu cầu
+      submitArticle('publish_now', { platform, postContent });
     });
   }
 
