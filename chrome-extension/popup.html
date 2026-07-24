@@ -410,41 +410,22 @@
 
         <!-- BƯỚC 1: Xem & Sửa nội dung bài viết gốc (Screen 6) -->
         <div id="step-article-info" class="wizard-step">
-          <div class="success-banner-inline">
-            <span class="success-banner-icon">✓</span>
-            <div class="success-banner-text">
-              <span class="success-title">Phân tích thành công!</span>
-              <span class="success-desc">Nội dung của bạn đã được AI trích xuất.</span>
-            </div>
+          <h4 class="step-header">Bước 1: Nội dung bài viết</h4>
+
+          <div class="form-group">
+            <label for="input-title">Tiêu đề bài viết</label>
+            <textarea id="input-title" rows="2" placeholder="Nhập tiêu đề..."></textarea>
           </div>
 
-          <div id="extracted-source-badge" class="source-badge badge-url">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-            </svg>
-            <span>Nguồn: URL bài viết</span>
+          <div class="form-group">
+            <label>Hình ảnh bài viết</label>
+            <div id="image-preview-list" class="image-preview-list"></div>
+            <textarea id="input-image" style="display: none;" placeholder="URL hình ảnh..."></textarea>
           </div>
 
-          <div class="form-group-premium">
-            <label class="premium-label">Tiêu đề</label>
-            <textarea id="input-title" class="input-plain-textarea" rows="2" placeholder="Nhập tiêu đề..."></textarea>
-          </div>
-
-          <div class="form-group-premium">
-            <label class="premium-label">Nội dung trích xuất</label>
-            <textarea id="input-content" class="input-plain-textarea" rows="5" placeholder="Nội dung bài viết..."></textarea>
-            <div class="word-counter-info" id="word-count-info-label">(Đã trích xuất 0 từ)</div>
-          </div>
-
-          <div class="form-group-premium">
-            <label class="premium-label">Hình ảnh</label>
-            <div class="extracted-images-grid" id="extracted-images-grid">
-              <!-- Rendered dynamically -->
-            </div>
-            <div class="images-count-info" id="images-count-info-label">0 hình ảnh được tìm thấy</div>
-
-            <textarea id="input-image" class="hidden" style="display: none !important;"></textarea>
+          <div class="form-group form-group-content">
+            <label for="input-content">Nội dung bài viết sạch</label>
+            <textarea id="input-content" placeholder="Nội dung bài viết..."></textarea>
           </div>
 
           <!-- Hidden desc input to satisfy any other code dependencies but not cluttering UI -->
@@ -470,11 +451,24 @@
               <option value="thread">Threads Account</option>
               <option value="instagram">Instagram Account</option>
             </select>
+            <div id="instagram-warning" class="hidden" style="color: #ea580c; font-size: 11px; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 4px; text-align: left;">
+              ⚠️ Instagram bắt buộc phải có hình ảnh để đăng bài.
+            </div>
           </div>
 
           <div class="form-group">
-            <label for="select-preset">Chọn cấu hình bài đăng (Preset)</label>
-            <select id="select-preset">
+            <label>Chọn cấu hình bài đăng (Preset)</label>
+            <div class="custom-select-container">
+              <button type="button" id="preset-select-trigger" class="custom-select-trigger">
+                <span id="preset-trigger-label">-- Mặc định (Không áp dụng) --</span>
+                <span class="custom-select-arrow">▼</span>
+              </button>
+              <div id="preset-dropdown-panel" class="custom-select-panel hidden">
+                <input type="text" id="preset-search-input" class="custom-select-search" placeholder="Tìm kiếm văn phong...">
+                <div id="preset-options-list" class="custom-select-options"></div>
+              </div>
+            </div>
+            <select id="select-preset" style="display: none;">
               <option value="">-- Mặc định (Không áp dụng) --</option>
             </select>
           </div>

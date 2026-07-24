@@ -71,7 +71,7 @@ const stepPostPreview = document.getElementById('step-post-preview');
 // Bước 1 Form
 const inputTitle = document.getElementById('input-title');
 const inputImage = document.getElementById('input-image');
-const inputDesc = document.getElementById('input-desc');
+const inputDesc = document.getElementById('input-desc') || { value: '' };
 const inputContent = document.getElementById('input-content');
 const btnCancelToHome1 = document.getElementById('btn-cancel-to-home-1');
 const btnNextToSocial = document.getElementById('btn-next-to-social');
@@ -79,6 +79,12 @@ const btnNextToSocial = document.getElementById('btn-next-to-social');
 // Bước 2 Form
 const selectPlatform = document.getElementById('select-platform');
 const selectPreset = document.getElementById('select-preset');
+const presetSelectTrigger = document.getElementById('preset-select-trigger');
+const presetDropdownPanel = document.getElementById('preset-dropdown-panel');
+const presetSearchInput = document.getElementById('preset-search-input');
+const presetOptionsList = document.getElementById('preset-options-list');
+const presetTriggerLabel = document.getElementById('preset-trigger-label');
+const selectPresetContainer = document.querySelector('.custom-select-container');
 const btnBackToArticle = document.getElementById('btn-back-to-article');
 const btnCreatePost = document.getElementById('btn-create-post');
 
@@ -367,10 +373,10 @@ function handleApiError(error) {
     if (userNameEl) userNameEl.textContent = 'Chưa kết nối';
     if (userProfile) userProfile.classList.add('hidden');
     if (extensionNav) extensionNav.classList.add('hidden');
-    
+
     // Clear storage state
     chrome.storage.local.remove('antbiz_extension_state');
-    
+
     showState(stateUnauth);
     return true;
   }
@@ -431,6 +437,9 @@ function loadPromptConfigs(callback) {
       selectPreset.appendChild(defaultOption);
 
       activePresets.forEach(config => {
+        if (defaultPreset && config.id === defaultPreset.id) {
+          return;
+        }
         const option = document.createElement('option');
         option.value = config.id;
 
@@ -456,6 +465,7 @@ function loadPromptConfigs(callback) {
       } else {
         selectPreset.value = '';
       }
+      renderCustomPresets();
     } else {
       console.warn('Không thể lấy danh sách văn phong từ API:', response?.error);
       if (handleApiError(response?.error)) {
@@ -530,6 +540,7 @@ function checkAuthAndInitialize() {
         if (avatarCircle) avatarCircle.textContent = 'U';
         userProfile.classList.remove('hidden');
       }
+      checkConnectionsAndRender();
 
       // Tải văn phong động, sau khi hoàn thành mới khôi phục state để selectPreset nhận được value
       loadPromptConfigs(() => {
@@ -553,7 +564,7 @@ function checkAuthAndInitialize() {
 
             if (state.articleData) {
               inputTitle.value = state.articleData.title || '';
-              inputImage.value = state.articleData.imageUrl || '';
+              setImageValue(state.articleData.imageUrl || '');
               inputDesc.value = state.articleData.description || '';
               inputContent.value = state.articleData.content || '';
             }
@@ -568,6 +579,7 @@ function checkAuthAndInitialize() {
                 const defaultPreset = activePresets.find(config => config.is_default);
                 selectPreset.value = defaultPreset ? defaultPreset.id : '';
               }
+              syncCustomPresetSelection();
             }
             if (state.postPreview) {
               inputCaption.value = state.postPreview.caption || '';
@@ -594,8 +606,10 @@ function checkAuthAndInitialize() {
             } else {
               showState(stateHome);
             }
+            updateInstagramWarning();
           } else {
             showState(stateHome);
+            updateInstagramWarning();
           }
         });
       });
@@ -632,9 +646,42 @@ function initEventListeners() {
     textareaIdeaContent, inputManualUrl, voiceTranscriptText
   ];
   autoSaveElements.forEach(el => {
-    if (el) {
+    if (el && typeof el.addEventListener === 'function') {
       el.addEventListener('input', saveCurrentState);
       el.addEventListener('change', saveCurrentState);
+    }
+  });
+
+  if (selectPlatform) {
+    selectPlatform.addEventListener('change', updateInstagramWarning);
+  }
+
+  // Sự kiện Custom Preset select trigger và panel search
+  if (presetSelectTrigger) {
+    presetSelectTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = selectPresetContainer.classList.toggle('open');
+      if (isOpen) {
+        presetDropdownPanel.classList.remove('hidden');
+        presetSearchInput.value = '';
+        filterPresetOptions('');
+        presetSearchInput.focus();
+      } else {
+        presetDropdownPanel.classList.add('hidden');
+      }
+    });
+  }
+
+  if (presetSearchInput) {
+    presetSearchInput.addEventListener('input', (e) => {
+      filterPresetOptions(e.target.value);
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (selectPresetContainer && !selectPresetContainer.contains(e.target)) {
+      selectPresetContainer.classList.remove('open');
+      if (presetDropdownPanel) presetDropdownPanel.classList.add('hidden');
     }
   });
 
@@ -919,7 +966,7 @@ function initEventListeners() {
       }
 
       inputTitle.value = 'Ý tưởng bài viết ' + new Date().toLocaleDateString('vi-VN');
-      inputImage.value = '';
+      setImageValue('');
       inputDesc.value = '';
       inputContent.value = text;
 
@@ -1000,7 +1047,7 @@ function initEventListeners() {
   // Xử lý sự kiện nút Ghi âm mới
   const btnRecordPrimary = document.getElementById('btn-record-primary');
   const btnRecordClear = document.getElementById('btn-record-clear');
-  
+
   if (btnRecordPrimary) {
     btnRecordPrimary.addEventListener('click', () => {
       const isRecordingActive = mediaRecorder && mediaRecorder.state !== 'inactive';
@@ -1052,7 +1099,7 @@ function initEventListeners() {
       }
 
       inputTitle.value = 'Bài viết từ giọng nói ' + new Date().toLocaleDateString('vi-VN');
-      inputImage.value = '';
+      setImageValue('');
       inputDesc.value = '';
       inputContent.value = text;
 
@@ -1114,6 +1161,7 @@ function initEventListeners() {
       }
 
       showSubStep(stepSocialConfig);
+      checkConnectionsAndRender();
       saveCurrentState();
     });
   }
@@ -1138,12 +1186,45 @@ function initEventListeners() {
         return;
       }
 
-      // Xây dựng customPrompt nếu người dùng chọn Văn phong cụ thể
-      let customPrompt = undefined;
+    const imageVal = inputImage.value.trim();
+    const imageCount = imageVal.split('\n').map(line => line.trim()).filter(line => line.length > 0).length;
+
+    if (platform === 'instagram' && imageCount === 0) {
+      const confirmProceed = confirm(
+        '⚠️ Instagram bắt buộc phải có ít nhất 1 hình ảnh để đăng bài.\n\n' +
+        'Hiện tại bài viết này chưa có ảnh. Bạn có muốn quay lại Bước 1 để bổ sung ảnh không?'
+      );
+      if (confirmProceed) {
+        showSubStep(stepArticleInfo);
+        return;
+      }
+    }
+
+    const reqId = startNewRequest();
+    showState(stateLoading, 'Đang tải quy chuẩn nền tảng và dùng AI sinh bài viết...');
+
+    // 1. Fetch default platform rules from the server
+    chrome.runtime.sendMessage({
+      action: 'api_get',
+      endpoint: `/api/platform-presets?platform=${platform === 'threads' ? 'thread' : platform}`,
+      host: AntBizUrl
+    }, (platformRes) => {
+      if (activeRequestId !== reqId) return;
+
+      let platformRules = '';
+      if (platformRes && Array.isArray(platformRes.data)) {
+        const defaultPreset = platformRes.data.find(p => p.is_default) || platformRes.data[0];
+        if (defaultPreset && defaultPreset.rules) {
+          platformRules = defaultPreset.rules;
+        }
+      }
+
+      // 2. Fetch style rules if a preset style is selected
+      let rulesText = '';
       if (presetId) {
         const selectedPreset = activePresets.find(p => p.id === presetId);
         if (selectedPreset) {
-          let rulesText = selectedPreset.rules;
+          rulesText = selectedPreset.rules;
           try {
             const parsed = JSON.parse(rulesText);
             if (parsed && typeof parsed === 'object') {
@@ -1154,28 +1235,48 @@ function initEventListeners() {
               }
             }
           } catch (e) {
-            // Chuỗi thô không phải JSON, giữ nguyên
+            // Raw text
           }
-
-          customPrompt = `Bạn là một chuyên gia Content Marketing.
-Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
-Tiêu đề: ${title}
-Nội dung tóm tắt: ${content}
-
-Yêu cầu bài viết (Áp dụng nghiêm ngặt các quy tắc văn phong sau):
-${rulesText}
-
-Yêu cầu định dạng:
-1. Có cấu trúc rõ ràng: Hook -> Body -> CTA.
-2. Sử dụng Emoji phù hợp.
-3. Thêm 3-5 hashtag liên quan.
-4. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
         }
       }
 
-      const reqId = startNewRequest();
-      showState(stateLoading, 'Đang dùng AI sinh nội dung bài viết đăng mạng xã hội...');
+      // 3. Combine both rules (Platform Rules + Style Rules)
+      let combinedInstruction = '';
+      if (platformRules.trim()) {
+        combinedInstruction += `**Quy chuẩn nền tảng mặc định:**\n${platformRules.trim()}\n\n`;
+      }
+      if (rulesText.trim()) {
+        combinedInstruction += `**Văn phong thương hiệu:**\n${rulesText.trim()}`;
+      } else {
+        combinedInstruction += `**Văn phong:**\n*   Tone giọng yêu cầu: Tự do`;
+      }
 
+      // 4. Construct customPrompt
+      const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+      const customPrompt = `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
+
+**Nền tảng:** ${platformLabel}
+
+**Dữ liệu đầu vào:**
+*   **Tiêu đề bài báo:** "${title}"
+*   **Nội dung tóm tắt:** "${content}"
+
+${combinedInstruction}
+
+**Cấu trúc bài viết:**
+1.  Hook (Móc câu): Tạo điểm nhấn gây tò mò từ đoạn tóm tắt bài báo.
+2.  Body (Nội dung chính): Phát triển câu chuyện ngắn gọn, súc tích.
+3.  Call to Action (CTA): Gợi mở tương tác, đặt câu hỏi cho độc giả.
+4.  Hashtag: Đề xuất 3-5 hashtag liên quan.
+
+**LƯU Ý QUAN TRỌNG VỀ ĐỊNH DẠNG:**
+- TUYỆT ĐỐI KHÔNG sử dụng các ký hiệu Markdown như ** (để in đậm) hoặc * (để in nghiêng hoặc gạch đầu dòng) trong văn bản.
+- Vì bài đăng này sẽ được hiển thị dưới dạng văn bản thuần (plain text) trên mạng xã hội (${platformLabel}) và nền tảng này không hỗ trợ Markdown, các ký tự như ** hay * sẽ bị hiển thị thô và làm bài viết trông bị lỗi.
+- Thay vào đó, hãy sử dụng các emoji/icon phù hợp hoặc xuống dòng để phân tách các phần hoặc làm nổi bật tiêu đề/ý chính.
+- TUYỆT ĐỐI KHÔNG lặp lại toàn bộ nội dung bài viết hoặc lặp lại danh sách hashtag nhiều lần. Chỉ xuất ra một bài đăng hoàn chỉnh duy nhất, tránh tình trạng sinh hai bản sao lặp nhau.
+- TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Dưới đây là...", không "Ok", không "Đây là bài viết". Trả về TRỰC TIẾP bài đăng hoàn chỉnh.`;
+
+      // 5. Send to AI content generator
       chrome.runtime.sendMessage({
         action: 'generate_content',
         title: title,
@@ -1189,7 +1290,12 @@ Yêu cầu định dạng:
         if (activeRequestId !== reqId) return;
 
         if (chrome.runtime.lastError) {
-          triggerError('Lỗi kết nối', 'Không thể kết nối đến máy chủ AI.', 'generate', { title, content, platform });
+          triggerError('Lỗi kết nối', 'Không thể kết nối đến máy chủ AI.', 'generate', {
+            title,
+            content,
+            platform,
+            customPrompt
+          });
           return;
         }
 
@@ -1205,10 +1311,11 @@ Yêu cầu định dạng:
             'AI tạo bài viết thất bại',
             `Không thể sinh bài viết từ AI. Chi tiết: ${errorMsg}. Vui lòng thử lại.`,
             'generate',
-            { title, content, platform }
+            { title, content, platform, customPrompt }
           );
         }
       });
+    });
     });
   }
 
@@ -1220,13 +1327,13 @@ Yêu cầu định dạng:
     });
   }
 
-  // Đồng bộ ngược từ Preview sang Textarea ẩn khi người dùng gõ trực tiếp
   if (fbPreviewText) {
     fbPreviewText.addEventListener('input', () => {
       inputCaption.value = fbPreviewText.innerText;
       saveCurrentState();
     });
   }
+
   if (btnPublishNow) {
     btnPublishNow.addEventListener('click', () => {
       const platform = selectPlatform.value;
@@ -1435,7 +1542,7 @@ function startExtraction(url) {
       };
 
       inputTitle.value = currentArticleData.title;
-      inputImage.value = currentArticleData.imageUrl;
+      setImageValue(currentArticleData.imageUrl);
       inputDesc.value = currentArticleData.description;
       inputContent.value = currentArticleData.content;
 
@@ -1518,7 +1625,7 @@ function handleSelectionResponse(response) {
     };
 
     inputTitle.value = currentArticleData.title;
-    inputImage.value = '';
+    setImageValue('');
     inputDesc.value = '';
     inputContent.value = currentArticleData.content;
 
@@ -1766,7 +1873,7 @@ async function processUploadedFile(file) {
           };
 
           inputTitle.value = currentArticleData.title;
-          inputImage.value = '';
+          setImageValue('');
           inputDesc.value = '';
           inputContent.value = currentArticleData.content;
 
@@ -1829,7 +1936,7 @@ async function processUploadedFile(file) {
           };
 
           inputTitle.value = currentArticleData.title;
-          inputImage.value = '';
+          setImageValue('');
           inputDesc.value = currentArticleData.description;
           inputContent.value = currentArticleData.content;
 
@@ -1911,7 +2018,7 @@ function setButtonsDisabled(disabled) {
 
 // Gọi lại AI sinh nội dung (khi nhấn Thử lại ở màn hình lỗi)
 function retryAiGeneration(params) {
-  const { title, content, platform } = params;
+  const { title, content, platform, customPrompt } = params;
   const reqId = startNewRequest();
   showState(stateLoading, 'Đang dùng AI sinh nội dung bài viết đăng mạng xã hội...');
 
@@ -1920,6 +2027,7 @@ function retryAiGeneration(params) {
     title: title,
     content: content,
     platform: platform,
+    customPrompt: customPrompt,
     token: authToken,
     requestId: reqId,
     host: AntBizUrl
@@ -2241,7 +2349,8 @@ function renderHistoryList(posts) {
   });
 }
 
-// ==========================================
+// ===================================}
+
 // CÁC HÀM HỖ TRỢ GIAO DIỆN MỚI
 // ==========================================
 
@@ -2297,7 +2406,7 @@ function renderExtractedImagesGrid() {
   const imageLines = imageVal.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
   gridContainer.innerHTML = '';
-  
+
   if (imageLines.length === 0) {
     if (countLabel) countLabel.textContent = '0 hình ảnh được tìm thấy';
     return;
@@ -2376,4 +2485,230 @@ function updateExtractedSourceBadge() {
 
   badge.className = `source-badge ${badgeClass}`;
   badge.innerHTML = `${svgContent} <span>Nguồn: ${text}</span>`;
+}
+
+// Visual image preview rendering
+function renderImagePreviews() {
+  const previewList = document.getElementById('image-preview-list');
+  if (!previewList) return;
+  previewList.innerHTML = '';
+
+  const val = inputImage.value.trim();
+  const urls = val.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+
+  if (urls.length === 0) {
+    previewList.innerHTML = '<div class="no-images-placeholder">Không có hình ảnh nào</div>';
+  } else {
+    urls.forEach((url, index) => {
+      const item = document.createElement('div');
+      item.className = 'image-preview-item';
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.onerror = () => {
+        img.src = 'icon.svg'; // fallback if image fails to load
+      };
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'image-delete-btn';
+      deleteBtn.innerHTML = '✕';
+      deleteBtn.type = 'button';
+      deleteBtn.title = 'Xóa ảnh';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        urls.splice(index, 1);
+        setImageValue(urls.join('\n'));
+        saveCurrentState();
+      });
+
+      item.appendChild(img);
+      item.appendChild(deleteBtn);
+      previewList.appendChild(item);
+    });
+  }
+
+  // Add "+" button card to add a new image url
+  const addItem = document.createElement('div');
+  addItem.className = 'image-preview-item add-image-item';
+  addItem.innerHTML = '+';
+  addItem.title = 'Thêm ảnh bằng URL';
+  addItem.addEventListener('click', () => {
+    const newUrl = prompt('Nhập link (URL) hình ảnh muốn thêm:');
+    if (newUrl && newUrl.trim()) {
+      const trimmedUrl = newUrl.trim();
+      const updatedUrls = urls.concat([trimmedUrl]);
+      setImageValue(updatedUrls.join('\n'));
+      saveCurrentState();
+    }
+  });
+  previewList.appendChild(addItem);
+}
+
+function setImageValue(val) {
+  inputImage.value = val;
+  renderImagePreviews();
+  updateInstagramWarning();
+}
+
+function updateInstagramWarning() {
+  const warningEl = document.getElementById('instagram-warning');
+  if (!warningEl) return;
+
+  const platform = selectPlatform.value;
+  const imageVal = inputImage.value.trim();
+  const imageCount = imageVal.split('\n').map(line => line.trim()).filter(line => line.length > 0).length;
+
+  if (platform === 'instagram' && imageCount === 0) {
+    warningEl.classList.remove('hidden');
+  } else {
+    warningEl.classList.add('hidden');
+  }
+}
+
+// Check linked accounts status and render in selectPlatform
+let linkedAccounts = [];
+
+function checkConnectionsAndRender() {
+  if (!authToken) return;
+
+  chrome.runtime.sendMessage({
+    action: 'api_get',
+    endpoint: '/api/linked-accounts',
+    host: AntBizUrl
+  }, (response) => {
+    if (chrome.runtime.lastError || !response || response.error) {
+      console.warn('Lỗi lấy tài khoản liên kết:', chrome.runtime.lastError || response?.error);
+      return;
+    }
+
+    if (response && Array.isArray(response.data)) {
+      linkedAccounts = response.data;
+
+      const hasFb = linkedAccounts.some(acc => acc.platform === 'facebook');
+      const hasIg = linkedAccounts.some(acc => acc.platform === 'instagram');
+      const hasThreads = linkedAccounts.some(acc => acc.platform === 'threads' || acc.platform === 'thread');
+
+      const optFb = selectPlatform.querySelector('option[value="facebook"]');
+      const optIg = selectPlatform.querySelector('option[value="instagram"]');
+      const optThreads = selectPlatform.querySelector('option[value="thread"]');
+
+      if (optFb) {
+        if (hasFb) {
+          optFb.textContent = 'Facebook Fanpage';
+          optFb.disabled = false;
+        } else {
+          optFb.textContent = 'Facebook Fanpage (Chưa kết nối)';
+          optFb.disabled = true;
+        }
+      }
+
+      if (optIg) {
+        if (hasIg) {
+          optIg.textContent = 'Instagram Account';
+          optIg.disabled = false;
+        } else {
+          optIg.textContent = 'Instagram Account (Chưa kết nối)';
+          optIg.disabled = true;
+        }
+      }
+
+      if (optThreads) {
+        if (hasThreads) {
+          optThreads.textContent = 'Threads Account';
+          optThreads.disabled = false;
+        } else {
+          optThreads.textContent = 'Threads Account (Chưa kết nối)';
+          optThreads.disabled = true;
+        }
+      }
+
+      // Automatically select first enabled platform if current is disabled
+      const currentSelectedOption = selectPlatform.options[selectPlatform.selectedIndex];
+      if (currentSelectedOption && currentSelectedOption.disabled) {
+        for (let i = 0; i < selectPlatform.options.length; i++) {
+          if (!selectPlatform.options[i].disabled) {
+            selectPlatform.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
+      updateInstagramWarning();
+    }
+  });
+}
+
+// Custom Searchable Dropdown for Style Presets
+function renderCustomPresets() {
+  if (!presetOptionsList) return;
+  presetOptionsList.innerHTML = '';
+
+  const options = Array.from(selectPreset.options);
+  options.forEach(opt => {
+    const item = document.createElement('div');
+    item.className = 'preset-option-item';
+    item.dataset.value = opt.value;
+    item.textContent = opt.textContent;
+
+    if (selectPreset.value === opt.value) {
+      item.classList.add('selected');
+      if (presetTriggerLabel) {
+        presetTriggerLabel.textContent = opt.textContent;
+      }
+    }
+
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      selectPreset.value = opt.value;
+
+      if (presetTriggerLabel) {
+        presetTriggerLabel.textContent = opt.textContent;
+      }
+
+      presetOptionsList.querySelectorAll('.preset-option-item').forEach(el => {
+        el.classList.remove('selected');
+      });
+      item.classList.add('selected');
+
+      selectPresetContainer.classList.remove('open');
+      presetDropdownPanel.classList.add('hidden');
+
+      const event = new Event('change', { bubbles: true });
+      selectPreset.dispatchEvent(event);
+      saveCurrentState();
+    });
+
+    presetOptionsList.appendChild(item);
+  });
+}
+
+function syncCustomPresetSelection() {
+  if (!presetOptionsList) return;
+  const val = selectPreset.value;
+  const items = presetOptionsList.querySelectorAll('.preset-option-item');
+  items.forEach(item => {
+    if (item.dataset.value === val) {
+      item.classList.add('selected');
+      if (presetTriggerLabel) {
+        presetTriggerLabel.textContent = item.textContent;
+      }
+    } else {
+      item.classList.remove('selected');
+    }
+  });
+}
+
+function filterPresetOptions(query) {
+  if (!presetOptionsList) return;
+  const items = presetOptionsList.querySelectorAll('.preset-option-item');
+  const cleanQuery = query.toLowerCase().trim();
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    if (text.includes(cleanQuery)) {
+      item.classList.remove('hidden');
+    } else {
+      item.classList.add('hidden');
+    }
+  });
 }

@@ -32,6 +32,7 @@ body {
   height: auto;
   max-height: 600px;
   overflow-y: auto;
+  line-height: 1.5;
 }
 
 /* Thanh cuộn */
@@ -56,6 +57,16 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  width: 480px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 580px) {
+  .extension-container {
+    width: 100%;
+    max-width: 1000px;
+  }
 }
 
 /* Header */
@@ -68,7 +79,8 @@ body {
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 50;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .header-left {
@@ -249,6 +261,8 @@ body {
 .main-content {
   flex: 1;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .state-container {
@@ -256,13 +270,14 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -890,14 +905,15 @@ body {
 
 .error-icon,
 .success-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .error-icon {
@@ -914,9 +930,9 @@ body {
   border: 3px solid #E2E8F0;
   border-top: 3px solid var(--primary-color);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  animation: spin 0.8s linear infinite;
+  width: 28px;
+  height: 28px;
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
@@ -941,14 +957,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
+  active: scale(0.98);
 }
 
 .btn-primary {
@@ -959,6 +976,7 @@ body {
 .btn-primary:hover {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .btn-secondary {
@@ -979,6 +997,7 @@ body {
 .btn-emerald:hover {
   background-color: var(--success-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .btn-danger {
@@ -1003,7 +1022,7 @@ body {
 
 .btn-sm {
   width: auto;
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 12px;
 }
 
@@ -1064,9 +1083,24 @@ body {
 .wizard-step {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
   animation: fadeIn 0.25s ease-out;
+  flex: 1;
+}
+
+.form-group-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px; /* Keep it tall */
+}
+
+.form-group-content textarea {
+  flex: 1;
+  min-height: 240px;
+  resize: vertical;
+  line-height: 1.6;
 }
 
 .step-header {
@@ -1076,7 +1110,7 @@ body {
   border-left: 3px solid var(--primary-color);
   padding-left: 8px;
   margin-top: 4px;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
   text-align: left;
 }
 
@@ -1359,4 +1393,62 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
+}
+/* Post-crawl image editor from dev/Quiet */
+.image-preview-list {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 8px 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f1f5f9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.image-preview-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.78);
+  cursor: pointer;
+}
+
+.add-image-item {
+  display: grid;
+  place-items: center;
+  color: #4f46e5;
+  border-style: dashed;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.no-images-placeholder {
+  padding: 20px;
+  color: #64748b;
+  font-size: 13px;
 }
