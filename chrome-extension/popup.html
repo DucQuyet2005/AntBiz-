@@ -144,22 +144,18 @@
 
           <div class="form-group">
             <label for="input-title">Tiêu đề bài viết</label>
-            <input type="text" id="input-title" placeholder="Nhập tiêu đề...">
+            <textarea id="input-title" rows="2" placeholder="Nhập tiêu đề..."></textarea>
           </div>
 
           <div class="form-group">
-            <label for="input-image">Hình ảnh bài viết (Mỗi liên kết một dòng)</label>
-            <textarea id="input-image" rows="2" placeholder="URL hình ảnh..."></textarea>
+            <label>Hình ảnh bài viết</label>
+            <div id="image-preview-list" class="image-preview-list"></div>
+            <textarea id="input-image" style="display: none;" placeholder="URL hình ảnh..."></textarea>
           </div>
 
-          <div class="form-group">
-            <label for="input-desc">Mô tả ngắn (Sapo)</label>
-            <textarea id="input-desc" rows="2" placeholder="Nhập mô tả ngắn..."></textarea>
-          </div>
-
-          <div class="form-group">
+          <div class="form-group form-group-content">
             <label for="input-content">Nội dung bài viết sạch</label>
-            <textarea id="input-content" rows="6" placeholder="Nội dung bài viết..."></textarea>
+            <textarea id="input-content" placeholder="Nội dung bài viết..."></textarea>
           </div>
 
           <div class="action-buttons">
@@ -179,11 +175,24 @@
               <option value="thread">Threads Account</option>
               <option value="instagram">Instagram Account</option>
             </select>
+            <div id="instagram-warning" class="hidden" style="color: #ea580c; font-size: 11px; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 4px; text-align: left;">
+              ⚠️ Instagram bắt buộc phải có hình ảnh để đăng bài.
+            </div>
           </div>
 
           <div class="form-group">
-            <label for="select-preset">Chọn cấu hình bài đăng (Preset)</label>
-            <select id="select-preset">
+            <label>Chọn cấu hình bài đăng (Preset)</label>
+            <div class="custom-select-container">
+              <button type="button" id="preset-select-trigger" class="custom-select-trigger">
+                <span id="preset-trigger-label">-- Mặc định (Không áp dụng) --</span>
+                <span class="custom-select-arrow">▼</span>
+              </button>
+              <div id="preset-dropdown-panel" class="custom-select-panel hidden">
+                <input type="text" id="preset-search-input" class="custom-select-search" placeholder="Tìm kiếm văn phong...">
+                <div id="preset-options-list" class="custom-select-options"></div>
+              </div>
+            </div>
+            <select id="select-preset" style="display: none;">
               <option value="">-- Mặc định (Không áp dụng) --</option>
             </select>
           </div>
