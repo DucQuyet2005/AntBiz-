@@ -535,7 +535,7 @@ export default function ArchiveView() {
                   className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
-                  <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
+                  <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
                 {showSortDropdown && (
