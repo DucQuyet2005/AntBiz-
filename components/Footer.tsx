@@ -118,7 +118,7 @@ const Footer = () => {
             {t('footer.support')}
           </h3>
           <div className="flex flex-col gap-2 text-xs text-text-muted dark:text-white/60 font-semibold">
-            <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.help')}</a>
+            <a href="/huong-dan" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.help')}</a>
             <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.terms')}</a>
             <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.privacy')}</a>
             <a href="#" className="hover:bg-primary/10 hover:text-primary dark:hover:text-primary/90 px-3 py-1 rounded-xl transition-all w-fit focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">{t('footer.privacyRights')}</a>

@@ -55,7 +55,10 @@ export default function LoginPage() {
       if (user) {
         localStorage.removeItem("login_attempts_count");
         localStorage.removeItem("login_matrix_locked");
-        router.replace('/overview');
+
+        const params = new URLSearchParams(window.location.search);
+        const redirectParam = params.get("redirect") || params.get("next") || "/overview";
+        router.replace(decodeURIComponent(redirectParam));
       }
     };
     checkLoggedUser();
@@ -199,7 +202,7 @@ export default function LoginPage() {
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const nextParam = params.get("next");
+      const nextParam = params.get("redirect") || params.get("next");
       if (nextParam) {
         formData.append("next", nextParam);
       }

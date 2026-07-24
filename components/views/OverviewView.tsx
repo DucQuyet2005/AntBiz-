@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Send,
   Sparkles,
@@ -81,6 +82,8 @@ interface OverviewViewProps {
 export default function OverviewView({ isAdmin = false, onSwitchView }: OverviewViewProps = {}) {
   const { t, language } = useLanguage();
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,15 +100,26 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
   }, []);
 
   useEffect(() => {
-    // Only run on client side
+    if (loading) return;
+
+    // Force-open onboarding tour when navigated here with ?tour=1
+    // (e.g., from the public /huong-dan page CTA)
+    if (searchParams?.get('tour') === '1') {
+      localStorage.removeItem('antbiz_onboarded');
+      router.replace('/overview', { scroll: false });
+      setShowTour(true);
+      return;
+    }
+
+    // Auto-open if first time logging in (antbiz_onboarded not set)
     const completed = localStorage.getItem('antbiz_onboarded');
     if (!completed) {
       const timer = setTimeout(() => {
         setShowTour(true);
-      }, 1500);
+      }, 600);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [loading, searchParams]);
 
   // Track target element rect for the SVG cutout mask
   useEffect(() => {

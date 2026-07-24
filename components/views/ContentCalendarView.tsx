@@ -957,7 +957,7 @@ export default function ContentCalendarView() {
   };
 
   return (
-    <div className="flex flex-col gap-6 font-sans relative pb-10">
+    <div id="onboarding-calendar" className="flex flex-col gap-6 font-sans relative pb-10">
 
       {/* INJECT CUSTOM PREMIUM STYLES FOR MOTION & SHAPES */}
       <style jsx global>{`
@@ -1358,9 +1358,9 @@ export default function ContentCalendarView() {
         </div>
 
         {/* RIGHT COLUMN: FullCalendar Grid */}
-        <div className="col-span-12 lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-hidden relative h-[780px]">
+        <div id="tour-calendar-board" className="col-span-12 lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm shadow-slate-100/40 flex flex-col gap-4 overflow-hidden relative h-[780px]">
           {/* Horizontal Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/40 rounded-2xl border border-slate-100 dark:border-zinc-850 backdrop-blur-md mb-2">
+          <div id="tour-calendar-lock" className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/40 rounded-2xl border border-slate-100 dark:border-zinc-850 backdrop-blur-md mb-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-slate-550 dark:text-zinc-400 uppercase tracking-widest leading-none">
                 {language === 'vi' ? 'Lọc theo kênh:' : 'Filter by platform:'}

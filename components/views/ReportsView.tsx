@@ -545,7 +545,7 @@ export default function ReportsView() {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-foreground font-sans">
+    <div id="onboarding-reports" className="flex flex-col gap-6 text-foreground font-sans">
 
       {/* Page Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
@@ -589,6 +589,7 @@ export default function ReportsView() {
           </button>
 
           <button
+            id="tour-reports-export-btn"
             type="button"
             onClick={handleExport}
             disabled={isExporting || loading}
@@ -796,7 +797,7 @@ export default function ReportsView() {
               className="space-y-6"
             >
               {/* Metric KPI Cards (6 columns) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              <div id="tour-reports-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 {/* Card 1: Total Posts */}
                 <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
@@ -1108,7 +1109,7 @@ export default function ReportsView() {
                 </div>
 
                 {/* DonutChart: Platform Distribution */}
-                <div className="lg:col-span-4 bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-gray-200/70 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
+                <div id="tour-reports-export" className="lg:col-span-4 bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-gray-200/70 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
                   <div>
                     <h3 className="text-base font-black text-slate-900 dark:text-white">
                       Phân phối nền tảng

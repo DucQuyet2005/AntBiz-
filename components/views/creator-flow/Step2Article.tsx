@@ -902,7 +902,7 @@ export default function Step2Article({
       
 
       {/* Grid of Website Cards - 3 columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+      <div id="tour-aicreator-url" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
 
         {/* Card 1: Gocnhinmoi */}
         <div
@@ -1009,7 +1009,7 @@ export default function Step2Article({
       </div>
 
       {/* File Upload Area */}
-      <div ref={uploadSectionRef} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 border border-gray-250 dark:border-zinc-800 shadow-md font-sans">
+      <div id="tour-aicreator-file" ref={uploadSectionRef} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 border border-gray-250 dark:border-zinc-800 shadow-md font-sans">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-text">Hoặc tải lên tệp tin của bạn</h2>
           <button

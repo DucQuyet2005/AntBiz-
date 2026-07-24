@@ -1537,11 +1537,11 @@ export default function PresetsView() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full font-sans">
+    <div id="onboarding-presets" className="flex flex-col gap-6 w-full font-sans">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h1 id="tour-presets-ai" className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <Layers className="text-primary" size={28} />
             {t("presets.title") || "Văn phong Thương hiệu"}
           </h1>
@@ -1550,6 +1550,7 @@ export default function PresetsView() {
           </p>
         </div>
         <button
+          id="tour-presets-create"
           type="button"
           onClick={() => { setEditingPreset(null); setWizardOpen(true); }}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all cursor-pointer border-0 shadow-md shadow-primary/20 shrink-0"
@@ -1560,7 +1561,7 @@ export default function PresetsView() {
       </div>
 
       {/* Tabs & Search Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs mt-2">
+      <div id="tour-presets-list" className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800/60 rounded-2xl p-3 shadow-2xs mt-2">
         <div className="bg-gray-100 dark:bg-zinc-950 p-1 rounded-xl flex items-center gap-1 shrink-0 overflow-x-auto">
           <button
             type="button"

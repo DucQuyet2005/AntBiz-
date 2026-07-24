@@ -67,6 +67,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
       { href: "/admin/platform-presets", label: language === 'vi' ? 'Quy chuẩn nền tảng' : 'Platform Presets', icon: FileText },
     ] : []),
     { href: "/settings", label: t("sidebar.settings"), icon: Settings },
+    { href: "/huong-dan", label: t("common.userGuide"), icon: Compass },
     { href: "/faq", label: t("sidebar.faq"), icon: HelpCircle },
   ];
 
@@ -103,9 +104,17 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+            
+            let sidebarId: string | undefined = undefined;
+            if (item.href === "/presets") sidebarId = "sidebar-link-presets";
+            if (item.href === "/ai-creator") sidebarId = "sidebar-link-aicreator";
+            if (item.href === "/content-calendar") sidebarId = "sidebar-link-calendar";
+            if (item.href === "/reports") sidebarId = "sidebar-link-reports";
+
             return (
               <Link
                 key={item.href}
+                id={sidebarId}
                 href={item.href}
                 className={`flex items-center gap-4 py-3 transition-all relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${isActive
                   ? "bg-primary/8 text-primary border-l-4 border-primary pl-5 pr-4 rounded-r-xl rounded-l-none font-extrabold shadow-sm shadow-primary/5"

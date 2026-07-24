@@ -10,6 +10,7 @@ import { ShieldX, ChevronUp, RefreshCw, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRef } from 'react';
 import { Toast } from '@/components/Toast';
+import AppOnboardingTour from '@/components/AppOnboardingTour';
 
 export default function DashboardLayout({
   children,
@@ -436,6 +437,9 @@ export default function DashboardLayout({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Global Interactive Guided Tour */}
+      <AppOnboardingTour />
     </div>
   );
 }

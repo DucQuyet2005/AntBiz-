@@ -12,7 +12,14 @@ import {
   HelpCircle,
   Sun,
   Moon,
-  UploadCloud
+  UploadCloud,
+  Play,
+  LogIn,
+  FileText,
+  Sparkles,
+  PenLine,
+  CalendarDays,
+  BarChart3
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -365,6 +372,19 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
               {t('common.features')}
             </a>
             <a 
+              href="#user-guide" 
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById('user-guide');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-slate-600 dark:text-slate-400 hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)] font-bold text-xs uppercase tracking-wider transition-colors decoration-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none rounded px-1 py-0.5"
+            >
+              {t('common.userGuide')}
+            </a>
+            <a 
               href="#faq-section" 
               onClick={(e) => {
                 e.preventDefault();
@@ -634,6 +654,79 @@ export default function LandingView({ initialConfig, isPreview = false, isEditor
                 </div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 8. USER GUIDE SECTION */}
+      <section id="user-guide" className="py-20 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F1117] transition-colors duration-300">
+        <div className="max-w-5xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <span className="inline-flex items-center gap-2 bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest mb-4">
+              <Play size={10} className="fill-current" />
+              {language === 'vi' ? 'Hướng dẫn 4 bước tính năng' : '4-step feature guide'}
+            </span>
+            <h2 className="text-3xl font-extrabold uppercase tracking-wider text-slate-800 dark:text-white mb-4">
+              {t('userGuide.heroTitle')}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 font-semibold max-w-xl mx-auto text-sm">
+              {t('userGuide.heroSubtitle')}
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              { icon: FileText, color: 'from-blue-500 to-cyan-600', step: 1, titleKey: 'step1Title', descKey: 'step1Desc' },
+              { icon: Sparkles, color: 'from-violet-500 to-indigo-600', step: 2, titleKey: 'step2Title', descKey: 'step2Desc' },
+              { icon: CalendarDays, color: 'from-pink-500 to-rose-600', step: 3, titleKey: 'step3Title', descKey: 'step3Desc' },
+              { icon: BarChart3, color: 'from-purple-500 to-fuchsia-600', step: 4, titleKey: 'step4Title', descKey: 'step4Desc' },
+            ].map((st, idx) => {
+              const IconComp = st.icon;
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: idx * 0.08 }}
+                  className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:shadow-md transition-all group"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${st.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform`}>
+                        <IconComp size={20} />
+                      </div>
+                      <span className="w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-xs text-[var(--color-primary)] shadow-sm">
+                        {st.step}
+                      </span>
+                    </div>
+                    <h3 className="font-extrabold text-base text-slate-800 dark:text-white mb-2 leading-tight">
+                      {t(`userGuide.${st.titleKey}` as any)}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
+                      {t(`userGuide.${st.descKey}` as any)}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/login?redirect=%2Fpresets%3Fonboarding%3D1"
+              className="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-8 py-3.5 rounded-full font-bold text-xs uppercase tracking-wider shadow-lg transition-all active:scale-95 border-0 decoration-none"
+              onClick={isEditor ? (e) => e.preventDefault() : undefined}
+            >
+              <Play size={13} className="fill-current" />
+              {t('userGuide.ctaInteractiveTour')}
+            </Link>
           </div>
         </div>
       </section>

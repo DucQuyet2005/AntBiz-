@@ -16,16 +16,29 @@ import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, X, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
 import { useDuplicateCheck } from '@/frontend/modules/caption-generation/use-duplicate-check';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 function AiCreatorContent() {
   const { t, language } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     state, dispatch, nextStep, prevStep, goToStep,
     startCrawl, submitManualArticle, uploadSourceFile, confirmPostSchedule,
     editHighlighted, generateAIContent,
   } = useCreatorFlow();
+
+  // Sync step during onboarding tour
+  useEffect(() => {
+    const onboardingParam = searchParams?.get('onboarding');
+    if (onboardingParam) {
+      const stepNum = parseInt(onboardingParam, 10);
+      if (stepNum === 3 && state.currentStep !== 1) goToStep(1);
+      if ((stepNum === 4 || stepNum === 5) && state.currentStep !== 2) goToStep(2);
+      if (stepNum === 6 && state.currentStep !== 3) goToStep(3);
+      if (stepNum === 7 && state.currentStep !== 4) goToStep(4);
+    }
+  }, [searchParams, state.currentStep, goToStep]);
 
   // Custom Toast notification states
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
@@ -309,26 +322,38 @@ function AiCreatorContent() {
     switch (state.currentStep) {
       case 1:
         return (
-          <Step1Platform
-            selectedPlatforms={state.selectedPlatforms}
-            onSelect={(plats) => dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: plats })}
-          />
+          <div id="tour-aicreator-step1">
+            <Step1Platform
+              selectedPlatforms={state.selectedPlatforms}
+              onSelect={(plats) => dispatch({ type: 'SET_SELECTED_PLATFORMS', payload: plats })}
+            />
+          </div>
         );
       case 2:
         return (
-          <Step2Article
-            sourceType={state.sourceType}
-            crawlStatus={state.crawlStatus}
-            articleContext={state.articleContext}
-            startCrawl={startCrawl}
-            submitManual={submitManualArticle}
-            uploadSource={uploadSourceFile}
-          />
+          <div id="tour-aicreator-step2">
+            <Step2Article
+              sourceType={state.sourceType}
+              crawlStatus={state.crawlStatus}
+              articleContext={state.articleContext}
+              startCrawl={startCrawl}
+              submitManual={submitManualArticle}
+              uploadSource={uploadSourceFile}
+            />
+          </div>
         );
       case 3:
-        return <Step4Editor onTextChange={handleEditorTextChange} />;
+        return (
+          <div id="tour-aicreator-step3">
+            <Step4Editor onTextChange={handleEditorTextChange} />
+          </div>
+        );
       case 4:
-        return <Step5Schedule />;
+        return (
+          <div id="tour-aicreator-step4">
+            <Step5Schedule />
+          </div>
+        );
       default:
         return null;
     }
@@ -359,7 +384,7 @@ function AiCreatorContent() {
   };
 
   return (
-    <div className="w-full bg-bg">
+    <div id="onboarding-aicreator" className="w-full bg-bg">
 
       {/* Main wizard frame */}
       <div className="select-none w-full max-w-7xl mx-auto px-4 md:px-6 pt-6">

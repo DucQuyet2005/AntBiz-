@@ -6,14 +6,26 @@ import OverviewView from '@/components/views/OverviewView';
 import AdminOverviewView from '@/components/views/AdminOverviewView';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function OverviewPage() {
   const supabase = createClient();
   const { language } = useLanguage();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [showAdminView, setShowAdminView] = useState(false);
+
+  useEffect(() => {
+    const redirectParam = searchParams?.get('redirect');
+    if (redirectParam) {
+      router.replace(decodeURIComponent(redirectParam));
+      return;
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     async function checkUserRole() {
