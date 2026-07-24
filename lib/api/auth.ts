@@ -1,19 +1,53 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 
 /**
- * Lấy Supabase server client + user hiện tại từ cookie session.
+ * Lấy Supabase server client + user hiện tại từ cookie session hoặc Authorization header.
  * Nếu chưa đăng nhập, trả về response 401 sẵn để route handler return ngay.
  *
  * Đây chỉ là lớp kiểm tra "có đăng nhập hay không" ở tầng API (giống @PreAuthorize cơ bản).
  * Phân quyền chi tiết (owner/admin được sửa/xóa gì) vẫn do RLS ở Supabase đảm nhiệm.
  */
 export async function requireUser() {
-  const supabase = createClient();
+  let supabase = null as any;
+  let bearerToken: string | null = null;
+  try {
+    const headersList = await headers();
+    const authHeader = headersList.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      bearerToken = authHeader.substring(7).trim();
+      supabase = createSupabaseJsClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${bearerToken}`,
+            },
+          },
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false
+          }
+        }
+      );
+    }
+  } catch (e) {
+    // Fallback if headers context is missing
+  }
+
+  if (!supabase) {
+    supabase = createClient();
+  }
+
   let user = null;
   let authError = null;
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = bearerToken
+      ? await supabase.auth.getUser(bearerToken)
+      : await supabase.auth.getUser();
     user = data?.user ?? null;
     authError = error;
   } catch (err: any) {
@@ -65,7 +99,6 @@ export async function requireUserWithRole(allowedRoles: ('admin' | 'marketer_ful
   return { supabase, user, role: userData.role as 'admin' | 'marketer_full' | 'marketer_content', unauthorized: null };
 }
 
-import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 
 export function createServiceRoleClient() {
