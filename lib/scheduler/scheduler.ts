@@ -7,7 +7,14 @@ export async function runSchedulerCycle() {
 }
 
 export async function runPerformanceSyncCycle() {
-  return createPostPerformanceModule(createServiceRoleClient()).syncFacebookPerformance();
+  const results = await createPostPerformanceModule(createServiceRoleClient()).syncAllPerformance();
+  let attempted = 0;
+  let succeeded = 0;
+  for (const key of Object.keys(results)) {
+    attempted += (results as any)[key].attempted || 0;
+    succeeded += (results as any)[key].succeeded || 0;
+  }
+  return { attempted, succeeded };
 }
 
 export function initScheduler() {

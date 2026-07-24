@@ -84,12 +84,13 @@ export async function publishToInstagram(
 
       const childIds = await Promise.all(childPromises);
 
-      // Poll each child container until FINISHED before creating parent
-      for (const childId of childIds) {
-        const childReady = await waitForContainerReady(childId, token);
-        if (!childReady.ok) {
-          return { success: false, error: `Ảnh con trong carousel thất bại: ${childReady.error}` };
-        }
+      // Poll all child containers until FINISHED in parallel before creating parent
+      const readinessResults = await Promise.all(
+        childIds.map((childId) => waitForContainerReady(childId, token))
+      );
+      const failedChild = readinessResults.find((res) => !res.ok);
+      if (failedChild && !failedChild.ok) {
+        return { success: false, error: `Ảnh con trong carousel thất bại: ${failedChild.error}` };
       }
 
       const parentRes = await fetch(`https://graph.facebook.com/v19.0/${igId}/media`, {
@@ -173,8 +174,8 @@ export async function publishMedia(
 async function waitForContainerReady(
   containerId: string,
   token: string,
-  maxAttempts = 30,
-  intervalMs = 2000
+  maxAttempts = 60,
+  intervalMs = 1000
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const res = await fetch(

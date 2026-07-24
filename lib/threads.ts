@@ -5,7 +5,7 @@ export interface ThreadsPublishResult {
 }
 
 async function pollThreadsContainerStatus(containerId: string, token: string): Promise<boolean> {
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 30; i++) {
     try {
       const res = await fetch(`https://graph.threads.net/v1.0/${containerId}?fields=status,error_message&access_token=${token}`);
       if (res.ok) {
@@ -18,9 +18,9 @@ async function pollThreadsContainerStatus(containerId: string, token: string): P
         }
       }
     } catch (err: any) {
-      console.warn(`[Threads API] Polling status error (Attempt ${i + 1}/15): ${err.message}`);
+      console.warn(`[Threads API] Polling status error (Attempt ${i + 1}/30): ${err.message}`);
     }
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   return false;
 }

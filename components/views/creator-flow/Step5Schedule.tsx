@@ -133,7 +133,6 @@ export function PublishingSettings({
   reportToggle,
   onDateChange,
   onTimeChange,
-  onMinuteSelect,
   onDateBlur,
   onTimeBlur,
   onReportToggleChange,
@@ -144,7 +143,6 @@ export function PublishingSettings({
   reportToggle: boolean;
   onDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onTimeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onMinuteSelect: (minuteStr: string) => void;
   onDateBlur?: () => void;
   onTimeBlur?: () => void;
   onReportToggleChange: () => void;
@@ -179,7 +177,7 @@ export function PublishingSettings({
           </div>
         </div>
 
-        {/* GIỜ ĐĂNG Input & Quick Minute Selectors */}
+        {/* GIỜ ĐĂNG Input */}
         <div className="space-y-1.5">
           <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('creator.step5.timeLabel')}</label>
           <div className="relative">
@@ -191,28 +189,6 @@ export function PublishingSettings({
               className="w-full h-9 pl-3 pr-9 rounded-lg border border-gray-200 dark:border-zinc-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-zinc-900 text-xs font-semibold text-text transition-all"
             />
             <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
-          </div>
-
-          {/* Quick Minute Selector Buttons (00, 15, 30, 45) */}
-          <div className="flex items-center gap-1.5 pt-1">
-            {['00', '15', '30', '45'].map((m) => {
-              const currentMin = timeValue ? timeValue.split(':')[1] || '00' : '00';
-              const isSelected = currentMin === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => onMinuteSelect(m)}
-                  className={`flex-1 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer border ${
-                    isSelected
-                      ? 'bg-primary text-white border-primary shadow-2xs'
-                      : 'bg-gray-50 dark:bg-zinc-800/40 border-gray-200 dark:border-zinc-800 text-text-muted hover:text-text hover:border-gray-300'
-                  }`}
-                >
-                  :{m}
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>
@@ -593,19 +569,20 @@ export default function Step5Schedule() {
     return false;
   }, [days, now]);
 
-  // Auto-reset if scheduledDateTime is in the past on mount
+  // Auto-reset if scheduledDateTime is in the past on mount to today's local current time
   useEffect(() => {
     if (state.scheduledDateTime) {
       const currentScheduled = new Date(state.scheduledDateTime);
-      if (currentScheduled.getTime() <= new Date().getTime()) {
-        const futureDate = new Date();
-        futureDate.setMinutes(futureDate.getMinutes() + 15);
-        const minVal = Math.ceil(futureDate.getMinutes() / 15) * 15;
-        futureDate.setMinutes(minVal % 60);
-        futureDate.setSeconds(0);
-        const dateStr = `${futureDate.getFullYear()}-${(futureDate.getMonth() + 1).toString().padStart(2, '0')}-${futureDate.getDate().toString().padStart(2, '0')}`;
-        const timeStr = `${futureDate.getHours().toString().padStart(2, '0')}:${(futureDate.getMinutes()).toString().padStart(2, '0')}`;
-        dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${dateStr}T${timeStr}` });
+      const now = new Date();
+      // If the scheduled time is in the past (even by a second), reset to the fresh current local date & time
+      if (currentScheduled.getTime() <= now.getTime()) {
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const freshDateTime = `${year}-${month}-${date}T${hours}:${minutes}`;
+        dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: freshDateTime });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -655,15 +632,6 @@ export default function Step5Schedule() {
     dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
   };
 
-  const handleMinuteSelect = (minuteStr: string) => {
-    const currentHour = timePart ? timePart.split(':')[0] || '09' : '09';
-    const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr;
-    const targetDateTime = new Date(`${currentDate}T${currentHour}:${minuteStr}:00`);
-    if (targetDateTime.getTime() <= now.getTime()) return; // Block past minute
-
-    dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${currentHour}:${minuteStr}` });
-  };
-
   return (
     <div className="w-full max-w-7xl mx-auto flex-1 py-2 px-3 sm:px-4 select-none">
       {/* 2-Column Responsive Layout (70% Left / 30% Right) */}
@@ -704,7 +672,6 @@ export default function Step5Schedule() {
               const currentDate = datePart || days.find(d => d.isToday)?.fullDateStr || days[0]?.fullDateStr || '';
               dispatch({ type: 'SET_SCHEDULE_DATE_TIME', payload: `${currentDate}T${selectedTime}` });
             }}
-            onMinuteSelect={handleMinuteSelect}
             onDateBlur={() => {
               const targetTime = new Date(state.scheduledDateTime || '').getTime();
               if (targetTime && targetTime <= now.getTime()) {

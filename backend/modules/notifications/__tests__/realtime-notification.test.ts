@@ -25,23 +25,23 @@ describe('Realtime Notification Logic & Queue', () => {
             // Mock single() to return resolved database record wrapped in { data, error }
             single: vi.fn().mockResolvedValue({
               data: {
-                id: 'notif_789', 
-                user_id: 'user_123', 
-                type: 'post_success', 
-                title: 'Đăng bài thành công', 
+                id: 'notif_789',
+                user_id: 'user_123',
+                type: 'post_success',
+                title: 'Đăng bài thành công',
                 message: 'Bài viết Facebook của bạn đã được đăng thành công.',
                 created_at: new Date().toISOString()
               },
               error: null
             }),
             // Promise-like behavior for insert/select sequence
-            then: function(onfulfilled: any) {
+            then: function (onfulfilled: any) {
               return Promise.resolve({
                 data: {
-                  id: 'notif_789', 
-                  user_id: 'user_123', 
-                  type: 'post_success', 
-                  title: 'Đăng bài thành công', 
+                  id: 'notif_789',
+                  user_id: 'user_123',
+                  type: 'post_success',
+                  title: 'Đăng bài thành công',
                   message: 'Bài viết Facebook của bạn đã được đăng thành công.',
                   created_at: new Date().toISOString()
                 },
@@ -65,7 +65,7 @@ describe('Realtime Notification Logic & Queue', () => {
               },
               error: null
             }),
-            then: function(onfulfilled: any) {
+            then: function (onfulfilled: any) {
               return Promise.resolve({
                 data: {
                   id: 'user_123',
@@ -96,7 +96,7 @@ describe('Realtime Notification Logic & Queue', () => {
 
     // 3. Verify database notification was created
     expect(notif).toBeDefined();
-    
+
     // 4. Verify email dispatch via mocked sendEmail helper
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const emailCallArgs = vi.mocked(sendEmail).mock.calls[0][0];
@@ -116,22 +116,22 @@ describe('Realtime Notification Logic & Queue', () => {
             in: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: {
-                id: 'notif_789', 
-                user_id: 'user_123', 
-                type: 'post_success', 
-                title: 'Đăng bài thành công', 
+                id: 'notif_789',
+                user_id: 'user_123',
+                type: 'post_success',
+                title: 'Đăng bài thành công',
                 message: 'Bài viết Facebook',
                 created_at: new Date().toISOString()
               },
               error: null
             }),
-            then: function(onfulfilled: any) {
+            then: function (onfulfilled: any) {
               return Promise.resolve({
                 data: {
-                  id: 'notif_789', 
-                  user_id: 'user_123', 
-                  type: 'post_success', 
-                  title: 'Đăng bài thành công', 
+                  id: 'notif_789',
+                  user_id: 'user_123',
+                  type: 'post_success',
+                  title: 'Đăng bài thành công',
                   message: 'Bài viết Facebook',
                   created_at: new Date().toISOString()
                 },
@@ -155,7 +155,7 @@ describe('Realtime Notification Logic & Queue', () => {
               },
               error: null
             }),
-            then: function(onfulfilled: any) {
+            then: function (onfulfilled: any) {
               return Promise.resolve({
                 data: {
                   id: 'user_123',

@@ -70,7 +70,11 @@ export class PostPerformanceModule {
   /**
    * Đồng bộ chỉ số tương tác cho một nền tảng cụ thể (facebook, instagram, v.v.)
    */
-  async syncPlatformPerformance(platform: 'facebook' | 'instagram' | 'threads', limit: number = 50): Promise<{
+  async syncPlatformPerformance(
+    platform: 'facebook' | 'instagram' | 'threads',
+    limit: number = 50,
+    force: boolean = false
+  ): Promise<{
     attempted: number;
     succeeded: number;
     errors: Array<{ postId: string; error: string }>;
@@ -89,49 +93,61 @@ export class PostPerformanceModule {
     const now = Date.now();
     const HOUR_MS = 60 * 60 * 1000;
 
-    for (const post of posts) {
-      // Tiered Syncing Rule:
-      // Tier 1: Bài đăng < 24 giờ -> crawl mỗi 30 phút (0.5h)
-      // Tier 2: Bài đăng 1 - 7 ngày -> crawl mỗi 6 giờ
-      // Tier 3: Bài đăng > 7 ngày -> crawl mỗi 24 giờ
-      if (post.postedAt && post.lastSyncedAt) {
-        const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
-        const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
+    let isRateLimited = false;
+    const batchSize = 5;
+    
+    for (let i = 0; i < posts.length; i += batchSize) {
+      if (isRateLimited) break;
+      const batch = posts.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (post) => {
+        if (isRateLimited) return;
 
-        if (postAgeHours <= 24) {
-          if (timeSinceLastSyncHours < 0.5) continue;
-        } else if (postAgeHours <= 7 * 24) {
-          if (timeSinceLastSyncHours < 6) continue;
-        } else {
-          if (timeSinceLastSyncHours < 24) continue;
-        }
-      }
+        // Giải pháp phân tầng (Tiered Syncing) để tối ưu hóa tần suất gọi API:
+        // - Không cần cập nhật đồng đều tất cả bài viết: Tương tác thường bùng nổ mạnh nhất trong 24 - 48 giờ đầu tiên và đạt trạng thái bão hòa sau 72 giờ.
+        // - Tier 1 (Bài đăng < 24 giờ): Crawl mỗi 30 phút - 1 giờ / lần. Khoảng thời gian vàng để bắt trọn tiến trình tăng trưởng tương tác.
+        // - Tier 2 (Bài đăng từ 1 - 7 ngày): Crawl mỗi 6 giờ - 12 giờ / lần.
+        // - Tier 3 (Bài đăng > 7 ngày): Chỉ crawl 24 giờ / lần hoặc ngưng crawl (ở đây tối đa 30 ngày, sau 30 ngày sẽ dừng crawl hoàn toàn).
+        // Bỏ qua kiểm tra phân tầng nếu đây là yêu cầu đồng bộ thủ công (force = true)
+        if (!force && post.postedAt && post.lastSyncedAt) {
+          const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
+          const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
 
-      attempted += 1;
-      try {
-        const token = await this.repository.findPageAccessToken(post.userId, platform);
-        if (!token) {
-          throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
+          if (postAgeHours <= 24) {
+            if (timeSinceLastSyncHours < 0.5) return; // Tier 1: 30 phút/lần
+          } else if (postAgeHours <= 7 * 24) {
+            if (timeSinceLastSyncHours < 6) return; // Tier 2: 6 giờ/lần
+          } else {
+            if (timeSinceLastSyncHours < 24) return; // Tier 3: 24 giờ/lần
+          }
         }
 
-        const metrics = await collector.fetchPostMetrics(post.externalPostId, token);
-        const saveSuccess = await this.repository.upsertInteractions(post.id, metrics);
-        
-        if (saveSuccess) {
-          succeeded += 1;
-        } else {
-          throw new Error('Lỗi khi lưu dữ liệu tương tác vào cơ sở dữ liệu');
-        }
-      } catch (err: any) {
-        const errorMsg = err.message || 'Lỗi không xác định';
-        console.error(`[PostPerformanceModule] Thất bại khi sync ${platform} cho post_id ${post.id}:`, errorMsg);
-        errors.push({ postId: post.id, error: errorMsg });
+        attempted += 1;
+        try {
+          const token = await this.repository.findPageAccessToken(post.userId, platform);
+          if (!token) {
+            throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
+          }
 
-        if (errorMsg.includes('RATE_LIMIT')) {
-          console.warn(`[PostPerformanceModule] Phát hiện Rate Limit từ ${platform} API. Dừng chu kỳ đồng bộ.`);
-          break;
+          const metrics = await collector.fetchPostMetrics(post.externalPostId, token);
+          const saveSuccess = await this.repository.upsertInteractions(post.id, metrics);
+          
+          if (saveSuccess) {
+            succeeded += 1;
+          } else {
+            throw new Error('Lỗi khi lưu dữ liệu tương tác vào cơ sở dữ liệu');
+          }
+        } catch (err: any) {
+          const errorMsg = err.message || 'Lỗi không xác định';
+          console.error(`[PostPerformanceModule] Thất bại khi sync ${platform} cho post_id ${post.id}:`, errorMsg);
+          errors.push({ postId: post.id, error: errorMsg });
+
+          if (errorMsg.includes('RATE_LIMIT')) {
+            console.warn(`[PostPerformanceModule] Phát hiện Rate Limit từ ${platform} API. Dừng chu kỳ đồng bộ.`);
+            isRateLimited = true;
+          }
         }
-      }
+      }));
     }
 
     return { attempted, succeeded, errors };
@@ -140,10 +156,10 @@ export class PostPerformanceModule {
   /**
    * Đồng bộ chỉ số cho tất cả các nền tảng đã đăng ký
    */
-  async syncAllPerformance(limit: number = 50) {
+  async syncAllPerformance(limit: number = 50, force: boolean = false) {
     const results: Record<string, { attempted: number; succeeded: number }> = {};
     for (const platform of Array.from(this.collectorMap.keys())) {
-      results[platform] = await this.syncPlatformPerformance(platform as any, limit);
+      results[platform] = await this.syncPlatformPerformance(platform as any, limit, force);
     }
     return results;
   }
