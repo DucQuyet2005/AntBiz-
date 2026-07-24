@@ -42,7 +42,7 @@ function QuotedTextBubble({ text }: { text: string }) {
   );
 }
 
-export default function Step4Editor() {
+export default React.memo(function Step4Editor({ onTextChange }: { onTextChange?: (text: string) => void }) {
   const { t } = useLanguage();
   const {
     state,
@@ -697,9 +697,13 @@ export default function Step4Editor() {
 
   const titleRef = useRef<HTMLHeadingElement>(null);
 
+  // Keep title innerText in sync
   useEffect(() => {
     if (titleRef.current && document.activeElement !== titleRef.current) {
-      titleRef.current.innerText = currentTitle || "Nhập tiêu đề bài viết...";
+      const newTitle = currentTitle || "Nhập tiêu đề bài viết...";
+      if (titleRef.current.innerText !== newTitle) {
+        titleRef.current.innerText = newTitle;
+      }
     }
   }, [currentTitle]);
 
@@ -712,6 +716,11 @@ export default function Step4Editor() {
           ref={titleRef}
           contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
           suppressContentEditableWarning
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+          }}
           onBlur={(e) => {
             const val = e.currentTarget.innerText.trim();
             setEditableTitle(val);
@@ -859,7 +868,10 @@ export default function Step4Editor() {
   // Keep contentEditable innerText in sync with displayedContent when not active
   useEffect(() => {
     if (editorRef.current && document.activeElement !== editorRef.current) {
-      editorRef.current.innerText = displayedContent;
+      const newText = displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh...";
+      if (editorRef.current.innerText !== newText) {
+        editorRef.current.innerText = newText;
+      }
     }
   }, [displayedContent, isExpanded]);
 
@@ -1308,18 +1320,24 @@ export default function Step4Editor() {
                             {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                           </div>
                           <div
-                            key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                            key={isExpanded ? 'exp' : 'col'}
                             ref={editorRef}
                             contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                             suppressContentEditableWarning
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const text = e.clipboardData.getData('text/plain');
+                              document.execCommand('insertText', false, text);
+                            }}
+                            onInput={(e) => {
+                              onTextChange?.(e.currentTarget.innerText);
+                            }}
                             onBlur={(e) => {
                               const newText = e.currentTarget.innerText;
                               dispatch({ type: 'SET_POST_CONTENT', payload: newText });
                             }}
                             className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                          >
-                            {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                          </div>
+                          />
                           {isLongContent && !isExpanded && (
                             <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                           )}
@@ -1420,17 +1438,23 @@ export default function Step4Editor() {
                               {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
                             <div
-                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              key={isExpanded ? 'exp' : 'col'}
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                              }}
+                              onInput={(e) => {
+                                onTextChange?.(e.currentTarget.innerText);
+                              }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
                               className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[120px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                            >
-                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                            </div>
+                            />
                             {isLongContent && !isExpanded && (
                               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                             )}
@@ -1539,17 +1563,23 @@ export default function Step4Editor() {
                               {renderHighlightedBackdrop(displayedContent, state.highlightSelections)}
                             </div>
                             <div
-                              key={`${isExpanded ? 'exp' : 'col'}_${state.postContent}`}
+                              key={isExpanded ? 'exp' : 'col'}
                               ref={editorRef}
                               contentEditable={!state.isGeneratingPost && !state.isHighlightEditing}
                               suppressContentEditableWarning
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                              }}
+                              onInput={(e) => {
+                                onTextChange?.(e.currentTarget.innerText);
+                              }}
                               onBlur={(e) => {
                                 dispatch({ type: 'SET_POST_CONTENT', payload: e.currentTarget.innerText });
                               }}
                               className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap outline-none font-sans min-h-[100px] bg-transparent focus:ring-0 focus:outline-none relative z-10"
-                            >
-                              {displayedContent || "Nội dung bài viết sẽ hiển thị ở đây sau khi sinh..."}
-                            </div>
+                            />
                             {isLongContent && !isExpanded && (
                               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-zinc-900 to-transparent pointer-events-none z-20" />
                             )}
@@ -2112,4 +2142,4 @@ export default function Step4Editor() {
       </div>
     </div>
   );
-}
+});

@@ -354,7 +354,7 @@ export default function ArticleDetailView() {
           const captionIds = mappedCaptions.map(c => c.id);
           const { data: schedData } = await supabase
             .from('scheduled_posts')
-            .select('*')
+            .select('*, post_interactions(likes, comments, shares, clicks, reach, impressions)')
             .in('caption_id', captionIds);
           if (schedData) {
             setScheduledPosts(schedData);
@@ -1562,13 +1562,70 @@ export default function ArticleDetailView() {
                 <Eye size={24} />
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews')}</span>
-                {/* Lấy phần số từ chuỗi views thô (ví dụ: "1.0K lượt xem" → "1.0K", "996 lượt xem" → "996") */}
-                <span className="text-3xl font-extrabold text-text">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
+                <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews') || 'Tổng lượt xem / Tiếp cận'}</span>
+                {/* Lấy lượt reach từ mạng xã hội, nếu không có thì lấy views bài gốc */}
+                <span className="text-3xl font-extrabold text-text">
+                  {(() => {
+                    const activeCap = getActiveCaption(selectedPlatform);
+                    let reach = 0;
+                    if (activeCap) {
+                      const scheds = scheduledPosts.filter(s => s.caption_id === activeCap.id);
+                      scheds.forEach(s => {
+                        if (s.post_interactions && s.post_interactions.length > 0) {
+                          reach += (s.post_interactions[0].reach || 0) > 0 ? s.post_interactions[0].reach : (s.post_interactions[0].impressions || 0);
+                        } else if (s.post_interactions && !Array.isArray(s.post_interactions)) {
+                          reach += (s.post_interactions.reach || 0) > 0 ? s.post_interactions.reach : (s.post_interactions.impressions || 0);
+                        }
+                      });
+                    }
+                    if (reach > 0) return reach.toLocaleString('vi-VN');
+                    return activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0';
+                  })()}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {(() => {
+              const activeCap = getActiveCaption(selectedPlatform);
+              let likes = 0, comments = 0, shares = 0, clicks = 0;
+              if (activeCap) {
+                const scheds = scheduledPosts.filter(s => s.caption_id === activeCap.id);
+                scheds.forEach(s => {
+                  const inter = Array.isArray(s.post_interactions) ? s.post_interactions[0] : s.post_interactions;
+                  if (inter) {
+                    likes += inter.likes || 0;
+                    comments += inter.comments || 0;
+                    shares += inter.shares || 0;
+                    clicks += inter.clicks || 0;
+                  }
+                });
+              }
+              if (likes > 0 || comments > 0 || shares > 0 || clicks > 0) {
+                return (
+                  <div className="grid grid-cols-4 gap-2 mt-4 text-center">
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Thích</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{likes}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Bình luận</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{comments}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Chia sẻ</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{shares}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Clicks</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{clicks}</div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <div className="flex flex-col gap-2 mt-6">
               <div className="w-full bg-gray-200/50 dark:bg-black h-2 rounded-full overflow-hidden">
                 <div className="bg-amber-600 dark:bg-amber-500 w-[85%] h-full rounded-full"></div>
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -14,11 +14,12 @@ import Step2Article from './creator-flow/Step2Article';
 import Step4Editor from './creator-flow/Step4Editor';
 import Step5Schedule from './creator-flow/Step5Schedule';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
+import { useDuplicateCheck } from '@/frontend/modules/caption-generation/use-duplicate-check';
 import { useRouter } from 'next/navigation';
 
 function AiCreatorContent() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const {
     state, dispatch, nextStep, prevStep, goToStep,
@@ -34,6 +35,8 @@ function AiCreatorContent() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { duplicateWarning, checkDuplicate, clearDuplicateWarning } = useDuplicateCheck();
+  const [ignoreDuplicateCheckForText, setIgnoreDuplicateCheckForText] = useState<string>('');
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -44,6 +47,29 @@ function AiCreatorContent() {
   // Back confirmation dialog states
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [targetStep, setTargetStep] = useState<number | null>(null);
+
+  const duplicateCheckTimer = useRef<NodeJS.Timeout | null>(null);
+  const textChangeHandlerRef = useRef((text: string) => {});
+
+  useEffect(() => {
+    textChangeHandlerRef.current = (text: string) => {
+      // Xóa thông báo cũ ngay khi người dùng bắt đầu gõ để giao diện phản hồi tức thì
+      if (duplicateWarning) {
+        clearDuplicateWarning();
+      }
+      
+      if (duplicateCheckTimer.current) clearTimeout(duplicateCheckTimer.current);
+      duplicateCheckTimer.current = setTimeout(() => {
+        if (text.trim() && text !== ignoreDuplicateCheckForText) {
+          checkDuplicate(text);
+        }
+      }, 1500);
+    };
+  });
+
+  const handleEditorTextChange = React.useCallback((text: string) => {
+    textChangeHandlerRef.current(text);
+  }, []);
 
   const handleBack = () => {
     if (state.currentStep === 3) {
@@ -186,6 +212,17 @@ function AiCreatorContent() {
       nextStep();
       generateAIContent(activeArticleId || undefined);
     } else if (state.currentStep === 3) {
+      // 0. Duplicate Check for generated drafts
+      const currentFullText = state.selectedPlatforms
+        .map(p => state.drafts[p]?.content || '')
+        .filter(c => c.trim() !== '')
+        .join('\n\n');
+
+      if (currentFullText.trim() && currentFullText !== ignoreDuplicateCheckForText) {
+        const hasDuplicate = await checkDuplicate(currentFullText);
+        if (hasDuplicate) return;
+      }
+
       dispatch({ type: 'SET_SCHEDULE_MODE', payload: 'scheduled' });
       nextStep();
     } else if (state.currentStep === 4) {
@@ -289,7 +326,7 @@ function AiCreatorContent() {
           />
         );
       case 3:
-        return <Step4Editor />;
+        return <Step4Editor onTextChange={handleEditorTextChange} />;
       case 4:
         return <Step5Schedule />;
       default:
@@ -425,6 +462,72 @@ function AiCreatorContent() {
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Floating Toast for Duplicate Warning */}
+      {mounted && typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {duplicateWarning && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="fixed bottom-24 right-6 z-[9999] w-80 bg-white border-l-4 border-l-amber-500 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-4 flex flex-col gap-3 font-sans"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={16} className="text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-extrabold text-slate-800">
+                    {language === 'vi' ? 'Trùng lặp nội dung!' : 'Duplicate Content!'}
+                  </h4>
+                  <p className="text-[11.5px] font-medium text-slate-600 mt-1 leading-relaxed">
+                    {language === 'vi' 
+                      ? <>Nội dung hiện tại giống bài cũ đến <span className="font-bold text-amber-600">{Math.round(duplicateWarning.maxSimilarity * 100)}%</span>. Bạn nên sửa đổi để nội dung đa dạng hơn.</>
+                      : <>This content is <span className="font-bold text-amber-600">{Math.round(duplicateWarning.maxSimilarity * 100)}%</span> similar to an old post. You should edit it to keep it diverse.</>
+                    }
+                  </p>
+                </div>
+                <button 
+                  onClick={() => clearDuplicateWarning()} 
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer bg-transparent border-0"
+                  title={language === 'vi' ? 'Đóng' : 'Close'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex gap-2 justify-end mt-1">
+                <button
+                  onClick={() => {
+                    const currentFullText = state.selectedPlatforms
+                      .map(p => state.drafts[p]?.content || '')
+                      .filter(c => c.trim() !== '')
+                      .join('\n\n');
+                    setIgnoreDuplicateCheckForText(currentFullText);
+                    clearDuplicateWarning();
+                    handleContinue(); // Proceed to next step since we bypass
+                  }}
+                  className="bg-white hover:bg-gray-50 text-slate-700 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-gray-200 shadow-sm"
+                >
+                  {language === 'vi' ? 'Vẫn tiếp tục' : 'Continue'}
+                </button>
+                <button
+                  onClick={() => { 
+                    clearDuplicateWarning();
+                    generateAIContent(state.articleId || undefined); // Regenerate content
+                  }}
+                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm border-0"
+                >
+                  <RefreshCw size={11} />
+                  {language === 'vi' ? 'Tạo lại' : 'Regenerate'}
+                </button>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>,
         document.body

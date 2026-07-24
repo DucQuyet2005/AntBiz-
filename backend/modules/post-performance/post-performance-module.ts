@@ -53,7 +53,8 @@ export class PostPerformanceModule {
       this.goldenHoursCache.clear();
       return;
     }
-    for (const key of this.goldenHoursCache.keys()) {
+    const keys = Array.from(this.goldenHoursCache.keys());
+    for (const key of keys) {
       if (key.startsWith(`${userId}_`)) {
         this.goldenHoursCache.delete(key);
       }
@@ -94,52 +95,49 @@ export class PostPerformanceModule {
     const HOUR_MS = 60 * 60 * 1000;
 
     let isRateLimited = false;
-    const batchSize = 5;
+    const batchSize = limit; // Fetch tất cả các bài cùng lúc (thường là 50)
+    const tokenCache = new Map<string, Promise<string | null>>();
     
     for (let i = 0; i < posts.length; i += batchSize) {
       if (isRateLimited) break;
       const batch = posts.slice(i, i + batchSize);
+      const metricsToUpsert: Array<{ postId: string; metrics: any }> = [];
       
       await Promise.all(batch.map(async (post) => {
         if (isRateLimited) return;
 
-        // Giải pháp phân tầng (Tiered Syncing) để tối ưu hóa tần suất gọi API:
-        // - Không cần cập nhật đồng đều tất cả bài viết: Tương tác thường bùng nổ mạnh nhất trong 24 - 48 giờ đầu tiên và đạt trạng thái bão hòa sau 72 giờ.
-        // - Tier 1 (Bài đăng < 24 giờ): Crawl mỗi 30 phút - 1 giờ / lần. Khoảng thời gian vàng để bắt trọn tiến trình tăng trưởng tương tác.
-        // - Tier 2 (Bài đăng từ 1 - 7 ngày): Crawl mỗi 6 giờ - 12 giờ / lần.
-        // - Tier 3 (Bài đăng > 7 ngày): Chỉ crawl 24 giờ / lần hoặc ngưng crawl (ở đây tối đa 30 ngày, sau 30 ngày sẽ dừng crawl hoàn toàn).
-        // Bỏ qua kiểm tra phân tầng nếu đây là yêu cầu đồng bộ thủ công (force = true)
         if (!force && post.postedAt && post.lastSyncedAt) {
           const postAgeHours = (now - new Date(post.postedAt).getTime()) / HOUR_MS;
           const timeSinceLastSyncHours = (now - new Date(post.lastSyncedAt).getTime()) / HOUR_MS;
 
           if (postAgeHours <= 24) {
-            if (timeSinceLastSyncHours < 0.5) return; // Tier 1: 30 phút/lần
+            if (timeSinceLastSyncHours < 0.5) return; 
           } else if (postAgeHours <= 7 * 24) {
-            if (timeSinceLastSyncHours < 6) return; // Tier 2: 6 giờ/lần
+            if (timeSinceLastSyncHours < 6) return; 
           } else {
-            if (timeSinceLastSyncHours < 24) return; // Tier 3: 24 giờ/lần
+            if (timeSinceLastSyncHours < 24) return; 
           }
         }
 
         attempted += 1;
         try {
-          const token = await this.repository.findPageAccessToken(post.userId, platform);
+          const cacheKey = `${post.userId}_${platform}_${post.externalPostId.includes('_') ? post.externalPostId.split('_')[0] : post.externalPostId}`;
+          let tokenPromise = tokenCache.get(cacheKey);
+          if (!tokenPromise) {
+            tokenPromise = this.repository.findPageAccessToken(post.userId, platform, post.externalPostId);
+            tokenCache.set(cacheKey, tokenPromise);
+          }
+          const token = await tokenPromise;
           if (!token) {
             throw new Error(`Không tìm thấy Access Token hợp lệ cho ${platform}`);
           }
 
           const metrics = await collector.fetchPostMetrics(post.externalPostId, token);
-          const saveSuccess = await this.repository.upsertInteractions(post.id, metrics);
-          
-          if (saveSuccess) {
-            succeeded += 1;
-          } else {
-            throw new Error('Lỗi khi lưu dữ liệu tương tác vào cơ sở dữ liệu');
-          }
+          metricsToUpsert.push({ postId: post.id, metrics });
+          succeeded += 1;
         } catch (err: any) {
           const errorMsg = err.message || 'Lỗi không xác định';
-          console.error(`[PostPerformanceModule] Thất bại khi sync ${platform} cho post_id ${post.id}:`, errorMsg);
+          console.error(`[PostPerformanceModule] Thất bại khi lấy dữ liệu ${platform} cho post_id ${post.id}:`, errorMsg);
           errors.push({ postId: post.id, error: errorMsg });
 
           if (errorMsg.includes('RATE_LIMIT')) {
@@ -148,6 +146,16 @@ export class PostPerformanceModule {
           }
         }
       }));
+
+      if (metricsToUpsert.length > 0) {
+        const { success, error: dbError } = await this.repository.upsertInteractionsBulk(metricsToUpsert);
+        if (!success) {
+          console.error(`[PostPerformanceModule] Lỗi bulk upsert cho ${platform}:`, dbError);
+          // Revert succeeded count if upsert failed
+          succeeded -= metricsToUpsert.length;
+          errors.push({ postId: 'bulk_upsert', error: dbError || 'Lỗi lưu database hàng loạt' });
+        }
+      }
     }
 
     return { attempted, succeeded, errors };
@@ -158,9 +166,12 @@ export class PostPerformanceModule {
    */
   async syncAllPerformance(limit: number = 50, force: boolean = false) {
     const results: Record<string, { attempted: number; succeeded: number }> = {};
-    for (const platform of Array.from(this.collectorMap.keys())) {
+    const platforms = Array.from(this.collectorMap.keys());
+    
+    await Promise.all(platforms.map(async (platform) => {
       results[platform] = await this.syncPlatformPerformance(platform as any, limit, force);
-    }
+    }));
+    
     return results;
   }
 }
