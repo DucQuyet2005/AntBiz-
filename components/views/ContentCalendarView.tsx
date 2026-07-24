@@ -281,6 +281,11 @@ export default function ContentCalendarView() {
     }
   }, [selectedPlatforms]);
 
+  const calendarEventSources = useMemo(() => [
+    { events: fetchCalendarEvents },
+    { events: goldenHourEvents }
+  ], [fetchCalendarEvents, goldenHourEvents]);
+
   // Refetch when platform filter changes
   useEffect(() => {
     clearCache();
@@ -933,11 +938,6 @@ export default function ContentCalendarView() {
     }
     return days;
   }, [miniCalMonth]);
-
-  const calendarEventSources = useMemo(() => [
-    { events: fetchCalendarEvents },
-    { events: goldenHourEvents }
-  ], [fetchCalendarEvents, goldenHourEvents]);
 
   const getHeaderTitle = () => {
     const midWeek = new Date(currentWeekStart);

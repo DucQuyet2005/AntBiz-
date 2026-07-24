@@ -40,9 +40,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '';
     return NextResponse.json({
       success: true,
       session: data.session,
+      projectRef,
     }, { headers: corsHeaders });
   } catch (err: any) {
     console.error('[API Auth Login] Error:', err);

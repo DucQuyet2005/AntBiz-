@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Thành công: Giải phóng mic ngay lập tức
       stream.getTracks().forEach(track => track.stop());
 
+      // Thông báo cho Popup Side Panel để tự khởi động ghi âm
+      chrome.runtime.sendMessage({ action: 'mic_permission_granted' });
+
       // Hiển thị giao diện thành công và đóng tab
       btnRequest.style.display = 'none';
       successMsg.style.display = 'block';

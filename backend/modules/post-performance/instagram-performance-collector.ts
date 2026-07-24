@@ -34,7 +34,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
     // 1. Lấy chỉ số công khai từ Instagram Graph API (like_count, comments_count)
     try {
       const publicUrl = `${baseUrl}?fields=like_count,comments_count,media_type&access_token=${accessToken}`;
-      const response = await this.fetchImplementation(publicUrl);
+      const response = await this.fetchImplementation(publicUrl, { cache: 'no-store' });
 
       if (!response.ok) {
         await this.handleErrorResponse(response, 'Instagram public metrics');
@@ -54,7 +54,7 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
     // Lưu ý: Meta đã deprecate chỉ số 'impressions' trên v19.0+/v22.0+, nếu gọi sẽ bị lỗi (#100)/(#10).
     try {
       const insightsUrl = `${baseUrl}/insights?metric=reach,saved,shares&access_token=${accessToken}`;
-      const response = await this.fetchImplementation(insightsUrl);
+      const response = await this.fetchImplementation(insightsUrl, { cache: 'no-store' });
 
       if (response.ok) {
         const data = await response.json();

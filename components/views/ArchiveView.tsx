@@ -140,7 +140,15 @@ export default function ArchiveView() {
             scheduled_posts (
               id,
               status,
-              scheduled_at
+              scheduled_at,
+              post_interactions (
+                likes,
+                comments,
+                shares,
+                clicks,
+                reach,
+                impressions
+              )
             ),
             users:created_by (
               id,
@@ -344,6 +352,29 @@ export default function ArchiveView() {
 
     const creatorEmail = (cap as any).users?.email || null;
 
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalClicks = 0;
+    let totalReachFromSocial = 0;
+
+    if (schedPosts.length > 0) {
+      schedPosts.forEach((sched: any) => {
+        if (sched.post_interactions && sched.post_interactions.length > 0) {
+          const stats = sched.post_interactions[0];
+          totalLikes += stats.likes || 0;
+          totalComments += stats.comments || 0;
+          totalClicks += stats.clicks || 0;
+          totalReachFromSocial += (stats.reach || 0) > 0 ? stats.reach : (stats.impressions || 0);
+        } else if (sched.post_interactions && !Array.isArray(sched.post_interactions)) {
+          const stats = sched.post_interactions as any;
+          totalLikes += stats.likes || 0;
+          totalComments += stats.comments || 0;
+          totalClicks += stats.clicks || 0;
+          totalReachFromSocial += (stats.reach || 0) > 0 ? stats.reach : (stats.impressions || 0);
+        }
+      });
+    }
+
     return {
       id: cap.id,
       type: 'BÀI VIẾT',
@@ -351,10 +382,10 @@ export default function ArchiveView() {
       image: mainImage,
       title: art.title || 'Không có tiêu đề',
       description: cap.edited_content || cap.ai_content || 'Không có mô tả',
-      reach: art.views || '0',
-      conversions: '0',
-      likes: 0,
-      comments: 0,
+      reach: totalReachFromSocial > 0 ? totalReachFromSocial : (art.views || '0'),
+      conversions: totalClicks,
+      likes: totalLikes,
+      comments: totalComments,
       nodeType: 'Caption',
       link: `/archive/${art.id || ''}?captionId=${cap.id}&platform=${cap.platform === 'thread' ? 'threads' : cap.platform}`,
       gradient: '',
