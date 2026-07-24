@@ -45,6 +45,7 @@ export interface PostPerformanceRepository {
   findPostsWithInteractions(userId: string, platform?: string, daysAgo?: number): Promise<PostWithInteractions[]>;
   findPageAccessToken(userId: string, platform: string, accountId?: string): Promise<string | null>;
   upsertInteractions(postId: string, metrics: PerformanceMetrics): Promise<{ success: boolean; error?: string }>;
+  upsertInteractionsBulk(data: Array<{ postId: string; metrics: PerformanceMetrics }>): Promise<{ success: boolean; error?: string }>;
 }
 
 export interface GoldenHourSlot {

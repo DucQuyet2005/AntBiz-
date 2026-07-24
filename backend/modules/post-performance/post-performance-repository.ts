@@ -175,4 +175,30 @@ export class SupabasePostPerformanceRepository implements PostPerformanceReposit
 
     return { success: true };
   }
+
+  async upsertInteractionsBulk(data: Array<{ postId: string; metrics: PerformanceMetrics }>): Promise<{ success: boolean; error?: string }> {
+    if (data.length === 0) return { success: true };
+
+    const rows = data.map(item => ({
+      post_id: item.postId,
+      likes: item.metrics.likes,
+      comments: item.metrics.comments,
+      shares: item.metrics.shares,
+      clicks: item.metrics.clicks,
+      reach: item.metrics.reach,
+      impressions: item.metrics.impressions,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await this.supabase
+      .from('post_interactions')
+      .upsert(rows, { onConflict: 'post_id' });
+
+    if (error) {
+      console.error(`[PostPerformanceRepository] Lỗi khi lưu bulk post_interactions:`, error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  }
 }
