@@ -939,11 +939,6 @@ export default function ContentCalendarView() {
     return days;
   }, [miniCalMonth]);
 
-  const calendarEventSources = useMemo(() => [
-    { events: fetchCalendarEvents },
-    { events: goldenHourEvents }
-  ], [fetchCalendarEvents, goldenHourEvents]);
-
   const getHeaderTitle = () => {
     const midWeek = new Date(currentWeekStart);
     midWeek.setDate(currentWeekStart.getDate() + 3);
