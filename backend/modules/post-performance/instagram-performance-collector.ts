@@ -8,6 +8,15 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
     private readonly graphVersion: string = 'v19.0'
   ) {}
 
+  private parseMetricValue(value: any): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'object') {
+      return Object.values(value).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+    }
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
   async fetchPostMetrics(
     externalPostId: string,
     accessToken: string
@@ -32,8 +41,8 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
       }
 
       const data = await response.json();
-      likes = data?.like_count ?? 0;
-      comments = data?.comments_count ?? 0;
+      likes = this.parseMetricValue(data?.like_count);
+      comments = this.parseMetricValue(data?.comments_count);
     } catch (err: any) {
       if (err.message?.includes('RATE_LIMIT') || err.message?.includes('LIMIT_REACHED')) {
         throw err;
@@ -51,7 +60,8 @@ export class InstagramPerformanceCollector implements PerformanceCollector {
         const data = await response.json();
         if (Array.isArray(data?.data)) {
           for (const item of data.data) {
-            const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const rawValue = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const value = this.parseMetricValue(rawValue);
             if (item.name === 'reach') {
               reach = value;
             } else if (item.name === 'impressions') {

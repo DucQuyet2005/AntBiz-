@@ -2164,3 +2164,12 @@ body {
     transition-delay: 0s !important;
   }
 }
+
+/* ══════════════════════════════════
+   NATIVE DATE/TIME INPUT STYLING (Hide duplicate webkit icons, allowing text input focus and picker dropdown click on the icon)
+   ══════════════════════════════════ */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+}

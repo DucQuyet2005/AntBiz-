@@ -1118,30 +1118,128 @@ export default function Step4Editor() {
         </div>
 
         {/* Platform Indicator Tabs */}
-        <div className="px-6 bg-white dark:bg-zinc-900 flex select-none border-b border-gray-200 dark:border-zinc-800/60 gap-4">
-          {(state.selectedPlatforms.length > 0 ? state.selectedPlatforms : ['facebook'] as const).map((platform) => {
-            const isActive = state.selectedPlatform === platform;
-            return (
-              <button
-                key={platform}
-                onClick={() => {
-                  dispatch({ type: 'SET_PLATFORM', payload: platform });
-                  const hasDraft = !!state.drafts[platform]?.content;
-                  if (!hasDraft && !state.isGeneratingPost && state.articleContext && state.articleId) {
-                    generateAIContent();
-                  }
-                }}
-                className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${isActive
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-text-muted hover:text-text'
-                  }`}
-              >
-                <span className="flex-shrink-0">{getPlatformIcon(platform)}</span>
-                <span className="capitalize">{platform}</span>
-                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />}
-              </button>
-            );
-          })}
+        <div className="px-6 bg-white dark:bg-zinc-900 flex items-center justify-between select-none border-b border-gray-200 dark:border-zinc-800/60">
+          <div className="flex gap-4">
+            {(state.selectedPlatforms.length > 0 ? state.selectedPlatforms : ['facebook'] as const).map((platform) => {
+              const isActive = state.selectedPlatform === platform;
+              return (
+                <button
+                  key={platform}
+                  onClick={() => {
+                    dispatch({ type: 'SET_PLATFORM', payload: platform });
+                    const hasDraft = !!state.drafts[platform]?.content;
+                    if (!hasDraft && !state.isGeneratingPost && state.articleContext && state.articleId) {
+                      generateAIContent();
+                    }
+                  }}
+                  className={`py-3 px-1 text-sm font-bold flex items-center gap-1.5 transition-all border-b-2 ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-text-muted hover:text-text'
+                    }`}
+                >
+                  <span className="flex-shrink-0">{getPlatformIcon(platform)}</span>
+                  <span className="capitalize">{platform}</span>
+                  {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Display Options Button aligned with tabs */}
+          <div className="relative z-40 py-1.5">
+            <button
+              type="button"
+              onClick={() => setShowDisplayOptionsPopover(prev => !prev)}
+              className="px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-zinc-700 shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-zinc-750 transition-all flex items-center gap-2 text-xs font-bold active:scale-95 cursor-pointer"
+              title={t('creator.step4.displayOptions.buttonTitle')}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-bold">{t('creator.step4.displayOptions.buttonTitle')}</span>
+              {hiddenOptionsCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {hiddenOptionsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Display Options Popover Menu */}
+            {showDisplayOptionsPopover && (
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl p-4 z-50 animate-scale-up space-y-3 font-sans select-none">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-2">
+                  <h4 className="text-xs font-extrabold text-text uppercase tracking-wider">
+                    {t('creator.step4.displayOptions.popoverTitle')}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowDisplayOptionsPopover(false)}
+                    className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Toggle Controls List */}
+                <div className="space-y-1.5">
+                  {[
+                    { key: 'showTitle', label: t('creator.step4.displayOptions.showTitle') },
+                    { key: 'showContent', label: t('creator.step4.displayOptions.showContent') },
+                    currentPlatform !== 'instagram' ? { key: 'showImages', label: t('creator.step4.displayOptions.showImages') } : null,
+                    isCrawledSource ? { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') } : null,
+                    { key: 'showHashtags', label: t('creator.step4.displayOptions.showHashtags') },
+                  ].filter((opt): opt is { key: string; label: string } => opt !== null).map((opt) => {
+                    const isChecked = displayOptions[opt.key as keyof typeof displayOptions] ?? true;
+                    return (
+                      <label
+                        key={opt.key}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                      >
+                        <span className="text-xs font-bold text-text">{opt.label}</span>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            dispatch({
+                              type: 'SET_DISPLAY_OPTIONS',
+                              payload: { [opt.key]: e.target.checked }
+                            });
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Quick Selectors */}
+                <div className="flex items-center justify-between border-t border-gray-100 dark:border-zinc-800 pt-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({
+                        type: 'SET_DISPLAY_OPTIONS',
+                        payload: { showTitle: true, showContent: true, showImages: true, showAuthor: true, showHashtags: true }
+                      });
+                    }}
+                    className="text-primary font-bold hover:underline cursor-pointer"
+                  >
+                    {t('creator.step4.displayOptions.selectAll')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dispatch({
+                        type: 'SET_DISPLAY_OPTIONS',
+                        payload: { showTitle: false, showContent: false, showImages: false, showAuthor: false, showHashtags: false }
+                      });
+                    }}
+                    className="text-text-muted font-bold hover:underline cursor-pointer"
+                  >
+                    {t('creator.step4.displayOptions.deselectAll')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Canvas Post Preview Area */}
@@ -1164,103 +1262,6 @@ export default function Step4Editor() {
             </div>
           ) : (
             <div className="max-w-3xl mx-auto space-y-3 relative">
-              {/* Floating Sticky Display Options Control Button aligned to card top-right */}
-              <div className="sticky top-0 z-40 flex justify-end pointer-events-none -mb-1.5">
-                <div className="relative pointer-events-auto">
-                  <button
-                    type="button"
-                    onClick={() => setShowDisplayOptionsPopover(prev => !prev)}
-                    className="px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-zinc-700 shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-zinc-750 transition-all flex items-center gap-2 text-xs font-bold active:scale-95 cursor-pointer"
-                    title={t('creator.step4.displayOptions.buttonTitle')}
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-bold">{t('creator.step4.displayOptions.buttonTitle')}</span>
-                    {hiddenOptionsCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">
-                        {hiddenOptionsCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Display Options Popover Menu */}
-                  {showDisplayOptionsPopover && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl p-4 z-50 animate-scale-up space-y-3 font-sans select-none">
-                      <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-2">
-                        <h4 className="text-xs font-extrabold text-text uppercase tracking-wider">
-                          {t('creator.step4.displayOptions.popoverTitle')}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => setShowDisplayOptionsPopover(false)}
-                          className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Toggle Controls List */}
-                      <div className="space-y-1.5">
-                        {[
-                          { key: 'showTitle', label: t('creator.step4.displayOptions.showTitle') },
-                          { key: 'showContent', label: t('creator.step4.displayOptions.showContent') },
-                          currentPlatform !== 'instagram' ? { key: 'showImages', label: t('creator.step4.displayOptions.showImages') } : null,
-                          isCrawledSource ? { key: 'showAuthor', label: t('creator.step4.displayOptions.showAuthor') } : null,
-                          { key: 'showHashtags', label: t('creator.step4.displayOptions.showHashtags') },
-                        ].filter((opt): opt is { key: string; label: string } => opt !== null).map((opt) => {
-                          const isChecked = displayOptions[opt.key as keyof typeof displayOptions] ?? true;
-                          return (
-                            <label
-                              key={opt.key}
-                              className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
-                            >
-                              <span className="text-xs font-bold text-text">{opt.label}</span>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  dispatch({
-                                    type: 'SET_DISPLAY_OPTIONS',
-                                    payload: { [opt.key]: e.target.checked }
-                                  });
-                                }}
-                                className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-primary focus:ring-primary accent-primary cursor-pointer"
-                              />
-                            </label>
-                          );
-                        })}
-                      </div>
-
-                      {/* Quick Selectors */}
-                      <div className="flex items-center justify-between border-t border-gray-100 dark:border-zinc-800 pt-2 text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            dispatch({
-                              type: 'SET_DISPLAY_OPTIONS',
-                              payload: { showTitle: true, showContent: true, showImages: true, showAuthor: true, showHashtags: true }
-                            });
-                          }}
-                          className="text-primary font-bold hover:underline cursor-pointer"
-                        >
-                          {t('creator.step4.displayOptions.selectAll')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            dispatch({
-                              type: 'SET_DISPLAY_OPTIONS',
-                              payload: { showTitle: false, showContent: false, showImages: false, showAuthor: false, showHashtags: false }
-                            });
-                          }}
-                          className="text-text-muted font-bold hover:underline cursor-pointer"
-                        >
-                          {t('creator.step4.displayOptions.deselectAll')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* FACEBOOK PREVIEW */}
               {currentPlatform === 'facebook' && (

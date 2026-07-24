@@ -8,6 +8,15 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
     private readonly graphVersion: string = 'v19.0'
   ) {}
 
+  private parseMetricValue(value: any): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'object') {
+      return Object.values(value).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+    }
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
   async fetchPostMetrics(
     externalPostId: string,
     accessToken: string
@@ -32,9 +41,9 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
 
       const data = await response.json();
       
-      likes = data?.reactions?.summary?.total_count ?? 0;
-      comments = data?.comments?.summary?.total_count ?? 0;
-      shares = data?.shares?.count ?? 0;
+      likes = this.parseMetricValue(data?.reactions?.summary?.total_count);
+      comments = this.parseMetricValue(data?.comments?.summary?.total_count);
+      shares = this.parseMetricValue(data?.shares?.count);
     } catch (err: any) {
       // Nếu bị chặn/rate limit thực sự ở cấp API, ta ném lỗi để Module xử lý ngừng vòng lặp
       if (err.message?.includes('RATE_LIMIT') || err.message?.includes('LIMIT_REACHED')) {
@@ -53,7 +62,8 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
         const data = await response.json();
         if (Array.isArray(data?.data)) {
           for (const item of data.data) {
-            const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const rawValue = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const value = this.parseMetricValue(rawValue);
             if (item.name === 'post_impressions') impressions = value;
             else if (item.name === 'post_impressions_unique') reach = value;
             else if (item.name === 'post_clicks') clicks = value;
@@ -76,7 +86,8 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
           const mediaData = await mediaResponse.json();
           if (Array.isArray(mediaData?.data)) {
             for (const item of mediaData.data) {
-              const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+              const rawValue = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+              const value = this.parseMetricValue(rawValue);
               if (item.name === 'post_media_view') impressions = value;
               else if (item.name === 'post_total_media_view_unique') reach = value;
               else if (item.name === 'post_clicks_by_type') clicks = value;
