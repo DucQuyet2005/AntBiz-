@@ -17,18 +17,25 @@ function getHostname(host) {
 if (chrome.sidePanel) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => console.error(error));
 }
-// Hàm lấy session đăng nhập Supabase từ cookie của AntBiz
 function getSupabaseSession(forceCookieCheck = false, host = DEFAULT_HOST) {
   return new Promise((resolve) => {
     // 1. Kiểm tra session trong chrome.storage.local trước
     chrome.storage.local.get('antbiz_local_session', (res) => {
       const stored = res.antbiz_local_session;
-      if (!forceCookieCheck && stored && Array.isArray(stored)) {
-        return resolve({
-          access_token: stored[0],
-          refresh_token: stored[1],
-          user: stored[4] || null
-        });
+      if (!forceCookieCheck && stored) {
+        if (Array.isArray(stored)) {
+          return resolve({
+            access_token: stored[0],
+            refresh_token: stored[1],
+            user: stored[4] || null
+          });
+        } else if (typeof stored === 'object' && stored.access_token) {
+          return resolve({
+            access_token: stored.access_token,
+            refresh_token: stored.refresh_token,
+            user: stored.user || null
+          });
+        }
       }
 
       // 2. Nếu không có trong storage, tìm trong cookie (để đồng bộ từ trình duyệt)
@@ -87,6 +94,24 @@ function getSupabaseSession(forceCookieCheck = false, host = DEFAULT_HOST) {
           return false;
         }
 
+        function getUserFromJwt(token) {
+          if (!token) return null;
+          try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) base64 += '=';
+            const payload = JSON.parse(atob(base64));
+            if (payload && payload.email) {
+              return {
+                email: payload.email,
+                user_metadata: payload.user_metadata || {}
+              };
+            }
+          } catch (e) {}
+          return null;
+        }
+
         // Duyệt qua từng nhóm cookie để thử parse
         for (const baseName in groupedCookies) {
           const group = groupedCookies[baseName];
@@ -122,26 +147,43 @@ function getSupabaseSession(forceCookieCheck = false, host = DEFAULT_HOST) {
               sessionData = JSON.parse(utf8Decoded);
             }
 
+            let sessionResult = null;
             if (Array.isArray(sessionData) && sessionData[0] && checkTokenValid(sessionData[0])) {
-              fetch(`${host}/api/auth/debug`, { method: 'POST', body: JSON.stringify({ msg: 'Success parse valid token', baseName, method: 'array' }) }).catch(() => { });
-              return resolve({
-                access_token: sessionData[0],
+              const token = sessionData[0];
+              sessionResult = {
+                access_token: token,
                 refresh_token: sessionData[1],
-                user: sessionData[4] || null
-              });
+                user: sessionData[4] || getUserFromJwt(token)
+              };
             } else if (Array.isArray(sessionData) && sessionData[0]) {
               debugInfo[`expired_${baseName}`] = true;
             }
 
             if (sessionData && typeof sessionData === 'object' && sessionData.access_token && checkTokenValid(sessionData.access_token)) {
-              fetch(`${host}/api/auth/debug`, { method: 'POST', body: JSON.stringify({ msg: 'Success parse valid token', baseName, method: 'object' }) }).catch(() => { });
-              return resolve({
-                access_token: sessionData.access_token,
+              const token = sessionData.access_token;
+              sessionResult = {
+                access_token: token,
                 refresh_token: sessionData.refresh_token,
-                user: sessionData.user || null
-              });
+                user: sessionData.user || getUserFromJwt(token)
+              };
             } else if (sessionData && typeof sessionData === 'object' && sessionData.access_token) {
               debugInfo[`expired_${baseName}`] = true;
+            }
+
+            if (sessionResult) {
+              fetch(`${host}/api/auth/debug`, { method: 'POST', body: JSON.stringify({ msg: 'Success parse valid token', baseName }) }).catch(() => { });
+              
+              // Sync session back to storage
+              const sessionDataArray = [
+                sessionResult.access_token,
+                sessionResult.refresh_token,
+                null,
+                null,
+                sessionResult.user
+              ];
+              chrome.storage.local.set({ antbiz_local_session: sessionDataArray }, () => {});
+              
+              return resolve(sessionResult);
             }
           } catch (err) {
             // Lỗi parse nhóm này, thử nhóm tiếp theo
@@ -150,9 +192,36 @@ function getSupabaseSession(forceCookieCheck = false, host = DEFAULT_HOST) {
         }
 
         // Nếu tất cả các nhóm đều thất bại
+        if (forceCookieCheck) {
+          chrome.storage.local.remove('antbiz_local_session', () => {
+            console.log('[Background] Removed local session because cookie check failed.');
+          });
+        }
         fetch(`${host}/api/auth/debug`, { method: 'POST', body: JSON.stringify({ msg: 'All groups failed', ...debugInfo }) }).catch(() => { });
         resolve(null);
       });
+    });
+  });
+}
+
+function clearAllSupabaseSessions(host) {
+  chrome.storage.local.remove('antbiz_local_session', () => {
+    console.log('[Background] Cleared local session.');
+  });
+  chrome.cookies.getAll({}, (allCookies = []) => {
+    const prodHostname = getHostname(host);
+    const cookies = allCookies.filter(c =>
+      c.domain.includes('localhost') ||
+      c.domain.includes('127.0.0.1') ||
+      c.domain.includes('172.25.240.1') ||
+      c.domain.includes(prodHostname)
+    );
+    cookies.forEach(c => {
+      if (/^sb-.*-auth-token(?:\.\d+)?$/.test(c.name) ||
+          /^nttnyvgprhbthsqmvyjp-auth-token(?:\.\d+)?$/.test(c.name) ||
+          c.name === 'sb-local-auth-token') {
+        chrome.cookies.remove({ url: host, name: c.name }, () => {});
+      }
     });
   });
 }
@@ -179,6 +248,7 @@ async function scrapeArticleViaServer(targetUrl, token, requestId, host = DEFAUL
     const encodedUrl = encodeURIComponent(targetUrl);
     const response = await fetch(`${host}/api/scrape?url=${encodedUrl}`, {
       method: 'GET',
+      credentials: 'include',
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -208,6 +278,7 @@ async function transcribeAudioViaServer(base64Data, fileName, fileType, token, r
 
     const response = await fetch(`${host}/api/stt`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -241,7 +312,6 @@ async function loginDirectViaServer(email, password, host = DEFAULT_HOST) {
     const errJson = await response.json().catch(() => ({}));
     throw new Error(errJson.error || `Đăng nhập thất bại: ${response.status}`);
   }
-
   const data = await response.json();
   if (data.success && data.session) {
     const sessionData = [
@@ -251,14 +321,21 @@ async function loginDirectViaServer(email, password, host = DEFAULT_HOST) {
       null,
       data.session.user
     ];
-    const cookieValue = encodeURIComponent(JSON.stringify(sessionData));
+
+    const projectRef = data.projectRef || 'nttnyvgprhbthsqmvyjp';
+    const cookieName = `sb-${projectRef}-auth-token`;
+    const base64Value = 'base64-' + btoa(unescape(encodeURIComponent(JSON.stringify(data.session))));
 
     await new Promise((resolve) => {
       chrome.storage.local.set({ antbiz_local_session: sessionData }, () => {
+        // Clear legacy cookie
+        chrome.cookies.remove({ url: host, name: 'sb-local-auth-token' }, () => {});
+
+        // Set Supabase compatible cookie
         chrome.cookies.set({
           url: host,
-          name: 'sb-local-auth-token',
-          value: cookieValue,
+          name: cookieName,
+          value: base64Value,
           path: '/',
           expirationDate: Math.floor(Date.now() / 1000) + 3600 * 24 * 7 // 7 days
         }, (cookie) => {
@@ -283,6 +360,7 @@ async function parseDocumentViaServer(base64Data, fileName, fileType, token, req
 
     const response = await fetch(`${host}/api/parse-doc`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -291,7 +369,13 @@ async function parseDocumentViaServer(base64Data, fileName, fileType, token, req
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        clearAllSupabaseSessions(host);
+      }
       const errJson = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+      }
       throw new Error(errJson.error || `Lỗi trích xuất tài liệu: ${response.status}`);
     }
 
@@ -309,6 +393,7 @@ async function generateAiContentViaServer(title, content, platform, token, reque
   try {
     const response = await fetch(`${host}/api/prompts/generate`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -323,7 +408,13 @@ async function generateAiContentViaServer(title, content, platform, token, reque
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        clearAllSupabaseSessions(host);
+      }
       const errJson = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+      }
       throw new Error(errJson.error || `Lỗi AI sinh bài viết: ${response.status}`);
     }
 
@@ -337,6 +428,7 @@ async function generateAiContentViaServer(title, content, platform, token, reque
 async function sendArticleToAntBiz(articleData, token, host = DEFAULT_HOST) {
   const response = await fetch(`${host}/api/captions/import-extension`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -345,7 +437,13 @@ async function sendArticleToAntBiz(articleData, token, host = DEFAULT_HOST) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAllSupabaseSessions(host);
+    }
     const errJson = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+    }
     throw new Error(errJson.error || `Yêu cầu thất bại với trạng thái: ${response.status}`);
   }
 
@@ -356,13 +454,20 @@ async function sendArticleToAntBiz(articleData, token, host = DEFAULT_HOST) {
 async function fetchDataViaServer(endpoint, token, host = DEFAULT_HOST) {
   const response = await fetch(`${host}${endpoint}`, {
     method: 'GET',
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAllSupabaseSessions(host);
+    }
     const errJson = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+    }
     throw new Error(errJson.error || `Lỗi truy vấn dữ liệu: ${response.status}`);
   }
 
@@ -373,30 +478,54 @@ async function fetchDataViaServer(endpoint, token, host = DEFAULT_HOST) {
 async function getPromptConfigsViaServer(token, host = DEFAULT_HOST) {
   const response = await fetch(`${host}/api/prompt-configs`, {
     method: 'GET',
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAllSupabaseSessions(host);
+    }
     const errJson = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+    }
     throw new Error(errJson.error || `Lỗi tải danh sách văn phong: ${response.status}`);
   }
 
-  return await response.json();
+  const result = await response.json();
+  fetch(`${host}/api/auth/debug`, {
+    method: 'POST',
+    body: JSON.stringify({
+      msg: 'background.js getPromptConfigsViaServer result',
+      tokenSlice: token ? token.substring(0, 20) + '...' : null,
+      host,
+      result
+    })
+  }).catch(() => {});
+  return result;
 }
 
 // Hàm lấy lịch sử các bài đăng được tạo từ Extension qua server
 async function getHistoryViaServer(token, host = DEFAULT_HOST) {
   const response = await fetch(`${host}/api/scheduled-posts?trigger_source=extension&limit=10`, {
     method: 'GET',
+    credentials: 'include',
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAllSupabaseSessions(host);
+    }
     const errJson = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      throw new Error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+    }
     throw new Error(errJson.error || `Lỗi tải lịch sử bài đăng: ${response.status}`);
   }
 

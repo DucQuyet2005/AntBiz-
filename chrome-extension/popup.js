@@ -12,6 +12,12 @@ const stateError = document.getElementById('state-error');
 const stateExtracted = document.getElementById('state-extracted');
 const stateSuccess = document.getElementById('state-success');
 
+// Các màn hình nhập liệu mới
+const stateIdeaInput = document.getElementById('state-idea-input');
+const stateUrlInput = document.getElementById('state-url-input');
+const stateRecordInput = document.getElementById('state-record-input');
+const stateUploadInput = document.getElementById('state-upload-input');
+
 // Navigation và Lịch sử
 const extensionNav = document.getElementById('extension-nav');
 const tabCreate = document.getElementById('tab-create');
@@ -24,11 +30,7 @@ const btnCloseHistory = document.getElementById('btn-close-history');
 const btnOpenAntbiz = document.getElementById('btn-open-antbiz');
 
 // Màn hình ghi âm & Xác nhận mới
-const stateRecording = document.getElementById('state-recording');
 const stateVoiceConfirm = document.getElementById('state-voice-confirm');
-const recordTimerLarge = document.getElementById('record-timer-large');
-const btnCancelRecord = document.getElementById('btn-cancel-record');
-const btnStopRecordLarge = document.getElementById('btn-stop-record-large');
 const voiceTranscriptText = document.getElementById('voice-transcript-text');
 const btnVoiceCancel = document.getElementById('btn-voice-cancel');
 const btnVoiceConfirm = document.getElementById('btn-voice-confirm');
@@ -125,9 +127,16 @@ function showState(stateEl, message = '') {
   stateError.classList.add('hidden');
   stateExtracted.classList.add('hidden');
   stateSuccess.classList.add('hidden');
+  const stateRecording = document.getElementById('state-recording');
   if (stateRecording) stateRecording.classList.add('hidden');
   if (stateVoiceConfirm) stateVoiceConfirm.classList.add('hidden');
   if (stateHistory) stateHistory.classList.add('hidden');
+
+  // Ẩn các màn hình nhập liệu mới
+  if (stateIdeaInput) stateIdeaInput.classList.add('hidden');
+  if (stateUrlInput) stateUrlInput.classList.add('hidden');
+  if (stateRecordInput) stateRecordInput.classList.add('hidden');
+  if (stateUploadInput) stateUploadInput.classList.add('hidden');
 
   if (stateEl === stateLoading && message) {
     loadingText.textContent = message;
@@ -147,9 +156,69 @@ function showState(stateEl, message = '') {
     if (tabCreate) tabCreate.classList.add('active');
     if (tabHistory) tabHistory.classList.remove('active');
   }
+  // Cập nhật Stepper toàn cục và nút quay lại ở Header
+  updateStepperProgress(stateEl);
+
+  // Tự động lưu trạng thái khi đổi màn hình hợp lệ
+  if (stateEl !== stateLoading && stateEl !== stateUnauth && stateEl !== stateError && stateEl !== stateSuccess) {
+    saveCurrentState();
+  }
+}
+// Cập nhật tiến trình Stepper và nút Quay lại ở Header
+function updateStepperProgress(stateEl) {
+  const globalStepper = document.getElementById('global-stepper');
+  const btnHeaderBack = document.getElementById('btn-header-back');
+
+  if (!globalStepper) return;
+
+  // Ẩn nút quay lại trên trang chủ, trang loading và unauth
+  if (stateEl === stateHome || stateEl === stateLoading || stateEl === stateUnauth) {
+    if (btnHeaderBack) btnHeaderBack.classList.add('hidden');
+  } else {
+    if (btnHeaderBack) btnHeaderBack.classList.remove('hidden');
+  }
+
+  let activeStep = 0;
+  if (stateEl === stateIdeaInput || stateEl === stateUrlInput || stateEl === stateRecordInput || stateEl === stateUploadInput) {
+    activeStep = 1;
+  } else if (stateEl === stateExtracted) {
+    const activeStepId = getActiveStepId();
+    if (activeStepId === 'step-article-info') {
+      activeStep = 2;
+    } else if (activeStepId === 'step-social-config' || activeStepId === 'step-post-preview') {
+      activeStep = 3;
+    } else if (activeStepId === 'step-schedule-config') {
+      activeStep = 4;
+    }
+  }
+
+  if (activeStep > 0) {
+    globalStepper.classList.remove('hidden');
+    const dots = globalStepper.querySelectorAll('.step-dot');
+    const lines = globalStepper.querySelectorAll('.step-line');
+
+    dots.forEach((dot, index) => {
+      const stepNum = index + 1;
+      dot.className = 'step-dot';
+      if (stepNum === activeStep) {
+        dot.classList.add('active');
+      } else if (stepNum < activeStep) {
+        dot.classList.add('completed');
+      }
+    });
+
+    lines.forEach((line, index) => {
+      const lineNum = index + 1;
+      line.className = 'step-line';
+      if (lineNum < activeStep) {
+        line.classList.add('completed');
+      }
+    });
+  } else {
+    globalStepper.classList.add('hidden');
+  }
 }
 
-// Ẩn/Hiện bước Wizard con
 function showSubStep(stepEl) {
   stepArticleInfo.classList.add('hidden');
   stepSocialConfig.classList.add('hidden');
@@ -157,6 +226,12 @@ function showSubStep(stepEl) {
   if (stepScheduleConfig) stepScheduleConfig.classList.add('hidden');
 
   stepEl.classList.remove('hidden');
+
+  // Đồng bộ lại stepper progress khi đổi wizard step
+  updateStepperProgress(stateExtracted);
+
+  // Tự động lưu trạng thái
+  saveCurrentState();
 }
 
 // Kích hoạt màn hình lỗi chung
@@ -165,7 +240,7 @@ function triggerError(title, desc, retryAction = null, retryParams = null) {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
-  recordControlBox.classList.add('hidden');
+  if (recordControlBox) recordControlBox.classList.add('hidden');
 
   errorTitle.textContent = title;
   errorDescription.textContent = desc;
@@ -249,6 +324,25 @@ function isJwtExpired(token) {
   return true;
 }
 
+function handleApiError(error) {
+  if (!error) return false;
+  const errMsg = error.toString();
+  if (errMsg.includes('đăng nhập') || errMsg.includes('expired') || errMsg.includes('Unauthorized') || errMsg.includes('401') || errMsg.includes('hết hạn')) {
+    console.warn('Phát hiện token hết hạn hoặc chưa đăng nhập, tự động đăng xuất extension.');
+    authToken = null;
+    if (userNameEl) userNameEl.textContent = 'Chưa kết nối';
+    if (userProfile) userProfile.classList.add('hidden');
+    if (extensionNav) extensionNav.classList.add('hidden');
+    
+    // Clear storage state
+    chrome.storage.local.remove('antbiz_extension_state');
+    
+    showState(stateUnauth);
+    return true;
+  }
+  return false;
+}
+
 // Tải danh sách Văn phong thương hiệu động từ API
 function loadPromptConfigs(callback) {
   if (!authToken) {
@@ -261,6 +355,18 @@ function loadPromptConfigs(callback) {
     token: authToken,
     host: AntBizUrl
   }, (response) => {
+    // Debug log to Next.js server console
+    fetch(`${AntBizUrl}/api/auth/debug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        msg: 'loadPromptConfigs response',
+        success: response?.success,
+        hasData: !!response?.data,
+        dataType: typeof response?.data,
+        rawResponse: response
+      })
+    }).catch(() => {});
+
     if (chrome.runtime.lastError) {
       console.warn('Lỗi tải cấu hình văn phong:', chrome.runtime.lastError);
       if (callback) callback();
@@ -318,6 +424,15 @@ function loadPromptConfigs(callback) {
       }
     } else {
       console.warn('Không thể lấy danh sách văn phong từ API:', response?.error);
+      if (handleApiError(response?.error)) {
+        if (callback) callback();
+        return;
+      }
+      selectPreset.innerHTML = '';
+      const errorOption = document.createElement('option');
+      errorOption.value = '';
+      errorOption.textContent = `-- Lỗi tải: ${response?.error || 'Không xác định'} --`;
+      selectPreset.appendChild(errorOption);
     }
 
     if (callback) callback();
@@ -346,9 +461,15 @@ function checkAuthAndInitialize() {
       if (response.session.user && response.session.user.email) {
         const name = response.session.user.user_metadata?.full_name || response.session.user.email.split('@')[0];
         userNameEl.textContent = name;
+        const avatarCircle = document.getElementById('user-avatar-circle');
+        if (avatarCircle && name) {
+          avatarCircle.textContent = name.charAt(0).toUpperCase();
+        }
         userProfile.classList.remove('hidden');
       } else {
         userNameEl.textContent = 'Đã kết nối';
+        const avatarCircle = document.getElementById('user-avatar-circle');
+        if (avatarCircle) avatarCircle.textContent = 'U';
         userProfile.classList.remove('hidden');
       }
 
@@ -389,7 +510,11 @@ function checkAuthAndInitialize() {
                 const stepEl = document.getElementById(state.activeStep);
                 if (stepEl) {
                   showSubStep(stepEl);
-                  if (state.activeStep === 'step-post-preview') {
+                  if (state.activeStep === 'step-article-info') {
+                    renderExtractedImagesGrid();
+                    updateWordCountLabel();
+                    updateExtractedSourceBadge();
+                  } else if (state.activeStep === 'step-post-preview') {
                     updateFbPreview();
                   }
                 }
@@ -602,11 +727,51 @@ function initEventListeners() {
     }
   });
 
+  // Nút quay lại chung ở Header
+  const btnHeaderBack = document.getElementById('btn-header-back');
+  if (btnHeaderBack) {
+    btnHeaderBack.addEventListener('click', () => {
+      const activeState = getActiveStateId();
+      if (activeState === 'state-idea-input' || activeState === 'state-url-input' || activeState === 'state-record-input' || activeState === 'state-upload-input' || activeState === 'state-history' || activeState === 'state-voice-confirm') {
+        if (activeState === 'state-record-input' && mediaRecorder && mediaRecorder.state !== 'inactive') {
+          stopRecording(true);
+        }
+        showState(stateHome);
+      } else if (activeState === 'state-extracted') {
+        const activeStep = getActiveStepId();
+        if (activeStep === 'step-article-info') {
+          if (lastActionType === 'scrape') {
+            showState(stateUrlInput);
+          } else if (lastActionType === 'record') {
+            showState(stateRecordInput);
+          } else if (lastActionType === 'upload') {
+            showState(stateUploadInput);
+          } else {
+            showState(stateHome);
+          }
+        } else if (activeStep === 'step-social-config') {
+          showSubStep(stepArticleInfo);
+        } else if (activeStep === 'step-post-preview') {
+          showSubStep(stepSocialConfig);
+        } else if (activeStep === 'step-schedule-config') {
+          showSubStep(stepPostPreview);
+        }
+      }
+    });
+  }
+
+  // Nút đóng Header
+  const btnHeaderClose = document.getElementById('btn-header-close');
+  if (btnHeaderClose) {
+    btnHeaderClose.addEventListener('click', () => {
+      window.close();
+    });
+  }
+
   // Nút HOME: Cào trang hiện tại
   btnInputScrape.addEventListener('click', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs && tabs[0]) {
-        // Chỉ cào nếu url hợp lệ
         const url = tabs[0].url;
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
           alert('Chỉ hỗ trợ cào dữ liệu trên các trang web giao thức http hoặc https.');
@@ -619,37 +784,75 @@ function initEventListeners() {
     });
   });
 
-  // Nút HOME: Cào URL thủ công
-  btnManualScrape.addEventListener('click', () => {
-    const url = inputManualUrl.value.trim();
-    if (!url) {
-      alert('Vui lòng nhập địa chỉ URL.');
-      return;
-    }
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      alert('Địa chỉ URL không hợp lệ (phải bắt đầu bằng http:// hoặc https://).');
-      return;
-    }
-    startExtraction(url);
+  // Nút HOME: Lấy phần bôi đen
+  btnInputSelect.addEventListener('click', () => {
+    getSelectedText();
   });
 
-  // Nút HOME: Nhập tay ý tưởng
-  if (btnManualWrite) {
-    btnManualWrite.addEventListener('click', () => {
-      const text = textareaManualContent.value.trim();
+  // Nút HOME: Mở màn hình nhập URL
+  const btnHomeUrl = document.getElementById('btn-home-url');
+  if (btnHomeUrl) {
+    btnHomeUrl.addEventListener('click', () => {
+      const inputUrlValue = document.getElementById('input-url-value');
+      if (inputUrlValue) inputUrlValue.value = '';
+      showState(stateUrlInput);
+    });
+  }
+
+  // Nút HOME: Mở màn hình Ghi âm
+  const btnHomeRecord = document.getElementById('btn-home-record');
+  if (btnHomeRecord) {
+    btnHomeRecord.addEventListener('click', () => {
+      setRecordingUI('ready');
+      showState(stateRecordInput);
+    });
+  }
+
+  // Nút HOME: Mở màn hình Tải tệp
+  const btnHomeUpload = document.getElementById('btn-home-upload');
+  if (btnHomeUpload) {
+    btnHomeUpload.addEventListener('click', () => {
+      showState(stateUploadInput);
+    });
+  }
+
+  // Nút HOME: Mở màn hình Ý tưởng
+  const btnHomeIdea = document.getElementById('btn-home-idea');
+  if (btnHomeIdea) {
+    btnHomeIdea.addEventListener('click', () => {
+      const textareaIdeaContent = document.getElementById('textarea-idea-content');
+      const ideaCharCount = document.getElementById('idea-char-count');
+      if (textareaIdeaContent) textareaIdeaContent.value = '';
+      if (ideaCharCount) ideaCharCount.textContent = '0';
+      showState(stateIdeaInput);
+    });
+  }
+
+  // Xử lý ô nhập Ý tưởng (Đếm chữ & Tiếp tục)
+  const textareaIdeaContent = document.getElementById('textarea-idea-content');
+  const ideaCharCount = document.getElementById('idea-char-count');
+  if (textareaIdeaContent && ideaCharCount) {
+    textareaIdeaContent.addEventListener('input', () => {
+      ideaCharCount.textContent = textareaIdeaContent.value.length;
+    });
+  }
+
+  const btnIdeaSubmit = document.getElementById('btn-idea-submit');
+  if (btnIdeaSubmit) {
+    btnIdeaSubmit.addEventListener('click', () => {
+      const text = textareaIdeaContent.value.trim();
       if (!text) {
         alert('Vui lòng nhập nội dung ý tưởng phác thảo.');
         return;
       }
 
-      // Điền vào form Bước 1
       inputTitle.value = 'Ý tưởng bài viết ' + new Date().toLocaleDateString('vi-VN');
       inputImage.value = '';
       inputDesc.value = '';
       inputContent.value = text;
 
-      // Xóa nội dung nhập tay để lần sau mở lại trống
-      textareaManualContent.value = '';
+      textareaIdeaContent.value = '';
+      if (ideaCharCount) ideaCharCount.textContent = '0';
 
       // Đi thẳng tới Bước 2
       showState(stateExtracted);
@@ -658,37 +861,98 @@ function initEventListeners() {
     });
   }
 
-  // Nút HOME: Lấy phần bôi đen
-  btnInputSelect.addEventListener('click', () => {
-    getSelectedText();
-  });
-
-  // Nút HOME: Ghi âm
-  btnInputRecord.addEventListener('click', () => {
-    startRecording();
-  });
-
-  btnStopRecord.addEventListener('click', () => {
-    stopRecording(false);
-  });
-
-  // Màn hình Ghi âm & Xác nhận mới
-  if (btnCancelRecord) {
-    btnCancelRecord.addEventListener('click', () => {
-      stopRecording(true); // Hủy bỏ ghi âm
-      showState(stateHome);
+  // Xử lý ô nhập URL (Phân tích)
+  const btnUrlSubmit = document.getElementById('btn-url-submit');
+  const inputUrlValue = document.getElementById('input-url-value');
+  if (btnUrlSubmit && inputUrlValue) {
+    btnUrlSubmit.addEventListener('click', () => {
+      const url = inputUrlValue.value.trim();
+      if (!url) {
+        alert('Vui lòng nhập địa chỉ URL.');
+        return;
+      }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('Địa chỉ URL không hợp lệ (phải bắt đầu bằng http:// hoặc https://).');
+        return;
+      }
+      if (inputManualUrl) inputManualUrl.value = url;
+      startExtraction(url);
     });
   }
 
-  if (btnStopRecordLarge) {
-    btnStopRecordLarge.addEventListener('click', () => {
-      stopRecording(false); // Dừng và dịch chữ
+  // Xử lý sự kiện kéo thả Tải tệp
+  const uploadDropzoneBox = document.getElementById('upload-dropzone-box');
+  const btnUploadBrowse = document.getElementById('btn-upload-browse');
+  if (btnUploadBrowse) {
+    btnUploadBrowse.addEventListener('click', () => {
+      fileUploader.value = '';
+      fileUploader.click();
+    });
+  }
+
+  if (uploadDropzoneBox) {
+    uploadDropzoneBox.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadDropzoneBox.classList.add('dragover');
+    });
+    uploadDropzoneBox.addEventListener('dragleave', () => {
+      uploadDropzoneBox.classList.remove('dragover');
+    });
+    uploadDropzoneBox.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadDropzoneBox.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const file = e.dataTransfer.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+          alert('Dung lượng tệp lớn hơn 10MB. Vui lòng chọn tệp nhỏ hơn để tránh bị timeout.');
+          return;
+        }
+        processUploadedFile(file);
+      }
+    });
+  }
+
+  if (fileUploader) {
+    fileUploader.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+          alert('Dung lượng tệp lớn hơn 10MB. Vui lòng chọn tệp nhỏ hơn để tránh bị timeout.');
+          return;
+        }
+        processUploadedFile(file);
+      }
+    });
+  }
+
+  // Xử lý sự kiện nút Ghi âm mới
+  const btnRecordPrimary = document.getElementById('btn-record-primary');
+  const btnRecordClear = document.getElementById('btn-record-clear');
+  
+  if (btnRecordPrimary) {
+    btnRecordPrimary.addEventListener('click', () => {
+      const isRecordingActive = mediaRecorder && mediaRecorder.state !== 'inactive';
+      if (isRecordingActive) {
+        stopRecording(false); // Dừng & dịch chữ
+      } else {
+        startRecording();
+      }
+    });
+  }
+
+  if (btnRecordClear) {
+    btnRecordClear.addEventListener('click', () => {
+      stopRecording(true); // Hủy bỏ
+      setRecordingUI('ready');
+      showState(stateHome);
     });
   }
 
   if (btnVoiceCancel) {
     btnVoiceCancel.addEventListener('click', () => {
       clearSavedState();
+      setRecordingUI('ready');
+      showState(stateRecordInput);
       startRecording();
     });
   }
@@ -701,7 +965,6 @@ function initEventListeners() {
         return;
       }
 
-      // Điền vào form Bước 1
       inputTitle.value = 'Bài viết từ giọng nói ' + new Date().toLocaleDateString('vi-VN');
       inputImage.value = '';
       inputDesc.value = '';
@@ -714,84 +977,101 @@ function initEventListeners() {
     });
   }
 
-  // Nút HOME: Tải file
-  btnInputUpload.addEventListener('click', () => {
-    fileUploader.value = '';
-    fileUploader.click();
-  });
-
-  fileUploader.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Kiểm tra file <= 10MB
-      if (file.size > 10 * 1024 * 1024) {
-        alert('Dung lượng tệp lớn hơn 10MB. Vui lòng chọn tệp nhỏ hơn để tránh bị timeout.');
-        return;
+  // Tinh chỉnh xem trước Step 1
+  const btnToggleRawImages = document.getElementById('btn-toggle-raw-images');
+  const rawImagesTextareaWrapper = document.getElementById('raw-images-textarea-wrapper');
+  if (btnToggleRawImages && rawImagesTextareaWrapper) {
+    btnToggleRawImages.addEventListener('click', () => {
+      if (rawImagesTextareaWrapper.classList.contains('hidden')) {
+        rawImagesTextareaWrapper.classList.remove('hidden');
+        btnToggleRawImages.textContent = 'Ẩn chỉnh sửa URL ảnh thô ▲';
+      } else {
+        rawImagesTextareaWrapper.classList.add('hidden');
+        btnToggleRawImages.textContent = 'Chỉnh sửa URL ảnh thô ▼';
       }
-      processUploadedFile(file);
-    }
-  });
+    });
+  }
+
+  if (inputImage) {
+    inputImage.addEventListener('input', () => {
+      renderExtractedImagesGrid();
+      updateFbPreview();
+    });
+  }
+
+  if (inputContent) {
+    inputContent.addEventListener('input', () => {
+      updateWordCountLabel();
+    });
+  }
 
   // WIZARD BƯỚC 1: Quay lại & Chuyển tiếp
-  btnCancelToHome1.addEventListener('click', () => {
-    cancelActiveRequest();
-    clearSavedState();
-    showState(stateHome);
-  });
+  if (btnCancelToHome1) {
+    btnCancelToHome1.addEventListener('click', () => {
+      cancelActiveRequest();
+      clearSavedState();
+      showState(stateHome);
+    });
+  }
 
-  btnNextToSocial.addEventListener('click', () => {
-    const title = inputTitle.value.trim();
-    const content = inputContent.value.trim();
+  if (btnNextToSocial) {
+    btnNextToSocial.addEventListener('click', () => {
+      const title = inputTitle.value.trim();
+      const content = inputContent.value.trim();
 
-    if (!content) {
-      alert('Vui lòng nhập nội dung bài viết.');
-      return;
-    }
-    if (!title) {
-      inputTitle.value = 'Bài viết phác thảo ' + new Date().toLocaleDateString('vi-VN');
-    }
+      if (!content) {
+        alert('Vui lòng nhập nội dung bài viết.');
+        return;
+      }
+      if (!title) {
+        inputTitle.value = 'Bài viết phác thảo ' + new Date().toLocaleDateString('vi-VN');
+      }
 
-    showSubStep(stepSocialConfig);
-    saveCurrentState();
-  });
+      showSubStep(stepSocialConfig);
+      saveCurrentState();
+    });
+  }
 
   // WIZARD BƯỚC 2: Quay lại & Chuyển tiếp
-  btnBackToArticle.addEventListener('click', () => {
-    showSubStep(stepArticleInfo);
-    saveCurrentState();
-  });
+  if (btnBackToArticle) {
+    btnBackToArticle.addEventListener('click', () => {
+      showSubStep(stepArticleInfo);
+      saveCurrentState();
+    });
+  }
 
-  btnCreatePost.addEventListener('click', () => {
-    const title = inputTitle.value.trim() || 'Bài viết phác thảo ' + new Date().toLocaleDateString('vi-VN');
-    const content = inputContent.value.trim();
-    const platform = selectPlatform.value;
-    const presetId = selectPreset.value;
+  if (btnCreatePost) {
+    btnCreatePost.addEventListener('click', () => {
+      const title = inputTitle.value.trim() || 'Bài viết phác thảo ' + new Date().toLocaleDateString('vi-VN');
+      const content = inputContent.value.trim();
+      const platform = selectPlatform.value;
+      const presetId = selectPreset.value;
 
-    if (!content) {
-      alert('Thiếu nội dung bài viết gốc để AI phân tích.');
-      return;
-    }
+      if (!content) {
+        alert('Thiếu nội dung bài viết gốc để AI phân tích.');
+        return;
+      }
 
-    // Xây dựng customPrompt nếu người dùng chọn Văn phong cụ thể
-    let customPrompt = undefined;
-    if (presetId) {
-      const selectedPreset = activePresets.find(p => p.id === presetId);
-      if (selectedPreset) {
-        let rulesText = selectedPreset.rules;
-        try {
-          const parsed = JSON.parse(rulesText);
-          if (parsed && typeof parsed === 'object') {
-            rulesText = parsed.general || '';
-            const platformKey = platform === 'threads' ? 'threads' : platform;
-            if (parsed[platformKey]) {
-              rulesText += `\n\nQuy định riêng cho ${platform}: ${parsed[platformKey]}`;
+      // Xây dựng customPrompt nếu người dùng chọn Văn phong cụ thể
+      let customPrompt = undefined;
+      if (presetId) {
+        const selectedPreset = activePresets.find(p => p.id === presetId);
+        if (selectedPreset) {
+          let rulesText = selectedPreset.rules;
+          try {
+            const parsed = JSON.parse(rulesText);
+            if (parsed && typeof parsed === 'object') {
+              rulesText = parsed.general || '';
+              const platformKey = platform === 'threads' ? 'threads' : platform;
+              if (parsed[platformKey]) {
+                rulesText += `\n\nQuy định riêng cho ${platform}: ${parsed[platformKey]}`;
+              }
             }
+          } catch (e) {
+            // Chuỗi thô không phải JSON, giữ nguyên
           }
-        } catch (e) {
-          // Chuỗi thô không phải JSON, giữ nguyên
-        }
 
-        customPrompt = `Bạn là một chuyên gia Content Marketing.
+          customPrompt = `Bạn là một chuyên gia Content Marketing.
 Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
 Tiêu đề: ${title}
 Nội dung tóm tắt: ${content}
@@ -804,98 +1084,108 @@ Yêu cầu định dạng:
 2. Sử dụng Emoji phù hợp.
 3. Thêm 3-5 hashtag liên quan.
 4. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
+        }
       }
-    }
 
-    const reqId = startNewRequest();
-    showState(stateLoading, 'Đang dùng AI sinh nội dung bài viết đăng mạng xã hội...');
+      const reqId = startNewRequest();
+      showState(stateLoading, 'Đang dùng AI sinh nội dung bài viết đăng mạng xã hội...');
 
-    chrome.runtime.sendMessage({
-      action: 'generate_content',
-      title: title,
-      content: content,
-      platform: platform,
-      customPrompt: customPrompt,
-      token: authToken,
-      requestId: reqId,
-      host: AntBizUrl
-    }, (response) => {
-      if (activeRequestId !== reqId) return;
+      chrome.runtime.sendMessage({
+        action: 'generate_content',
+        title: title,
+        content: content,
+        platform: platform,
+        customPrompt: customPrompt,
+        token: authToken,
+        requestId: reqId,
+        host: AntBizUrl
+      }, (response) => {
+        if (activeRequestId !== reqId) return;
 
-      if (chrome.runtime.lastError) {
-        triggerError('Lỗi kết nối', 'Không thể kết nối đến máy chủ AI.', 'generate', { title, content, platform });
+        if (chrome.runtime.lastError) {
+          triggerError('Lỗi kết nối', 'Không thể kết nối đến máy chủ AI.', 'generate', { title, content, platform });
+          return;
+        }
+
+        if (response && response.success && response.data) {
+          inputCaption.value = response.data.content || '';
+          updateFbPreview();
+          showState(stateExtracted);
+          showSubStep(stepPostPreview);
+          saveCurrentState();
+        } else {
+          const errorMsg = response?.error || 'Không xác định';
+          triggerError(
+            'AI tạo bài viết thất bại',
+            `Không thể sinh bài viết từ AI. Chi tiết: ${errorMsg}. Vui lòng thử lại.`,
+            'generate',
+            { title, content, platform }
+          );
+        }
+      });
+    });
+  }
+
+  // WIZARD BƯỚC 3: Quay lại & Đăng/Lên lịch
+  if (btnBackToSocial) {
+    btnBackToSocial.addEventListener('click', () => {
+      showSubStep(stepSocialConfig);
+      saveCurrentState();
+    });
+  }
+
+  // Đồng bộ ngược từ Preview sang Textarea ẩn khi người dùng gõ trực tiếp
+  if (fbPreviewText) {
+    fbPreviewText.addEventListener('input', () => {
+      inputCaption.value = fbPreviewText.innerText;
+      saveCurrentState();
+    });
+  }
+  if (btnPublishNow) {
+    btnPublishNow.addEventListener('click', () => {
+      const platform = selectPlatform.value;
+      const postContent = inputCaption.value.trim();
+
+      if (!postContent) {
+        alert('Vui lòng nhập nội dung đăng (Caption) trước khi đăng.');
         return;
       }
 
-      if (response && response.success && response.data) {
-        inputCaption.value = response.data.content || '';
-        updateFbPreview();
-        showState(stateExtracted);
-        showSubStep(stepPostPreview);
-        saveCurrentState();
-      } else {
-        const errorMsg = response?.error || 'Không xác định';
-        triggerError(
-          'AI tạo bài viết thất bại',
-          `Không thể sinh bài viết từ AI. Chi tiết: ${errorMsg}. Vui lòng thử lại.`,
-          'generate',
-          { title, content, platform }
-        );
+      if (confirm(`Bạn có chắc chắn muốn đăng ngay lên ${platform.toUpperCase()} không?`)) {
+        submitArticle('publish_now', { platform, postContent });
       }
     });
-  });
+  }
 
-  // WIZARD BƯỚC 3: Quay lại & Đăng/Lên lịch
-  btnBackToSocial.addEventListener('click', () => {
-    showSubStep(stepSocialConfig);
-    saveCurrentState();
-  });
+  if (btnSchedulePost) {
+    btnSchedulePost.addEventListener('click', () => {
+      showSubStep(stepScheduleConfig);
 
-  // Đồng bộ ngược từ Preview sang Textarea ẩn khi người dùng gõ trực tiếp
-  fbPreviewText.addEventListener('input', () => {
-    inputCaption.value = fbPreviewText.innerText;
-    saveCurrentState();
-  });
+      // Gán mặc định là 1 tiếng sau
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+      now.setSeconds(0);
 
-  btnPublishNow.addEventListener('click', () => {
-    const platform = selectPlatform.value;
-    const postContent = inputCaption.value.trim();
+      const pad = (n) => n < 10 ? '0' + n : n;
+      const localIso = now.getFullYear() + '-' +
+        pad(now.getMonth() + 1) + '-' +
+        pad(now.getDate()) + 'T' +
+        pad(now.getHours()) + ':' +
+        pad(now.getMinutes());
 
-    if (!postContent) {
-      alert('Vui lòng nhập nội dung đăng (Caption) trước khi đăng.');
-      return;
-    }
+      inputScheduleTime.value = localIso;
+      renderGoldenHours();
+      saveCurrentState();
+    });
+  }
 
-    if (confirm(`Bạn có chắc chắn muốn đăng ngay lên ${platform.toUpperCase()} không?`)) {
-      submitArticle('publish_now', { platform, postContent });
-    }
-  });
-
-  btnSchedulePost.addEventListener('click', () => {
-    showSubStep(stepScheduleConfig);
-
-    // Gán mặc định là 1 tiếng sau
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    now.setMinutes(0);
-    now.setSeconds(0);
-
-    const pad = (n) => n < 10 ? '0' + n : n;
-    const localIso = now.getFullYear() + '-' +
-      pad(now.getMonth() + 1) + '-' +
-      pad(now.getDate()) + 'T' +
-      pad(now.getHours()) + ':' +
-      pad(now.getMinutes());
-
-    inputScheduleTime.value = localIso;
-    renderGoldenHours();
-    saveCurrentState();
-  });
-
-  btnBackToPreview.addEventListener('click', () => {
-    showSubStep(stepPostPreview);
-    saveCurrentState();
-  });
+  if (btnBackToPreview) {
+    btnBackToPreview.addEventListener('click', () => {
+      showSubStep(stepPostPreview);
+      saveCurrentState();
+    });
+  }
 
   // Render Golden Hours function
   function renderGoldenHours() {
@@ -957,39 +1247,45 @@ Yêu cầu định dạng:
     });
   }
 
-  btnConfirmSchedule.addEventListener('click', () => {
-    const platform = selectPlatform.value;
-    const postContent = inputCaption.value.trim();
-    const scheduledAt = inputScheduleTime.value;
+  if (btnConfirmSchedule) {
+    btnConfirmSchedule.addEventListener('click', () => {
+      const platform = selectPlatform.value;
+      const postContent = inputCaption.value.trim();
+      const scheduledAt = inputScheduleTime.value;
 
-    if (!postContent) {
-      alert('Vui lòng nhập nội dung đăng (Caption).');
-      return;
-    }
+      if (!postContent) {
+        alert('Vui lòng nhập nội dung đăng (Caption).');
+        return;
+      }
 
-    if (!scheduledAt) {
-      alert('Vui lòng chọn thời gian đăng bài.');
-      return;
-    }
+      if (!scheduledAt) {
+        alert('Vui lòng chọn thời gian đăng bài.');
+        return;
+      }
 
-    const scheduledTime = new Date(scheduledAt);
-    if (scheduledTime.getTime() <= Date.now()) {
-      alert('Thời gian lên lịch đăng bài phải nằm trong tương lai.');
-      return;
-    }
+      const scheduledTime = new Date(scheduledAt);
+      if (scheduledTime.getTime() <= Date.now()) {
+        alert('Thời gian lên lịch đăng bài phải nằm trong tương lai.');
+        return;
+      }
 
-    submitArticle('schedule', { platform, postContent, scheduledAt });
-  });
+      submitArticle('schedule', { platform, postContent, scheduledAt });
+    });
+  }
 
   // MÀN HÌNH THÀNH CÔNG
-  btnViewArchive.addEventListener('click', () => {
-    chrome.tabs.create({ url: `${AntBizUrl}/archive` });
-  });
+  if (btnViewArchive) {
+    btnViewArchive.addEventListener('click', () => {
+      chrome.tabs.create({ url: `${AntBizUrl}/archive` });
+    });
+  }
 
-  btnSuccessHome.addEventListener('click', () => {
-    clearSavedState();
-    showState(stateHome);
-  });
+  if (btnSuccessHome) {
+    btnSuccessHome.addEventListener('click', () => {
+      clearSavedState();
+      showState(stateHome);
+    });
+  }
 }
 
 // Chuyển file sang Base64 chuỗi để truyền qua sendMessage
@@ -1042,6 +1338,9 @@ function startExtraction(url) {
 
       showState(stateExtracted);
       showSubStep(stepArticleInfo);
+      renderExtractedImagesGrid();
+      updateWordCountLabel();
+      updateExtractedSourceBadge();
       saveCurrentState();
     } else {
       const errorMsg = response?.error || 'Có thể do lỗi mạng hoặc chặn truy cập (SSRF Protection/Cloudflare)';
@@ -1122,6 +1421,9 @@ function handleSelectionResponse(response) {
 
     showState(stateExtracted);
     showSubStep(stepArticleInfo);
+    renderExtractedImagesGrid();
+    updateWordCountLabel();
+    updateExtractedSourceBadge();
     saveCurrentState();
   } else {
     alert('Vui lòng quét (bôi đen) một đoạn chữ bất kỳ trên trang báo trước khi click "Lấy phần bôi đen".');
@@ -1189,8 +1491,8 @@ async function startRecording() {
     recordingStartTime = Date.now();
     startRecordingTimer();
 
-    // Chuyển sang màn hình đang ghi âm chuyên dụng
-    showState(stateRecording);
+    // Cập nhật giao diện sang Đang ghi âm
+    setRecordingUI('recording');
   } catch (err) {
     console.error('Lỗi cấp quyền Microphone:', err);
     // Nếu gặp lỗi và không được phép, ta mở trang permission.html thay thế để kích hoạt hỏi quyền
@@ -1207,8 +1509,8 @@ async function startRecording() {
 
 function startRecordingTimer() {
   stopRecordingTimer();
-  if (recordTimer) recordTimer.textContent = '05:00';
-  if (recordTimerLarge) recordTimerLarge.textContent = '05:00';
+  const recordTimerVal = document.getElementById('record-timer-val');
+  if (recordTimerVal) recordTimerVal.textContent = '05:00';
 
   recordTimerInterval = setInterval(() => {
     const elapsedSeconds = Math.floor((Date.now() - recordingStartTime) / 1000);
@@ -1222,8 +1524,7 @@ function startRecordingTimer() {
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
     const timeStr = `${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
-    if (recordTimer) recordTimer.textContent = timeStr;
-    if (recordTimerLarge) recordTimerLarge.textContent = timeStr;
+    if (recordTimerVal) recordTimerVal.textContent = timeStr;
   }, 1000);
 }
 
@@ -1243,9 +1544,7 @@ function stopRecording(isCancelled = false) {
     mediaRecorder.stop();
   }
 
-  if (recordControlBox) recordControlBox.classList.add('hidden');
-  btnInputRecord.querySelector('.card-icon').textContent = '🎙️';
-  btnInputRecord.querySelector('.card-title').textContent = 'Ghi âm giọng nói';
+  setRecordingUI('ready');
 }
 
 async function uploadAudioBlob(audioBlob) {
@@ -1365,6 +1664,9 @@ async function processUploadedFile(file) {
 
           showState(stateExtracted);
           showSubStep(stepArticleInfo);
+          renderExtractedImagesGrid();
+          updateWordCountLabel();
+          updateExtractedSourceBadge();
           saveCurrentState();
         } else {
           triggerError(
@@ -1425,6 +1727,9 @@ async function processUploadedFile(file) {
 
           showState(stateExtracted);
           showSubStep(stepArticleInfo);
+          renderExtractedImagesGrid();
+          updateWordCountLabel();
+          updateExtractedSourceBadge();
           saveCurrentState();
         } else {
           triggerError(
@@ -1721,6 +2026,7 @@ function loadPostHistory() {
       if (historyList) historyList.classList.remove('hidden');
     } else {
       console.warn('Không thể tải danh sách bài đăng từ API lịch sử:', response?.error);
+      if (handleApiError(response?.error)) return;
       if (historyEmpty) historyEmpty.classList.remove('hidden');
     }
   });
@@ -1801,4 +2107,141 @@ function renderHistoryList(posts) {
 
     historyList.appendChild(item);
   });
+}
+
+// ==========================================
+// CÁC HÀM HỖ TRỢ GIAO DIỆN MỚI
+// ==========================================
+
+function setRecordingUI(state) {
+  const rip1 = document.getElementById('record-ripple-1');
+  const rip2 = document.getElementById('record-ripple-2');
+  const innerCircle = document.getElementById('record-icon-circle-btn');
+  const timerVal = document.getElementById('record-timer-val');
+  const statusLabel = document.getElementById('record-status-label');
+  const btnClear = document.getElementById('btn-record-clear');
+  const primaryText = document.getElementById('primary-record-text');
+  const primaryIcon = document.getElementById('primary-record-icon');
+  const bannerText = document.getElementById('record-banner-text');
+
+  if (state === 'ready') {
+    if (rip1) rip1.classList.add('hidden');
+    if (rip2) rip2.classList.add('hidden');
+    if (innerCircle) innerCircle.classList.remove('active');
+    if (timerVal) {
+      timerVal.textContent = '00:00';
+      timerVal.classList.remove('recording');
+    }
+    if (statusLabel) statusLabel.textContent = 'Sẵn sàng ghi âm';
+    if (btnClear) btnClear.disabled = true;
+    if (primaryText) primaryText.textContent = 'Bắt đầu ghi';
+    if (primaryIcon) {
+      primaryIcon.innerHTML = `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
+    }
+    if (bannerText) bannerText.textContent = 'AI sẽ chuyển giọng nói thành văn bản sau khi bạn dừng ghi.';
+  } else if (state === 'recording') {
+    if (rip1) rip1.classList.remove('hidden');
+    if (rip2) rip2.classList.remove('hidden');
+    if (innerCircle) innerCircle.classList.add('active');
+    if (timerVal) {
+      timerVal.classList.add('recording');
+    }
+    if (statusLabel) statusLabel.textContent = 'Đang ghi âm...';
+    if (btnClear) btnClear.disabled = false;
+    if (primaryText) primaryText.textContent = 'Hoàn tất';
+    if (primaryIcon) {
+      primaryIcon.innerHTML = `<rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>`;
+    }
+    if (bannerText) bannerText.textContent = 'Hãy nói rõ ràng, hạn chế tạp âm xung quanh (tối đa 5 phút)';
+  }
+}
+
+function renderExtractedImagesGrid() {
+  const gridContainer = document.getElementById('extracted-images-grid');
+  const countLabel = document.getElementById('images-count-info-label');
+  if (!gridContainer) return;
+
+  const imageVal = inputImage.value.trim();
+  const imageLines = imageVal.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+  gridContainer.innerHTML = '';
+  
+  if (imageLines.length === 0) {
+    if (countLabel) countLabel.textContent = '0 hình ảnh được tìm thấy';
+    return;
+  }
+
+  if (countLabel) {
+    countLabel.textContent = `${imageLines.length} hình ảnh được tìm thấy`;
+  }
+
+  imageLines.forEach((url, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'image-card-wrapper';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'image-card-thumb';
+    img.onerror = () => {
+      img.src = 'icon.svg';
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'image-card-delete';
+    deleteBtn.innerHTML = '✕';
+    deleteBtn.title = 'Xóa ảnh';
+    deleteBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const updatedLines = imageLines.filter((_, idx) => idx !== index);
+      inputImage.value = updatedLines.join('\n');
+      saveCurrentState();
+      renderExtractedImagesGrid();
+      updateFbPreview();
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(deleteBtn);
+    gridContainer.appendChild(wrapper);
+  });
+}
+
+function updateWordCountLabel() {
+  const label = document.getElementById('word-count-info-label');
+  if (!label) return;
+  const content = inputContent.value.trim();
+  if (!content) {
+    label.textContent = '(Đã trích xuất 0 từ)';
+    return;
+  }
+  const wordCount = content.split(/\s+/).length;
+  label.textContent = `(Đã trích xuất ${wordCount.toLocaleString('vi-VN')} từ)`;
+}
+
+function updateExtractedSourceBadge() {
+  const badge = document.getElementById('extracted-source-badge');
+  if (!badge) return;
+
+  let text = 'URL bài viết';
+  let badgeClass = 'badge-url';
+  let svgContent = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+
+  if (lastActionType === 'scrape') {
+    text = 'URL bài viết';
+    badgeClass = 'badge-url';
+  } else if (lastActionType === 'select') {
+    text = 'Đoạn văn đã chọn';
+    badgeClass = 'badge-select';
+    svgContent = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+  } else if (lastActionType === 'record') {
+    text = 'Ghi âm';
+    badgeClass = 'badge-record';
+    svgContent = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
+  } else if (lastActionType === 'upload') {
+    text = 'Tải tệp';
+    badgeClass = 'badge-upload';
+    svgContent = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+  }
+
+  badge.className = `source-badge ${badgeClass}`;
+  badge.innerHTML = `${svgContent} <span>Nguồn: ${text}</span>`;
 }
