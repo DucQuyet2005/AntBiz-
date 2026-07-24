@@ -16,14 +16,14 @@ export function buildCaptionPrompt(input: {
     ? `${fullText.slice(0, 3000)}... (Nội dung rút gọn)`
     : fullText;
   const customSection = input.instruction.trim()
-    ? `\n**Hướng dẫn bổ sung:**\n*   ${input.instruction.trim()}\n`
+    ? `\n**Hướng dẫn bổ sung:**\n${input.instruction.trim()}\n`
     : '';
   const styleSection = input.styleContent
     ? `\n${input.styleContent}\n`
     : '*   Tone giọng yêu cầu: Tự do\n';
   const presetSection = input.platformRules === null
     ? ''
-    : `\n**Hướng dẫn khai thác nội dung:**\n*   ${input.platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`}\n`;
+    : `\n**Hướng dẫn khai thác nội dung:**\n${input.platformRules || `(Chưa chọn quy chuẩn ${platformLabel})`}\n`;
 
   return `Bạn là một Content Marketer chuyên nghiệp. Hãy viết một bài đăng mạng xã hội (${platformLabel} post) dựa trên thông tin sau:
 

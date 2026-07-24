@@ -8,6 +8,15 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
     private readonly graphVersion: string = 'v19.0'
   ) {}
 
+  private parseMetricValue(value: any): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'object') {
+      return Object.values(value).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+    }
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
   async fetchPostMetrics(
     externalPostId: string,
     accessToken: string
@@ -54,9 +63,9 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
 
     if (publicResult.status === 'fulfilled' && publicResult.value) {
       const data = publicResult.value;
-      likes = data?.reactions?.summary?.total_count ?? 0;
-      comments = data?.comments?.summary?.total_count ?? 0;
-      shares = data?.shares?.count ?? 0;
+      likes = this.parseMetricValue(data?.reactions?.summary?.total_count);
+      comments = this.parseMetricValue(data?.comments?.summary?.total_count);
+      shares = this.parseMetricValue(data?.shares?.count);
     } else if (publicResult.status === 'rejected') {
       const err = publicResult.reason;
       if (err?.message?.includes('RATE_LIMIT') || err?.message?.includes('LIMIT_REACHED')) {
@@ -69,16 +78,11 @@ export class FacebookPerformanceCollector implements PerformanceCollector {
       const data = insightsResult.value;
       if (Array.isArray(data?.data)) {
         for (const item of data.data) {
-          const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+          const rawValue = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+          const value = this.parseMetricValue(rawValue);
           if (item.name === 'post_impressions' || item.name === 'post_media_view') impressions = value;
           else if (item.name === 'post_impressions_unique' || item.name === 'post_total_media_view_unique') reach = value;
-          else if (item.name === 'post_clicks' || item.name === 'post_clicks_by_type') {
-            if (typeof value === 'object' && value !== null) {
-              clicks = Object.values(value).reduce((acc: number, val: any) => acc + (typeof val === 'number' ? val : 0), 0) as number;
-            } else {
-              clicks = typeof value === 'number' ? value : 0;
-            }
-          }
+          else if (item.name === 'post_clicks' || item.name === 'post_clicks_by_type') clicks = value;
         }
       }
     } else if (insightsResult.status === 'rejected') {

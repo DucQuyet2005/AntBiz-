@@ -8,6 +8,15 @@ export class ThreadsPerformanceCollector implements PerformanceCollector {
     private readonly apiVersion: string = 'v1.0'
   ) {}
 
+  private parseMetricValue(value: any): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'object') {
+      return Object.values(value).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+    }
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
   async fetchPostMetrics(
     externalPostId: string,
     accessToken: string
@@ -30,7 +39,8 @@ export class ThreadsPerformanceCollector implements PerformanceCollector {
         const data = await response.json();
         if (Array.isArray(data?.data)) {
           for (const item of data.data) {
-            const value = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const rawValue = item.values?.[0]?.value ?? item.total_value?.value ?? 0;
+            const value = this.parseMetricValue(rawValue);
             if (item.name === 'views') {
               impressions = value;
               reach = Math.max(reach, Math.floor(value * 0.85)); // Ước tính reach từ views
