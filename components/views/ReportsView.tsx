@@ -593,7 +593,7 @@ export default function ReportsView() {
             type="button"
             onClick={handleExport}
             disabled={isExporting || loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 transition-all duration-200 disabled:opacity-50 cursor-pointer text-xs active:scale-95 border-0"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-md shadow-primary/20 hover:shadow-primary/30 transition-all duration-200 disabled:opacity-50 cursor-pointer text-xs active:scale-95 border-0"
           >
             {isExporting ? (
               <Loader2 className="animate-spin" size={14} />
@@ -721,7 +721,7 @@ export default function ReportsView() {
                 onClick={() => setPlatform("all")}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border-0 h-7 ${
                   platform === "all"
-                    ? "bg-emerald-500 text-white shadow-2xs"
+                    ? "bg-primary text-white shadow-2xs"
                     : "text-text-muted hover:text-text"
                 }`}
               >
@@ -796,8 +796,8 @@ export default function ReportsView() {
               transition={{ duration: 0.3 }}
               className="space-y-6"
             >
-              {/* Metric KPI Cards (6 columns) */}
-              <div id="tour-reports-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {/* Metric KPI Cards (5 columns) */}
+              <div id="tour-reports-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 {/* Card 1: Total Posts */}
                 <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
@@ -817,29 +817,7 @@ export default function ReportsView() {
                   </div>
                 </div>
 
-                {/* Card 2: Success Rate */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TỶ LỆ THÀNH CÔNG</span>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30">
-                      <CheckCircle2 size={16} />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
-                      {reportData.summary.successRate}%
-                    </h3>
-                    <div className="w-full bg-gray-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${reportData.summary.successRate}%` }} />
-                    </div>
-                    <div className="flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                      <TrendingUp size={12} />
-                      <span>↑ 8% so với 7 ngày trước</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 3: Engagement Rate */}
+                {/* Card 2: Engagement Rate */}
                 <div className="bg-white dark:bg-zinc-900 border border-gray-200/70 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all duration-200">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">TỶ LỆ TƯƠNG TÁC</span>
@@ -1004,7 +982,7 @@ export default function ReportsView() {
                         onClick={() => setChartGranularity("day")}
                         className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
                           chartGranularity === "day"
-                            ? "bg-emerald-500 text-white shadow-2xs"
+                            ? "bg-primary text-white shadow-2xs"
                             : "text-text-muted hover:text-text"
                         }`}
                       >
@@ -1015,7 +993,7 @@ export default function ReportsView() {
                         onClick={() => setChartGranularity("week")}
                         className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
                           chartGranularity === "week"
-                            ? "bg-emerald-500 text-white shadow-2xs"
+                            ? "bg-primary text-white shadow-2xs"
                             : "text-text-muted hover:text-text"
                         }`}
                       >
@@ -1026,7 +1004,7 @@ export default function ReportsView() {
                         onClick={() => setChartGranularity("month")}
                         className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border-0 cursor-pointer ${
                           chartGranularity === "month"
-                            ? "bg-emerald-500 text-white shadow-2xs"
+                            ? "bg-primary text-white shadow-2xs"
                             : "text-text-muted hover:text-text"
                         }`}
                       >
