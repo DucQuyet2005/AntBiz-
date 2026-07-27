@@ -2,23 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
   Bell, 
-  MessageSquare, 
-  Image as ImageIcon,
   Globe,
-  FileText,
-  GitBranch,
   Check,
-  Sliders,
-  Sparkles,
-  Type,
-  Loader2
+  Sliders, 
+  Sparkles, 
+  Type, 
+  Loader2,
+  Facebook,
+  Instagram
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { createClient } from '@/utils/supabase/client';
+import { getSocialConnectionErrorMessage } from '@/lib/socialConnectionMessages';
 import { useFont, fonts } from '@/contexts/FontContext';
+import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // API Plug / Connection icon custom SVG to match mockup
 const PlugIcon = ({ size = 20 }: { size?: number }) => (
@@ -27,43 +26,310 @@ const PlugIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
+const ThreadsIcon = ({ size = 20, className = "" }: { size?: number; className?: string; key?: any }) => (
+  <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor" className={className}>
+    <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" />
+  </svg>
+);
+
+
 export default function SettingsView() {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { font, setFont } = useFont();
+
+  const [activeTab, setActiveTab] = useState<'general' | 'platform-presets'>('general');
 
   // State for interactive inputs
   const [openaiConnected, setOpenaiConnected] = useState(true);
   const [openaiLoading, setOpenaiLoading] = useState(false);
   const [midjourneyConnected, setMidjourneyConnected] = useState(false);
   const [midjourneyLoading, setMidjourneyLoading] = useState(false);
-  const [aiGenNotify, setAiGenNotify] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(false);
-
-  const handleToggleOpenai = () => {
-    setOpenaiLoading(true);
-    setTimeout(() => {
-      setOpenaiConnected(prev => !prev);
-      setOpenaiLoading(false);
-    }, 600);
-  };
-
-  const handleToggleMidjourney = () => {
-    setMidjourneyLoading(true);
-    setTimeout(() => {
-      setMidjourneyConnected(prev => !prev);
-      setMidjourneyLoading(false);
-    }, 600);
-  };
+  // Dynamic Email Notification settings state
+  const [notifSettingsLoading, setNotifSettingsLoading] = useState(false);
+  const [notifSettingsSaving, setNotifSettingsSaving] = useState(false);
+  const [emailPostSuccess, setEmailPostSuccess] = useState(true);
+  const [emailPostFailed, setEmailPostFailed] = useState(true);
+  const [emailDailyDigest, setEmailDailyDigest] = useState(false);
+  const [digestTime, setDigestTime] = useState('08:00');
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupType, setPopupType] = useState<PopupType>('info');
+  const [popupTitle, setPopupTitle] = useState("");
   const supabase = createClient();
+
+  const loadSocialAccounts = async () => {
+    try {
+      const res = await fetch('/api/linked-accounts');
+      if (res.ok) {
+        const json = await res.json();
+        setSocialAccounts(json.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching linked social accounts:', err);
+    }
+  };
+
+  const handleConnectSocial = (platform: string) => {
+    window.location.href = `/api/auth/${platform}`;
+  };
+
+  const handleDisconnectSocial = async (platform: string) => {
+    const platformLabel = platform === 'thread' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram';
+    if (!window.confirm(`Bạn có chắc chắn muốn hủy liên kết tài khoản ${platformLabel}?`)) {
+      return;
+    }
+    setSocialLoading(true);
+    try {
+      const res = await fetch(`/api/linked-accounts?platform=${platform}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await loadSocialAccounts();
+      }
+    } catch (err) {
+      console.error('Error disconnecting social account:', err);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
+
+  const handleRefreshSocial = async (platform: string) => {
+    const platformLabel = platform === 'thread' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram';
+    setSocialLoading(true);
+    try {
+      const res = await fetch(`/api/linked-accounts?platform=${platform}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? `Đã gia hạn thành công tài khoản ${platformLabel}!` 
+                : `${platformLabel} account renewed successfully!`,
+              type: 'success',
+            }
+          })
+        );
+        await loadSocialAccounts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? `Gia hạn thất bại: ${errorData.error || 'Lỗi hệ thống'}` 
+                : `Renewal failed: ${errorData.error || 'System error'}`,
+              type: 'error',
+            }
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Error renewing social account:', err);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
+    setTimeout(() => {
+      loadSocialAccounts();
+    }, 0);
   }, []);
+
+  // Helper functions for Cookie management
+  const getCookie = (name: string): string | null => {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+    return null;
+  };
+
+  const setCookie = (name: string, value: string, days = 365) => {
+    if (typeof document === 'undefined') return;
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = `; expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/; SameSite=Lax`;
+  };
+
+  // Load email notification settings from Cookies (and sync DB)
+  useEffect(() => {
+    // 1. Immediately read from Cookies and LocalStorage for zero-delay UI load
+    const savedSuccess = getCookie('notif_email_on_success') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_on_success') : null);
+    const savedFailed = getCookie('notif_email_on_failure') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_on_failure') : null);
+    const savedDigest = getCookie('notif_email_digest_enabled') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_digest_enabled') : null);
+    const savedTime = getCookie('notif_email_digest_time') ?? (typeof window !== 'undefined' ? localStorage.getItem('notif_email_digest_time') : null);
+
+    if (savedSuccess !== null) setEmailPostSuccess(savedSuccess === 'true');
+    if (savedFailed !== null) setEmailPostFailed(savedFailed === 'true');
+    if (savedDigest !== null) setEmailDailyDigest(savedDigest === 'true');
+    if (savedTime !== null) setDigestTime(savedTime);
+
+    // 2. Fetch from DB API if logged in to keep server updated
+    const fetchSettings = async () => {
+      setNotifSettingsLoading(true);
+      try {
+        const res = await fetch('/api/notifications/settings');
+        if (res.ok) {
+          const json = await res.json();
+          const settingsData = json?.data || json;
+          if (settingsData && settingsData.email_digest_enabled !== undefined) {
+            setEmailPostSuccess(settingsData.email_on_success ?? true);
+            setEmailPostFailed(settingsData.email_on_failure ?? true);
+            setEmailDailyDigest(settingsData.email_digest_enabled ?? false);
+            setDigestTime(settingsData.email_digest_time ?? '08:00');
+
+            // Save synced values back to Cookies & LocalStorage
+            setCookie('notif_email_on_success', String(settingsData.email_on_success ?? true));
+            setCookie('notif_email_on_failure', String(settingsData.email_on_failure ?? true));
+            setCookie('notif_email_digest_enabled', String(settingsData.email_digest_enabled ?? false));
+            setCookie('notif_email_digest_time', settingsData.email_digest_time ?? '08:00');
+            localStorage.setItem('notif_email_on_success', String(settingsData.email_on_success ?? true));
+            localStorage.setItem('notif_email_on_failure', String(settingsData.email_on_failure ?? true));
+            localStorage.setItem('notif_email_digest_enabled', String(settingsData.email_digest_enabled ?? false));
+            localStorage.setItem('notif_email_digest_time', settingsData.email_digest_time ?? '08:00');
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching DB notification settings, using local cookies:', err);
+      } finally {
+        setNotifSettingsLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchSettings();
+    } else {
+      setNotifSettingsLoading(false);
+    }
+  }, [userId]);
+
+  const handleSaveNotifSettings = async (
+    postSuccess: boolean,
+    postFailed: boolean,
+    dailyDigest: boolean,
+    time: string
+  ) => {
+    // Save to Cookies & LocalStorage INSTANTLY
+    setCookie('notif_email_on_success', String(postSuccess));
+    setCookie('notif_email_on_failure', String(postFailed));
+    setCookie('notif_email_digest_enabled', String(dailyDigest));
+    setCookie('notif_email_digest_time', time);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notif_email_on_success', String(postSuccess));
+      localStorage.setItem('notif_email_on_failure', String(postFailed));
+      localStorage.setItem('notif_email_digest_enabled', String(dailyDigest));
+      localStorage.setItem('notif_email_digest_time', time);
+    }
+
+    // Inform terminal console
+    console.log('[Notification Settings Cookie] Saved settings to browser cookie & localStorage:', {
+      email_on_success: postSuccess,
+      email_on_failure: postFailed,
+      email_digest_enabled: dailyDigest,
+      email_digest_time: time,
+    });
+
+    setNotifSettingsSaving(true);
+    try {
+      const res = await fetch('/api/notifications/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email_on_success: postSuccess,
+          email_on_failure: postFailed,
+          email_digest_enabled: dailyDigest,
+          email_digest_time: time,
+        }),
+      });
+
+      if (res.ok) {
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? 'Đã cập nhật cấu hình thông báo thành công!' 
+                : 'Notification settings updated successfully!',
+              type: 'success',
+            }
+          })
+        );
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.warn('DB update returned non-200 status, using local cookies:', res.status, errorData);
+        window.dispatchEvent(
+          new CustomEvent('show-notification-toast', {
+            detail: {
+              message: language === 'vi' 
+                ? 'Đã lưu cấu hình thông báo vào Cookies thành công!' 
+                : 'Notification settings saved to Cookies successfully!',
+              type: 'success',
+            }
+          })
+        );
+      }
+    } catch (err) {
+      console.warn('Error connecting to API, saved locally in cookies:', err);
+      window.dispatchEvent(
+        new CustomEvent('show-notification-toast', {
+          detail: {
+            message: language === 'vi' 
+              ? 'Đã lưu cấu hình thông báo vào Cookies thành công!' 
+              : 'Notification settings saved to Cookies successfully!',
+            type: 'success',
+          }
+        })
+      );
+    } finally {
+      setNotifSettingsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    const platform = params.get('platform');
+    const errorMsg = params.get('error');
+
+    if (connected) {
+      const platformLabel = platform === 'threads' || platform === 'thread' ? 'Meta Threads' : 
+                            platform === 'instagram' ? 'Instagram Business' : 'Facebook Page';
+      
+      setTimeout(() => {
+        if (connected === 'success') {
+          setPopupType('success');
+          setPopupTitle(language === 'vi' ? 'Liên kết thành công' : 'Connection Success');
+          setPopupMessage(
+            language === 'vi' 
+              ? `Tài khoản ${platformLabel} của bạn đã được kết nối thành công.` 
+              : `${platformLabel} account has been connected successfully.`
+          );
+        } else {
+          setPopupType('error');
+          setPopupTitle(language === 'vi' ? 'Liên kết thất bại' : 'Connection Failed');
+          setPopupMessage(getSocialConnectionErrorMessage(errorMsg, language, platformLabel));
+        }
+        setPopupOpen(true);
+      }, 0);
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [language]);
 
   const handleThemeChange = async (newTheme: Theme, colorLabel: string) => {
     setTheme(newTheme);
@@ -92,12 +358,14 @@ export default function SettingsView() {
     <div className="flex flex-col gap-6">
       
       {/* Title Header */}
-      <div className="mt-2">
-        <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('settings.title')}</h1>
-        <p className="text-text-muted">{t('settings.subtitle')}</p>
+      <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-text mb-1 tracking-tight">{t('settings.title')}</h1>
+          <p className="text-text-muted">{t('settings.subtitle')}</p>
+        </div>
       </div>
 
-      {/* Two Column Grid */}
+      {/* Tab Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column: API Integrations (Theme-Aware Color Card) */}
@@ -117,77 +385,180 @@ export default function SettingsView() {
             
             {/* Integration connections list */}
             <div className="flex flex-col gap-4 mt-6">
-                  {/* OpenAI GPT-4 connection */}
-              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#EDE9FE] dark:bg-indigo-950/40 text-[#6366F1] dark:text-indigo-400 flex items-center justify-center shrink-0">
-                    <MessageSquare size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">OpenAI GPT-4</h3>
-                    <span className="text-[10px] font-bold block mt-[2px]">
-                      {openaiLoading ? (
-                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" />
-                          {t('common.updating')}
-                        </span>
-                      ) : openaiConnected ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
-                      ) : (
-                        <span className="text-text-muted">{t('common.notConnected')}</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleToggleOpenai}
-                  disabled={openaiLoading}
-                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                    openaiConnected 
-                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
-                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
-                  }`}
-                >
-                  {openaiLoading && <Loader2 size={11} className="animate-spin" />}
-                  {openaiConnected ? t('settings.disconnect') : t('settings.connect')}
-                </button>
-              </div>
 
-              {/* Midjourney connection */}
-              <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-black text-gray-400 dark:text-slate-400 flex items-center justify-center shrink-0 border dark:border-white/5">
-                    <ImageIcon size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">Midjourney API</h3>
-                    <span className="text-[10px] font-bold block mt-[2px]">
-                      {midjourneyLoading ? (
-                        <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" />
-                          {t('common.updating')}
+
+              {/* Facebook Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'facebook');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
+                        <Facebook size={20} className="text-[#1877F2] fill-[#1877F2] dark:text-blue-400 dark:fill-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Facebook Page</h3>
+                        <span className="text-[10px] font-bold block mt-[2px]">
+                          {socialLoading ? (
+                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                              <Loader2 size={10} className="animate-spin" />
+                              {t('common.updating')}
+                            </span>
+                          ) : conn ? (
+                            isExpired ? (
+                              <span className="text-red-500 font-extrabold text-[10px]">
+                                {language === 'vi' ? 'Hết hạn' : 'Expired'}: {conn.account_name}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                                {t('settings.connected')}: {conn.account_name}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-text-muted">{t('common.notConnected')}</span>
+                          )}
                         </span>
-                      ) : midjourneyConnected ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">{t('settings.connected')}</span>
-                      ) : (
-                        <span className="text-text-muted">{t('common.notConnected')}</span>
-                      )}
-                    </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => (conn && !isExpired) ? handleDisconnectSocial('facebook') : handleConnectSocial('facebook')}
+                      disabled={socialLoading}
+                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                        (conn && !isExpired)
+                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                      }`}
+                    >
+                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                      {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
+                    </button>
                   </div>
-                </div>
-                <button 
-                  onClick={handleToggleMidjourney}
-                  disabled={midjourneyLoading}
-                  className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
-                    midjourneyConnected 
-                      ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
-                      : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
-                  }`}
-                >
-                  {midjourneyLoading && <Loader2 size={11} className="animate-spin" />}
-                  {midjourneyConnected ? t('settings.disconnect') : t('settings.connect')}
-                </button>
-              </div>
+                );
+              })()}
+
+              {/* Threads Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'thread');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
+                
+                const diffTime = conn?.expires_at ? new Date(conn.expires_at).getTime() - Date.now() : 0;
+                const remainingDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+                const isExpiringSoon = conn?.expires_at && !isExpired && remainingDays <= 7;
+
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex flex-col gap-3 text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-zinc-800 text-black dark:text-white flex items-center justify-center shrink-0 border dark:border-white/5">
+                          <ThreadsIcon size={20} className="text-black dark:text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">Meta Threads</h3>
+                          <span className="text-[10px] font-bold block mt-[2px]">
+                            {socialLoading ? (
+                              <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                                <Loader2 size={10} className="animate-spin" />
+                                {t('common.updating')}
+                              </span>
+                            ) : conn ? (
+                              isExpired ? (
+                                <span className="text-red-500 font-extrabold text-[10px]">
+                                  {language === 'vi' ? 'Hết hạn' : 'Expired'}: @{conn.account_name}
+                                </span>
+                              ) : (
+                                <span className="text-emerald-650 dark:text-emerald-400 font-extrabold text-[10px]">
+                                  {t('settings.connected')}: @{conn.account_name}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-text-muted">{t('common.notConnected')}</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => (conn && !isExpired) ? handleDisconnectSocial('thread') : handleConnectSocial('threads')}
+                        disabled={socialLoading}
+                        className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                          (conn && !isExpired)
+                            ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                            : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                        }`}
+                      >
+                        {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                        {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
+                      </button>
+                    </div>
+                    {isExpiringSoon && (
+                      <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                        <span>
+                          {language === 'vi' 
+                            ? `Token sắp hết hạn (Còn lại ${remainingDays} ngày)` 
+                            : `Token expiring soon (${remainingDays} days remaining)`}
+                        </span>
+                        <button
+                          onClick={() => handleRefreshSocial('thread')}
+                          disabled={socialLoading}
+                          className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 transition-all font-bold px-2 py-1 rounded-md text-amber-900 dark:text-amber-200 cursor-pointer"
+                        >
+                          {language === 'vi' ? 'Gia hạn ngay' : 'Renew now'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Instagram Connection */}
+              {(() => {
+                const conn = socialAccounts.find(a => a.platform === 'instagram');
+                const isExpired = conn?.expires_at && new Date(conn.expires_at) <= new Date();
+                return (
+                  <div className="bg-card dark:bg-black/60 rounded-2xl p-4 flex items-center justify-between text-text shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-950/40 flex items-center justify-center shrink-0">
+                        <Instagram size={20} className="text-[#E4405F] dark:text-pink-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">Instagram Business</h3>
+                        <span className="text-[10px] font-bold block mt-[2px]">
+                          {socialLoading ? (
+                            <span className="text-slate-400 dark:text-slate-300 flex items-center gap-1">
+                              <Loader2 size={10} className="animate-spin" />
+                              {t('common.updating')}
+                            </span>
+                          ) : conn ? (
+                            isExpired ? (
+                              <span className="text-red-500 font-extrabold text-[10px]">
+                                {language === 'vi' ? 'Hết hạn' : 'Expired'}: {conn.account_name}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-655 dark:text-emerald-400 font-extrabold text-[10px] line-clamp-1 max-w-[200px]">
+                                {t('settings.connected')}: {conn.account_name}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-text-muted">{t('common.notConnected')}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => (conn && !isExpired) ? handleDisconnectSocial('instagram') : handleConnectSocial('instagram')}
+                      disabled={socialLoading}
+                      className={`text-xs font-bold transition-all px-3.5 py-1.5 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5 ${
+                        (conn && !isExpired)
+                          ? 'border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100/50 dark:hover:bg-red-900/30 focus-visible:ring-red-500' 
+                          : 'bg-primary text-white hover:opacity-90 shadow-sm shadow-primary/10 focus-visible:ring-primary'
+                      }`}
+                    >
+                      {socialLoading && <Loader2 size={11} className="animate-spin" />}
+                      {conn ? (isExpired ? (language === 'vi' ? 'Kết nối lại' : 'Reconnect') : t('settings.disconnect')) : t('settings.connect')}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -196,59 +567,150 @@ export default function SettingsView() {
         <div className="col-span-12 lg:col-span-5 bg-sidebar/50 dark:bg-black/40 border border-primary/10 dark:border-white/5 rounded-2xl p-8 flex flex-col gap-6 text-text">
           
           {/* Header Notifications */}
-          <div className="flex items-center gap-3 font-bold text-lg text-primary">
-            <Bell size={20} />
-            <h2>{t('settings.apiIntegrations')}</h2>
+          <div className="flex items-center justify-between font-bold text-lg text-primary border-b border-primary/10 pb-3">
+            <div className="flex items-center gap-3">
+              <Bell size={20} />
+              <h2>{language === 'vi' ? 'Cấu hình thông báo email' : 'Email Notification Preferences'}</h2>
+            </div>
+            {(notifSettingsLoading || notifSettingsSaving) && (
+              <Loader2 size={16} className="animate-spin text-primary" />
+            )}
           </div>
 
           {/* Configuration List */}
           <div className="flex flex-col gap-5 mt-1">
-            
-            {/* Config Item 1 */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5" id="ai-notify-label">
-                <span className="text-sm font-bold">{t('settings.aiNotifyTitle')}</span>
-                <span id="ai-notify-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                  {t('settings.aiNotifyDesc')}
-                </span>
+            {notifSettingsLoading ? (
+              <div className="py-6 flex flex-col items-center justify-center gap-2 text-text-muted">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="text-xs">{language === 'vi' ? 'Đang tải cấu hình...' : 'Loading preferences...'}</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
-                <input 
-                  type="checkbox" 
-                  checked={aiGenNotify}
-                  onChange={() => setAiGenNotify(!aiGenNotify)}
-                  aria-labelledby="ai-notify-label"
-                  aria-describedby="ai-notify-desc"
-                  className="sr-only peer" 
-                />
-                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  aiGenNotify ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
-                }`}></div>
-              </label>
-            </div>
+            ) : (
+              <>
+                {/* 1. Post Success Email */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5" id="email-success-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo đăng bài thành công' : 'Email on successful posts'}
+                    </span>
+                    <span id="email-success-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gửi email thông báo chi tiết ngay lập tức sau khi bài viết được đăng tải thành công.' 
+                        : 'Send an email notification immediately after a post is successfully published.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailPostSuccess}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailPostSuccess(val);
+                        handleSaveNotifSettings(val, emailPostFailed, emailDailyDigest, digestTime);
+                      }}
+                      aria-labelledby="email-success-label"
+                      aria-describedby="email-success-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailPostSuccess ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
 
-            {/* Config Item 2 */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5" id="weekly-digest-label">
-                <span className="text-sm font-bold">{t('settings.weeklyDigestTitle')}</span>
-                <span id="weekly-digest-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
-                  {t('settings.weeklyDigestDesc')}
-                </span>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
-                <input 
-                  type="checkbox" 
-                  checked={weeklyDigest}
-                  onChange={() => setWeeklyDigest(!weeklyDigest)}
-                  aria-labelledby="weekly-digest-label"
-                  aria-describedby="weekly-digest-desc"
-                  className="sr-only peer" 
-                />
-                <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
-                  weeklyDigest ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
-                }`}></div>
-              </label>
-            </div>
+                {/* 2. Post Failed Email */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5" id="email-failed-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo đăng bài thất bại' : 'Email on failed posts'}
+                    </span>
+                    <span id="email-failed-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gửi thông báo và nguyên nhân lỗi chi tiết qua email ngay khi đăng bài thất bại.' 
+                        : 'Send an email notification with failure details if publishing fails.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailPostFailed}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailPostFailed(val);
+                        handleSaveNotifSettings(emailPostSuccess, val, emailDailyDigest, digestTime);
+                      }}
+                      aria-labelledby="email-failed-label"
+                      aria-describedby="email-failed-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailPostFailed ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
+
+                {/* 3. Daily Digest Email */}
+                <div className="flex items-start justify-between gap-4 border-t border-primary/10 pt-4">
+                  <div className="flex flex-col gap-0.5" id="daily-digest-label">
+                    <span className="text-sm font-bold">
+                      {language === 'vi' ? 'Báo cáo tổng hợp hàng ngày' : 'Daily summary email digest'}
+                    </span>
+                    <span id="daily-digest-desc" className="text-[10px] text-text-muted font-semibold leading-relaxed">
+                      {language === 'vi' 
+                        ? 'Gom tất cả thông báo trong ngày thành 1 email tổng hợp gửi vào khung giờ lựa chọn.' 
+                        : 'Aggregate all notifications into a single email summary sent at your preferred hour.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={emailDailyDigest}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setEmailDailyDigest(val);
+                        handleSaveNotifSettings(emailPostSuccess, emailPostFailed, val, digestTime);
+                      }}
+                      aria-labelledby="daily-digest-label"
+                      aria-describedby="daily-digest-desc"
+                      className="sr-only peer" 
+                    />
+                    <div className={`w-11 h-6 rounded-full peer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-all ${
+                      emailDailyDigest ? 'bg-primary' : 'bg-gray-200 dark:bg-black border dark:border-white/5'
+                    }`}></div>
+                  </label>
+                </div>
+
+                {/* 4. Daily Digest Hour Selector */}
+                {emailDailyDigest && (
+                  <div className="flex items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-primary/5 ml-2 transition-all">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-bold text-text">
+                        {language === 'vi' ? 'Thời gian nhận email' : 'Digest Delivery Time'}
+                      </span>
+                      <span className="text-[9px] text-text-muted">
+                        {language === 'vi' ? 'Chọn khung giờ (GMT+7)' : 'Select preferred hour (GMT+7)'}
+                      </span>
+                    </div>
+                    <select
+                      value={digestTime}
+                      disabled={notifSettingsSaving}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDigestTime(val);
+                        handleSaveNotifSettings(emailPostSuccess, emailPostFailed, emailDailyDigest, val);
+                      }}
+                      className="bg-white dark:bg-black border border-primary/10 rounded-xl px-3 py-1.5 text-xs font-bold text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'].map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Language Setting Block */}
             <div className="border-t border-primary/10 pt-5 flex items-center justify-between gap-4">
@@ -465,6 +927,13 @@ export default function SettingsView() {
 
       </div>
 
+      <PopupDialog
+        isOpen={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        title={popupTitle}
+        message={popupMessage}
+        type={popupType}
+      />
     </div>
   );
 }

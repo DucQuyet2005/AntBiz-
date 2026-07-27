@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>AntBiz Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="extension-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <button id="btn-header-back" class="btn-header-back hidden" title="Quay lại">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <div class="logo-area">
+          <img class="logo-img" src="icon.svg" alt="AntBiz Logo">
+          <div class="logo-titles">
+            <h1 class="logo-text">AntBiz Assistant</h1>
+            <span class="logo-subtext">AI Publishing Hub</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="user-profile" class="user-profile hidden">
+          <div class="user-avatar" id="user-avatar-circle">U</div>
+          <span id="user-name" class="user-name">...</span>
+          <span class="profile-chevron">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </div>
+        <button id="btn-header-close" class="btn-header-close" title="Đóng">✕</button>
+      </div>
+    </header>
+
+    <!-- Global Stepper -->
+    <div id="global-stepper" class="global-stepper hidden">
+      <div class="stepper-track">
+        <div class="step-dot" data-step="1"></div>
+        <div class="step-line" data-line="1"></div>
+        <div class="step-dot" data-step="2"></div>
+        <div class="step-line" data-line="2"></div>
+        <div class="step-dot" data-step="3"></div>
+        <div class="step-line" data-line="3"></div>
+        <div class="step-dot" data-step="4"></div>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <main class="main-content">
+      <!-- Loading State -->
+      <div id="state-loading" class="state-container">
+        <div class="loader"></div>
+        <p id="loading-text" class="state-text">Đang kiểm tra kết nối AntBiz...</p>
+      </div>
+
+      <!-- Unauthorized State -->
+      <div id="state-unauth" class="state-container hidden">
+        <div class="error-icon">🔒</div>
+        <h3>Đăng nhập AntBiz</h3>
+        <p class="state-description" style="margin-bottom: 12px;">Đăng nhập tài khoản của bạn để sử dụng Extension.</p>
+
+        <div class="login-form" style="width: 100%; text-align: left; box-sizing: border-box;">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="input-login-email"
+              style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Email</label>
+            <input type="email" id="input-login-email" placeholder="name@example.com"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="input-login-password"
+              style="display: block; font-size: 11.5px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Mật khẩu</label>
+            <input type="password" id="input-login-password" placeholder="••••••••"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit;">
+          </div>
+          <div id="login-error-message"
+            style="color: #ef4444; font-size: 11.5px; margin-bottom: 10px; display: none; font-weight: 600; text-align: left;">
+          </div>
+          <button id="btn-login-submit" class="btn btn-primary" style="width: 100%; font-weight: 600;">Đăng nhập</button>
+        </div>
+
+        <div style="margin-top: 14px; font-size: 11.5px; color: #6b7280; text-align: center; width: 100%;">
+          Hoặc <a href="#" id="btn-login" style="color: #4E44E7; text-decoration: none; font-weight: 600;">đăng nhập qua trang Web</a>
+        </div>
+      </div>
+
+      <!-- Home State (Input Selector) (Screen 1) -->
+      <div id="state-home" class="state-container hidden">
+        <h3 class="home-title">Sáng tạo nội dung AI</h3>
+        <p class="home-subtitle">Chọn nguồn nội dung để AI phân tích và tạo bài viết phù hợp.</p>
+
+        <div class="input-list">
+          <button id="btn-input-scrape" class="input-item-row">
+            <div class="icon-wrapper bg-scrape">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">Trang hiện tại</span>
+              <span class="item-description">Phân tích toàn bộ bài viết đang mở trên trình duyệt</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+
+          <button id="btn-input-select" class="input-item-row">
+            <div class="icon-wrapper bg-select">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">Đoạn văn đã chọn</span>
+              <span class="item-description">Chỉ phân tích phần văn bản bạn đã bôi đen</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+
+          <button id="btn-home-url" class="input-item-row">
+            <div class="icon-wrapper bg-url">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">URL bài viết</span>
+              <span class="item-description">Dán liên kết bài viết để AI phân tích nội dung</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+
+          <button id="btn-home-record" class="input-item-row">
+            <div class="icon-wrapper bg-record">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">Ghi âm</span>
+              <span class="item-description">Ghi âm giọng nói và chuyển thành nội dung văn bản</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+
+          <button id="btn-home-upload" class="input-item-row">
+            <div class="icon-wrapper bg-upload">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">Tải tệp</span>
+              <span class="item-description">Tải lên tệp PDF, DOCX, TXT hoặc file âm thanh</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+
+          <button id="btn-home-idea" class="input-item-row">
+            <div class="icon-wrapper bg-idea">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
+                <line x1="9" y1="18" x2="15" y2="18"></line>
+                <line x1="10" y1="22" x2="14" y2="22"></line>
+              </svg>
+            </div>
+            <div class="text-wrapper">
+              <span class="item-title">Ý tưởng</span>
+              <span class="item-description">Viết từ ý tưởng hoặc chủ đề bạn muốn chia sẻ</span>
+            </div>
+            <span class="item-chevron">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="home-security-footer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>AntBiz Assistant sẽ bảo mật tuyệt đối dữ liệu của bạn.</span>
+        </div>
+      </div>
+
+      <!-- Idea Input State (Screen 2) -->
+      <div id="state-idea-input" class="state-container hidden">
+        <div class="source-badge badge-idea">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
+            <line x1="9" y1="18" x2="15" y2="18"></line>
+            <line x1="10" y1="22" x2="14" y2="22"></line>
+          </svg>
+          <span>Nguồn: Ý tưởng</span>
+        </div>
+
+        <h3 class="page-title">Mô tả ý tưởng của bạn</h3>
+        <p class="page-subtitle">Nhập chủ đề, nội dung hoặc thông tin bạn muốn AI viết bài giúp.</p>
+
+        <div class="textarea-container">
+          <textarea id="textarea-idea-content" placeholder="Ví dụ: Viết bài về AI trong marketing, xu hướng 2024, lợi ích và cách áp dụng..."></textarea>
+          <div class="char-counter"><span id="idea-char-count">0</span>/1000</div>
+        </div>
+
+        <div class="hints-box">
+          <span class="hints-title">Gợi ý:</span>
+          <ul>
+            <li>Nêu rõ chủ đề chính</li>
+            <li>Thêm thông tin chi tiết nếu có</li>
+            <li>Mục tiêu bài viết là gì?</li>
+          </ul>
+        </div>
+
+        <button id="btn-idea-submit" class="btn btn-primary btn-with-arrow">
+          <span>Tiếp tục</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- URL Input State (Screen 3) -->
+      <div id="state-url-input" class="state-container hidden">
+        <div class="source-badge badge-url">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>Nguồn: URL bài viết</span>
+        </div>
+
+        <h3 class="page-title">Nhập URL bài viết</h3>
+        <p class="page-subtitle">Dán đường link bài viết bạn muốn AI phân tích.</p>
+
+        <div class="input-with-icon">
+          <span class="input-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </span>
+          <input type="text" id="input-url-value" placeholder="https://example.com/article...">
+        </div>
+
+        <div class="hints-box">
+          <span class="hints-title">Lưu ý:</span>
+          <ul>
+            <li>Chỉ hỗ trợ các trang web công khai</li>
+            <li>Nội dung càng rõ ràng, kết quả càng chính xác</li>
+          </ul>
+        </div>
+
+        <button id="btn-url-submit" class="btn btn-primary btn-with-arrow">
+          <span>Phân tích URL</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Record Input State (Screen 4) -->
+      <div id="state-record-input" class="state-container hidden">
+        <div class="source-badge badge-record">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span>Nguồn: Ghi âm</span>
+        </div>
+
+        <h3 class="page-title">Ghi âm giọng nói</h3>
+        <p class="page-subtitle" id="record-description">Nhấn nút dưới đây để bắt đầu ghi âm ý tưởng hoặc nội dung của bạn.</p>
+
+        <div class="recording-circle-area">
+          <div class="recording-circle-outer">
+            <div class="recording-ripple ripple-1 hidden" id="record-ripple-1"></div>
+            <div class="recording-ripple ripple-2 hidden" id="record-ripple-2"></div>
+            <div class="recording-circle-inner" id="record-icon-circle-btn">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="record-timer-display" id="record-timer-val">00:00</div>
+          <div class="record-status-text" id="record-status-label">Sẵn sàng ghi âm</div>
+        </div>
+
+        <div class="record-actions-row">
+          <button id="btn-record-clear" class="btn btn-secondary btn-icon-only" title="Xóa" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            <span>Xóa</span>
+          </button>
+
+          <button id="btn-record-primary" class="btn btn-emerald btn-with-icon">
+            <svg id="primary-record-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+            <span id="primary-record-text">Bắt đầu ghi</span>
+          </button>
+        </div>
+
+        <div class="record-info-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span id="record-banner-text">AI sẽ chuyển giọng nói thành văn bản sau khi bạn dừng ghi.</span>
+        </div>
+      </div>
+
+      <!-- Upload Input State (Screen 5) -->
+      <div id="state-upload-input" class="state-container hidden">
+        <div class="source-badge badge-upload">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Nguồn: Tải tệp</span>
+        </div>
+
+        <h3 class="page-title">Tải tệp lên</h3>
+        <p class="page-subtitle">Kéo thả tệp vào vùng dưới đây hoặc chọn tệp từ máy tính.</p>
+
+        <div class="upload-dropzone" id="upload-dropzone-box">
+          <input type="file" id="file-uploader" accept=".mp3,.wav,.m4a,.pdf,.docx,.txt" style="display: none;">
+          <div class="upload-cloud-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.3-2-1.9-3.6-3.9-3.9C17 4.8 14.2 3 11 3 7.8 3 5 5.3 4.2 8.5c-2.4.3-4.2 2.4-4.2 4.9C0 16.2 2.8 19 6.2 19H17c2.2 0 4-1.8 4-4z"></path>
+              <polyline points="16 12 12 8 8 12"></polyline>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+            </svg>
+          </div>
+          <span class="dropzone-text-main">Kéo thả tệp vào đây</span>
+          <span class="dropzone-text-sub">hoặc</span>
+          <button id="btn-upload-browse" class="btn btn-secondary btn-sm">Chọn tệp từ máy tính</button>
+          <span class="dropzone-formats">Định dạng hỗ trợ: PDF, DOCX, TXT, MP3, WAV</span>
+        </div>
+
+        <div class="upload-warning-banner">
+          <span>Lưu ý: Dung lượng tối đa 20MB</span>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="state-error" class="state-container hidden">
+        <div class="error-icon">⚠️</div>
+        <h3 id="error-title">Đã xảy ra lỗi</h3>
+        <p id="error-description" class="state-description">Chi tiết lỗi...</p>
+        <div class="action-buttons">
+          <button id="btn-error-retry" class="btn btn-primary">Thử lại</button>
+          <button id="btn-error-home" class="btn btn-secondary">Quay lại trang chủ</button>
+        </div>
+      </div>
+
+      <!-- Extraction Form State -->
+      <div id="state-extracted" class="state-container hidden">
+
+        <!-- BƯỚC 1: Xem & Sửa nội dung bài viết gốc (Screen 6) -->
+        <div id="step-article-info" class="wizard-step">
+          <h4 class="step-header">Bước 1: Nội dung bài viết</h4>
+
+          <div class="form-group">
+            <label for="input-title">Tiêu đề bài viết</label>
+            <textarea id="input-title" rows="2" placeholder="Nhập tiêu đề..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Hình ảnh bài viết</label>
+            <div id="image-preview-list" class="image-preview-list"></div>
+            <textarea id="input-image" style="display: none;" placeholder="URL hình ảnh..."></textarea>
+          </div>
+
+          <div class="form-group form-group-content">
+            <label for="input-content">Nội dung bài viết sạch</label>
+            <textarea id="input-content" placeholder="Nội dung bài viết..."></textarea>
+          </div>
+
+          <!-- Hidden desc input to satisfy any other code dependencies but not cluttering UI -->
+          <input type="hidden" id="input-desc">
+
+          <button id="btn-next-to-social" class="btn btn-primary btn-with-arrow">
+            <span>Tiếp tục tạo bài viết</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <!-- BƯỚC 2: Cấu hình Mạng xã hội & Preset -->
+        <div id="step-social-config" class="wizard-step hidden">
+          <h3 class="step-header">Bước 2: Cấu hình đăng bài</h3>
+
+          <div class="form-group">
+            <label for="select-platform">Nền tảng đăng bài</label>
+            <select id="select-platform">
+              <option value="facebook">Facebook Fanpage</option>
+              <option value="thread">Threads Account</option>
+              <option value="instagram">Instagram Account</option>
+            </select>
+            <div id="instagram-warning" class="hidden" style="color: #ea580c; font-size: 11px; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 4px; text-align: left;">
+              ⚠️ Instagram bắt buộc phải có hình ảnh để đăng bài.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Chọn cấu hình bài đăng (Preset)</label>
+            <div class="custom-select-container">
+              <button type="button" id="preset-select-trigger" class="custom-select-trigger">
+                <span id="preset-trigger-label">-- Mặc định (Không áp dụng) --</span>
+                <span class="custom-select-arrow">▼</span>
+              </button>
+              <div id="preset-dropdown-panel" class="custom-select-panel hidden">
+                <input type="text" id="preset-search-input" class="custom-select-search" placeholder="Tìm kiếm văn phong...">
+                <div id="preset-options-list" class="custom-select-options"></div>
+              </div>
+            </div>
+            <select id="select-preset" style="display: none;">
+              <option value="">-- Mặc định (Không áp dụng) --</option>
+            </select>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-back-to-article" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-create-post" class="btn btn-primary btn-with-arrow">
+              <span>Tạo bài viết</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 3: Xem bài viết tạo ra & Hành động đăng/lên lịch -->
+        <div id="step-post-preview" class="wizard-step hidden">
+          <h3 class="step-header">Bước 3: Xem trước bài đăng</h3>
+
+          <div class="form-group hidden">
+            <label for="input-caption">Nội dung đăng (Caption)</label>
+            <textarea id="input-caption" rows="8" placeholder="Nhập caption đăng bài..."></textarea>
+          </div>
+
+          <!-- Xem trước bài đăng thật kiểu Facebook -->
+          <div class="form-group">
+            <label>Nội dung bài viết (Chỉnh sửa trực tiếp trên Preview)</label>
+            <div id="fb-preview-card" class="fb-preview-card">
+              <div class="fb-preview-header">
+                <img class="fb-preview-avatar" src="icon.svg" alt="Avatar">
+                <div class="fb-preview-user-info">
+                  <span class="fb-preview-page-name">AntBiz Page</span>
+                  <div class="fb-preview-time-row">
+                    <span class="fb-preview-time">Vừa xong</span>
+                    <span class="fb-preview-bullet">·</span>
+                    <span class="fb-preview-globe">🌐</span>
+                  </div>
+                </div>
+              </div>
+              <div id="fb-preview-text" class="fb-preview-text" contenteditable="true"
+                placeholder="Nhập nội dung bài đăng tại đây..."></div>
+              <div id="fb-preview-image-container" class="fb-preview-image-container hidden"></div>
+              <div class="fb-preview-footer">
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">👍</span> Thích
+                </div>
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">💬</span> Bình luận
+                </div>
+                <div class="fb-preview-action">
+                  <span class="fb-action-icon">🔄</span> Chia sẻ
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-publish-now" class="btn btn-primary btn-with-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              <span>Đăng ngay</span>
+            </button>
+          </div>
+          <div class="action-buttons horizontal">
+            <button id="btn-back-to-social" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-schedule-post" class="btn btn-emerald btn-with-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Lên lịch đăng bài</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 4: Lên lịch đăng bài -->
+        <div id="step-schedule-config" class="wizard-step hidden">
+          <h3 class="step-header">Bước 4: Lên lịch đăng bài</h3>
+
+          <div class="form-group">
+            <label for="input-schedule-time">Chọn Ngày & Giờ đăng bài</label>
+
+            <div id="golden-hour-suggestions" style="margin: 8px 0; display: none;">
+              <span style="font-size: 11px; font-weight: 600; color: #d97706; display: flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+                Giờ Vàng khuyên dùng:
+              </span>
+              <div id="golden-hour-chips" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;"></div>
+            </div>
+
+            <input type="datetime-local" id="input-schedule-time">
+          </div>
+
+          <div class="action-buttons horizontal">
+            <button id="btn-back-to-preview" class="btn btn-secondary">Quay lại</button>
+            <button id="btn-confirm-schedule" class="btn btn-emerald">Xác nhận lên lịch đăng bài</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div id="state-success" class="state-container hidden">
+        <div class="success-icon">✓</div>
+        <h3>Đã lưu thành công!</h3>
+        <p class="state-description">Bài viết của bạn đã được đẩy về mục Nháp lưu trữ trên AntBiz thành công.</p>
+        <div class="action-buttons">
+          <button id="btn-view-archive" class="btn btn-primary">Xem kho lưu trữ</button>
+          <button id="btn-success-home" class="btn btn-secondary">Tạo bài đăng mới</button>
+        </div>
+      </div>
+
+      <!-- Voice Confirmation State (Giao diện xác nhận văn bản nhận diện được) -->
+      <div id="state-voice-confirm" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+        <div class="source-badge badge-record" style="margin-bottom: 12px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span>Kết quả giọng nói</span>
+        </div>
+        <h3 class="page-title" style="margin-bottom: 4px;">Xác nhận văn bản dịch</h3>
+        <p class="state-description" style="margin-bottom: 12px;">Dưới đây là văn bản trích xuất từ giọng nói của bạn. Bạn có thể chỉnh sửa lại cho chính xác trước khi tạo bài viết:</p>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <textarea id="voice-transcript-text" rows="8" placeholder="Nội dung giọng nói..."></textarea>
+        </div>
+
+        <div class="action-buttons horizontal">
+          <button id="btn-voice-cancel" class="btn btn-secondary">Làm lại</button>
+          <button id="btn-voice-confirm" class="btn btn-primary btn-with-arrow">
+            <span>Xác nhận & Viết bài</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- History State -->
+      <div id="state-history" class="state-container hidden" style="align-items: stretch; text-align: left; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 class="step-header" style="border-left: 3px solid #4E44E7; padding-left: 8px; margin: 0;">Lịch sử bài đăng</h3>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <a href="#" id="btn-open-antbiz" title="Mở trang Lưu trữ trên Web"
+              style="font-size: 11.5px; color: #4E44E7; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+              Mở AntBiz
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+            <button id="btn-close-history" style="background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 0;">✕</button>
+          </div>
+        </div>
+        <p class="state-description" style="margin-bottom: 16px;">Danh sách 10 bài viết gần đây nhất được đăng hoặc lên lịch từ Extension:</p>
+
+        <div id="history-list" style="max-height: 300px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Items will be injected here -->
+          <div style="text-align: center; color: #6b7280; font-size: 12px; padding: 20px 0;">Đang tải...</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>© 2026 AntBiz Studio</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>

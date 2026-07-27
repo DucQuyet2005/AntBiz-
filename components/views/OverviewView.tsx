@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -21,11 +21,29 @@ import {
   Shield
 } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then(mod => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const AreaChart = dynamic(
+  () => import('recharts').then(mod => mod.AreaChart),
+  { ssr: false }
+);
+const Area = dynamic(
+  () => import('recharts').then(mod => mod.Area),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import('recharts').then(mod => mod.Tooltip),
+  { ssr: false }
+);
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>
-    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+  <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor" className={className}>
+    <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" />
   </svg>
 );
 
@@ -100,8 +118,8 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
       let targetId = '';
       if (tourStep === 1) targetId = 'tour-welcome';
       if (tourStep === 2) targetId = 'tour-stats';
-      if (tourStep === 3) targetId = 'tour-chart';
-      if (tourStep === 4) targetId = 'tour-recent';
+      if (tourStep === 3) targetId = 'tour-recent';
+      if (tourStep === 4) targetId = 'tour-chart';
 
       if (targetId) {
         const el = document.getElementById(targetId);
@@ -129,8 +147,8 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     let targetId = '';
     if (step === 1) targetId = 'tour-welcome';
     if (step === 2) targetId = 'tour-stats';
-    if (step === 3) targetId = 'tour-chart';
-    if (step === 4) targetId = 'tour-recent';
+    if (step === 3) targetId = 'tour-recent';
+    if (step === 4) targetId = 'tour-chart';
 
     if (targetId) {
       const element = document.getElementById(targetId);
@@ -181,6 +199,29 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
     recentPosts: [] as { id: string; platform: string; status: string; scheduled_at: string; imgUrl: string; title: string }[]
   });
 
+  const [summaryStats, setSummaryStats] = useState({
+    total: 0,
+    published: 0,
+    pending: 0,
+    failed: 0,
+    cancelled: 0,
+    successRateByPlatform: { facebook: 100, instagram: 100, threads: 100, blog: 100 } as Record<string, number>
+  });
+  const [trendingStats, setTrendingStats] = useState<any[]>([]);
+
+  const sparklineData = useMemo(() => {
+    return trendingStats.map(item => ({
+      name: item.dayLabel,
+      total: (item.facebook || 0) + (item.instagram || 0) + (item.threads || 0) + (item.blog || 0)
+    }));
+  }, [trendingStats]);
+
+  const overallSuccessRate = useMemo(() => {
+    const total = summaryStats.published + summaryStats.failed;
+    if (total === 0) return 100;
+    return Math.round((summaryStats.published / total) * 100);
+  }, [summaryStats.published, summaryStats.failed]);
+
   const [allPosts, setAllPosts] = useState<any[]>([]);
   const [chartTimeframe, setChartTimeframe] = useState<'week' | 'month'>('week');
   const [chartPlatform, setChartPlatform] = useState<'all' | 'facebook' | 'instagram' | 'threads'>('all');
@@ -226,17 +267,36 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
   const fetchDashboardData = async () => {
     try {
-      // 1. Get current user profile
+      // 1. Get current user profile and role
       const { data: { user } } = await supabase.auth.getUser();
+      let userRole = 'marketer_content';
       if (user) {
         const meta = user.user_metadata || {};
         setUserName(meta.full_name || user.email?.split('@')[0] || 'AntBiz Creator');
+        
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (profile) {
+          userRole = profile.role || 'marketer_content';
+        }
       }
 
+      const isContentMarketer = userRole === 'marketer_content';
+
       // 2. Fetch scheduled posts
-      const { data: posts } = await supabase
+      let postsQuery = supabase
         .from('scheduled_posts')
         .select('id, platform, status, scheduled_at, image_urls, captions(ai_content, edited_content, articles(title, images))');
+
+      if (isContentMarketer && user) {
+        postsQuery = postsQuery.eq('created_by', user.id);
+      }
+
+      const { data: posts } = await postsQuery;
 
       if (posts) {
         setAllPosts(posts);
@@ -248,9 +308,15 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         .select('*', { count: 'exact', head: true });
 
       // 4. Fetch captions count
-      const { count: captionsCount } = await supabase
+      let captionsQuery = supabase
         .from('captions')
         .select('*', { count: 'exact', head: true });
+
+      if (isContentMarketer && user) {
+        captionsQuery = captionsQuery.eq('created_by', user.id);
+      }
+
+      const { count: captionsCount } = await captionsQuery;
 
       // Generate dates for the last 7 days (including today)
       const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -305,10 +371,11 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         });
       }
 
-      // Get 4 most recent scheduled posts for visual activity log
+      // Get 4 most recent scheduled posts (only pending or posted) for visual activity log
       const { data: recentPostsData } = await supabase
         .from('scheduled_posts')
         .select('id, platform, status, scheduled_at, image_urls, captions(ai_content, edited_content, articles(title, images))')
+        .in('status', ['posted', 'pending'])
         .order('created_at', { ascending: false })
         .limit(4);
 
@@ -341,6 +408,28 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         };
       });
 
+      // Fetch stats summary
+      try {
+        const resSummary = await fetch(`/api/stats/summary?timeframe=${chartTimeframe}`);
+        if (resSummary.ok) {
+          const dataSummary = await resSummary.json();
+          setSummaryStats(dataSummary);
+        }
+      } catch (e) {
+        console.error('Failed to fetch summary stats:', e);
+      }
+
+      // Fetch stats trending
+      try {
+        const resTrending = await fetch('/api/stats/trending');
+        if (resTrending.ok) {
+          const dataTrending = await resTrending.json();
+          setTrendingStats(dataTrending);
+        }
+      } catch (e) {
+        console.error('Failed to fetch trending stats:', e);
+      }
+
       setStats({
         publishedCount: published,
         pendingCount: pending,
@@ -363,7 +452,45 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Subscribe to realtime updates on scheduled_posts
+    const channel = supabase
+      .channel('scheduled-posts-overview-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scheduled_posts',
+        },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    // Auto-refresh stats every 5 minutes (300000 ms)
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 300000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-fetch dashboard stats when chartTimeframe changes
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartTimeframe]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -652,42 +779,167 @@ export default function OverviewView({ isAdmin = false, onSwitchView }: Overview
         </div>
       </motion.div>
 
-      {/* 4 horizontal stats columns */}
+      {/* 3 Widget Cards - Dynamic Multichannel Stats */}
       <motion.div
         id="tour-stats"
-        className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300"
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       >
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hôm nay' : 'Today'}</span>
-          <span className="text-xl sm:text-2xl md:text-lg lg:text-base xl:text-xl font-extrabold text-[#1C1E2A] dark:text-white mt-2.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todayValue}>
-            {todayValue}
-          </span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis" title={todaySubtext}>
-            {todaySubtext}
-          </span>
+        {/* Card 1: Tổng bài đăng (7 ngày qua) */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Tổng bài đăng (7 ngày)' : 'Total Posts (7 Days)'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {summaryStats.total}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+              <Send size={15} />
+            </div>
+          </div>
+          
+          {/* Mini Sparkline Chart using Recharts */}
+          <div className="h-[60px] w-full mt-4 flex items-end">
+            {sparklineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                  <defs>
+                    <linearGradient id="colorSpark" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--color-slate-950)', border: 'none', borderRadius: '10px', fontSize: '9px', color: '#fff', fontFamily: 'sans-serif' }}
+                    labelStyle={{ display: 'none' }}
+                    itemStyle={{ color: '#fff', padding: '2px 0' }}
+                    formatter={(value: any, name: any, props: any) => [
+                      `${value} ${language === 'vi' ? 'bài' : 'posts'} (${props.payload.name})`,
+                      ''
+                    ]}
+                  />
+                  <Area type="monotone" dataKey="total" stroke="#F97316" strokeWidth={1.5} fillOpacity={1} fill="url(#colorSpark)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <span className="text-[10px] text-slate-450 dark:text-slate-500 italic w-full text-center">
+                {language === 'vi' ? 'Đang tải dữ liệu...' : 'Loading trending data...'}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Bài đã tạo' : 'Articles created'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{stats.articlesCount}</span>
-          <span className="text-[10px] text-emerald-600 font-black mt-1.5 flex items-center gap-0.5">
-            <ArrowUpRight size={10} /> +12% {language === 'vi' ? 'so tuần trước' : 'vs last week'}
-          </span>
+        {/* Card 2: Tỉ lệ thành công */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Tỉ lệ thành công' : 'Success Rate'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {overallSuccessRate}%
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <CheckCircle2 size={15} />
+            </div>
+          </div>
+
+          {/* Platform breakdown list */}
+          <div className="flex flex-col gap-2 mt-4 pt-2 border-t border-slate-100 dark:border-white/5">
+            <div className="grid grid-cols-3 gap-1">
+              {/* Facebook */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'facebook' ? 'all' : 'facebook')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'facebook'
+                    ? 'border-blue-500 bg-blue-50/20 text-blue-700 dark:border-blue-500/50 dark:bg-blue-950/20'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Facebook' : 'Click to filter chart by Facebook'}
+              >
+                <span className="text-blue-600 dark:text-blue-400 shrink-0"><Facebook size={12} /></span>
+                <span className="text-[9px] font-black truncate">
+                  {summaryStats.successRateByPlatform.facebook ?? 100}%
+                </span>
+              </button>
+
+              {/* Instagram */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'instagram' ? 'all' : 'instagram')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'instagram'
+                    ? 'border-pink-500 bg-pink-50/20 text-pink-700 dark:border-pink-500/50 dark:bg-pink-950/20'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Instagram' : 'Click to filter chart by Instagram'}
+              >
+                <span className="text-pink-600 dark:text-pink-400 shrink-0"><Instagram size={12} /></span>
+                <span className="text-[9px] font-black truncate">
+                  {summaryStats.successRateByPlatform.instagram ?? 100}%
+                </span>
+              </button>
+
+              {/* Threads */}
+              <button
+                onClick={() => setChartPlatform(chartPlatform === 'threads' ? 'all' : 'threads')}
+                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border transition-all text-left cursor-pointer focus:outline-none ${
+                  chartPlatform === 'threads'
+                    ? 'border-slate-800 bg-slate-900/10 text-slate-950 dark:border-zinc-700 dark:bg-white/10 dark:text-white'
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300'
+                }`}
+                title={language === 'vi' ? 'Bấm để lọc biểu đồ Threads' : 'Click to filter chart by Threads'}
+              >
+                <span className="text-slate-800 dark:text-white shrink-0"><ThreadsIcon size={12} /></span>
+                <span className="text-[9px] font-black truncate">
+                  {summaryStats.successRateByPlatform.threads ?? 100}%
+                </span>
+              </button>
+            </div>
+            <span className="text-[9px] text-slate-450 dark:text-slate-500 font-semibold mt-1">
+              {language === 'vi' 
+                ? `${summaryStats.published}/${summaryStats.published + summaryStats.failed} bài đăng thành công`
+                : `${summaryStats.published}/${summaryStats.published + summaryStats.failed} posts successfully published`
+              }
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{language === 'vi' ? 'Tỷ lệ thành công' : 'Success rate'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{successRateStr}</span>
-          <span className="text-[10px] text-slate-555 dark:text-slate-400 font-bold mt-1.5">{successCountStr}</span>
-        </div>
+        {/* Card 3: Bài sắp tới */}
+        <div className="flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/5 rounded-2xl p-6 shadow-sm transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                {language === 'vi' ? 'Bài sắp tới (Lên lịch)' : 'Upcoming Scheduled'}
+              </span>
+              <span className="text-3xl font-black text-slate-850 dark:text-white mt-2">
+                {summaryStats.pending}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+              <Zap size={15} />
+            </div>
+          </div>
 
-        <div className="flex flex-col border-l border-slate-100 dark:border-white/5 pl-6">
-          <span className="text-xs text-slate-550 font-bold uppercase tracking-wider">{language === 'vi' ? 'Đăng tiếp theo' : 'Next schedule'}</span>
-          <span className="text-3xl font-extrabold text-[#1C1E2A] dark:text-white mt-2">{nextPostTimeStr}</span>
-          <span className="text-[10px] text-slate-550 dark:text-slate-400 font-bold mt-1.5">{nextPostSubtext}</span>
+          {/* Next schedule preview details */}
+          <div className="flex flex-col gap-1 mt-4 pt-2 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+              {language === 'vi' ? 'Đăng tiếp theo:' : 'Next publish time:'}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-slate-800 dark:text-white">
+                {nextPostTimeStr}
+              </span>
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800">
+                {nextPostSubtext}
+              </span>
+            </div>
+          </div>
         </div>
       </motion.div>
 

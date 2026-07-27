@@ -1,269 +1,160 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET as getNotifications, POST as postNotification } from '@/app/api/notifications/route';
-import { PUT as readSingleNotification } from '@/app/api/notifications/[id]/read/route';
-import { PUT as readAllNotifications } from '@/app/api/notifications/read-all/route';
+import { NotificationError, NotificationRepositoryError } from '@/backend/modules/notifications/errors';
 
-// Mock Auth helper
-const mockRequireUser = vi.fn();
-vi.mock('@/lib/api/auth', () => ({
-  requireUser: () => mockRequireUser(),
+const mocks = vi.hoisted(() => ({
+  requireUser: vi.fn(),
+  createAdminClient: vi.fn(() => ({ kind: 'admin' })),
+  module: {
+    listInbox: vi.fn(),
+    createForUser: vi.fn(),
+    createInternal: vi.fn(),
+    markRead: vi.fn(),
+    markAllRead: vi.fn(),
+  },
 }));
 
-// Mock notification service
-const mockCreateNotification = vi.fn();
-vi.mock('@/lib/services/notificationService', () => ({
-  createNotification: (args: any) => mockCreateNotification(args),
+vi.mock('@/lib/api/auth', () => ({ requireUser: mocks.requireUser }));
+vi.mock('@/utils/supabase/admin', () => ({ createAdminClient: mocks.createAdminClient }));
+vi.mock('@/backend/modules/notifications/notification-factory', () => ({
+  createNotificationModule: vi.fn(() => mocks.module),
 }));
 
-// Supabase client mocks
-const mockRange = vi.fn();
-const mockSingle = vi.fn();
-const mockSelect = vi.fn();
-const mockUpdate = vi.fn();
-const mockEq = vi.fn();
-const mockOrder = vi.fn();
+import { GET, POST } from '@/app/api/notifications/route';
+import { PUT as markRead } from '@/app/api/notifications/[id]/read/route';
+import { PUT as markAllRead } from '@/app/api/notifications/read-all/route';
 
-const mockQueryBuilder = {
-  select: mockSelect,
-  update: mockUpdate,
-  eq: mockEq,
-  order: mockOrder,
-  range: mockRange,
-  single: mockSingle,
-};
-
-// Chains return the builder
-mockSelect.mockReturnValue(mockQueryBuilder);
-mockUpdate.mockReturnValue(mockQueryBuilder);
-mockEq.mockReturnValue(mockQueryBuilder);
-mockOrder.mockReturnValue(mockQueryBuilder);
-
-const mockSupabaseServer = {
-  from: vi.fn(() => mockQueryBuilder),
-};
-
-vi.mock('@/utils/supabase/server', () => ({
-  createClient: () => mockSupabaseServer,
-}));
-
-describe('Notifications API Routes', () => {
+describe('Notification route contracts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock query responses
-    mockRange.mockResolvedValue({ data: [], error: null, count: 0 });
-    mockSingle.mockResolvedValue({ data: null, error: null });
-    mockCreateNotification.mockResolvedValue({ id: 'n1', title: 'Test' });
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    mocks.requireUser.mockResolvedValue({
+      user: { id: 'u1' }, supabase: { kind: 'session' }, unauthorized: null,
+    });
+    mocks.module.listInbox.mockResolvedValue({
+      data: [], count: 0, page: 1, limit: 10, totalPages: 0,
+    });
+    mocks.module.createForUser.mockResolvedValue({ id: 'n1' });
+    mocks.module.createInternal.mockResolvedValue({ id: 'n1' });
+    mocks.module.markRead.mockResolvedValue({ id: 'n1', is_read: true });
+    mocks.module.markAllRead.mockResolvedValue(2);
   });
 
-  describe('GET /api/notifications', () => {
-    it('returns 401 if user is unauthorized', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: null,
-        supabase: mockSupabaseServer,
-        unauthorized: { status: 401, json: async () => ({ error: 'Unauthorized' }) },
-      });
-
-      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10');
-      const res = await getNotifications(req);
-      expect(res.status).toBe(401);
+  it('returns the existing unauthorized response', async () => {
+    mocks.requireUser.mockResolvedValue({
+      user: null,
+      supabase: {},
+      unauthorized: Response.json({ error: 'Unauthorized' }, { status: 401 }),
     });
+    expect((await GET(new NextRequest('http://localhost/api/notifications'))).status).toBe(401);
+  });
 
-    it('returns 200 and list of notifications for authenticated user', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-
-      const mockData = [
-        { id: 'n1', title: 'Test', message: 'Hello', is_read: false, type: 'info', created_at: '2026-06-23T00:00:00Z' }
-      ];
-      mockRange.mockResolvedValue({ data: mockData, error: null, count: 1 });
-
-      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10&type=info');
-      const res = await getNotifications(req);
-
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.data).toEqual(mockData);
-      expect(json.count).toBe(1);
-      expect(json.totalPages).toBe(1);
-    });
-
-    it('returns 500 if database query fails', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-      mockRange.mockResolvedValue({ data: null, error: { message: 'DB Read Error' }, count: 0 });
-
-      const req = new NextRequest('http://localhost/api/notifications?page=1&limit=10');
-      const res = await getNotifications(req);
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe('Không thể tải danh sách thông báo');
+  it('passes list query values and preserves the pagination response', async () => {
+    const expected = { data: [{ id: 'n1' }], count: 1, page: 2, limit: 5, totalPages: 1 };
+    mocks.module.listInbox.mockResolvedValue(expected);
+    const response = await GET(new NextRequest(
+      'http://localhost/api/notifications?page=2&limit=5&category=prompt'
+    ));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(expected);
+    expect(mocks.module.listInbox).toHaveBeenCalledWith('u1', {
+      page: '2', limit: '5', category: 'prompt', type: null,
     });
   });
 
-  describe('POST /api/notifications', () => {
-    it('returns 401 if unauthorized and not service role', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: null,
-        supabase: mockSupabaseServer,
-        unauthorized: { status: 401, json: async () => ({ error: 'Unauthorized' }) },
-      });
+  it('maps validation and repository failures without exposing raw errors', async () => {
+    mocks.module.listInbox.mockRejectedValueOnce(
+      new NotificationError('VALIDATION', 400, 'page và limit phải là số nguyên dương')
+    );
+    const invalid = await GET(new NextRequest('http://localhost/api/notifications?page=0'));
+    expect(invalid.status).toBe(400);
 
-      const req = new NextRequest('http://localhost/api/notifications', {
-        method: 'POST',
-        body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
-      });
-      const res = await postNotification(req as any);
-      expect(res.status).toBe(401);
-    });
-
-    it('successfully inserts notification when called by service role', async () => {
-      const mockNotif = { id: 'n1', user_id: 'u1', type: 'info', title: 'Test', message: 'Msg' };
-      mockCreateNotification.mockResolvedValue(mockNotif);
-
-      const req = new NextRequest('http://localhost/api/notifications', {
-        method: 'POST',
-        headers: {
-          authorization: 'Bearer sb_secret_CmYMg8R7IAQzj_RyuKBDxQ_98WXMt0G',
-        },
-        body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
-      });
-
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_CmYMg8R7IAQzj_RyuKBDxQ_98WXMt0G';
-
-      const res = await postNotification(req as any);
-      expect(res.status).toBe(201);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.data.id).toBe('n1');
-    });
-
-    it('returns 400 if required fields are missing', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-
-      const req = new NextRequest('http://localhost/api/notifications', {
-        method: 'POST',
-        body: JSON.stringify({ userId: 'u1', title: 'Test' }),
-      });
-
-      const res = await postNotification(req as any);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error).toContain('Thiếu các trường bắt buộc');
-    });
-
-    it('returns 500 if createNotification throws an error', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-      mockCreateNotification.mockRejectedValue(new Error('Insert DB failed'));
-
-      const req = new NextRequest('http://localhost/api/notifications', {
-        method: 'POST',
-        body: JSON.stringify({ userId: 'u1', type: 'info', title: 'Test', message: 'Msg' }),
-      });
-
-      const res = await postNotification(req as any);
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe('Insert DB failed');
-    });
+    mocks.module.listInbox.mockRejectedValueOnce(
+      new NotificationRepositoryError('list', new Error('database secret'))
+    );
+    const failed = await GET(new NextRequest('http://localhost/api/notifications'));
+    expect(failed.status).toBe(500);
+    expect((await failed.json()).error).toBe('Không thể tải danh sách thông báo');
   });
 
-  describe('PUT /api/notifications/[id]/read', () => {
-    it('marks a single notification as read', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-
-      const mockSingleNotif = { id: 'n1', user_id: 'u1', is_read: true };
-      mockSingle.mockResolvedValue({ data: mockSingleNotif, error: null });
-
-      const res = await readSingleNotification(
-        new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
-        { params: Promise.resolve({ id: 'n1' }) }
-      );
-
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.data.is_read).toBe(true);
-    });
-
-    it('returns 500 if database update fails', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-      mockSingle.mockResolvedValue({ data: null, error: { message: 'Update failed' } });
-
-      const res = await readSingleNotification(
-        new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
-        { params: Promise.resolve({ id: 'n1' }) }
-      );
-
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe('Không thể đánh dấu thông báo đã đọc');
-    });
+  it('returns 400 for malformed JSON', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/notifications', {
+      method: 'POST', body: '{',
+    }));
+    expect(response.status).toBe(400);
+    expect(mocks.module.createForUser).not.toHaveBeenCalled();
   });
 
-  describe('PUT /api/notifications/read-all', () => {
-    it('marks all user notifications as read', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-
-      const mockUpdatedList = [{ id: 'n1', is_read: true }, { id: 'n2', is_read: true }];
-      mockSelect.mockResolvedValue({ data: mockUpdatedList, error: null });
-
-      const res = await readAllNotifications(
-        new NextRequest('http://localhost/api/notifications/read-all', { method: 'PUT' })
-      );
-
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.count).toBe(2);
-
-      // Reset select back to builder for other tests
-      mockSelect.mockReturnValue(mockQueryBuilder);
+  it('authenticates non-service POST requests before reading the body', async () => {
+    mocks.requireUser.mockResolvedValue({
+      user: null,
+      supabase: {},
+      unauthorized: Response.json({ error: 'Unauthorized' }, { status: 401 }),
     });
+    const response = await POST(new NextRequest('http://localhost/api/notifications', {
+      method: 'POST', body: '{',
+    }));
+    expect(response.status).toBe(401);
+  });
 
-    it('returns 500 if database batch update fails', async () => {
-      mockRequireUser.mockResolvedValue({
-        user: { id: 'u1' },
-        supabase: mockSupabaseServer,
-        unauthorized: null,
-      });
-      mockSelect.mockResolvedValue({ data: null, error: { message: 'Batch update failed' } });
+  it('creates through the authenticated-user workflow', async () => {
+    const body = { userId: 'u1', type: 'info', title: 'Title', message: 'Message' };
+    const response = await POST(new NextRequest('http://localhost/api/notifications', {
+      method: 'POST', body: JSON.stringify(body),
+    }));
+    expect(response.status).toBe(201);
+    expect(mocks.module.createForUser).toHaveBeenCalledWith('u1', body);
+  });
 
-      const res = await readAllNotifications(
-        new NextRequest('http://localhost/api/notifications/read-all', { method: 'PUT' })
-      );
+  it('uses the internal workflow for a valid service-role token', async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-secret';
+    const body = { userId: 'u2', type: 'info', title: 'Title', message: 'Message' };
+    const response = await POST(new NextRequest('http://localhost/api/notifications', {
+      method: 'POST',
+      headers: { authorization: 'Bearer service-secret' },
+      body: JSON.stringify(body),
+    }));
+    expect(response.status).toBe(201);
+    expect(mocks.module.createInternal).toHaveBeenCalledWith(body);
+    expect(mocks.requireUser).not.toHaveBeenCalled();
+  });
 
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe('Không thể đánh dấu tất cả thông báo đã đọc');
+  it('does not treat an invalid service token as system access', async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-secret';
+    await POST(new NextRequest('http://localhost/api/notifications', {
+      method: 'POST',
+      headers: { authorization: 'Bearer wrong-secret' },
+      body: JSON.stringify({ userId: 'u1', type: 'info', title: 'T', message: 'M' }),
+    }));
+    expect(mocks.requireUser).toHaveBeenCalled();
+    expect(mocks.module.createInternal).not.toHaveBeenCalled();
+  });
 
-      mockSelect.mockReturnValue(mockQueryBuilder);
-    });
+  it('awaits params and marks one notification read', async () => {
+    const response = await markRead(
+      new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+      { params: Promise.resolve({ id: 'n1' }) }
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.module.markRead).toHaveBeenCalledWith('u1', 'n1');
+  });
+
+  it('maps a foreign or missing notification to 404', async () => {
+    mocks.module.markRead.mockRejectedValue(
+      new NotificationError('NOT_FOUND', 404, 'Không tìm thấy thông báo')
+    );
+    const response = await markRead(
+      new NextRequest('http://localhost/api/notifications/n1/read', { method: 'PUT' }),
+      { params: Promise.resolve({ id: 'n1' }) }
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it('marks all notifications read and preserves the count response', async () => {
+    const response = await markAllRead(new NextRequest(
+      'http://localhost/api/notifications/read-all', { method: 'PUT' }
+    ));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true, count: 2 });
   });
 });

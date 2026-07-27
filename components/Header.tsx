@@ -152,7 +152,18 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // Emit global search event for pages that want to use the header search bar locally
+  useEffect(() => {
+    if (pathname === '/presets') {
+      window.dispatchEvent(new CustomEvent('global-search', { detail: searchQuery }));
+    }
+  }, [searchQuery, pathname]);
+
   const triggerSearch = () => {
+    if (pathname === '/presets') {
+      setIsSearchOpen(false);
+      return;
+    }
     if (searchQuery.trim()) {
       setIsSearchOpen(false);
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -180,9 +191,13 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
   // Fetch Notifications
   const fetchNotifications = async (silent = false) => {
+    if (typeof window !== 'undefined' && !navigator.onLine) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && silent) return;
     if (!silent) setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession() reads from localStorage — no network call, no Failed to fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const [listRes, countRes] = await Promise.all([
@@ -224,8 +239,11 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
     let realtimeChannel: any = null;
 
     const setupRealtime = async () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // getSession() reads from localStorage — no network call, no Failed to fetch
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user || !active) return;
 
         realtimeChannel = supabase
@@ -241,6 +259,21 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             (payload) => {
               console.log('Realtime notification update received in Header:', payload);
               fetchNotifications(true); // silent fetch
+
+              if (payload.eventType === 'INSERT') {
+                const newNotif = payload.new as { type: string; title: string; message: string };
+                if (newNotif.type === 'post_success' || newNotif.type === 'post_failed') {
+                  const translated = translateNotification(newNotif.title, newNotif.message, language);
+                  window.dispatchEvent(
+                    new CustomEvent('show-notification-toast', {
+                      detail: {
+                        message: `${translated.title}: ${translated.message}`,
+                        type: newNotif.type === 'post_success' ? 'success' : 'error'
+                      }
+                    })
+                  );
+                }
+              }
             }
           )
           .subscribe((status, err) => {
@@ -257,11 +290,20 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
     setupRealtime();
 
+    const handleNotificationRefetch = () => {
+      fetchNotifications(true);
+    };
+
+    window.addEventListener('notification-updated', handleNotificationRefetch);
+    window.addEventListener('show-notification-toast', handleNotificationRefetch);
+
     const interval = setInterval(() => fetchNotifications(true), 30000); // silent fetch
 
     return () => {
       active = false;
       clearInterval(interval);
+      window.removeEventListener('notification-updated', handleNotificationRefetch);
+      window.removeEventListener('show-notification-toast', handleNotificationRefetch);
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
@@ -371,7 +413,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   };
 
   return (
-    <header className="flex items-center justify-between py-6 gap-3 sm:gap-6">
+    <header className="flex items-center justify-between py-6 gap-3 sm:gap-6 relative z-20">
       <div className="flex items-center flex-1 min-w-0">
         <button
           onClick={onMenuClick}
@@ -552,7 +594,7 @@ const Header = ({ onMenuClick }: { onMenuClick?: () => void }) => {
                             {suggestions.captions.slice(0, 3).map((cap) => (
                               <Link
                                  key={cap.id}
-                                 href={`/archive/${cap.article_id}?captionId=${cap.id}`}
+                                 href={`/archive/${cap.article_id}?captionId=${cap.id}&platform=${cap.platform === 'thread' ? 'threads' : cap.platform}`}
                                  onClick={() => setIsSearchOpen(false)}
                                  className="block hover:bg-gray-50 dark:hover:bg-slate-800 p-2.5 rounded-2xl transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                               >

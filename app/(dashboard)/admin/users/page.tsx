@@ -66,6 +66,16 @@ export default function AdminUsersPage() {
     return () => clearTimeout(timer);
   }, [fetchUsers]);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [page]);
+
   const handleRoleChangeRequest = (user: User, newRole: string) => {
     if (user.role === newRole) return;
     setRoleModal({ isOpen: true, user, newRole });

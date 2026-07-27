@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUserWithRole } from '@/lib/api/auth';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { executeWithGeminiCapacity } from '@/backend/modules/gemini-capacity';
+import { GeminiCapacityError } from '@/backend/modules/gemini-capacity/errors';
 
 const generatePromptSchema = z.object({
   title: z.string(),
@@ -12,27 +14,17 @@ const generatePromptSchema = z.object({
 
 /**
  * POST /api/prompts/generate
- * Generates content based on article using Gemini 1.5 Flash.
+ * Generates content based on article using Gemini with key rotation.
  */
 export async function POST(request: NextRequest) {
   const { unauthorized } = await requireUserWithRole(['admin', 'marketer_full', 'marketer_content']);
   if (unauthorized) return unauthorized;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'Thiếu GEMINI_API_KEY trong .env' }, { status: 500 });
-  }
-
   try {
     const body = await request.json();
     const { title, content, platform, customPrompt } = generatePromptSchema.parse(body);
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Sử dụng model 2.5-flash mới nhất với system instruction để loại bỏ hoàn toàn lời dẫn giải
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      systemInstruction: "Bạn là một chuyên gia Content Marketing. Bạn CHỈ trả về nội dung bài viết được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là bài viết'. Chỉ trả về duy nhất nội dung bài đăng mạng xã hội.",
-    });
+    const systemInstruction = "Bạn là một chuyên gia Content Marketing. Bạn CHỈ trả về nội dung bài viết được yêu cầu. TUYỆT ĐỐI KHÔNG có lời chào, không giải thích, không 'Ok', không 'Đây là bài viết'. Chỉ trả về duy nhất nội dung bài đăng mạng xã hội.";
 
     const prompt = customPrompt || `Bạn là một chuyên gia Content Marketing. 
 Hãy viết một bài đăng cho nền tảng ${platform} dựa trên bài báo sau:
@@ -46,7 +38,15 @@ Yêu cầu bài viết:
 4. Thêm 3-5 hashtag liên quan.
 5. TUYỆT ĐỐI KHÔNG có lời dẫn giải, không "Chào bạn", không "Ok", không "Đây là bài viết", không có bất kỳ ký tự nào ngoài nội dung bài viết. Trả về TRỰC TIẾP bài đăng.`;
 
-    const result = await model.generateContent(prompt);
+    const result = await executeWithGeminiCapacity(
+      { title, content },
+      async (key, modelName) => {
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+        return model.generateContent(prompt);
+      }
+    );
+
     const response = await result.response;
     const generatedText = response.text();
 
@@ -55,8 +55,14 @@ Yêu cầu bài viết:
       name: `AI Draft: ${title.substring(0, 30)}...`,
       tags: ['AI Generated', platform]
     });
-  } catch (error: any) {
-    console.error('[Gemini API Error]:', error);
-    return NextResponse.json({ error: error.message || 'Lỗi khi gọi Gemini API' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[Prompt Generation]', {
+      code: error instanceof GeminiCapacityError ? error.code : 'REQUEST_FAILED',
+    });
+    return NextResponse.json({
+      error: error instanceof GeminiCapacityError
+        ? error.clientMessage
+        : 'Lỗi khi gọi Gemini API',
+    }, { status: 500 });
   }
 }

@@ -45,6 +45,16 @@ export default function AuditLogsPage() {
     fetchLogs();
   }, [fetchLogs]);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [page]);
+
   const getActionLabel = (action: string) => {
     switch(action) {
       case 'change_role': return { label: t('admin.actionChangeRole'), icon: <Shield className="w-4 h-4 text-purple-600" />, color: 'bg-purple-100 text-purple-700' };

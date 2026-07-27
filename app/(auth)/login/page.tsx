@@ -197,6 +197,14 @@ export default function LoginPage() {
     formData.append("email", data.email);
     formData.append("password", data.password);
 
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const nextParam = params.get("next");
+      if (nextParam) {
+        formData.append("next", nextParam);
+      }
+    }
+
     const result = await login(formData);
 
     if (result?.error) {
@@ -230,7 +238,12 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     if (isLockedOut) return;
     hideToast();
-    const result = await signInWithGoogle();
+    let nextParam = "/overview";
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      nextParam = params.get("next") || "/overview";
+    }
+    const result = await signInWithGoogle(nextParam);
     if (result?.error) {
       showToast(getAuthErrorMessage(result.error), "error");
     }
@@ -238,16 +251,6 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-      <AnimatePresence>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={hideToast}
-          />
-        )}
-      </AnimatePresence>
-
       {/* 🔴 Account Locked Dialog Overlay */}
       <AnimatePresence>
         {bannedReason && (
@@ -319,7 +322,7 @@ export default function LoginPage() {
 
         <div className="relative">
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-700">{t("login.emailLabel")}</label>
             <div className="relative">

@@ -3,6 +3,349 @@
 Tất cả các thay đổi đáng chú ý đối với dự án AntBiz sẽ được ghi nhận tại đây.
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-07-17
+
+### Added
+- **Hệ thống Thông Báo Trực Quan (Toast & Bell Notification) Thời Gian Thực**:
+  - Tự động hiển thị Toast nhỏ ở góc phải màn hình khi đăng bài thành công hoặc thất bại, tự biến mất sau 5 giây.
+  - Cập nhật số lượng thông báo tương ứng trên biểu tượng chuông (Header Bell) theo thời gian thực nhờ Supabase Realtime CDC (Realtime Broadcast).
+- **Cấu hình Động Email Thông Báo & Báo Cáo Tổng Hợp**:
+  - Cho phép người dùng tùy chỉnh linh hoạt trên trang Cài đặt (`SettingsView`): bật/tắt nhận email tức thì khi đăng bài thành công (`email_on_success`), khi đăng bài thất bại (`email_on_failure`).
+  - Hỗ trợ tùy chọn nhận Báo cáo email tổng hợp hàng ngày (`email_digest_enabled`) vào một khung giờ tự chọn trong ngày (`email_digest_time`).
+  - Thiết kế Cron-job backend tự động gom nhóm, định dạng HTML chuyên nghiệp và gửi email tổng hợp kết quả đăng bài hàng ngày cho từng Marketer.
+- **Unit & Integration Test Suite cho Notification Module**:
+  - Xây dựng 2 file kiểm thử Vitest `realtime-notification.test.ts` và `email-digest.test.ts` để kiểm tra độ tin cậy của luồng gửi mail tức thời, bỏ qua cấu hình và gom nhóm email tổng hợp.
+  - Bảo đảm tỷ lệ phủ và toàn bộ test case đều pass thành công.
+
+### Changed
+- **Tái cấu trúc Module Thông Báo theo chuẩn AGENTS.md**:
+  - Đóng gói toàn bộ logic nghiệp vụ thông báo và gửi mail vào module backend `backend/modules/notifications/` độc lập.
+  - Sử dụng presentation views (`SettingsView`, `Header`) mỏng chỉ để giao tiếp qua REST APIs `GET/POST /api/users/me/notification-preferences`.
+
+  - Khi sửa một văn phong thương hiệu sẵn có (`step === -1`), hệ thống hiển thị duy nhất một ô nhập nội dung Quy định & Nguyên tắc văn phong trực tiếp (với `spellCheck={false}` để loại bỏ hoàn toàn các gạch đỏ lỗi chính tả của trình duyệt), ẩn toàn bộ phần xem trước và các lựa chọn cấu hình câu hỏi của wizard.
+  - Khi tạo mới bằng Wizard (`step > aiSteps.length`), hệ thống hiển thị phần Xem trước Văn phong AI song song với ô nhập Nguyên tắc bổ sung để người dùng rà soát nội dung do AI sinh ra và bổ sung ý kiến riêng của mình trước khi lưu.
+- **Khởi tạo 4 Văn phong hệ thống (Mẫu)**:
+  - Thiết lập sẵn 4 văn phong toàn diện, bao quát nhất bao gồm: *Chuyên gia Chuyên nghiệp*, *Người bạn Gần gũi*, *Năng động & Truyền cảm hứng*, và *Kể chuyện Sáng tạo*.
+  - Giao diện tự động hiển thị nhãn `🏷️ Mẫu` bên cạnh các văn phong này.
+  - Vô hiệu hóa menu thao tác (Sửa/Xóa) cho các văn phong mẫu để đảm bảo tính toàn vẹn của dữ liệu hệ thống chỉ đọc.
+  - Sửa lỗi hiển thị `Invalid Date` ở chân thẻ bằng cách thay thế bằng nhãn `Hệ thống` cho các thẻ mẫu.
+- **Sắp xếp thứ tự ưu tiên hiển thị**:
+  - Tự động đưa văn phong được cấu hình là `Mặc định` (⭐ Mặc định) lên vị trí đầu tiên của danh sách.
+  - Các văn phong cá nhân do người dùng tạo tự động xếp tiếp theo để đảm bảo tiện lợi khi truy cập.
+  - 4 văn phong hệ thống mẫu luôn được đưa xuống cuối cùng để giữ giao diện thoáng và ưu tiên tác vụ của người dùng.
+- **Tích hợp Thanh Tìm kiếm Tổng**:
+  - Loại bỏ hoàn toàn thanh tìm kiếm cục bộ tại trang Văn phong.
+  - Tích hợp bộ lắng nghe sự kiện (`global-search`) từ thanh tìm kiếm tổng trên Header để lọc trực tiếp danh sách Văn phong đang hiển thị tương ứng với từ khóa tìm kiếm.
+- **Sửa lỗi Nháy Con trỏ chuột và đóng Menu khi click ra ngoài**:
+  - Thay thế cách sử dụng overlay `fixed inset-0` lồng trong PresetCard (gây lỗi nháy con trỏ do xung đột hover với CSS transition dịch chuyển của Card) sang giải pháp dùng React Hook `useRef` + `useEffect` lắng nghe sự kiện click ngoài thông thường.
+  - Đảm bảo khi click ra ngoài, menu ba chấm "Sửa/Xóa" đóng lại chính xác và không kích hoạt sự kiện xem chi tiết của thẻ Card.
+- **Hỗ trợ chọn tối đa 2 mục tiêu ở Bước 0 của Wizard Cấu hình Prompt**:
+  - Chuyển đổi cơ chế chọn 1 mục tiêu duy nhất sang cho phép người dùng chọn tối đa 2 mục tiêu đồng thời tại Bước 0 của Wizard.
+  - Khi người dùng đã chọn đủ 2 mục tiêu, các ô mục tiêu chưa chọn khác sẽ tự động bị vô hiệu hóa (disabled) và giảm độ mờ (opacity-40) để tránh chọn quá giới hạn.
+  - Thêm ô nhập văn bản tự do ("Khác...") khi người dùng tick chọn mục tiêu "Khác", hiển thị ngay bên dưới lưới mục tiêu và chiếm 1 trong 2 slot lựa chọn tối đa.
+  - Vô hiệu hóa nút chuyển tiếp "Bắt đầu định hình" nếu chưa chọn mục tiêu nào, hoặc nếu có chọn "Khác" nhưng chưa nhập nội dung tùy chỉnh.
+  - **Tự động đặt tên văn phong dựa trên mục tiêu**:
+    - Khi người dùng tới bước xác nhận cuối cùng, hệ thống tự động đặt tên gợi ý dựa trên mục tiêu đã chọn (ví dụ: `Văn phong Tăng doanh số & Bán hàng` hoặc `Văn phong Khác...`), giúp người dùng tiết kiệm thao tác nhập liệu.
+  - **Khắc phục triệt để lỗi chồng đè layout**:
+    - Sử dụng `createPortal` để render toàn bộ `WizardModal` trực tiếp vào `document.body` cùng với `z-[9999]`, tránh việc bị ẩn hoặc bị che khuất bởi các thanh điều hướng (sidebar) hay thanh tìm kiếm thuộc layout cha.
+  - **Tối giản hóa nhãn giao diện**:
+    - Loại bỏ các ghi chú nằm trong dấu ngoặc đơn `()` không cần thiết tại màn hình mục tiêu (`(Tối đa 2)`) và màn hình xác nhận (`Đặt làm mặc định (Áp dụng tự động khi sinh bài viết)`, `Nguyên tắc bổ sung (Cấu hình mềm)`), mang lại giao diện tinh gọn, chuyên nghiệp và rõ ràng hơn.
+  - **Lược bỏ Quy tắc bổ sung trống**:
+    - Chỉ hiển thị tiêu đề và nội dung của "Quy định bổ sung" (hoặc "Additional Rules") trong khung xem trước và chỉ lưu vào database khi người dùng có nhập nội dung cụ thể. Nếu để trống, mục này sẽ tự động được lược bỏ để tránh lưu các dòng tiêu đề rỗng dư thừa.
+  - **Chuyển đổi sang định dạng chỉ dẫn thuộc tính ngắn gọn (Direct Directives)**:
+    - Bổ sung cấu hình prompt yêu cầu mô hình AI sinh thêm trường `"label"` (nhãn thuộc tính ngắn gọn tiếng Việt, ví dụ: "Vai trò thương hiệu", "Sắc thái cảm xúc") bên cạnh `"question"`.
+    - Khi hiển thị xem trước hoặc biên dịch lưu trữ prompt config (`compiledRules`), hệ thống sẽ tự động ghép nhãn này thay vì hiển thị toàn bộ câu hỏi dài dòng. Điều này giúp bộ quy tắc văn phong lưu trữ trở nên cô đọng, chuyên nghiệp và tiết kiệm token khi gọi AI sinh bài viết.
+  - **Cơ chế bắt lỗi & chống phá hoại dữ liệu (Client-side Safeguards)**:
+    - Thêm hàm xác thực thủ công `validateCustomInput` kiểm tra các ô nhập "Khác" (Mục tiêu khác & Câu trả lời khác).
+    - Bộ lọc quy định độ dài ký tự hợp lệ (4 - 80 ký tự), chặn hành vi phá hoại/lặp ký tự vô nghĩa (như `aaaa`, `....`) và chặn các chuỗi không có nghĩa (như `asdfgh`) thông qua thuật toán lọc nguyên âm tiếng Việt/tiếng Anh.
+    - Hiển thị thông điệp cảnh báo nhỏ màu đỏ tức thì ngay dưới ô nhập và tạm thời vô hiệu hóa nút "Tiếp tục" / "Bắt đầu định hình" cho tới khi người dùng nhập đúng định dạng.
+  - **Tối ưu hóa UI Thẻ Văn Phong (PresetCard Visual Optimization)**:
+    - Thay đổi giao diện hiển thị thô dạng chuỗi ký tự dài bằng cách phân tách (parse) chuỗi `compiledRules` thành danh sách các dòng quy tắc có cấu trúc, hiển thị với dấu đầu dòng (bullet point) màu tím đậm nét.
+    - Nhóm và chuyển đổi trường mục tiêu (objectives) thành các thẻ badge màu tím nhạt bo góc hiện đại (`🎯 [Mục tiêu]`).
+    - Nâng cấp huy hiệu "Mặc định" sang định dạng màu vàng hổ phách nổi bật kèm biểu tượng ngôi sao (`⭐ Mặc định`).
+    - Bổ sung hiệu ứng chuyển động hover tinh tế (dịch chuyển nhẹ, đổ bóng mờ mềm mại) và thiết lập chiều cao tối thiểu đồng đều cho các thẻ trong lưới hiển thị.
+
+### Changed
+- **Nâng cấp API sinh câu hỏi và Prompt dựa trên nhiều mục tiêu (Multi-objectives prompt integration)**:
+  - Cập nhật định nghĩa schema `generateQuestionsSchema` trong `prompt-config-ai-schemas.ts` để nhận mảng `objectives` (array of strings) và hỗ trợ thuộc tính `objective` (chuỗi đơn) nhằm tương thích ngược với dữ liệu cũ.
+  - Nâng cấp prompt sinh câu hỏi `buildGenerateQuestionsInstruction` trong `prompt-config-ai-prompts.ts` để ghép danh sách các mục tiêu đã chọn thành chuỗi tiếng Việt rõ ràng, giúp AI hiểu sâu hơn về ý đồ của thương hiệu.
+  - Cập nhật handler `generateQuestions` trong `prompt-config-ai-module.ts` để bóc tách mảng mục tiêu hoặc tự động chuyển đổi từ mục tiêu đơn lẻ của các preset cũ.
+  - Cập nhật luồng lưu trữ tham số preset (`handleSave` ở `PresetsView.tsx`) để lưu cả hai thuộc tính `objectives` và `objective` vào cơ sở dữ liệu.
+  - Sửa lỗi cú pháp toán tử 3 ngôi lồng nhau (nested ternary expression) thiếu nhánh fallback `: null` tại component `PresetCard` trong `PresetsView.tsx` gây lỗi khi chạy Turbopack dev server.
+  - **Tối ưu hóa Model và UX nâng cao trải nghiệm sinh câu hỏi**:
+    - Chuyển đổi model mặc định từ `gemini-2.5-flash` / `gemini-3.5-flash` sang `gemini-3.1-flash-lite` (hoặc cấu hình thông qua `GEMINI_PROMPT_MODEL`), giúp giảm thiểu đáng kể độ trễ khởi động (cold start) và đẩy nhanh tốc độ sinh câu hỏi.
+    - Cấu hình lại `generationConfig` với `temperature: 0.1` đối với chế độ JSON Mode và `temperature: 0.2` đối với các chế độ sinh văn bản thông thường, cải thiện tốc độ phản hồi và sự ổn định của kết quả.
+    - Bổ sung hiệu ứng dòng chữ trạng thái xoay vòng (rotating loading messages) thay đổi sau mỗi 2 giây ở màn hình loading của Wizard để người dùng biết AI đang làm gì (phân tích mục tiêu, cấu trúc câu hỏi, tối ưu hóa văn phong...), giảm cảm giác chờ đợi.
+
+### Fixed
+- **Sửa lỗi SyntaxError JSON khi gọi AI sinh bộ câu hỏi động (`generate-questions`)**:
+  - Khắc phục lỗi phân tích cú pháp JSON `SyntaxError: Expected ',' or '}'` xảy ra khi mô hình sinh câu hỏi phản hồi có chứa các dấu ngoặc kép lồng trong nội dung hoặc có dấu phẩy dư thừa ở cuối mảng/đối tượng.
+  - Bổ sung hàm tiện ích `cleanAndParseJSON` tự động lọc bỏ markdown code block wrappers (như ` ```json `), dọn sạch các dấu phẩy dư thừa (trailing commas) trước khi gọi `JSON.parse`.
+  - Cập nhật prompt chỉ dẫn hệ thống `GENERATE_QUESTIONS_SYSTEM_INSTRUCTION` yêu cầu AI tuyệt đối không sử dụng ngoặc kép lồng chưa escape bên trong các chuỗi giá trị của JSON.
+  - Bổ sung 3 test case kiểm thử độ ổn định khi phân tích JSON trong `promptConfigAiModule.test.ts`.
+
+## [Unreleased] - 2026-07-17
+
+### Added
+- Kết nối AI Creator với luồng sinh Caption thực tế theo bài viết đã lưu, nền tảng và Preset được chọn; nội dung được stream về giao diện và giữ Caption ID thật cho các bước tiếp theo.
+- Bổ sung tạo lại toàn bộ Caption từ nút hiện hữu và tạo lại chính xác vùng văn bản được bôi đen, có kiểm tra xung đột khi nội dung đã thay đổi.
+- Kết nối thao tác Đăng ngay và Đặt lịch với Scheduled Publishing cho từng nền tảng, đồng thời giữ lại kết quả thành công khi một nền tảng khác gặp lỗi.
+
+### Changed
+- Chuyển điều phối Step 2–5 của AI Creator sang module Quick Publishing: nguồn nhập tay/URL được lưu thật, tài khoản liên kết và Platform Preset được tải từ backend, chỉnh sửa được lưu trước khi đăng hoặc lên lịch.
+
+### Fixed
+- Không còn bỏ qua draft thiếu Caption ID rồi hiển thị thông báo thành công; giao diện chỉ chuyển sang lịch nội dung khi tất cả nền tảng yêu cầu đã hoàn tất và hiển thị rõ nền tảng thất bại khi có partial failure.
+
+
+## [Unreleased] - 2026-07-16
+
+
+### Changed
+- Chuyển quality gate của dự án sang ESLint CLI theo Next.js 16, bổ sung type-check độc lập có sinh route types và baseline có kiểm soát để lỗi legacy không che mất lỗi mới của Sprint 3.
+- Tách luồng Đăng nhanh hiện hữu thành module Quick Publishing dùng chung cho tải Preset, sinh và tạo lại nội dung đa kênh, lưu bản nháp và lên lịch; giữ nguyên giao diện cùng API hiện tại để chuẩn bị triển khai nhóm yêu cầu T-3 theo từng bước mà không nhân đôi logic nghiệp vụ.
+- Tách cơ chế chọn model, xoay vòng Gemini API Key, quản lý sức khỏe key và cấu hình dự phòng thành module Gemini Capacity dùng chung cho các workflow AI hiện hữu; bổ sung claim nguyên tử để phân phối key an toàn hơn khi có nhiều request đồng thời.
+
+### Fixed
+- Sửa lỗi biến danh mục nằm ngoài phạm vi trong preview bước lên lịch và đồng bộ test Inline Edit với textarea editor hiện tại, giúp type-check cùng toàn bộ test chạy ổn định trước khi chia sẻ nhánh Sprint 3.
+- Sửa lỗi `Illegal invocation` khiến màn hình AI Creator không thể tải danh sách Preset sau khi tách Quick Publishing, bằng cách bảo đảm trình duyệt gọi `fetch` với đúng global receiver.
+- Không còn tự thử lại key đã bị vô hiệu hóa hoặc key vẫn trong thời gian cooldown; lỗi model dừng ngay mà không phạt key, còn lỗi mạng/provider không còn tự động làm key chuyển sang trạng thái `invalid`.
+
+### Security
+- Thu hồi quyền đọc Gemini API Key thô của client đã đăng nhập, chỉ trả projection đã che cho trang quản trị, giới hạn claim secret cho service role và loại raw provider error/key khỏi response cùng log vận hành.
+
+
+## [Unreleased] - 2026-07-15
+
+### Changed
+- Tách vòng đời Cấu hình Landing Page thành module backend độc lập; dùng chung một projection cho API công khai và trang chủ, đồng thời giữ nguyên cơ chế lưu trực tiếp, tạo checkpoint khi xuất bản và thông báo quản trị viên.
+- Tách API Tìm kiếm toàn cục thành module backend độc lập theo vai trò, giữ nguyên kết quả dành cho quản trị viên và marketer nhưng giúp luồng truy vấn, FAQ và xử lý lỗi dễ kiểm thử, bảo trì hơn.
+- Tách luồng xuất Caption CSV, tải lại file và lịch sử export thành module backend độc lập; giữ nguyên thao tác tải trực tiếp và dữ liệu lịch sử hiện có, đồng thời tách quyền đọc Caption theo RLS khỏi quyền ghi compatibility job trong Audit Logs.
+- Tách xử lý giọng nói thành module backend độc lập cho kiểm tra file, Groq Whisper và hai bước Gemini; giữ nguyên kết quả transcript/correction/metadata và cho phép nhập ý chính hoạt động khi không cấu hình Groq.
+- Tách trích xuất tài liệu thành module backend độc lập cho kiểm tra file, Mammoth DOCX và Gemini PDF; giữ nguyên endpoint/kết quả hiện có, đồng thời xác định rõ chỉ hỗ trợ `.pdf` và `.docx` thay vì nhận nhầm định dạng `.doc` cũ.
+- Tách vòng đời liên kết Facebook Page, Instagram Business và Threads thành module backend độc lập; giữ nguyên cơ chế tự động lưu nhiều tài khoản và partial success, đồng thời tách OAuth Threads khỏi các hàm đăng bài của Scheduled Publishing.
+
+### Fixed
+- Bảo đảm rollback Landing Page thay thế toàn bộ cấu hình trong một transaction và giữ nguyên dữ liệu cũ nếu khôi phục thất bại; đồng thời loại bản ghi trùng hiện hữu và áp dụng ràng buộc duy nhất cho từng cặp `section`/`key`.
+
+### Security
+- Chuẩn hóa và giới hạn từ khóa tìm kiếm, đồng thời escape các ký tự wildcard và cú pháp PostgREST để dữ liệu nhập chỉ được xử lý như nội dung tìm kiếm; tiếp tục giới hạn prompt theo đúng chủ sở hữu.
+- Bổ sung kiểm tra filter, ngày, UUID và quyền sở hữu export job; ngăn Audit Log không liên quan bị dùng như job tải file, loại bỏ host-header khỏi download URL và vô hiệu hóa công thức nguy hiểm trong CSV khi mở bằng Excel/Sheets.
+- Chuẩn hóa MIME và kích thước file giọng nói, đồng thời không trả hoặc ghi log raw lỗi provider, API key, prompt hay transcript nhạy cảm.
+- Chuẩn hóa lỗi trích xuất tài liệu để không trả hoặc ghi log nội dung file, tên file đầy đủ, Gemini API key, prompt hay raw response của provider.
+- Bổ sung OAuth state ký HMAC, hết hạn sau 10 phút, gắn với user và nonce cookie cho các luồng liên kết mạng xã hội; loại bỏ raw token/provider/account data khỏi redirect và log, đồng thời chỉ trả projection tài khoản không chứa credential.
+
+
+## [1.7.6] - 2026-07-10
+
+### Fixed
+- **Sửa lỗi xoay vòng API Key Gemini (Root cause & Key Rotation Fixes)**:
+  - Cập nhật model mặc định từ `gemini-2.5-flash` (đã bị Google đánh dấu là legacy và trả về lỗi 404 cho các API key mới tạo) sang `gemini-3.5-flash` trong tệp cấu hình `.env.local` và fallback hệ thống trong `geminiRotationManager.ts`.
+  - Cập nhật model mặc định cho độ phức tạp thấp từ `gemini-2.5-flash-lite` sang `gemini-3.1-flash-lite`.
+  - Cải tiến hàm kiểm tra lỗi trong bộ xoay vòng key (`executeWithRotation`): loại bỏ việc khóa nhầm các API Key (đánh dấu `invalid`) khi gặp lỗi 404 do model không hợp lệ hoặc model không khả dụng. Chỉ đánh dấu khóa key (`invalid`) khi gặp đúng lỗi xác thực/quyền truy cập (`isAuthError` như sai key, project bị chặn/denied).
+  - Tích hợp cơ chế tự phục hồi thông minh (Self-healing fallback): nếu tất cả key trong database vô tình bị đánh dấu là `invalid`, hệ thống sẽ tự động thử lại các key này làm phương án dự phòng cuối cùng thay vì báo lỗi không có key khả dụng ngay lập tức. Nếu một key thành công, nó sẽ tự động được cập nhật trạng thái hoạt động trở lại (`active`).
+  - Viết và chạy thành công script khôi phục trạng thái database `scratch/reset_keys.ts` để kích hoạt lại toàn bộ 11 key đang bị khóa nhầm do lỗi 404 trước đó.
+
+## [1.7.5] - 2026-07-09
+
+### Added
+- **Thông báo trạng thái liên kết tài khoản (OAuth callback feedback)**:
+  - Tự động bắt tham số URL kết quả từ callback OAuth (`connected=success` hoặc `connected=failed`) trên trang Cài đặt (Settings).
+  - Tích hợp `PopupDialog` để hiển thị trực quan thông báo kết quả liên kết tài khoản mxh (Facebook Page, Instagram Business, Meta Threads) và tự động dọn dẹp các tham số URL để tránh lặp lại thông báo.
+- **Ràng buộc kiểm tra liên kết tài khoản ở AI Creator (Publish Validation)**:
+  - Tích hợp hiển thị badge màu đỏ "Chưa kết nối" (Not Connected) bên cạnh các checkbox lựa chọn kênh đăng bài chưa được liên kết.
+  - Chặn tiến trình tạo nội dung AI (`handleGenerate` ở Bước 1) và tiến trình xác nhận lên lịch (`handleConfirmSchedule` ở Bước 2) nếu người dùng chọn kênh chưa kết nối tài khoản, đồng thời hiển thị cảnh báo hướng dẫn liên kết thông qua `PopupDialog`.
+- **Tài liệu hướng dẫn (Guides)**:
+  - Bổ sung tài liệu hướng dẫn liên kết & kiểm thử Instagram Business chi tiết từ việc chuẩn bị tài khoản đến cấu hình Meta app tại [instagram-connection-guide.md](file:///e:/User/Work_Space/Netspace/AntBiz/docs/guides/instagram-connection-guide.md).
+
+## [1.7.4] - 2026-07-08
+
+### Added
+- **Cấu hình độc lập cho từng nền tảng đăng bài (Multi-platform Configuration)**:
+  - Tách biệt hoàn toàn trạng thái cấu hình (gồm Quy chuẩn/Platform Preset, Văn phong/Style Preset, Chọn nhanh/Quick Picks và Yêu cầu tùy chỉnh bổ sung bằng chữ/Custom instructions) cho từng nền tảng (`facebook`, `threads`, `instagram`).
+  - Tự động lưu cấu hình của nền tảng hiện tại vào một bảng ánh xạ (`platformConfigMap`) khi người dùng thay đổi các cấu hình đầu vào, và tải lại cấu hình tương ứng ngay khi người dùng chuyển đổi qua lại giữa các tab nền tảng.
+  - Hỗ trợ truyền đúng cấu hình độc lập của từng nền tảng khi sinh hàng loạt bài đăng AI ở Bước 1 và khi tạo lại (regenerate) một biến thể cụ thể ở Bước 2.
+- **Hoạt ảnh thu gọn cấu hình & Popup chỉnh sửa cấu hình ở Bước 2**:
+  - Tích hợp Framer Motion `layoutId="ai-creator-config-panel"` cho cả Panel cấu hình ở Bước 1 và Card cấu hình hoạt động ở Bước 2 để tạo hoạt ảnh thu gọn và "nhét" mượt mà vào khung nhỏ khi chuyển đổi giữa các bước.
+  - Khi click vào Card cấu hình hoạt động ở Bước 2 hoặc nút "Chỉnh sửa", một Popup Modal với thiết kế cao cấp và giao diện giống hệt cấu hình cũ sẽ hiển thị, cho phép người dùng thay đổi trực tiếp cấu hình AI mà không cần quay lại Bước 1.
+  - Hỗ trợ nút "Lưu & Tạo lại" trong Modal để lưu cấu hình mới và tự động tái tạo lại biến thể nội dung hiện tại bằng AI ngay lập tức, gia tăng trải nghiệm người dùng tiện lợi.
+
+### Fixed
+- Khắc phục lỗi hiển thị định dạng của bài viết cào về từ báo Tuổi Trẻ (ví dụ: `&#243;`, `&#224;`...): Tích hợp tính năng tự động giải mã các thực thể HTML (HTML entities) cả dạng đơn và dạng kép (double-encoded) trong hàm `cleanText` của bộ tiền xử lý cào dữ liệu ([preprocess.ts](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/lib/crawler/preprocess.ts)), giúp bài viết hiển thị đầy đủ tiếng Việt chuẩn và sạch đẹp trên giao diện xem trước.
+- Nâng cấp bộ lọc cào dữ liệu bài viết (đặc biệt là báo Tuổi Trẻ):
+  - Tự động giới hạn phạm vi cào nội dung bằng cách ưu tiên chọn các container chứa bài viết chính xác (`[itemprop="articleBody"]`, `.detail-content`, `#html_content`) để loại bỏ hoàn toàn các phần chân trang (footer), đầu trang (header), và điều hướng linh tinh bên ngoài.
+  - Hỗ trợ phân tích và trích xuất các thuộc tính ảnh lười (lazy load) phổ biến (`data-original`, `data-src`, `data-lazy-src`, `data-cke-saved-src`) để lấy đúng liên kết ảnh gốc thay vì ảnh placeholder mặc định (`tto_default_avatar.png`), đồng thời tự động chuẩn hóa các đường dẫn tương đối trước khi kiểm tra.
+  - Lọc bỏ các hình ảnh quảng cáo, logo thương hiệu, avatar mặc định, nút tặng sao, và biểu tượng mạng xã hội dựa trên tên tệp hình ảnh và văn bản chú thích (sử dụng hàm kiểm tra `isInvalidImage`).
+  - Loại trừ các đoạn văn bản thuộc hệ thống tặng sao (star donation system), thông báo lỗi kết nối, thông tin tài khoản, và luồng sự kiện/tin tức liên quan ở cuối bài viết (sử dụng hàm kiểm tra `isBoilerplateText`).
+- Sửa lỗi Footer che mất Dropdown khi mở rộng các hộp cấu hình (như "Yêu cầu tùy chỉnh"): Tải cấu trúc phân lớp xếp chồng (CSS stacking contexts) trong [layout.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/app/(dashboard)/layout.tsx) bằng cách thêm `relative z-10` vào container chứa nội dung trang `motion.div`, đồng thời thêm `relative z-20` vào [Header.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/Header.tsx) để giữ các menu thả xuống của Header luôn nằm trên cùng. Việc này giúp nâng nội dung trang và các dropdown cấu hình hiển thị đè lên trên Footer khi bị tràn dòng thay vì bị Footer (sau DOM flow) che khuất.
+- Sửa lỗi nút "Xác nhận" (Confirm) trong mục "Yêu cầu tùy chỉnh" không đóng được dropdown:
+  - Loại bỏ hoàn toàn hiệu ứng đua trạng thái (state race conditions) giữa tiến trình lưu và tải cấu hình khi người dùng chuyển đổi tab nền tảng bằng cách gán giá trị cấu hình trực tiếp vào `platformConfigMap` khi click chọn Preset, Tone, chọn nhanh thẻ gợi ý, hay gõ nhập chỉ thị thay vì sử dụng đồng thời hai hook `useEffect` dễ gây xung đột thứ tự cập nhật.
+  - Ngăn chặn hiện tượng nổi bọt sự kiện (event bubbling/propagation) khi click vào nút "Xác nhận" bằng cách gọi `e.stopPropagation()` và `e.preventDefault()`, đảm bảo sự kiện click không lan ra ngoài gây lỗi logic đóng mở dropdown.
+- Khắc phục lỗi Header đè lên giao diện cấu hình và nút "X" không phản hồi:
+  - Sử dụng `createPortal` từ `react-dom` để kết xuất Popup Modal của "Cấu hình AI hoạt động" trực tiếp tại `document.body` thoát khỏi cấu trúc phân lớp CSS của trang chính.
+  - Sắp xếp lại thứ tự bọc thẻ đúng chuẩn: Đặt `createPortal` ở ngoài cùng bao bọc thẻ `<AnimatePresence>` của Framer Motion. Việc này giúp sửa lỗi React Portal object không tương thích khi làm con trực tiếp của AnimatePresence (nguyên nhân khiến modal không thể hiển thị khi click), giúp Popup Modal hoạt động hoàn hảo và nút "X" phản hồi ngay lập tức.
+  - Gán chỉ số xếp chồng `z-[999]` cực cao cho lớp phủ Backdrop, giúp giải quyết triệt để lỗi Header che mất modal.
+- Loại bỏ hiệu ứng chuyển tiếp động (Resizing & Stretch Animations) của cấu hình Prompt ở cả Bước 1 và Bước 2:
+  - Gỡ bỏ hoàn toàn thuộc tính `layoutId="ai-creator-config-panel"`, các cấu hình chuyển tiếp `transition` và các wrapper `<motion.div>` khỏi Panel cấu hình AI ở Bước 1 và thẻ Cấu hình AI hoạt động ở Bước 2.
+  - Chuyển đổi các thẻ chứa này về dạng các thẻ `div` tĩnh chuẩn của React, giúp giao diện hiển thị tức thời và triệt tiêu hoàn toàn bất kỳ hiệu ứng giãn nở, co bóp hay co giãn méo mó chữ/nút nào khi chuyển đổi trạng thái.
+- Nâng cấp trải nghiệm tự động cuộn khi bấm "Xem Prompt":
+  - Thay thế cơ chế hẹn giờ `setTimeout` cũ dễ bị lệch bằng cách đăng ký trực tiếp hàm cuộn `.scrollIntoView({ behavior: 'smooth', block: 'end' })` vào sự kiện `onAnimationComplete` của container hiển thị.
+  - Nhờ đó, ngay khi hoạt ảnh mở rộng chiều cao của khung preview hoàn tất 100%, hệ thống mới kích hoạt cuộn, kéo thanh scrollbar của modal xuống tận cùng một cách mượt mà và chính xác tuyệt đối.
+
+## [1.7.3] - 2026-07-07
+
+### Changed
+- Đồng bộ hóa các biểu tượng và màu sắc của Facebook, Threads và Instagram trong phần "Tích hợp API" của trang Cài đặt ([SettingsView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/SettingsView.tsx)) khớp chính xác với thiết kế chuẩn của [ContentCalendarView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/ContentCalendarView.tsx). Thay thế logo Threads cũ có độ phân giải thấp bằng logo SVG 192x192 sắc nét và tô màu thương hiệu chính thức cho Facebook (`#1877F2`) và Instagram (`#E4405F`).
+- Cập nhật nhãn của nút quay lại trong Bước 3 thành "Quay lại Bước 2" (tiếng Việt) và "Back to Step 2" (tiếng Anh) để nhất quán với trải nghiệm quy trình 3 bước thay vì kiểm thử A/B chung chung.
+- Tối ưu hóa cấu hình build trong `next.config.mjs` để tắt kiểm tra kiểu TypeScript lúc build (`ignoreBuildErrors: true`). Điều này giúp tránh việc VPS dung lượng RAM thấp (ví dụ: 1GB) bị crash tiến trình biên dịch (lỗi "Killed" do Out-of-Memory).
+- Nâng cấp giao diện xem trước bài viết gốc (Article Preview Card) và các Modal chi tiết bài viết trong [AiCreatorView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/AiCreatorView.tsx) để tự động ẩn (không hiển thị) các trường thông tin bị thiếu/rỗng (như Tác giả, Ngày đăng, Lượt xem, Hashtags, Mô tả) thay vì hiển thị văn bản fallback mặc định (như "Không rõ", "Không có ngày", "0 lượt xem"), giúp tối ưu hóa giao diện khi cào dữ liệu từ báo Tuổi Trẻ, Dân Trí.
+
+### Fixed
+- Khắc phục lỗi `TypeError: Failed to fetch` khi cào dữ liệu trên các môi trường thiếu thư viện trình duyệt của Playwright và chưa cấu hình Firecrawl API Key (như trên VPS). Thêm cơ chế tự động fallback sang phương thức cào dữ liệu thứ 3 là **Simple HTTP Fetch** (sử dụng User-Agent tiêu chuẩn để lấy HTML tĩnh) giúp nâng cao tính ổn định của tính năng cào báo Tuổi Trẻ, Dân Trí.
+- Khắc phục lỗi định dạng (format) hiển thị của tính năng xem trước bài viết cào về: (1) Sửa lỗi nhận diện sai layout Spotlight (`isSpotlight` luôn bằng `true` trên các bài viết tiêu chuẩn có chứa thẻ section) dẫn tới việc render các ô trống không có nội dung; (2) Tự động lọc bỏ các phần text trùng lặp của Tác giả, Ngày đăng, Tiêu đề, Sapo và Chuyên mục khỏi danh sách nội dung bài viết (`bodyBlocks`); (3) Tích hợp kiểm tra và tự động loại trừ không cào các box liên quan hoặc tin tức liên quan trên trang báo Tuổi Trẻ và Dân Trí.
+- Cập nhật logo của giao diện giả lập tờ báo (Mock Newspaper Header) trong [AiCreatorView.tsx](file:///c:/Users/ADMIN/Desktop/AntBiz/AntBiz-/components/views/AiCreatorView.tsx) tự động thay đổi động theo tên miền của bài viết cào về (Hiển thị logo **DÂN TRÍ** màu xanh lá đặc trưng cho link từ `dantri.com.vn`, logo **TuổiTrẻ** màu đỏ cho link từ `tuoitre.vn`, và logo mặc định **GócNhìnMới** cho các link khác). Đồng thời, cập nhật vòng tròn avatar của tác giả tự động lấy chữ cái đầu của tên tác giả (Initials) và đổi tông màu nền/chữ (xanh lá cho Dân Trí, đỏ cho Tuổi Trẻ) đồng bộ theo nhận diện thương hiệu. Thêm tính năng tự động phát hiện, trích xuất ảnh chân dung tác giả (nhận dạng qua tên tác giả hoặc các lớp CSS đặc trưng), di chuyển ảnh này vào vòng tròn avatar của tác giả trong UI và loại bỏ hoàn toàn nó khỏi danh sách ảnh/nội dung chính của bài viết (`bodyBlocks`).
+- Khắc phục lỗi thiếu gói thư viện `mammoth` tại route xử lý tài liệu `app/api/parse-doc/route.ts` bằng việc cài đặt và đồng bộ lại các package trong dự án, giúp tính năng phân tích file DOCX/tài liệu thông qua Gemini hoạt động bình thường.
+- Khắc phục lỗi nút "Xác nhận và Lên lịch" (Confirm & Schedule) không lên lịch cho toàn bộ các kênh đã chọn khi đăng bài đồng thời. Giờ đây, hệ thống hỗ trợ lên lịch song song cho tất cả các nền tảng hoạt động đã chọn ở Bước 1 thông qua `Promise.all`.
+- Sửa lỗi hệ thống "im lặng" (silent fail) khi có lỗi xảy ra trong quá trình lên lịch (như chọn sai giờ trong quá khứ). Các thông báo lỗi (`schedulingError`) giờ đây sẽ được hiển thị rõ ràng ngay phía trên nút Xác nhận thay vì bị ẩn dưới console hoặc không phản hồi.
+- Sửa lỗi không thể lên lịch bài viết hiển thị dòng chữ cảnh báo "Please select a variant before scheduling" ở màn hình xác nhận do giá trị biến thể bị null. Hệ thống đã được bổ sung cơ chế fallback để tự động lấy biến thể mặc định đầu tiên khi người dùng loại bỏ thao tác chọn tab.
+- Loại bỏ hoàn toàn giới hạn cứng tối đa 3 bài viết/giờ (`isCellOccupied` luôn trả về `false`). Giờ đây, người dùng có thể kéo thả và lên lịch đăng bài hoàn toàn tự do cho nhiều bài viết/nhiều nền tảng trong cùng một khung giờ mà không bị hệ thống chặn cảnh báo.
+- Khắc phục lỗi API `PGRST116` ("JSON object requested, multiple rows returned") trong route `POST /api/scheduled-posts` bằng việc thêm `.limit(1)` vào câu truy vấn kiểm tra lịch đăng bài trùng lặp. Điều này giúp ngăn chặn ứng dụng bị crash khi cập nhật lịch đăng cho các caption đã có sẵn nhiều bản ghi trùng lặp ở trạng thái `pending`.
+- Sửa lỗi nghiêm trọng khiến bài viết lên lịch cho Instagram hoặc Threads bị ghi nhận và đăng lên Facebook. Nguyên nhân do cơ chế fallback dùng chung thuộc tính `captionId` không phân biệt nền tảng của Variant dẫn đến việc gửi nhầm ID caption của Facebook sang các nền tảng khác. Hệ thống đã được nâng cấp để lưu trữ và truy vấn độc lập thông qua các thuộc tính riêng biệt (`facebookCaptionId`, `instagramCaptionId`, `threadsCaptionId`).
+- Tối ưu hóa điều kiện kích hoạt nút "Xác nhận lên lịch": Hệ thống giờ đây chỉ kiểm tra lỗi thời gian/trùng lịch của các nền tảng **đang hoạt động** (được chọn và không bị loại trừ). Các lỗi thuộc về nền tảng đã bị tắt sẽ không còn vô hiệu hóa (disable) nút xác nhận chung của người dùng nữa.
+- Tích hợp API đăng bài chính thức cho **Instagram Business**. Hệ thống hiện tại có khả năng tự động liên kết và đăng bài trực tiếp lên tài khoản Instagram thông qua Facebook Page Access Token (Yêu cầu bài viết bắt buộc phải có ít nhất 1 hình ảnh đi kèm theo tiêu chuẩn của Instagram API).
+
+## [1.7.2] - 2026-07-07
+
+### Added
+- **Chia bài viết trùng giờ dạng Side-by-Side trên Grid Calendar**:
+  - Khi có nhiều bài viết (bản nháp hoặc bài viết cũ) được lên lịch trùng giờ, thay vì gộp chung thành một ô hiển thị "X bài", lịch sẽ tự động chia đôi hoặc chia ba theo chiều rộng để hiển thị các bài viết song song.
+  - Cho phép người dùng kéo thả độc lập từng kênh (Facebook, Instagram, Threads) sang ô giờ mới trực tiếp trên lịch mà không bị ràng buộc hay gộp nhóm.
+  - Điều chỉnh ẩn tên tiêu đề bài viết trong các thẻ thu nhỏ (khi có nhiều hơn 1 bài trùng giờ) để giữ giao diện gọn gàng và sạch đẹp.
+  - Hỗ trợ nhấn vào các thẻ nháp để hiển thị hộp thoại thông tin chi tiết lịch đăng bài (Schedule Details modal) tương tự các bài viết đã lên lịch, hiển thị đầy đủ tiêu đề thực tế của bài viết AI đã sinh thay vì tiêu đề bản nháp tĩnh.
+
+## [1.7.1] - 2026-07-07
+
+### Added
+- **Giao diện Bước 2 mới — Mockup Feed Đơn Kênh (Unified Single-Platform Preview)**:
+  - Thay thế hoàn toàn bố cục lưới 2 cột biến thể A/B tại Bước 2 bằng một màn hình xem trước đơn kênh sạch gọn, theo phong cách "Bàn làm việc của nhà xuất bản".
+  - Thêm thanh chọn nền tảng (Platform Selector) tích hợp icon Facebook, Threads, Instagram dạng tabs gọn nhẹ phù hợp với hệ màu Indigo thương hiệu.
+  - Thêm toolbar card hiển thị rõ kênh đang xem và nút **Tái tạo** (`Tái tạo`) với nhãn văn bản thay vì icon đơn độc — tăng khả năng khám phá chức năng.
+- **Hỗ trợ chọn nhiều nền tảng cùng lúc (Multi-platform Selection)**:
+  - Bổ sung `selectedPlatforms[]` state tại Bước 1 cho phép chọn đồng thời Facebook, Threads và Instagram bằng checkbox.
+  - Parallel streaming: sinh nội dung AI song song cho tất cả kênh đã chọn khi nhấn "Tạo nội dung".
+- **Tùy chọn nhanh (Quick Picks) trong "Yêu cầu tùy chỉnh"**:
+  - Thêm bộ tag chọn nhanh (`selectedQuickPicks`) bên trong dropdown Yêu cầu tùy chỉnh, tự động bổ sung vào prompt cuối.
+
+### Changed
+- **Refactor Bước 2 (Step 2 Workspace)**:
+  - Loại bỏ hoàn toàn các tab "Biến thể A / Biến thể B" trên thanh toolbar card theo yêu cầu người dùng.
+  - Nút điều hướng quay lại được chuyển thành ghost button (không viền, không shadow) đúng chuẩn hệ thống.
+  - Nút tiến tiếp chuyển thành solid primary button `bg-primary` thay thế gradient kèm `shadow-primary` vi phạm nguyên tắc Flat-By-Rest.
+
+### Fixed
+- Sửa lỗi `Unterminated regexp literal` tại dòng 5727 — Facebook mockup bị thiếu thẻ đóng ảnh và action bar.
+- Sửa lỗi `Cannot access 'variants' before initialization` (Temporal Dead Zone) do `useEffect` khai báo sai vị trí trước khi `variants` được định nghĩa.
+- Sửa lỗi biên dịch `Expected '</', got 'ident'` do comment `#` trong khối `catch` JSX.
+- Sửa lỗi `selectedPlatforms is defined multiple times` do trùng tên biến state.
+
+### Removed
+- Xoá 9 file test JavaScript tạm thời tại thư mục gốc (`check_syntax.js`, `apply_model6.js`, v.v.).
+- Xoá các file giao diện Preview thử nghiệm: `AiCreatorPreviewView.tsx`, `AiCreatorStep1PreviewView.tsx`, `SplitStepDropdownWizard.tsx` và các route `/ai-creator/preview`, `/ai-creator/preview-step1`.
+
+
+
+### Added
+- **5 Kịch bản Tương tác Cấu hình AI (Step 1 Interaction Scenarios)**:
+  - Tích hợp trang đánh giá kịch bản tương tác cấu hình tại `/ai-creator/preview-step1`.
+  - **Kịch bản 1: Modal Nổi (Dialog Stepper)**: Hộp thoại Wizard 3 bước nổi giữa màn hình kèm chọn nhanh bằng các Tag/Chip.
+  - **Kịch bản 2: Ngăn Kéo Trượt (Side Drawer)**: Menu cấu hình dọc dạng Accordion trượt ra từ bên phải màn hình.
+  - **Kịch bản 3: Mở Rộng Tại Chỗ (Inline Expand)**: Trình cấu hình lồng accordion mở rộng trực tiếp ngay trên thanh sidebar.
+  - **Kịch bản 4: Phong cách Sci-Fi/Cyberpunk HUD**: Giao diện điều khiển mang cảm hứng game khoa học viễn tưởng với viền neon mỏng và hiệu ứng terminal biên dịch.
+  - **Kịch bản 5: Thẻ Trượt Tương Tác (Card-based Swiper)**: Bộ thẻ flashcard trượt sang trái khi hoàn thành lựa chọn.
+  - **Biên dịch Prompt (Prompt Compiler)**: Đồng bộ hóa toàn bộ các lựa chọn cấu hình và tự động sinh mã prompt thô xem trước.
+
+## [1.6.6] - 2026-07-06
+
+### Added
+- **Mẫu 6: Soạn thảo & Xem trước Dọc (Tabbed Stacked Editor/Preview)**:
+  - Tích hợp thêm Mẫu 6 cho bước 2 AI Creator với cấu trúc soạn thảo dọc phía trên và hiển thị preview bài viết phía dưới.
+  - Sử dụng các Tab màu ấm nổi bật (vàng/cam) làm điểm nhấn giao diện giúp dễ dàng chuyển đổi nền tảng đang kiểm thử.
+- **Tùy chỉnh nội dung trực tiếp trên Preview (Inline Editing)**:
+  - Cho phép click trực tiếp vào Tiêu đề, Tác giả, Hashtags, và Nội dung bài đăng trên các card xem trước (Facebook, Threads, Instagram) để sửa đổi nội dung một cách trực quan, đồng bộ hóa tức thì với dữ liệu state.
+- **Tính năng Tái bản AI (AI Content Regeneration)**:
+  - Bổ sung nút Tái bản AI (`RefreshCw`) trên góc phải các card xem trước. Khi kích hoạt sẽ hiển thị hiệu ứng xoay loading và tự động điền nội dung được AI tối ưu hóa lại.
+
+### Changed
+- **Đồng bộ thuật ngữ và Kích thước Bố cục**:
+  - Đổi tên nhãn lựa chọn nền tảng từ "A/B" thành "Nền tảng".
+  - Căn chỉnh chiều rộng cột tùy chỉnh mục hiển thị (Sidebar bên trái) lên bằng đúng 33.3% (`lg:col-span-4`) để cân đối diện tích với các phần ưu điểm/nhược điểm phía trên.
+
+## [1.6.5] - 2026-07-06
+
+### Changed
+- **Nâng cấp Văn phong thương hiệu & Loại bỏ Hồ sơ tác giả**:
+  - Gỡ bỏ hoàn toàn tính năng "Hồ sơ tác giả" (Author Profiles) khỏi toàn bộ dự án theo yêu cầu của người dùng để tối giản hóa quy trình sáng tạo.
+  - Loại bỏ các state, handler, API calls (`fetchAuthorProfiles`, `handleCreateAuthorProfile`) và các modal/dropdown tương ứng trên cả giao diện AI Creator (`AiCreatorView.tsx`) và API Engine sinh bài đăng (`api/captions/generate/route.ts`).
+  - Đổi tên bước "4. Yêu cầu tùy chỉnh" thành "3. Yêu cầu tùy chỉnh" trên giao diện AI Creator.
+- **Tích hợp Quy chuẩn Văn phong thương hiệu dạng Tab (Tabbed Editor)**:
+  - Cập nhật giao diện modal tạo/sửa cấu hình văn phong thương hiệu tại `AiCreatorView.tsx` sang dạng Tab (Quy tắc chung, Facebook, Threads, Instagram) đồng bộ hoàn toàn với giao diện chính tại `PromptsView.tsx`.
+  - Hỗ trợ lưu trữ quy chuẩn dạng chuỗi JSON của cấu trúc quy tắc từng nền tảng, bám sát hành văn thương hiệu của từng kênh xuất bản riêng biệt.
+
+## [1.6.4] - 2026-07-06
+
+### Added
+- **Quy chuẩn Markdown cho Văn phong thương hiệu (Brand Style Rules)**:
+  - Bổ sung trường `rules` dạng văn bản lớn (Markdown) vào cơ sở dữ liệu `prompt_configs` và chuyển đổi liền mạch từ các tham số tĩnh (Tone, Độ dài).
+  - Tự động điền mẫu (template) hành văn thương hiệu chuyên nghiệp (chứa định nghĩa Hình mẫu, Cách xưng hô, Từ khuyên dùng, Từ cấm, Quy tắc Emoji) khi tạo mới cấu hình.
+  - Tích hợp giao diện Textarea Glassmorphism lớn để nhập văn bản tự do trong các modal tạo/sửa cấu hình ở trang thư viện (`PromptsView.tsx`) và không gian sáng tạo (`AiCreatorView.tsx`).
+  - Nâng cấp API Engine sinh bài đăng (`api/captions/generate/route.ts`) để inject trực tiếp toàn bộ khối Markdown hướng dẫn vào system prompt của Gemini AI, đảm bảo văn phong bám sát thương hiệu tuyệt đối.
+
+### Changed
+- **Nâng cấp Giao diện Xem trước Văn phong (Brand Style Preview)**: 
+  - Loại bỏ hoàn toàn các nhãn/chip rời rạc (Tone: Chuyên nghiệp, Độ dài: Vừa).
+  - Thay thế bằng khung xem trước nội dung Markdown cắt gọn đẹp mắt (line-clamp-3) với hiệu ứng thủy tinh mờ ở màn hình danh sách thẻ (PromptsView) và bảng tóm tắt Layer 2 (AiCreatorView).
+
+---
+## [1.6.3] - 2026-07-03
+
+### Fixed
+- **Sửa lỗi hiển thị Hashtag tại AI Creator**: Di chuyển khối thẻ hashtag nằm lên trên phần thông tin tác giả (Author Info) để tránh lỗi đè chữ, đồng thời căn chỉnh khoảng cách hợp lý trong cả giao diện Xem trước bài viết gốc lẫn Modal Xem chi tiết.
+
+## [1.6.2] - 2026-07-01
+
+### Added
+- **Unit & Integration Test Suite cho Prompt Config Wizard**:
+  - Viết file test Vitest `__tests__/api/promptWizard.test.ts` kiểm thử toàn diện các luồng của bộ câu hỏi định hướng.
+  - Test các tổ hợp input nền tảng/tone văn phong/độ dài để kiểm tra độ tin cậy của prompt sinh ra từ Gemini.
+  - Integration test toàn luồng: Gọi Wizard sinh prompt $\rightarrow$ Lưu cấu hình vào DB $\rightarrow$ Đồng bộ lên UI.
+  - Đạt tỷ lệ bao phủ dòng lệnh (Line Coverage) của API route là **85.71%** và `auth.ts` là **91.66%**, 100% test cases pass.
+
+### Changed
+- **Gộp Wizard vào nút Tạo Prompt thông minh**: Di chuyển và tích hợp nút kích hoạt Wizard 5 bước trực tiếp vào nút **"Tạo Prompt thông minh"** trong Dialog soạn thảo chính, gỡ bỏ tất cả các nút Wizard lẻ loi khác để tối giản hóa UI.
+- **Tránh lời dẫn giải thừa thãi của AI viết bài**: Bổ sung chỉ thị nghiêm ngặt `"TUYỆT ĐỐI KHÔNG có lời dẫn giải, không 'Ok', không 'Đây là bài viết'. Trả về TRỰC TIẾP bài đăng hoàn chỉnh."` vào template prompt do Gemini sinh ra trong Wizard.
+- **Cơ chế chống click nhầm ra ngoài**: Loại bỏ tính năng tự động đóng modal/dialog khi click vào vùng mờ (overlay) đối với Dialog Prompt chính và Modal Wizard. Chỉ cho phép đóng khi bấm nút **[X]**.
+- **Chuyển đổi platform thông minh trong prompt**: Khi chuyển đổi các nền tảng (Facebook, Threads, Instagram), hệ thống tự động tìm kiếm và thay đổi các chữ tên platform tương ứng trong Prompt tùy chỉnh đang soạn thảo.
+- **Bộ lọc heuristics chặn spam phím rác**: Tích hợp kiểm duyệt nâng cao khi nhập custom tone/length: chặn từ lặp 1 ký tự (ví dụ `"ộ i i"`) và chặn các tổ hợp phím QWERTY spam liên tiếp (như `"dsadadadd"`).
+
+---
+## [1.6.1] - 2026-07-01
+
+### Added
+- **API phân tích bài viết bằng Gemini (`POST /api/prompt-configs/analyze`)**: Tự động phân tích tiêu đề và nội dung bài viết khi cào để đề xuất Tone, Length, Emphasis phù hợp nhất.
+- **Tự động hóa cấu hình prompt khi cào báo**: Khi cào dữ liệu thành công từ URL hoặc Live Explorer, hệ thống tự động điền sẵn các tham số cấu hình gợi ý của AI và sinh prompt mẫu tương ứng.
+- **Hiển thị đếm số từ tiếng Việt (~words)**: Tích hợp bộ ước lượng đếm số từ tiếng Việt hiển thị song song cùng số ký tự tại các vùng đếm trong AI Creator và Caption Editor (định dạng `... ký tự (~... từ) / ... ký tự`).
+- **Giao diện quản lý cấu hình chuyên biệt tại trang Prompts**: Tích hợp Tab Switcher "Thư viện Prompt" & "Cấu hình tham số AI" trên trang Prompts. Hỗ trợ xem danh sách, Sửa (qua Modal Edit chuyên biệt), Xóa cấu hình, và Đặt cấu hình làm mặc định cho từng platform.
+- **Bộ Câu Hỏi Định Hướng (Prompt Config Wizard - Phase 2)**:
+  - Tích hợp nút **"🪄 Wizard"** ngay bên cạnh ô Cấu hình đã lưu ở Dialog prompt của AI Creator.
+  - Thiết kế Modal Wizard 5 bước bằng Framer Motion: chọn nền tảng, tone, độ dài, nhấn mạnh, variant count & đặt tên.
+  - Xây dựng API route `POST /api/prompt-configs/from-wizard` sử dụng Gemini AI sinh prompt động tương ứng với 5 lựa chọn.
+  - Hiển thị màn hình kết quả cho phép chỉnh sửa prompt, chọn mặc định, tự động lưu cấu hình và tự điền form sáng tạo caption.
+
+### Changed
+- **Tích hợp Lưu cấu hình prompt tự động**: Xóa nút đĩa mềm lưu cấu hình riêng lẻ, tự động thực hiện lưu kép cả prompt lẫn tham số cấu hình (Tone, Length, Emphasis) khi người dùng bấm nút "Lưu và Sử dụng" ở chân Dialog prompt.
+
+### Fixed
+- **Sửa lỗi giới hạn ký tự prompt (Zod 400 Bad Request)**: Tự động rút gọn (truncate) nội dung bài viết cào được trong hàm sinh prompt mẫu xuống tối đa 3000 ký tự để luôn vượt qua giới hạn độ dài 8000 ký tự của schema validation.
 
 ---
 ## [1.6.0] - 2026-06-26

@@ -8,12 +8,14 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   
   // Nếu có set CRON_SECRET trên Vercel thì bắt buộc phải match
-  if (
-    process.env.NODE_ENV === 'production' &&
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
-    return new NextResponse('Unauthorized', { status: 401 });
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.CRON_SECRET) {
+      console.error('[Cron API] Thiếu cấu hình CRON_SECRET ở môi trường sản xuất.');
+      return new NextResponse('Thiếu cấu hình CRON_SECRET trên máy chủ', { status: 500 });
+    }
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
   }
 
   try {

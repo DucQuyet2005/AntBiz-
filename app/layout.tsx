@@ -1,9 +1,12 @@
+import Script from "next/script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { FontProvider } from "@/contexts/FontContext";
+import QueryProvider from "@/components/QueryProvider";
+import { ToastProvider } from "@/components/Toast";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -36,7 +39,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
+        <meta charSet="utf-8" />
+        <Script
+          id="theme-detect"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -64,9 +70,13 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col text-gray-800 bg-[#F4F5F9] font-sans">
         <ThemeProvider>
           <FontProvider>
-            <LanguageProvider defaultLanguage={lang}>
-              {children}
-            </LanguageProvider>
+            <QueryProvider>
+              <LanguageProvider defaultLanguage={lang}>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </LanguageProvider>
+            </QueryProvider>
           </FontProvider>
         </ThemeProvider>
       </body>

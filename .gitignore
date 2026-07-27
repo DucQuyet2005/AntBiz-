@@ -46,6 +46,11 @@ next-env.d.ts
 # database schema context
 /docs/schema/
 
+/docs/guides/
+
+# Scratch & Mockup data
+scratch/
+
 # temporary scratch directory
 /scratch/
 
@@ -65,3 +70,36 @@ next-env.d.ts
 .github/skills/
 .github/hooks/
 next-env.d.ts
+
+# tài liệu của toản
+docs/docstoan/
+ 
+# Superpowers folder
+.superpowers/
+
+# Dataset files (scraped data, training data)
+scripts/*.jsonl
+scripts/*.jsonl.*
+scripts/*.json
+scripts/dataset*.json
+scripts/dataset*.jsonl
+scripts/fb_dataset.json
+scripts/cookies.json
+
+# Scraping scripts & browser profiles
+scripts/scrape_*.ts
+scripts/inspect_*.ts
+scripts/user_data/
+scripts/user_data_*/
+scripts/*.png
+scripts/facebook_cookie.txt
+scripts/threads_dom.json
+
+# Stash diffs
+stash.diff
+untracked_stash.diff
+
+# AI Agent temp files
+.gemini/
+scratch.json
+

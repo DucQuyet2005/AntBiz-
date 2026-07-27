@@ -19,7 +19,12 @@ import {
   Check,
   Loader2,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Instagram,
+  Facebook,
+  Bookmark,
+  Send,
+  MoreHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -31,8 +36,8 @@ import PopupDialog, { PopupType } from '@/components/PopupDialog';
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
-    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+  <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor">
+    <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" />
   </svg>
 );
 
@@ -90,7 +95,7 @@ function parseCustomDate(dateStr: any): Date {
   return new Date();
 }
 
-function formatRelativeTime(dateInput: any, lang: string, platform: 'facebook' | 'threads') {
+function formatRelativeTime(dateInput: any, lang: string, platform: 'facebook' | 'threads' | 'instagram') {
   if (!dateInput) {
     return lang === 'vi' ? 'Vừa xong' : 'Just now';
   }
@@ -148,15 +153,22 @@ export default function ArticleDetailView() {
   const [activeArticle, setActiveArticle] = useState<any>(articleData);
   const [captions, setCaptions] = useState<any[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
-  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads'>('facebook');
+  const [selectedPlatform, setSelectedPlatform] = useState<'facebook' | 'threads' | 'instagram'>(() => {
+    const platformParam = searchParams?.get('platform');
+    if (platformParam === 'facebook' || platformParam === 'threads' || platformParam === 'instagram') {
+      return platformParam;
+    }
+    return 'facebook';
+  });
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
   const [reverting, setReverting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [isFbExpanded, setIsFbExpanded] = useState(false);
   const [isThreadsExpanded, setIsThreadsExpanded] = useState(false);
+  const [isIgExpanded, setIsIgExpanded] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
-  const [isHighlighted, setIsHighlighted] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [versionTrigger, setVersionTrigger] = useState(0);
@@ -168,7 +180,7 @@ export default function ArticleDetailView() {
   const [popupType, setPopupType] = useState<PopupType>('info');
 
   // Helper to get active caption prioritizing posted > scheduled > draft
-  const getActiveCaption = (plat: 'facebook' | 'threads') => {
+  const getActiveCaption = (plat: 'facebook' | 'threads' | 'instagram') => {
     const platCaps = captions.filter(c => c.platform === plat);
     if (platCaps.length === 0) return null;
 
@@ -192,17 +204,14 @@ export default function ArticleDetailView() {
     return platCaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
   };
 
-  // Automatically toggle platform and highlight mockup if captionId query param is provided
+  // Automatically toggle platform if captionId query param is provided
   useEffect(() => {
     if (captionIdParam && captions.length > 0) {
       const matchingCap = captions.find(c => c.id === captionIdParam);
       if (matchingCap) {
-        if (matchingCap.platform === 'facebook' || matchingCap.platform === 'threads') {
+        if (matchingCap.platform === 'facebook' || matchingCap.platform === 'threads' || matchingCap.platform === 'instagram') {
           setSelectedPlatform(matchingCap.platform);
         }
-        setIsHighlighted(true);
-        const timer = setTimeout(() => setIsHighlighted(false), 3000);
-        return () => clearTimeout(timer);
       }
     }
   }, [captionIdParam, captions]);
@@ -327,29 +336,25 @@ export default function ArticleDetailView() {
           .select('platform')
           .eq('article_id', id);
 
-        let dbPlatform: 'facebook' | 'threads' = 'facebook';
-        if (abTests && abTests.length > 0) {
-          const plat = abTests[0].platform;
-          if (plat === 'threads' || plat === 'facebook') {
-            dbPlatform = plat;
-          }
-        }
-        setSelectedPlatform(dbPlatform);
-
         // 3. Fetch captions
         const { data: dbCaptions } = await supabase
           .from('captions')
           .select('*')
           .eq('article_id', id);
 
+        let mappedCaptions: any[] = [];
         if (dbCaptions && dbCaptions.length > 0) {
-          setCaptions(dbCaptions);
+          mappedCaptions = dbCaptions.map((c: any) => ({
+            ...c,
+            platform: c.platform === 'thread' ? 'threads' : c.platform
+          }));
+          setCaptions(mappedCaptions);
           
           // 4. Fetch scheduled posts for these captions
-          const captionIds = dbCaptions.map(c => c.id);
+          const captionIds = mappedCaptions.map(c => c.id);
           const { data: schedData } = await supabase
             .from('scheduled_posts')
-            .select('*')
+            .select('*, post_interactions(likes, comments, shares, clicks, reach, impressions)')
             .in('caption_id', captionIds);
           if (schedData) {
             setScheduledPosts(schedData);
@@ -357,6 +362,40 @@ export default function ArticleDetailView() {
         } else {
           loadMockData();
         }
+
+        let dbPlatform: 'facebook' | 'threads' | 'instagram' = 'facebook';
+        
+        // 5. Determine active platform, prioritizing captionId query param if present
+        const matchedCapFromParam = captionIdParam ? mappedCaptions.find((c: any) => c.id === captionIdParam) : null;
+        if (matchedCapFromParam && (matchedCapFromParam.platform === 'facebook' || matchedCapFromParam.platform === 'threads' || matchedCapFromParam.platform === 'instagram')) {
+          dbPlatform = matchedCapFromParam.platform;
+        } else if (abTests && abTests.length > 0) {
+          const plat = abTests[0].platform;
+          if (plat === 'thread' || plat === 'threads') {
+            dbPlatform = 'threads';
+          } else if (plat === 'facebook') {
+            dbPlatform = 'facebook';
+          } else if (plat === 'instagram') {
+            dbPlatform = 'instagram';
+          }
+        } else if (mappedCaptions.length > 0) {
+          const activeCap = mappedCaptions.find((c: any) => c.status === 'posted' || c.status === 'scheduled');
+          if (activeCap) {
+            dbPlatform = activeCap.platform === 'thread' || activeCap.platform === 'threads'
+              ? 'threads'
+              : activeCap.platform === 'instagram'
+                ? 'instagram'
+                : 'facebook';
+          } else {
+            dbPlatform = mappedCaptions[0].platform === 'thread' || mappedCaptions[0].platform === 'threads'
+              ? 'threads'
+              : mappedCaptions[0].platform === 'instagram'
+                ? 'instagram'
+                : 'facebook';
+          }
+        }
+        
+        setSelectedPlatform(dbPlatform);
       } catch (err) {
         console.error("Error loading Supabase data:", err);
         loadMockData();
@@ -913,10 +952,7 @@ export default function ArticleDetailView() {
 
           {/* Title & Author Card */}
           <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-2xl p-8 flex flex-col gap-5 border border-slate-200/60 dark:border-zinc-800/60 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-bold text-primary bg-white dark:bg-zinc-900 px-4 py-1.5 rounded-full w-fit shadow-sm border border-slate-200/60 dark:border-zinc-800">
-              <span>🏠</span>
-              {activeArticle.category}
-            </div>
+
 
             <h1 className="text-4xl font-extrabold text-text dark:text-zinc-100 leading-[1.15] tracking-tight pr-10">
               {activeArticle.title}
@@ -944,27 +980,23 @@ export default function ArticleDetailView() {
                 {language === 'vi' ? 'Bản xem trước mạng xã hội' : 'Social Media Preview'}
               </h3>
 
-              <div className="flex bg-slate-50 dark:bg-zinc-950 rounded-full p-1 border border-slate-200/60 dark:border-zinc-800">
-                <button
-                  onClick={() => setSelectedPlatform('facebook')}
-                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'facebook'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-text-muted dark:text-zinc-400 hover:text-text dark:hover:text-zinc-200'
-                    }`}
-                >
-                  <ThumbsUp size={11} className={selectedPlatform === 'facebook' ? 'fill-white' : ''} />
-                  Facebook
-                </button>
-                <button
-                  onClick={() => setSelectedPlatform('threads')}
-                  className={`text-[10px] font-extrabold px-4 py-1.5 rounded-full uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${selectedPlatform === 'threads'
-                    ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm'
-                    : 'text-text-muted dark:text-zinc-400 hover:text-text dark:hover:text-zinc-200'
-                    }`}
-                >
-                  <ThreadsIcon size={11} />
-                  Threads
-                </button>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-55 dark:bg-zinc-950 border border-slate-200/60 dark:border-zinc-800 text-[10px] font-extrabold uppercase tracking-wider text-text dark:text-zinc-300 select-none">
+                {selectedPlatform === 'facebook' ? (
+                  <>
+                    <Facebook size={11} className="text-blue-600 fill-blue-600 dark:text-blue-400 dark:fill-blue-400" />
+                    <span>Facebook</span>
+                  </>
+                ) : selectedPlatform === 'threads' ? (
+                  <>
+                    <span className="text-black dark:text-white"><ThreadsIcon size={11} /></span>
+                    <span>Threads</span>
+                  </>
+                ) : (
+                  <>
+                    <Instagram size={11} className="text-pink-600 dark:text-pink-400" />
+                    <span>Instagram</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -997,7 +1029,7 @@ export default function ArticleDetailView() {
             )}
 
             {/* Post Layout Display */}
-            <div className={`border border-gray-100 dark:border-zinc-800 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5 transition-all duration-500 ${isHighlighted ? 'ring-4 ring-primary/40 border-primary bg-primary/5 animate-pulse' : ''}`}>
+            <div className="border border-gray-100 dark:border-zinc-800 rounded-2xl bg-gray-50/10 overflow-hidden shadow-inner/5">
               {selectedPlatform === 'facebook' ? (
                 /* Facebook Preview Mockup */
                 <div className="flex flex-col bg-white dark:bg-zinc-900">
@@ -1019,7 +1051,7 @@ export default function ArticleDetailView() {
                   <div className="px-4 pb-4 pt-1 text-xs text-text leading-relaxed flex flex-col gap-2">
                     {/* Title & Category block */}
                     <div className="font-extrabold text-[13px] text-text mb-0.5">
-                      [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                      {activeArticle.title}
                     </div>
 
                     {/* Caption content */}
@@ -1066,7 +1098,7 @@ export default function ArticleDetailView() {
                           key={idx}
                           className={`relative overflow-hidden bg-gray-50 dark:bg-zinc-950 ${activeArticle.images.length === 1 ? 'aspect-[1.91/1]' : 'aspect-square'}`}
                         >
-                          <img
+                          <img referrerPolicy="no-referrer" 
                             src={img.url}
                             alt={img.caption || `Ảnh ${idx + 1}`}
                             className="w-full h-full object-cover"
@@ -1083,7 +1115,7 @@ export default function ArticleDetailView() {
                   )}
 
                   <div className="px-2 py-1.5 flex border-t border-gray-100 dark:border-zinc-850 text-[10px] text-text-muted dark:text-zinc-400 font-bold justify-between select-none bg-white dark:bg-zinc-900">
-                    <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-450">
+                    <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-400">
                       <ThumbsUp size={12} /> {language === 'vi' ? 'Thích' : 'Like'}
                     </button>
                     <button className="flex-1 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-xl flex items-center justify-center gap-1.5 transition-colors border-0 bg-transparent text-text-muted dark:text-zinc-455">
@@ -1094,7 +1126,7 @@ export default function ArticleDetailView() {
                     </button>
                   </div>
                 </div>
-              ) : (
+              ) : selectedPlatform === 'threads' ? (
                 /* Threads Preview Mockup */
                 <div className="bg-white dark:bg-zinc-900 p-5 flex flex-col gap-0 text-text dark:text-zinc-150">
                   {/* Threads Post 1/2 */}
@@ -1120,7 +1152,7 @@ export default function ArticleDetailView() {
                       <div className="text-xs text-text dark:text-zinc-150 leading-relaxed flex flex-col gap-2">
                         {/* Title & Category block */}
                         <div className="font-extrabold text-[12px] text-text dark:text-zinc-200">
-                          [{activeArticle.category.replace('#', '')}] {activeArticle.title}
+                          {activeArticle.title}
                         </div>
 
                         {/* Caption content */}
@@ -1165,14 +1197,14 @@ export default function ArticleDetailView() {
                         <div className="flex flex-col gap-2 mt-1">
                           {activeArticle.images.map((img: any, idx: number) => (
                             <div key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm">
-                              <img
+                              <img referrerPolicy="no-referrer" 
                                 src={img.url}
                                 alt={img.caption || `Ảnh ${idx + 1}`}
                                 className="w-full object-cover"
                                 loading="lazy"
                               />
                               {img.caption && (
-                                <p className="text-[9px] text-text-muted dark:text-zinc-400 font-semibold px-3 py-1.5 bg-gray-50 dark:bg-zinc-950/40 border-t border-gray-105 dark:border-zinc-800">
+                                <p className="text-[9px] text-text-muted dark:text-zinc-400 font-semibold px-3 py-1.5 bg-gray-50 dark:bg-zinc-955/40 border-t border-gray-105 dark:border-zinc-800">
                                   {img.caption}
                                 </p>
                               )}
@@ -1217,6 +1249,128 @@ export default function ArticleDetailView() {
                         <Repeat2 size={14} className="hover:text-emerald-500 cursor-pointer transition-colors" />
                         <Share2 size={14} className="hover:text-primary cursor-pointer transition-colors" />
                       </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Instagram Preview Mockup */
+                <div className="flex flex-col bg-white dark:bg-zinc-900 text-text dark:text-zinc-150">
+                  {/* Header */}
+                  <div className="p-3 flex items-center justify-between border-b border-gray-50 dark:border-zinc-850/50 bg-white dark:bg-zinc-900">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 p-[2px] shadow-sm select-none">
+                        <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center p-[2px]">
+                          <div className="w-full h-full rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-[10px]">
+                            AB
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-text dark:text-zinc-200 select-none flex items-center gap-1">
+                          antbiz_official
+                          <span className="w-3 h-3 bg-blue-500 text-white rounded-full flex items-center justify-center text-[6px] font-bold">✓</span>
+                        </span>
+                        <span className="text-[8px] text-text-muted dark:text-zinc-400 select-none">Hồ Chí Minh, Việt Nam</span>
+                      </div>
+                    </div>
+                    <button className="text-text-muted dark:text-zinc-400 hover:text-text bg-transparent border-0 cursor-pointer p-0 flex items-center">
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </div>
+
+                  {/* Main Visual Image (Instagram style aspect-square) */}
+                  {activeArticle.images && activeArticle.images.length > 0 ? (
+                    <div className="relative w-full aspect-square bg-gray-50 dark:bg-zinc-955 overflow-hidden border-b border-gray-55 dark:border-zinc-850/50">
+                      <img referrerPolicy="no-referrer" 
+                        src={activeArticle.images[0].url}
+                        alt={activeArticle.images[0].caption || "Instagram Main Visual"}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      {activeArticle.images.length > 1 && (
+                        <div className="absolute top-3 right-3 bg-black/60 text-white text-[8px] font-extrabold px-2 py-1 rounded-full select-none">
+                          1/{activeArticle.images.length}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-square bg-gray-100 dark:bg-zinc-950 flex flex-col items-center justify-center gap-2 text-text-muted select-none border-b border-gray-55 dark:border-zinc-850/50">
+                      <Instagram size={28} className="stroke-[1.5]" />
+                      <span className="text-[10px] font-semibold">Chưa có hình ảnh</span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons Bar */}
+                  <div className="px-3.5 py-2.5 flex items-center justify-between bg-white dark:bg-zinc-900">
+                    <div className="flex items-center gap-4">
+                      <button className="text-text dark:text-zinc-200 hover:text-red-500 bg-transparent border-0 cursor-pointer transition-colors p-0 flex items-center">
+                        <Heart size={20} className="hover:fill-red-500" />
+                      </button>
+                      <button className="text-text dark:text-zinc-200 hover:text-primary bg-transparent border-0 cursor-pointer transition-colors p-0 flex items-center">
+                        <MessageCircle size={20} />
+                      </button>
+                      <button className="text-text dark:text-zinc-200 hover:text-primary bg-transparent border-0 cursor-pointer transition-colors p-0 flex items-center">
+                        <Send size={18} />
+                      </button>
+                    </div>
+
+                    <button className="text-text dark:text-zinc-200 hover:text-primary bg-transparent border-0 cursor-pointer transition-colors p-0 flex items-center">
+                      <Bookmark size={20} />
+                    </button>
+                  </div>
+
+                  {/* Likes Count */}
+                  <div className="px-3.5 pb-1 select-none bg-white dark:bg-zinc-900">
+                    <span className="text-xs font-bold text-text dark:text-zinc-200">
+                      {language === 'vi' ? 'antbiz_official và những người khác đã thích' : 'Liked by antbiz_official and others'}
+                    </span>
+                  </div>
+
+                  {/* Caption & Content */}
+                  <div className="px-3.5 pb-4 pt-1 text-xs leading-relaxed flex flex-col gap-1.5 bg-white dark:bg-zinc-900">
+                    <div className="whitespace-pre-wrap">
+                      <span className="font-bold text-text dark:text-zinc-200 mr-2 select-none">antbiz_official</span>
+                      
+                      {/* Title & Category block */}
+                      <span className="font-extrabold block text-text dark:text-zinc-200 mt-1 mb-1">
+                        {activeArticle.title}
+                      </span>
+
+                      {isEditing ? (
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full min-h-[140px] p-3 border border-gray-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary text-xs font-medium leading-relaxed bg-white dark:bg-zinc-955 text-text dark:text-zinc-200 resize-y mt-2"
+                          placeholder={language === 'vi' ? 'Nhập nội dung bài đăng...' : 'Enter post content...'}
+                        />
+                      ) : (
+                        (() => {
+                          const content = getDisplayContent();
+                          const shouldTruncate = content.length > 150;
+                          const displayedText = shouldTruncate && !isIgExpanded
+                            ? `${content.slice(0, 150)}...`
+                            : content;
+                          return (
+                            <>
+                              <span className="text-text dark:text-zinc-300 font-medium">{displayedText}</span>
+                              {shouldTruncate && (
+                                <button
+                                  onClick={() => setIsIgExpanded(!isIgExpanded)}
+                                  className="text-text-muted dark:text-zinc-400 font-extrabold ml-1.5 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded inline-block bg-transparent border-0 p-0"
+                                >
+                                  {isIgExpanded
+                                    ? (language === 'vi' ? 'Ẩn bớt' : 'Xem ít hơn')
+                                    : (language === 'vi' ? 'Xem thêm' : 'more')}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()
+                      )}
+                    </div>
+
+                    <div className="text-[9px] text-text-muted dark:text-zinc-400 mt-2 select-none">
+                      {getMockupDisplayTime()}
                     </div>
                   </div>
                 </div>
@@ -1284,7 +1438,7 @@ export default function ArticleDetailView() {
                         if (block.type === 'image' && block.url) {
                           return (
                             <figure key={idx} className="w-full rounded-2xl overflow-hidden border border-gray-105 dark:border-zinc-800 shadow-sm">
-                              <img
+                              <img referrerPolicy="no-referrer" 
                                 src={block.url}
                                 alt={block.caption || `Hình ảnh ${idx + 1}`}
                                 className="w-full object-cover"
@@ -1371,7 +1525,7 @@ export default function ArticleDetailView() {
               <div className="grid grid-cols-2 gap-5">
                 {activeArticle.images.map((img: any, idx: number) => (
                   <div key={idx} className="relative rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
-                    <img
+                    <img referrerPolicy="no-referrer" 
                       src={img.url}
                       alt={img.caption || `Image ${idx + 1}`}
                       className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -1390,25 +1544,7 @@ export default function ArticleDetailView() {
             </div>
           )}
 
-          {/* Image Cards Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {activeArticle.images.map((img: any, idx: number) => (
-              <div key={idx} className="relative h-[240px] rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-gray-200">
-                <img
-                  src={img.url}
-                  alt={`Image ${idx}`}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {img.caption && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
-                    <p className="text-white font-bold text-sm line-clamp-2 drop-shadow-md">
-                      {img.caption}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+
 
         </div>
 
@@ -1426,13 +1562,70 @@ export default function ArticleDetailView() {
                 <Eye size={24} />
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews')}</span>
-                {/* Lấy phần số từ chuỗi views thô (ví dụ: "1.0K lượt xem" → "1.0K", "996 lượt xem" → "996") */}
-                <span className="text-3xl font-extrabold text-text">{activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0'}</span>
+                <span className="text-xs font-bold text-text-muted">{t('articleDetail.totalViews') || 'Tổng lượt xem / Tiếp cận'}</span>
+                {/* Lấy lượt reach từ mạng xã hội, nếu không có thì lấy views bài gốc */}
+                <span className="text-3xl font-extrabold text-text">
+                  {(() => {
+                    const activeCap = getActiveCaption(selectedPlatform);
+                    let reach = 0;
+                    if (activeCap) {
+                      const scheds = scheduledPosts.filter(s => s.caption_id === activeCap.id);
+                      scheds.forEach(s => {
+                        if (s.post_interactions && s.post_interactions.length > 0) {
+                          reach += (s.post_interactions[0].reach || 0) > 0 ? s.post_interactions[0].reach : (s.post_interactions[0].impressions || 0);
+                        } else if (s.post_interactions && !Array.isArray(s.post_interactions)) {
+                          reach += (s.post_interactions.reach || 0) > 0 ? s.post_interactions.reach : (s.post_interactions.impressions || 0);
+                        }
+                      });
+                    }
+                    if (reach > 0) return reach.toLocaleString('vi-VN');
+                    return activeArticle.views ? (activeArticle.views.split(' ')[0] || '0') : '0';
+                  })()}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {(() => {
+              const activeCap = getActiveCaption(selectedPlatform);
+              let likes = 0, comments = 0, shares = 0, clicks = 0;
+              if (activeCap) {
+                const scheds = scheduledPosts.filter(s => s.caption_id === activeCap.id);
+                scheds.forEach(s => {
+                  const inter = Array.isArray(s.post_interactions) ? s.post_interactions[0] : s.post_interactions;
+                  if (inter) {
+                    likes += inter.likes || 0;
+                    comments += inter.comments || 0;
+                    shares += inter.shares || 0;
+                    clicks += inter.clicks || 0;
+                  }
+                });
+              }
+              if (likes > 0 || comments > 0 || shares > 0 || clicks > 0) {
+                return (
+                  <div className="grid grid-cols-4 gap-2 mt-4 text-center">
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Thích</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{likes}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Bình luận</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{comments}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Chia sẻ</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{shares}</div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-xl p-2 border border-amber-200/30 dark:border-amber-900/20">
+                      <div className="text-[10px] text-text-muted uppercase font-bold mb-1">Clicks</div>
+                      <div className="text-sm font-extrabold text-amber-700 dark:text-amber-400">{clicks}</div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <div className="flex flex-col gap-2 mt-6">
               <div className="w-full bg-gray-200/50 dark:bg-black h-2 rounded-full overflow-hidden">
                 <div className="bg-amber-600 dark:bg-amber-500 w-[85%] h-full rounded-full"></div>
               </div>

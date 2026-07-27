@@ -29,8 +29,8 @@ import {
 
 // Threads Custom SVG Logo
 const ThreadsIcon = ({ size = 14 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
-    <path d="M22.5 12c0-5.799-4.701-10.5-10.5-10.5S1.5 6.201 1.5 12s4.701 10.5 10.5 10.5c2.328 0 4.475-.758 6.216-2.038l-1.39-1.39C15.42 19.98 13.784 20.5 12 20.5c-4.694 0-8.5-3.806-8.5-8.5s3.806-8.5 8.5-8.5 8.5 3.806 8.5 8.5c0 1.956-.503 3.659-1.42 4.8-.813 1.011-1.923 1.5-3.08 1.5-1.144 0-1.848-.553-2.128-1.123-.391-.798-.328-2.109-.328-3.177v-2.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5v2.5c0 .356-.002.83-.027 1.309a4 4 0 1 1-3.953-3.809c.28 0 .546.035.803.097V8.539c-.26-.025-.525-.039-.79-.039a7 7 0 1 0 5.679 11.096c.71.91 1.776 1.404 3.018 1.404 2.217 0 4.156-1.134 5.347-2.923 1.15-1.729 1.693-3.992 1.693-6.077zM9.5 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+  <svg viewBox="0 0 192 192" width={size} height={size} fill="currentColor">
+    <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" />
   </svg>
 );
 
@@ -48,6 +48,8 @@ export default function ArchiveView() {
   const [captions, setCaptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [scope, setScope] = useState<string>("all");
+  const [userId, setUserId] = useState<string>("");
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -77,10 +79,47 @@ export default function ArchiveView() {
     setCurrentPage(1);
   }, [platformFilter, sortBy, searchQuery]);
 
+  // Scroll to top when currentPage changes
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile) {
+            setUserRole(profile.role);
+            if (profile.role === 'marketer_content') {
+              setScope('personal');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    }
+    fetchUser();
+  }, []);
+
   useEffect(() => {
     async function fetchCaptions() {
+      if (!userId || !userRole) return;
+      setLoading(true);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('captions')
           .select(`
             id,
@@ -90,17 +129,40 @@ export default function ArchiveView() {
             status,
             created_at,
             article_id,
+            created_by,
             articles (
               id,
               title,
-              category,
               description,
               views,
               images
+            ),
+            scheduled_posts (
+              id,
+              status,
+              scheduled_at,
+              post_interactions (
+                likes,
+                comments,
+                shares,
+                clicks,
+                reach,
+                impressions
+              )
+            ),
+            users:created_by (
+              id,
+              email
             )
           `)
-          .neq('status', 'draft')
-          .order('created_at', { ascending: false });
+          .neq('status', 'draft');
+
+        const isPersonalScope = userRole === 'marketer_content' || scope === 'personal';
+        if (isPersonalScope) {
+          query = query.eq('created_by', userId);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
         if (!error && data) {
           setCaptions(data);
         }
@@ -111,35 +173,22 @@ export default function ArchiveView() {
       }
     }
     fetchCaptions();
-  }, []);
-
-  useEffect(() => {
-    async function fetchUserRole() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          if (profile) {
-            setUserRole(profile.role);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching user role:', err);
-      }
-    }
-    fetchUserRole();
-  }, []);
+  }, [userId, userRole, scope]);
 
   const fetchPreviewData = async () => {
+    if (!userId || !userRole) return;
     setIsFetchingPreview(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('captions')
-        .select('id, platform, ai_content, status, created_at, articles (title)')
+        .select('id, platform, ai_content, status, created_at, articles (title)');
+
+      const isPersonalScope = userRole === 'marketer_content' || scope === 'personal';
+      if (isPersonalScope) {
+        query = query.eq('created_by', userId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(15);
       if (!error && data) {
@@ -173,7 +222,7 @@ export default function ArchiveView() {
     } else if (activeTab === 'history') {
       fetchExportJobs();
     }
-  }, [activeTab]);
+  }, [activeTab, userId, userRole, scope]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -279,22 +328,70 @@ export default function ArchiveView() {
     const art = cap.articles || {};
     const images = Array.isArray(art.images) ? art.images : [];
     const mainImage = images.length > 0 ? images[0].url : 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80';
+
+    // Resolve publish status from database scheduled_posts history
+    let resolvedStatus = cap.status;
+    const schedPosts = cap.scheduled_posts || [];
+    if (schedPosts.length > 0) {
+      const sortedSched = [...schedPosts].sort((a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime());
+      const latestPost = sortedSched[0];
+      if (cap.status === 'posted' || latestPost.status === 'posted') {
+        resolvedStatus = 'posted';
+      } else if (latestPost.status === 'cancelled') {
+        resolvedStatus = 'cancelled';
+      } else if (latestPost.status === 'failed') {
+        resolvedStatus = 'failed';
+      } else if (latestPost.status === 'pending') {
+        resolvedStatus = 'scheduled';
+      }
+    } else {
+      if (cap.status === 'approved') {
+        resolvedStatus = 'approved';
+      }
+    }
+
+    const creatorEmail = (cap as any).users?.email || null;
+
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalClicks = 0;
+    let totalReachFromSocial = 0;
+
+    if (schedPosts.length > 0) {
+      schedPosts.forEach((sched: any) => {
+        if (sched.post_interactions && sched.post_interactions.length > 0) {
+          const stats = sched.post_interactions[0];
+          totalLikes += stats.likes || 0;
+          totalComments += stats.comments || 0;
+          totalClicks += stats.clicks || 0;
+          totalReachFromSocial += (stats.reach || 0) > 0 ? stats.reach : (stats.impressions || 0);
+        } else if (sched.post_interactions && !Array.isArray(sched.post_interactions)) {
+          const stats = sched.post_interactions as any;
+          totalLikes += stats.likes || 0;
+          totalComments += stats.comments || 0;
+          totalClicks += stats.clicks || 0;
+          totalReachFromSocial += (stats.reach || 0) > 0 ? stats.reach : (stats.impressions || 0);
+        }
+      });
+    }
+
     return {
       id: cap.id,
-      type: art.category ? art.category.toUpperCase() : 'BÀI VIẾT',
-      platform: cap.platform || 'facebook',
+      type: 'BÀI VIẾT',
+      platform: cap.platform === 'thread' ? 'threads' : (cap.platform || 'facebook'),
       image: mainImage,
       title: art.title || 'Không có tiêu đề',
       description: cap.edited_content || cap.ai_content || 'Không có mô tả',
-      reach: art.views || '0',
-      conversions: '0',
-      likes: 0,
-      comments: 0,
+      reach: totalReachFromSocial > 0 ? totalReachFromSocial : (art.views || '0'),
+      conversions: totalClicks,
+      likes: totalLikes,
+      comments: totalComments,
       nodeType: 'Caption',
-      link: `/archive/${art.id || ''}`,
+      link: `/archive/${art.id || ''}?captionId=${cap.id}&platform=${cap.platform === 'thread' ? 'threads' : cap.platform}`,
       gradient: '',
       created_at: cap.created_at,
-      status: cap.status
+      status: resolvedStatus,
+      creatorEmail
     };
   });
 
@@ -389,6 +486,20 @@ export default function ArchiveView() {
 
             {/* Dropdowns */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              {/* Scope Filter */}
+              {userRole && userRole !== 'marketer_content' && (
+                <div className="relative">
+                  <select
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value)}
+                    className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0 appearance-none pr-10"
+                  >
+                    <option value="all">Toàn bộ kho</option>
+                    <option value="personal">Bài viết của tôi</option>
+                  </select>
+                  <ChevronDown size={16} className="text-text-muted absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              )}
 
               {/* Platform Filter */}
               <div className="relative">
@@ -396,12 +507,12 @@ export default function ArchiveView() {
                   onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
                   className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0"
                 >
-                  <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : platformFilter}</span>
+                  <span>{platformFilter === 'All Platforms' ? t('archive.allPlatforms') : (platformFilter.charAt(0).toUpperCase() + platformFilter.slice(1))}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
                 {showPlatformDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 py-2">
-                    {['All Platforms', 'facebook', 'instagram', 'blog', 'threads'].map((p) => (
+                    {['All Platforms', 'facebook', 'instagram', 'threads'].map((p) => (
                       <button
                         key={p}
                         onClick={() => {
@@ -410,7 +521,7 @@ export default function ArchiveView() {
                         }}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800/50 capitalize font-medium focus-visible:outline-none focus-visible:bg-gray-50 dark:focus-visible:bg-zinc-800/50 ${platformFilter === p ? 'text-primary font-bold' : 'text-text dark:text-zinc-300'}`}
                       >
-                        {p === 'All Platforms' ? t('archive.allPlatforms') : p}
+                        {p === 'All Platforms' ? t('archive.allPlatforms') : (p.charAt(0).toUpperCase() + p.slice(1))}
                       </button>
                     ))}
                   </div>
@@ -424,7 +535,7 @@ export default function ArchiveView() {
                   className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-md border border-gray-200 dark:border-zinc-800 text-text dark:text-zinc-250 px-4 py-3 rounded-2xl text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800/40 flex items-center gap-2 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0"
                 >
                   <ArrowUpDown size={14} className="text-text-muted" />
-                  <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : sortBy}</span>
+                  <span>{sortBy === 'Publish Date' ? t('archive.publishDate') : (language === 'vi' ? 'Cũ nhất trước' : 'Oldest First')}</span>
                   <ChevronDown size={16} className="text-text-muted" />
                 </button>
                 {showSortDropdown && (
@@ -476,59 +587,69 @@ export default function ArchiveView() {
                   {/* Top Visual Banner */}
                   <div className="h-40 w-full relative shrink-0 bg-gray-100 dark:bg-zinc-950">
 
-                    {/* Image if available */}
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      /* Gradient background for text/thread card */
-                      <div className={`w-full h-full bg-gradient-to-tr ${item.gradient}`}></div>
-                    )}
+                  {/* Image if available */}
+                  {item.image ? (
+                    <img referrerPolicy="no-referrer" 
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    /* Gradient background for text/thread card */
+                    <div className={`w-full h-full bg-gradient-to-tr ${item.gradient}`}></div>
+                  )}
 
-                    {/* Overlay Badges */}
+                  {/* Overlay Badges */}
 
-                    <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
-                      {/* Type Badge */}
-                      <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none">
-                        {item.type}
-                      </span>
+                  <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
 
-                      {/* Publish Status Badge */}
-                      <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${item.status === 'posted'
+
+                    {/* Publish Status Badge */}
+                    <span className={`backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider select-none ${
+                      item.status === 'posted'
                         ? 'bg-emerald-600/80 border border-emerald-500/30'
-                        : 'bg-amber-600/80 border border-amber-500/30'
-                        }`}>
-                        {item.status === 'posted'
-                          ? (language === 'vi' ? 'Đã đăng' : 'Published')
-                          : (language === 'vi' ? 'Chưa đăng' : 'Draft')
-                        }
-                      </span>
-                    </div>
-
-                    {/* Platform Icon Badge (Right) */}
-                    <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none z-10">
-                      {item.platform === 'facebook' && <Facebook size={14} className="fill-white" />}
-                      {item.platform === 'instagram' && <Instagram size={14} />}
-                      {item.platform === 'blog' && <Globe size={14} />}
-                      {item.platform === 'threads' && <ThreadsIcon size={14} />}
-                    </div>
-
+                        : item.status === 'cancelled'
+                          ? 'bg-slate-500/80 border border-slate-400/30'
+                          : item.status === 'failed'
+                            ? 'bg-rose-600/80 border border-rose-500/30'
+                            : item.status === 'scheduled'
+                              ? 'bg-indigo-600/80 border border-indigo-500/30'
+                              : 'bg-amber-600/80 border border-amber-500/30'
+                      }`}>
+                      {item.status === 'posted'
+                        ? (language === 'vi' ? 'Đã đăng' : 'Published')
+                        : item.status === 'cancelled'
+                          ? (language === 'vi' ? 'Đã hủy' : 'Cancelled')
+                          : item.status === 'failed'
+                            ? (language === 'vi' ? 'Thất bại' : 'Failed')
+                            : item.status === 'scheduled'
+                              ? (language === 'vi' ? 'Đã lên lịch' : 'Scheduled')
+                              : (language === 'vi' ? 'Đã duyệt' : 'Approved')
+                      }
+                    </span>
                   </div>
 
-                  {/* Card Content Area */}
-                  <div className="pt-5 pb-6 px-6 flex-1 flex flex-col justify-between gap-4">
+                  {/* Platform Icon Badge (Right) */}
+                  <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm select-none z-10">
+                    {item.platform === 'facebook' && <Facebook size={14} className="fill-white" />}
+                    {item.platform === 'instagram' && <Instagram size={14} />}
+                    {item.platform === 'blog' && <Globe size={14} />}
+                    {item.platform === 'threads' && <ThreadsIcon size={14} />}
+                  </div>
 
-                    {/* Title & Desc */}
-                    <div>
-                      {item.nodeType && (
-                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
-                          {item.nodeType}
-                        </span>
-                      )}
-                      <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-1 hover:text-primary transition-colors line-clamp-2 min-h-[3rem]">
+                </div>
+
+                {/* Card Content Area */}
+                <div className="pt-5 pb-6 px-6 flex-1 flex flex-col justify-between gap-4">
+
+                  {/* Title & Desc */}
+                  <div>
+                    {item.nodeType && (
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">
+                        {item.nodeType}
+                      </span>
+                    )}
+                    <h3 className="text-lg font-extrabold text-text dark:text-zinc-100 tracking-tight mb-1 hover:text-primary transition-colors line-clamp-2 min-h-[3rem]">
                         {item.title}
                       </h3>
                       <p className="text-xs text-text-muted dark:text-zinc-400 leading-relaxed font-semibold line-clamp-2 min-h-[2.5rem]">
@@ -576,6 +697,14 @@ export default function ArchiveView() {
                           </span>
                         )}
                       </div>
+
+                      {item.creatorEmail && userRole && userRole !== 'marketer_content' && (
+                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-zinc-800/60 flex items-center justify-between">
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold truncate">
+                            👤 Tác giả: {item.creatorEmail}
+                          </span>
+                        </div>
+                      )}
 
                     </div>
 
@@ -670,7 +799,9 @@ export default function ArchiveView() {
                     <tr key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
                       <td className="px-4 py-3 font-bold text-text dark:text-zinc-200 truncate max-w-[200px]">{row.articles?.title}</td>
                       <td className="px-4 py-3">
-                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">{row.platform}</span>
+                        <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-black text-slate-700 dark:text-slate-300 font-black text-[9px] border dark:border-white/5">
+                          {row.platform === 'thread' ? 'threads' : row.platform}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-text-muted dark:text-zinc-400 truncate max-w-[250px]">{row.ai_content}</td>
                       <td className="px-4 py-3 font-black text-[10px] text-text dark:text-zinc-200">{row.status}</td>

@@ -2,7 +2,6 @@
 
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -10,6 +9,7 @@ import { createClient } from '@/utils/supabase/client';
 import { ShieldX, ChevronUp, RefreshCw, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRef } from 'react';
+import { Toast } from '@/components/Toast';
 
 export default function DashboardLayout({
   children,
@@ -22,6 +22,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
   const [roleChangeData, setRoleChangeData] = useState<{ active: boolean; newRole: string }>({ active: false, newRole: '' });
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const { t, language } = useLanguage();
   const currentRoleRef = useRef<string | null>(null);
 
@@ -148,6 +149,20 @@ export default function DashboardLayout({
     setIsSidebarOpen(false);
     setEditorSidebarHover(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleShowToast = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message: string; type: 'success' | 'error' | 'info' }>;
+      if (customEvent.detail) {
+        setToast({
+          message: customEvent.detail.message,
+          type: customEvent.detail.type || 'success'
+        });
+      }
+    };
+    window.addEventListener('show-notification-toast', handleShowToast);
+    return () => window.removeEventListener('show-notification-toast', handleShowToast);
+  }, []);
 
   useEffect(() => {
     const mainEl = mainRef.current;
@@ -373,6 +388,7 @@ export default function DashboardLayout({
 
       <main 
         ref={mainRef}
+        id="main-scroll"
         className={`flex-1 ${isLandingEditor ? 'ml-0' : 'lg:ml-[280px] ml-0'} overflow-y-auto flex flex-col min-w-0`}
         style={{ scrollBehavior: 'smooth' }}
       >
@@ -383,12 +399,11 @@ export default function DashboardLayout({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="w-full"
+            className="w-full relative z-10"
           >
             {children}
           </motion.div>
         </div>
-        {!isLandingEditor && <Footer />}
       </main>
 
       {/* Floating Back to Top Button */}
@@ -409,6 +424,18 @@ export default function DashboardLayout({
           </motion.button>
         )}
       </AnimatePresence>
+      {/* Global Toast Container */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none select-none">
+        <AnimatePresence>
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

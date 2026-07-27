@@ -1,83 +1,55 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { sendEmail } from '@/lib/email';
-import { createNotification } from '@/lib/services/notificationService';
+import { createAccountSecurityModule } from '@/backend/modules/account-security/account-security-factory';
+import {
+  AccountSecurityError,
+  AccountSecurityGatewayError,
+} from '@/backend/modules/account-security/account-security-errors';
+import { requireUser } from '@/lib/api/auth';
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
+  const { supabase, user, unauthorized } = await requireUser();
+  if (unauthorized) return unauthorized;
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!user.email) {
+    return NextResponse.json(
+      { error: 'Tài khoản này không hỗ trợ đổi mật khẩu bằng email.' },
+      { status: 400 }
+    );
+  }
+
+  let body: unknown;
   try {
-    const supabase = createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Nội dung yêu cầu không hợp lệ.' }, { status: 400 });
+  }
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { currentPassword, newPassword } = body;
-
-    if (!currentPassword || !newPassword) {
-      return NextResponse.json({ error: 'Mật khẩu hiện tại và mật khẩu mới là bắt buộc.' }, { status: 400 });
-    }
-
-    // 1. Verify current password by signing in with it
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: currentPassword,
+  try {
+    await createAccountSecurityModule(supabase).changePassword(
+      { id: user.id, email: user.email },
+      body
+    );
+    return NextResponse.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
     });
-
-    if (signInError) {
-      return NextResponse.json({ error: 'Mật khẩu hiện tại không chính xác.' }, { status: 400 });
+  } catch (error) {
+    if (error instanceof AccountSecurityError) {
+      return NextResponse.json({ error: error.clientMessage }, { status: error.status });
     }
-
-    // 2. Update to new password
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // 3. Invalidate all refresh tokens (Global Sign Out)
-    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' });
-
-    if (signOutError) {
-      console.error('Lỗi khi thu hồi các session:', signOutError);
-    }
-
-    // Gửi thông báo in-app
-    try {
-      await createNotification({
+    if (error instanceof AccountSecurityGatewayError) {
+      console.error('[AccountSecurity] Auth provider failure', {
+        operation: error.operation,
         userId: user.id,
-        type: 'info',
-        title: 'Đổi mật khẩu tài khoản',
-        message: 'Mật khẩu tài khoản của bạn đã được thay đổi thành công.',
+        error: error.cause,
       });
-    } catch (err: any) {
-      console.error('Lỗi khi tạo thông báo đổi mật khẩu:', err.message);
+    } else {
+      console.error('[AccountSecurity] Unexpected failure', { userId: user.id, error });
     }
-
-    // 4. Send email notification
-    try {
-      await sendEmail({
-        to: user.email!,
-        subject: '[AntBiz] Thông báo thay đổi mật khẩu thành công',
-        text: `Xin chào,\n\nMật khẩu của tài khoản ${user.email} đã được thay đổi thành công vào lúc ${new Date().toLocaleString('vi-VN')}.\n\nNếu bạn không thực hiện yêu cầu này, vui lòng liên hệ quản trị viên ngay lập tức để bảo vệ tài khoản.\n\nTrân trọng,\nĐội ngũ AntBiz`,
-        html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
-          <h2>Thông báo thay đổi mật khẩu</h2>
-          <p>Xin chào,</p>
-          <p>Mật khẩu của tài khoản <strong>${user.email}</strong> đã được thay đổi thành công vào lúc <strong>${new Date().toLocaleString('vi-VN')}</strong>.</p>
-          <p style="color: #d9534f; font-weight: bold;">Nếu bạn không thực hiện yêu cầu này, vui lòng liên hệ quản trị viên ngay lập tức để bảo vệ tài khoản.</p>
-          <br/>
-          <p>Trân trọng,<br/>Đội ngũ AntBiz</p>
-        </div>`
-      });
-    } catch (emailErr) {
-      console.error('Lỗi khi gửi email xác nhận đổi mật khẩu:', emailErr);
-    }
-
-    return NextResponse.json({ success: true, message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Không thể đổi mật khẩu. Vui lòng thử lại sau.' }, {
+      status: 500,
+    });
   }
 }

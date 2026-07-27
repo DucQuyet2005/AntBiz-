@@ -6,25 +6,25 @@ interface CaptionEditorProps {
   captionId?: string;
   initialContent: string;
   originalAiContent: string;
-  platform: 'facebook' | 'thread' | 'instagram';
+  platform: 'facebook' | 'thread' | 'threads' | 'instagram';
   onSave?: (content: string) => void;
   className?: string;
 }
 
 export const PLATFORM_MAX_LENGTH = {
   facebook: 63206,
-  threads: 5000,
+  threads: 500,
   linkedin: 1300,
-  thread: 5000,
+  thread: 500,
   instagram: 2200,
 };
 
-const POPULAR_EMOJIS = [
+export const POPULAR_EMOJIS = [
   '🔥', '✨', '👍', '❤️', '👏', '🙌', '💡', '🚀', '📌', '🎯',
   '📢', '⏰', '👇', '👉', '✅', '⚠️', '⭐', '💬', '🎉', '💼'
 ];
 
-const convertToUnicodeBold = (text: string): string => {
+export const convertToUnicodeBold = (text: string): string => {
   const diffs = {
     upperDiff: 119743,
     lowerDiff: 119737,
@@ -41,7 +41,7 @@ const convertToUnicodeBold = (text: string): string => {
   }).join('');
 };
 
-const convertToUnicodeItalic = (text: string): string => {
+export const convertToUnicodeItalic = (text: string): string => {
   return Array.from(text).map(char => {
     const code = char.charCodeAt(0);
     if (code >= 65 && code <= 90) {
@@ -67,8 +67,8 @@ const CaptionEditor = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedContent, setLastSavedContent] = useState(initialContent);
-  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
-  
+
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,7 +99,6 @@ const CaptionEditor = ({
     const handleOutsideClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsEditing(false);
-        setShowEmojiPanel(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -185,57 +184,74 @@ const CaptionEditor = ({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    if (start === end) return;
+    const wrapper = type === 'bold' ? '**' : '*';
 
-    const selectedText = content.substring(start, end);
-    const styledText = type === 'bold' ? convertToUnicodeBold(selectedText) : convertToUnicodeItalic(selectedText);
-    const newContent = content.substring(0, start) + styledText + content.substring(end);
-    
-    setContent(newContent);
-    handleSave(newContent);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start, start + styledText.length);
-    }, 0);
-  };
-
-  const insertEmoji = (emoji: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      const newContent = content + emoji;
+    if (start === end) {
+      const newContent = content.substring(0, start) + wrapper + wrapper + content.substring(end);
       setContent(newContent);
       handleSave(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + wrapper.length, start + wrapper.length);
+      }, 0);
       return;
     }
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const newContent = content.substring(0, start) + emoji + content.substring(end);
-    
+    const selectedText = content.substring(start, end);
+    let styledText;
+    let newEnd = end;
+
+    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper)) {
+      styledText = selectedText.slice(wrapper.length, -wrapper.length);
+      newEnd = start + styledText.length;
+    } else {
+      styledText = `${wrapper}${selectedText}${wrapper}`;
+      newEnd = start + styledText.length;
+    }
+
+    const newContent = content.substring(0, start) + styledText + content.substring(end);
     setContent(newContent);
     handleSave(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+      textarea.setSelectionRange(start, newEnd);
     }, 0);
   };
+
+
 
   return (
     <div ref={containerRef} className={`flex flex-col gap-2 w-full ${className}`}>
       {/* Editor Header / Status */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-            isOverLimit ? 'bg-red-50 dark:bg-red-950/20 text-red-500' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
-          }`}>
-            {content.length.toLocaleString()} / {charLimit.toLocaleString()} ký tự
-          </span>
-          
+          {(() => {
+            const isThreads = platform === 'thread' || platform === 'threads';
+            let counterClass = 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400';
+            if (isOverLimit) {
+              counterClass = 'bg-red-50 dark:bg-red-950/20 text-red-500';
+            } else if (isThreads) {
+              const len = content.length;
+              if (len <= 200) {
+                counterClass = 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400';
+              } else if (len <= 260) {
+                counterClass = 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400';
+              } else {
+                counterClass = 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400';
+              }
+            }
+            const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+            return (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${counterClass}`}>
+                {content.length.toLocaleString()} ký tự (~{wordCount} từ) / {charLimit.toLocaleString()} ký tự
+              </span>
+            );
+          })()}
+
           <AnimatePresence mode="wait">
             {saveStatus === 'saving' && (
-              <motion.span 
+              <motion.span
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="text-[9px] text-text-muted flex items-center gap-1"
               >
@@ -243,7 +259,7 @@ const CaptionEditor = ({
               </motion.span>
             )}
             {saveStatus === 'saved' && (
-              <motion.span 
+              <motion.span
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="text-[9px] text-emerald-500 flex items-center gap-1 font-bold"
               >
@@ -251,7 +267,7 @@ const CaptionEditor = ({
               </motion.span>
             )}
             {saveStatus === 'error' && (
-              <motion.span 
+              <motion.span
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="text-[9px] text-red-500 flex items-center gap-1 font-bold"
               >
@@ -261,7 +277,7 @@ const CaptionEditor = ({
           </AnimatePresence>
         </div>
 
-        <button 
+        <button
           onClick={handleRestore}
           className="text-[10px] text-primary hover:text-primary-hover font-bold flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded px-1 border-0 bg-transparent cursor-pointer"
           title="Về bản gốc AI"
@@ -272,7 +288,7 @@ const CaptionEditor = ({
       </div>
 
       {/* Editor Body */}
-      <div 
+      <div
         tabIndex={isEditing ? -1 : 0}
         onKeyDown={(e) => {
           if (!isEditing && (e.key === 'Enter' || e.key === ' ')) {
@@ -280,63 +296,13 @@ const CaptionEditor = ({
             setIsEditing(true);
           }
         }}
-        className={`relative group rounded-xl border-2 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
-          isEditing 
-            ? 'border-primary bg-[#ffffff] dark:bg-slate-900 shadow-sm ring-2 ring-primary/10' 
+        className={`relative group rounded-xl border-2 transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${isEditing
+            ? 'border-primary bg-[#ffffff] dark:bg-slate-900 shadow-sm ring-2 ring-primary/10'
             : 'border-transparent hover:border-gray-200 dark:hover:border-white/10 bg-gray-50/30 dark:bg-slate-800/10'
-        } ${isOverLimit ? 'border-red-200 dark:border-red-900/50' : ''}`}
+          } ${isOverLimit ? 'border-red-200 dark:border-red-900/50' : ''}`}
         onClick={() => setIsEditing(true)}
       >
-        {isEditing && (
-          <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-slate-900/50 rounded-t-xl select-none">
-            <button
-              type="button"
-              onClick={() => applyStyling('bold')}
-              className="px-2 py-0.5 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded font-bold text-xs text-slate-700 dark:text-slate-350 select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent"
-              title="In đậm Unicode"
-            >
-              B
-            </button>
-            <button
-              type="button"
-              onClick={() => applyStyling('italic')}
-              className="px-2 py-0.5 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded italic text-xs text-slate-700 dark:text-slate-355 select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent"
-              title="In nghiêng Unicode"
-            >
-              I
-            </button>
-            <div className="w-px h-3.5 bg-gray-200 dark:bg-slate-800 mx-1.5" />
-            
-            {/* Emoji Selector */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowEmojiPanel(!showEmojiPanel)}
-                className="p-1 hover:bg-gray-200/80 dark:hover:bg-slate-800 rounded text-xs select-none cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none border-0 bg-transparent flex items-center justify-center"
-                title="Emoji"
-              >
-                😊
-              </button>
-              {showEmojiPanel && (
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-xl shadow-xl p-2 z-50 grid grid-cols-5 gap-1 w-44">
-                  {POPULAR_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => {
-                        insertEmoji(emoji);
-                        setShowEmojiPanel(false);
-                      }}
-                      className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/8 rounded text-sm transition-colors cursor-pointer select-none border-0 bg-transparent"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {isEditing ? (
           <textarea
@@ -349,7 +315,35 @@ const CaptionEditor = ({
           />
         ) : (
           <div className="p-3 text-[11px] text-text leading-relaxed whitespace-pre-wrap min-h-[60px] cursor-text">
-            {content || <span className="text-gray-400 dark:text-slate-500 italic">Nhấp để chỉnh sửa nội dung...</span>}
+            {(() => {
+              if (!content) {
+                return <span className="text-gray-400 dark:text-slate-500 italic">Nhấp để chỉnh sửa nội dung...</span>;
+              }
+              const isThreads = platform === 'thread' || platform === 'threads';
+              if (isThreads) {
+                const lastQIndex = Math.max(content.lastIndexOf('?'), content.lastIndexOf('？'));
+                if (lastQIndex !== -1) {
+                  let start = 0;
+                  for (let i = lastQIndex - 1; i >= 0; i--) {
+                    if (['.', '!', '?', '？', '\n'].includes(content[i])) {
+                      start = i + 1;
+                      break;
+                    }
+                  }
+                  const before = content.substring(0, start);
+                  const question = content.substring(start, lastQIndex + 1);
+                  const after = content.substring(lastQIndex + 1);
+                  return (
+                    <span>
+                      {before}
+                      <u className="underline decoration-indigo-500 decoration-2 underline-offset-2">{question}</u>
+                      {after}
+                    </span>
+                  );
+                }
+              }
+              return content;
+            })()}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-40 transition-opacity">
               <Edit2 size={12} className="text-primary" />
             </div>
@@ -360,7 +354,7 @@ const CaptionEditor = ({
       {isOverLimit && (
         <div className="flex items-center gap-1.5 text-[9px] text-red-500 font-bold px-1 select-none">
           <AlertCircle size={10} />
-          Vượt giới hạn ký tự của {platform === 'thread' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram'}!
+          Vượt giới hạn ký tự của {platform === 'thread' || platform === 'threads' ? 'Threads' : platform === 'facebook' ? 'Facebook' : 'Instagram'}!
         </div>
       )}
     </div>

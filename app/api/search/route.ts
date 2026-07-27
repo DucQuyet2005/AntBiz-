@@ -1,157 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  createGlobalSearchModule,
+  GlobalSearchError,
+  GlobalSearchRepositoryError,
+} from '@/backend/modules/global-search';
 import { requireUserWithRole } from '@/lib/api/auth';
-import { translations } from '@/lib/i18n/translations';
 
-function searchFaq(q: string, lang: 'vi' | 'en' = 'vi') {
-  const faqData = translations[lang]?.faq?.categories;
-  if (!faqData) return [];
-
-  const results: any[] = [];
-  const categories = ['harvesting', 'aiPrompts', 'scheduling', 'customization'];
-
-  for (const cat of categories) {
-    const catData = (faqData as any)[cat];
-    if (!catData) continue;
-
-    // A category has title, and questions q1..q5, a1..a5
-    for (let i = 1; i <= 5; i++) {
-      const question = catData[`q${i}`];
-      const answer = catData[`a${i}`];
-      if (question && answer) {
-        if (
-          question.toLowerCase().includes(q.toLowerCase()) ||
-          answer.toLowerCase().includes(q.toLowerCase())
-        ) {
-          results.push({
-            key: `${cat}_${i}`,
-            category: cat,
-            question,
-            answer,
-          });
-        }
-      }
-    }
-  }
-  return results;
-}
+const ALLOWED_ROLES = ['admin', 'marketer_full', 'marketer_content'] as const;
 
 export async function GET(request: NextRequest) {
-  // 1. Authenticate user and verify role
-  const { user, role, supabase, unauthorized } = await requireUserWithRole([
-    'admin',
-    'marketer_full',
-    'marketer_content',
-  ]);
+  const { user, role, supabase, unauthorized } = await requireUserWithRole([...ALLOWED_ROLES]);
   if (unauthorized) return unauthorized;
 
-  // 2. Parse query search parameter and lang
-  const searchParams = request.nextUrl.searchParams;
-  const q = searchParams.get('q')?.trim() ?? '';
-  const lang = (searchParams.get('lang') as 'vi' | 'en') || 'vi';
-
-  if (!q) {
-    return NextResponse.json(
-      { error: 'Từ khóa tìm kiếm không hợp lệ' },
-      { status: 400 }
-    );
-  }
-
   try {
-    if (role === 'admin') {
-      // Admin searches users and audit logs
-      const usersPromise = supabase
-        .from('users')
-        .select('id, email, role, status, created_at')
-        .ilike('email', `%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      const auditLogsPromise = supabase
-        .from('audit_logs')
-        .select('id, action, created_at, actor_id, actor:users!audit_logs_actor_id_fkey(email)')
-        .ilike('action', `%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      const [usersResult, auditLogsResult] = await Promise.all([
-        usersPromise,
-        auditLogsPromise,
-      ]);
-
-      if (usersResult.error) {
-        console.error('[GET /api/search] users query error:', usersResult.error);
-        throw usersResult.error;
-      }
-      if (auditLogsResult.error) {
-        console.error('[GET /api/search] auditLogs query error:', auditLogsResult.error);
-        throw auditLogsResult.error;
-      }
-
-      const faqs = searchFaq(q, lang);
-
-      return NextResponse.json({
-        users: usersResult.data || [],
-        auditLogs: auditLogsResult.data || [],
-        faqs,
-      });
-    } else {
-      // Marketers search articles, captions, and prompts
-      const articlesPromise = supabase
-        .from('articles')
-        .select('id, title, description, crawled_at')
-        .or(`title.ilike.%${q}%,description.ilike.%${q}%,full_text.ilike.%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      const captionsPromise = supabase
-        .from('captions')
-        .select('id, platform, ai_content, edited_content, article_id, articles(id, title)')
-        .or(`edited_content.ilike.%${q}%,ai_content.ilike.%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      let promptsQuery = supabase
-        .from('prompts')
-        .select('id, name, content, platform, tags, created_by')
-        .eq('is_deleted', false)
-        .or(`name.ilike.%${q}%,content.ilike.%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (user) {
-        promptsQuery = promptsQuery.eq('created_by', user.id);
-      }
-
-      const [articlesResult, captionsResult, promptsResult] = await Promise.all([
-        articlesPromise,
-        captionsPromise,
-        promptsQuery,
-      ]);
-
-      if (articlesResult.error) {
-        console.error('[GET /api/search] articles query error:', articlesResult.error);
-        throw articlesResult.error;
-      }
-      if (captionsResult.error) {
-        console.error('[GET /api/search] captions query error:', captionsResult.error);
-        throw captionsResult.error;
-      }
-      if (promptsResult.error) {
-        console.error('[GET /api/search] prompts query error:', promptsResult.error);
-        throw promptsResult.error;
-      }
-
-      const faqs = searchFaq(q, lang);
-
-      return NextResponse.json({
-        articles: articlesResult.data || [],
-        captions: captionsResult.data || [],
-        prompts: promptsResult.data || [],
-        faqs,
-      });
+    const search = createGlobalSearchModule(supabase);
+    const result = await search.search({
+      query: request.nextUrl.searchParams.get('q'),
+      language: request.nextUrl.searchParams.get('lang'),
+      actor: { id: user.id, role },
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof GlobalSearchError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
-  } catch (err: any) {
-    console.error('[GET /api/search] search API error:', err);
+    if (error instanceof GlobalSearchRepositoryError) {
+      console.error(`[GET /api/search] repository operation failed: ${error.operation}`);
+    } else {
+      console.error('[GET /api/search] unexpected search failure');
+    }
     return NextResponse.json(
       { error: 'Không thể thực hiện tìm kiếm toàn cục' },
       { status: 500 }

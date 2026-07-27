@@ -1,124 +1,60 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from '@/lib/services/notificationService';
+import { NextResponse } from 'next/server';
+import type { LandingConfigurationPublishResult } from '@/backend/modules/landing-configuration/landing-configuration-types';
+import { createNotifications } from '@/lib/services/notificationService';
+import {
+  createLandingConfigurationModule,
+  landingConfigurationErrorResponse,
+  readLandingConfigurationJson,
+  requireLandingConfigurationAdmin,
+} from '../_adapter';
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Check if user is admin
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!userData || userData.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-  }
+  const { supabase, user, unauthorized } = await requireLandingConfigurationAdmin();
+  if (unauthorized || !user) return unauthorized;
 
   try {
-    const body = await request.json();
-    const note = body?.note || 'Published changes';
-    const skipHistory = body?.skipHistory === true;
+    const input = await readLandingConfigurationJson(request, {});
+    const result = await createLandingConfigurationModule(supabase).publish(user.id, input);
 
-    // 1. Fetch current config
-    const { data: currentConfig, error: fetchError } = await supabase
-      .from('landing_page_config')
-      .select('key, value, section');
+    revalidatePath('/');
+    await notifyAdministratorsBestEffort(supabase, user, result);
 
-    if (fetchError) throw fetchError;
+    return NextResponse.json({ success: true, history: result.history });
+  } catch (error) {
+    return landingConfigurationErrorResponse(error, 'publish');
+  }
+}
 
-    // 2. Format it into a JSON snapshot
-    // We will group it by section for easier rolling back and rendering
-    const snapshot: Record<string, Record<string, any>> = {};
-    currentConfig.forEach(item => {
-      if (!snapshot[item.section]) {
-        snapshot[item.section] = {};
-      }
-      snapshot[item.section][item.key] = item.value;
+async function notifyAdministratorsBestEffort(
+  supabase: SupabaseClient,
+  actor: User,
+  result: LandingConfigurationPublishResult
+) {
+  try {
+    const { data: administrators, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'admin');
+    if (error) throw error;
+    if (!administrators?.length) return;
+
+    await createNotifications(administrators.map((administrator) => ({
+      userId: administrator.id,
+      type: 'info' as const,
+      title: 'Landing Page đã được xuất bản',
+      message: `Admin ${actor.email || 'hệ thống'} đã xuất bản Landing Page với ghi chú: "${result.note}".`,
+      metadata: {
+        history_id: result.history?.id ?? null,
+        action_by: actor.id,
+        note: result.note,
+      },
+    })));
+  } catch {
+    console.error('[Landing Configuration]', {
+      operation: 'publish notification',
+      code: 'NOTIFICATION_FAILED',
     });
-
-    // 2.5. Check if this snapshot is identical to any of the recent history records to prevent duplicate entries
-    const { data: recentHistory } = await supabase
-      .from('landing_page_history')
-      .select('id, config_snapshot')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    const stringifySorted = (obj: any): string => {
-      if (Array.isArray(obj)) return JSON.stringify(obj.map(stringifySorted));
-      if (obj !== null && typeof obj === 'object') {
-        const keys = Object.keys(obj).sort();
-        const sortedObj: any = {};
-        keys.forEach(k => { sortedObj[k] = stringifySorted(obj[k]); });
-        return JSON.stringify(sortedObj);
-      }
-      return JSON.stringify(obj);
-    };
-
-    const duplicateRecord = recentHistory?.find(hist => 
-      stringifySorted(hist.config_snapshot) === stringifySorted(snapshot)
-    );
-
-    const isIdentical = !!duplicateRecord;
-    let historyRecord = duplicateRecord || null;
-
-    if (!isIdentical && !skipHistory) {
-      // 3. Save to history only if changed and skipHistory is false
-      const { data: newHistory, error: historyError } = await supabase
-        .from('landing_page_history')
-        .insert({
-          config_snapshot: snapshot,
-          note,
-          created_by: user.id
-        })
-        .select()
-        .single();
-
-      if (historyError) throw historyError;
-      historyRecord = newHistory;
-    }
-
-    // 4. Invalidate the public landing page cache
-    revalidatePath('/', 'page');
-
-    // Gửi thông báo in-app tới toàn bộ Admin
-    try {
-      const { data: admins } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'admin');
-      
-      if (admins) {
-        const title = 'Landing Page đã được xuất bản';
-        const message = `Admin ${user.email || 'hệ thống'} đã xuất bản một phiên bản Landing Page mới với ghi chú: "${note}".`;
-        
-        for (const admin of admins) {
-          await createNotification({
-            userId: admin.id,
-            type: 'info',
-            title,
-            message,
-            metadata: {
-              history_id: historyRecord?.id || null,
-              action_by: user.id,
-              note,
-            }
-          });
-        }
-      }
-    } catch (notifErr: any) {
-      console.error('[Publish API] Lỗi khi tạo thông báo in-app cho admin:', notifErr.message);
-    }
-
-    return NextResponse.json({ success: true, history: historyRecord });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
